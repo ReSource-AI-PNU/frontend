@@ -17,7 +17,7 @@ export function AuthShell({ title, description, children }: { title: string; des
           {children}
         </div>
       </div>
-      <aside className="relative hidden overflow-hidden bg-photo text-[#F1EFE8] lg:col-span-7 lg:flex lg:flex-col lg:justify-end lg:p-14">
+      <aside className="relative hidden overflow-hidden bg-photo text-[#FAFAFA] lg:col-span-7 lg:flex lg:flex-col lg:justify-end lg:p-14">
         <div
           aria-hidden="true"
           className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:48px_48px]"
@@ -25,7 +25,7 @@ export function AuthShell({ title, description, children }: { title: string; des
         <p className="relative max-w-md text-[40px] leading-[1.15] font-bold tracking-[-0.035em]">
           사진 한 장이면,
           <br />
-          <span className="bg-[linear-gradient(transparent_58%,var(--color-marker)_58%,var(--color-marker)_92%,transparent_92%)] text-[#F1EFE8] [-webkit-box-decoration-break:clone]">
+          <span className="bg-[linear-gradient(transparent_58%,var(--color-marker)_58%,var(--color-marker)_92%,transparent_92%)] text-[#FAFAFA] [-webkit-box-decoration-break:clone]">
             견적 요청서
           </span>
           까지.

@@ -7,8 +7,8 @@ import { SUPPORT_EMAIL } from "@/components/legal/contact";
  * 테마는 저장된 설정(localStorage)을 읽을 수 없을 수 있어 OS 설정(prefers-color-scheme)을 따른다.
  */
 const CSS = `
-:root{--bg:#F2F0EA;--surface:#FBFAF6;--line:#DEDBD2;--ink:#16150F;--ink2:#3A3830;--muted:#6B675E;--loss:#B5332A;--onink:#FBFAF6;--marker:#E6FF3D;color-scheme:light}
-@media (prefers-color-scheme: dark){:root{--bg:#12110D;--surface:#1B1A15;--line:#2E2C25;--ink:#F1EFE8;--ink2:#D2CFC5;--muted:#A39F94;--loss:#FF7266;--onink:#12110D;color-scheme:dark}}
+:root{--bg:#FFFFFF;--surface:#FFFFFF;--line:#E8E8EA;--ink:#0A0A0A;--ink2:#3F3F46;--muted:#66666E;--loss:#B5332A;--onink:#FFFFFF;--marker:#E6FF3D;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#0A0A0A;--surface:#111111;--line:#262626;--ink:#FAFAFA;--ink2:#D4D4D8;--muted:#A1A1AA;--loss:#FF7266;--onink:#0A0A0A;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Wanted Sans Variable","Pretendard Variable","Apple SD Gothic Neo",system-ui,sans-serif;line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased}
 .rs-ge-head{display:flex;align-items:center;gap:10px;height:60px;padding:0 24px;border-bottom:1px solid var(--line);font-weight:700;letter-spacing:-0.02em}

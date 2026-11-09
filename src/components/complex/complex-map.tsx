@@ -6,10 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { buildingsUrl } from "@/lib/complexes";
 import type { Company, IndustrialComplex } from "@/lib/domain";
 
-/** 지도 전용 색. 종이·먹 팔레트에서 파생한다 (DESIGN.md 지도 항목). */
+/** 지도 전용 색. 흰 배경·흑백 팔레트에서 파생한다 (DESIGN.md 지도 항목). */
 const MAP_COLORS = {
-  light: { bg: "#F2F0EA", base: "#DCD8CD", tenant: "#B5AFA1", hover: "#8F897B", selected: "#16150F" },
-  dark: { bg: "#12110D", base: "#2A2822", tenant: "#4A463D", hover: "#6E695D", selected: "#F1EFE8" },
+  light: { bg: "#FFFFFF", base: "#E4E4E7", tenant: "#A1A1AA", hover: "#71717A", selected: "#0A0A0A" },
+  dark: { bg: "#0A0A0A", base: "#27272A", tenant: "#52525B", hover: "#71717A", selected: "#FAFAFA" },
 } as const;
 
 const VIEW_3D = { pitch: 52, bearing: -20 };

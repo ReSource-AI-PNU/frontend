@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 디자인 토큰: ReSource-AI 저장소의 DESIGN.md (산업 원장) 기준 */
+/* 디자인 토큰: ReSource-AI 저장소의 DESIGN.md 기준 (v2: 흰 배경·흑백 + 기능색) */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -10,31 +10,31 @@
   --color-transparent: transparent;
   --color-current: currentColor;
 
-  --color-bg: #f2f0ea;
-  --color-surface: #fbfaf6;
-  --color-sunken: #e9e6de;
-  --color-line: #dedbd2;
-  --color-line-strong: #c9c5ba;
-  --color-ink: #16150f;
-  --color-ink-2: #3a3830;
-  --color-muted: #6b675e;
-  --color-on-ink: #fbfaf6;
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-sunken: #f4f4f5;
+  --color-line: #e8e8ea;
+  --color-line-strong: #d4d4d8;
+  --color-ink: #0a0a0a;
+  --color-ink-2: #3f3f46;
+  --color-muted: #66666e;
+  --color-on-ink: #ffffff;
   --color-marker: #e6ff3d;
-  --color-marker-ink: #16150f;
+  --color-marker-ink: #0a0a0a;
   --color-gain: #0c7148;
-  --color-gain-bg: #e1f1e6;
+  --color-gain-bg: #ecf6ef;
   --color-loss: #b5332a;
-  --color-loss-bg: #f8e4df;
+  --color-loss-bg: #fbeceb;
   --color-warn: #9a5b00;
-  --color-warn-bg: #f6ecd8;
-  --color-photo: #2b2a24;
+  --color-warn-bg: #fbf3e4;
+  --color-photo: #18181b;
 
   /* 차트 전용 (dataviz 검증기 통과값). 글자에는 쓰지 않는다: 값·라벨은 ink 계열로 쓴다.
      손익: 발산형, 항상 부호와 직접 라벨을 함께 쓴다 (라이트 CVD ΔE 7.6 → 보조 표기 필수).
      품목: 범주형 고정 순서 폐플라스틱·금속 스크랩·폐목재·포장재 (라이트 대비 경고 → 라벨·표 필수). */
   --color-chart-gain: #0c7148;
   --color-chart-loss: #b5332a;
-  --color-chart-zero: #c9c5ba;
+  --color-chart-zero: #d4d4d8;
   --color-chart-1: #2a78d6;
   --color-chart-2: #eb6834;
   --color-chart-3: #1baf7a;
@@ -92,25 +92,25 @@
 }
 
 [data-theme="dark"] {
-  --color-bg: #12110d;
-  --color-surface: #1b1a15;
-  --color-sunken: #0d0c09;
-  --color-line: #2e2c25;
-  --color-line-strong: #3e3b32;
-  --color-ink: #f1efe8;
-  --color-ink-2: #d2cfc5;
-  --color-muted: #a39f94;
-  --color-on-ink: #12110d;
+  --color-bg: #0a0a0a;
+  --color-surface: #111111;
+  --color-sunken: #000000;
+  --color-line: #262626;
+  --color-line-strong: #3f3f46;
+  --color-ink: #fafafa;
+  --color-ink-2: #d4d4d8;
+  --color-muted: #a1a1aa;
+  --color-on-ink: #0a0a0a;
   --color-gain: #43c98a;
   --color-gain-bg: #12291e;
   --color-loss: #ff7266;
   --color-loss-bg: #2d1714;
   --color-warn: #e0a23a;
   --color-warn-bg: #2a2112;
-  --color-photo: #0b0a08;
+  --color-photo: #000000;
   --color-chart-gain: #279763;
   --color-chart-loss: #e5533f;
-  --color-chart-zero: #3e3b32;
+  --color-chart-zero: #3f3f46;
   --color-chart-1: #3987e5;
   --color-chart-2: #d95926;
   --color-chart-3: #199e70;
