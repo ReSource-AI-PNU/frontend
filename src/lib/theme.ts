@@ -1,0 +1,2 @@
+/** <head>에서 첫 페인트 전에 실행한다. ?theme=light|dark 로 시연용 강제 지정도 받는다. */
+export const THEME_INIT_SCRIPT = `(function(){try{var d=document.documentElement,q=new URLSearchParams(location.search).get("theme"),t=q==="light"||q==="dark"?q:localStorage.getItem("theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.setAttribute("data-theme",t)}catch(e){}})()`;

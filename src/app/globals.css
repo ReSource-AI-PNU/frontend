@@ -1,26 +1,124 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* 디자인 토큰: ReSource-AI 저장소의 DESIGN.md (산업 원장) 기준 */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: #f2f0ea;
+  --color-surface: #fbfaf6;
+  --color-sunken: #e9e6de;
+  --color-line: #dedbd2;
+  --color-line-strong: #c9c5ba;
+  --color-ink: #16150f;
+  --color-ink-2: #3a3830;
+  --color-muted: #6b675e;
+  --color-on-ink: #fbfaf6;
+  --color-marker: #e6ff3d;
+  --color-marker-ink: #16150f;
+  --color-gain: #0c7148;
+  --color-gain-bg: #e1f1e6;
+  --color-loss: #b5332a;
+  --color-loss-bg: #f8e4df;
+  --color-warn: #9a5b00;
+  --color-warn-bg: #f6ecd8;
+  --color-photo: #2b2a24;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --text-display: 2.75rem;
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 750;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 1.3;
+  --text-h1--letter-spacing: -0.025em;
+  --text-h1--font-weight: 700;
+  --text-h2: 1.25rem;
+  --text-h2--line-height: 1.35;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 650;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 550;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-wanted), "Pretendard Variable", "Apple SD Gothic Neo", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+[data-theme="dark"] {
+  --color-bg: #12110d;
+  --color-surface: #1b1a15;
+  --color-sunken: #0d0c09;
+  --color-line: #2e2c25;
+  --color-line-strong: #3e3b32;
+  --color-ink: #f1efe8;
+  --color-ink-2: #d2cfc5;
+  --color-muted: #a39f94;
+  --color-on-ink: #12110d;
+  --color-gain: #43c98a;
+  --color-gain-bg: #12291e;
+  --color-loss: #ff7266;
+  --color-loss-bg: #2d1714;
+  --color-warn: #e0a23a;
+  --color-warn-bg: #2a2112;
+  --color-photo: #0b0a08;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px var(--color-marker);
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: var(--color-marker);
+    color: var(--color-marker-ink);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 숫자 전용. 한글이 섞인 줄에는 쓰지 않는다 (DESIGN.md 서체 규칙) */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
