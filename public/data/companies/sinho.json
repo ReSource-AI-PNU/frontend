@@ -1,0 +1,199 @@
+[
+  {
+    "id": "sinho-001",
+    "name": "(주)하얀메탈리사이클",
+    "buildingOsmId": 415837595,
+    "location": [
+      128.869287,
+      35.100727
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "금속 스크랩"
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-002",
+    "name": "새벽일렉트릭",
+    "buildingOsmId": 415934449,
+    "location": [
+      128.884021,
+      35.095305
+    ],
+    "industry": "전기장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "구리 전선 스크랩",
+        "monthlyKg": 4970,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "5~9명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-003",
+    "name": "(주)다온금속",
+    "buildingOsmId": 709004150,
+    "location": [
+      128.872649,
+      35.090765
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "알루미늄 칩",
+        "monthlyKg": 390,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-004",
+    "name": "물결폴리텍(주)",
+    "buildingOsmId": 709004185,
+    "location": [
+      128.878837,
+      35.089489
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 분쇄품(재생 원료)",
+        "monthlyKg": 3610
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-005",
+    "name": "(주)바름우드",
+    "buildingOsmId": 709004149,
+    "location": [
+      128.874955,
+      35.090732
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 1760,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "포장재",
+        "detail": "PP 밴드",
+        "monthlyKg": 90,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-006",
+    "name": "참솔지업",
+    "buildingOsmId": 415934403,
+    "location": [
+      128.872688,
+      35.092468
+    ],
+    "industry": "펄프, 종이 및 종이제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 파지",
+        "monthlyKg": 480,
+        "storage": "실내"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-007",
+    "name": "(주)이음마린",
+    "buildingOsmId": 580701694,
+    "location": [
+      128.864789,
+      35.093836
+    ],
+    "industry": "기타 운송장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "강판 절단 잔재",
+        "monthlyKg": 4590,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-008",
+    "name": "(주)하람마린",
+    "buildingOsmId": 710607479,
+    "location": [
+      128.881444,
+      35.095188
+    ],
+    "industry": "기타 운송장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "강판 절단 잔재",
+        "monthlyKg": 3690,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "sinho-009",
+    "name": "온누리스틸(주)",
+    "buildingOsmId": 415934401,
+    "location": [
+      128.875006,
+      35.092374
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절단 잔재",
+        "monthlyKg": 430,
+        "storage": "실내"
+      },
+      {
+        "item": "폐목재",
+        "detail": "목재 팔레트",
+        "monthlyKg": 290,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  }
+]

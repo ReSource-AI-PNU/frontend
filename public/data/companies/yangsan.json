@@ -1,0 +1,249 @@
+[
+  {
+    "id": "yangsan-001",
+    "name": "별빛목재",
+    "buildingOsmId": 1218686922,
+    "location": [
+      129.033821,
+      35.357173
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 1560,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-002",
+    "name": "(주)잎새로지스",
+    "buildingOsmId": 671805044,
+    "location": [
+      129.029979,
+      35.364552
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 1520,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 70,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "5~9명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-003",
+    "name": "슬기펠릿",
+    "buildingOsmId": 666034504,
+    "location": [
+      129.038246,
+      35.366128
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 360,
+        "storage": "야외·노출"
+      }
+    ],
+    "demands": [
+      {
+        "item": "폐목재",
+        "detail": "목재 칩(연료용)",
+        "monthlyKg": 4130
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-004",
+    "name": "든솔엔지니어링",
+    "buildingOsmId": 669454012,
+    "location": [
+      129.033013,
+      35.365822
+    ],
+    "industry": "기타 기계 및 장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "스테인리스 스크랩",
+        "monthlyKg": 4470,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-005",
+    "name": "산들금속",
+    "buildingOsmId": 671805041,
+    "location": [
+      129.030058,
+      35.36364
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "알루미늄 칩",
+        "monthlyKg": 4660,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-006",
+    "name": "늘품마린",
+    "buildingOsmId": 671805103,
+    "location": [
+      129.027309,
+      35.368542
+    ],
+    "industry": "기타 운송장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "강판 절단 잔재",
+        "monthlyKg": 4380,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-007",
+    "name": "(주)가람알루텍",
+    "buildingOsmId": 671779271,
+    "location": [
+      129.035301,
+      35.360283
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "알루미늄 칩",
+        "monthlyKg": 1280,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 250,
+        "storage": "실내"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-008",
+    "name": "(주)푸른들환경",
+    "buildingOsmId": 666034550,
+    "location": [
+      129.032409,
+      35.367583
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐플라스틱",
+      "포장재"
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-009",
+    "name": "청림메탈",
+    "buildingOsmId": 665595691,
+    "location": [
+      129.029977,
+      35.373011
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절삭칩",
+        "monthlyKg": 530,
+        "storage": "실내"
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-010",
+    "name": "누리식품",
+    "buildingOsmId": 666034539,
+    "location": [
+      129.029738,
+      35.369047
+    ],
+    "industry": "식료품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 360,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "5~9명",
+    "isDemo": true
+  },
+  {
+    "id": "yangsan-011",
+    "name": "다솜일렉트릭",
+    "buildingOsmId": 671805108,
+    "location": [
+      129.032745,
+      35.355289
+    ],
+    "industry": "전기장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "구리 전선 스크랩",
+        "monthlyKg": 3370,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  }
+]

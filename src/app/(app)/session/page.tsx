@@ -14,7 +14,7 @@ export default function SessionPage() {
         title="진행 중인 세션이 없습니다"
         description="폐기물 사진이나 영상을 올리면 세션이 만들어지고, 왼쪽 단계가 하나씩 채워집니다."
         action={
-          <ButtonLink href="/">
+          <ButtonLink href="/upload">
             업로드로 시작
             <ArrowRightIcon />
           </ButtonLink>
