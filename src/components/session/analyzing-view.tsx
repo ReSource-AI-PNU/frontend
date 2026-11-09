@@ -2,96 +2,104 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { finishAnalyzing } from "@/lib/server/session-actions";
-import type { ClassifyResult, Media } from "@/lib/session/types";
+import type { Stream } from "@/lib/session/types";
 import { CheckIcon } from "../icons";
 import { buttonClass } from "../ui/button";
 import { DetectionBox, MediaView } from "./session-photo";
+import { OriginChip } from "./stream-badges";
 
-const STAGES = [
-  { label: "프레임 추출", detail: (c: ClassifyResult) => `${c.frames}장`, ms: 800 },
-  { label: "품목 탐지", detail: (c: ClassifyResult) => `${c.model.name} ${c.model.version}`, ms: 1400 },
-  { label: "이물질 탐지·추적", detail: () => "ByteTrack", ms: 1400 },
-  { label: "수량 추정", detail: (c: ClassifyResult) => `약 ${c.estimatedKg.toLocaleString("ko-KR")}kg`, ms: 800 },
-];
+const PER_STREAM_MS = 1100;
+const TAIL_MS = 900;
 
-/** 분석 진행 화면. 단계가 끝날 때마다 사진 위에 박스가 나타나고, 끝나면 식별 결과로 넘어간다. */
-export function AnalyzingView({ sessionId, media, classify }: { sessionId: string; media: Media | undefined; classify: ClassifyResult }) {
+/**
+ * 분석 진행 화면. 흐름을 하나씩 분석하며 사진 위에 박스를 그리고, 오른쪽 목록에 재질과 출처 판정을 채운다.
+ * 끝나면 흐름 식별 화면으로 넘어간다. 모션 감소 설정이면 바로 결과를 보여 준다.
+ */
+export function AnalyzingView({ sessionId, streams }: { sessionId: string; streams: Stream[] }) {
+  // done = 분석을 마친 흐름 수, phase = 지금 흐름의 단계(0 품목, 1 이물)
   const [done, setDone] = useState(0);
+  const [phase, setPhase] = useState(0);
   const [pending, startTransition] = useTransition();
+  const finished = done >= streams.length;
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const t = setTimeout(() => setDone(STAGES.length), 0);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      const t = setTimeout(() => setDone(streams.length), 0);
       return () => clearTimeout(t);
     }
-    let i = 0;
-    let timer: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      if (i >= STAGES.length) return;
-      timer = setTimeout(() => {
-        i += 1;
-        setDone(i);
-        tick();
-      }, STAGES[i].ms);
-    };
-    tick();
-    return () => clearTimeout(timer);
-  }, []);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    streams.forEach((_, i) => {
+      timers.push(setTimeout(() => setPhase(1), i * PER_STREAM_MS + PER_STREAM_MS * 0.45));
+      timers.push(
+        setTimeout(() => {
+          setDone(i + 1);
+          setPhase(0);
+        }, (i + 1) * PER_STREAM_MS),
+      );
+    });
+    timers.push(setTimeout(() => startTransition(() => finishAnalyzing(sessionId)), streams.length * PER_STREAM_MS + TAIL_MS));
+    return () => timers.forEach(clearTimeout);
+  }, [streams, sessionId]);
 
-  useEffect(() => {
-    if (done === STAGES.length && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const t = setTimeout(() => startTransition(() => finishAnalyzing(sessionId)), 700);
-      return () => clearTimeout(t);
-    }
-  }, [done, sessionId]);
-
-  const visible = classify.detections.filter((d) => (d.kind === "item" ? done >= 2 : done >= 3));
+  const current = streams[Math.min(done, streams.length - 1)];
+  const visible = finished
+    ? current.classify.detections
+    : current.classify.detections.filter((d) => (d.kind === "item" ? true : phase >= 1));
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       <figure className="relative aspect-[4/3] overflow-hidden rounded-lg bg-photo">
-        {media ? <MediaView media={media} label="분석 중인 폐기물 사진" /> : null}
+        {current.media[0] ? <MediaView key={current.id} media={current.media[0]} label={`${current.name} 사진`} /> : null}
         {visible.map((d) => (
           <DetectionBox key={d.id} d={d} />
         ))}
-        {done < STAGES.length ? (
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-full motion-safe:animate-[rs-scan_2.2s_linear_infinite]">
+        {!finished ? (
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-full motion-safe:animate-[rs-scan_1.1s_linear_infinite]">
             <div className="h-px w-full bg-marker shadow-[0_0_12px_2px_var(--color-marker)]" />
           </div>
         ) : null}
-        <figcaption className="absolute bottom-2.5 left-3 text-[12px] text-white/60">{media?.name}</figcaption>
+        <figcaption className="absolute bottom-2.5 left-3 rounded-sm bg-black/40 px-2 py-0.5 text-[12px] text-white/80">
+          {current.name} · {current.process || "공정 미지정"}
+        </figcaption>
       </figure>
 
       <div>
         <p className="text-label text-muted">① 식별·분류 에이전트</p>
-        <h1 className="mt-1 text-h1">{done < STAGES.length ? "사진을 분석하고 있습니다" : "분석을 마쳤습니다"}</h1>
-        <p className="mt-1 text-sm text-muted">보통 5초 안팎이 걸립니다. 이 화면을 떠나도 분석은 계속됩니다.</p>
+        <h1 className="mt-1 text-h1">{finished ? "흐름 분석을 마쳤습니다" : `흐름 ${streams.length}개를 분석하고 있습니다`}</h1>
+        <p className="mt-1 text-sm text-muted">흐름마다 재질, 단일 재질 여부, 이물, 출처(공정 부산물·사용 후 포장재)를 판정합니다.</p>
         <ol className="mt-6 border-t border-line" aria-live="polite">
-          {STAGES.map((s, i) => {
-            const state = i < done ? "done" : i === done ? "active" : "todo";
+          {streams.map((s, i) => {
+            const state = i < done ? "done" : i === done && !finished ? "active" : "todo";
+            const contam = s.classify.detections.filter((d) => d.kind === "contaminant").length;
             return (
-              <li key={s.label} data-state={state} className="flex items-center justify-between gap-4 border-b border-line py-3.5 text-sm data-[state=todo]:text-muted">
-                <span className="flex items-center gap-3">
-                  <span
-                    className={`grid size-[22px] place-items-center rounded-full border text-[11px] [&_svg]:size-3 ${state === "done" ? "border-ink bg-ink text-on-ink" : state === "active" ? "border-ink motion-safe:animate-pulse" : "border-line-strong"}`}
-                  >
-                    {state === "done" ? <CheckIcon /> : <span className="num">{i + 1}</span>}
+              <li key={s.id} data-state={state} className="grid gap-1.5 border-b border-line py-3.5 data-[state=todo]:text-muted">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-3 text-sm">
+                    <span
+                      className={`grid size-[22px] shrink-0 place-items-center rounded-full border text-[11px] [&_svg]:size-3 ${state === "done" ? "border-ink bg-ink text-on-ink" : state === "active" ? "border-ink motion-safe:animate-pulse" : "border-line-strong"}`}
+                    >
+                      {state === "done" ? <CheckIcon /> : <span className="num">{i + 1}</span>}
+                    </span>
+                    <span className={state === "active" ? "font-semibold" : ""}>{s.name}</span>
                   </span>
-                  <span className={state === "active" ? "font-semibold" : ""}>{s.label}</span>
-                </span>
-                <span className="num text-[13px] text-muted">{state === "todo" ? "" : s.detail(classify)}</span>
+                  {state === "done" ? <OriginChip origin={s.origin} source="ai" /> : null}
+                </div>
+                {state === "done" ? (
+                  <p className="pl-[34px] text-[13px] text-ink-2">
+                    <span className="num">{s.classify.material}</span> · {s.classify.singleMaterial ? "단일 재질" : "재질 혼합"} · 이물 {contam}종 · 추정 <span className="num">{s.monthlyKg}</span>kg/월
+                  </p>
+                ) : null}
               </li>
             );
           })}
         </ol>
-        {done === STAGES.length ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => startTransition(() => finishAnalyzing(sessionId))}
-            className={`${buttonClass("primary")} mt-6`}
-          >
-            {pending ? "여는 중…" : "식별 결과 보기"}
+        <p className="mt-3 text-[12px] text-muted">
+          모델 <span className="num">{streams[0]?.classify.model.name} {streams[0]?.classify.model.version}</span> · 흐름당 프레임 24장
+        </p>
+        {finished ? (
+          <button type="button" disabled={pending} onClick={() => startTransition(() => finishAnalyzing(sessionId))} className={`${buttonClass("primary")} mt-6`}>
+            {pending ? "여는 중…" : "흐름 식별 결과 보기"}
           </button>
         ) : null}
       </div>

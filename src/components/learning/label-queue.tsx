@@ -5,7 +5,17 @@ import { formatDateTime } from "../dashboard/format-date";
 import { Badge } from "../ui/badge";
 import { buttonClass } from "../ui/button";
 
-const KIND: Record<LabelTask["kind"], string> = { box: "박스", ratio: "오염 비율", grade: "라벨", outcome: "실제 결과" };
+const KIND: Record<LabelTask["kind"], string> = { box: "박스", ratio: "오염 비율", grade: "라벨", outcome: "실제 결과", origin: "흐름 출처", route: "흐름 경로" };
+
+/**
+ * 라벨 종류 표시. 흐름 출처(PIR/PCR)와 흐름 경로 변경은 계약상 kind가 "grade"로 들어오므로 제목으로 구분한다
+ * (session-actions.ts의 setStreamOrigin·setStreamRoute가 "<흐름> 출처 변경", "<흐름> 경로 변경"으로 남긴다).
+ */
+function kindLabel(t: LabelTask) {
+  if (t.kind === "grade" && t.title.endsWith("출처 변경")) return "흐름 출처";
+  if (t.kind === "grade" && t.title.endsWith("경로 변경")) return "흐름 경로";
+  return KIND[t.kind];
+}
 
 /**
  * 라벨 검수 큐. AI 원래 값은 지우지 않고 취소선으로, 사람이 고친 값은 먹색 굵은 글씨로 보여 준다
@@ -16,7 +26,7 @@ export function LabelQueue({ pending, reviewed }: { pending: LabelTask[]; review
     <div className="grid gap-4">
       {pending.length === 0 ? (
         <p className="rounded-md border border-dashed border-line-strong px-4 py-6 text-sm text-muted">
-          검수할 라벨이 없습니다. 현장 담당자가 식별 결과를 고치거나 업체가 실제 결과를 기록하면 여기에 쌓입니다.
+          검수할 라벨이 없습니다. 현장 담당자가 흐름의 식별 결과·출처·경로를 고치거나 업체가 실제 결과를 기록하면 여기에 쌓입니다.
         </p>
       ) : (
         <ul className="divide-y divide-line border-y border-line" aria-label={`검수 대기 ${pending.length}건`}>
@@ -24,11 +34,11 @@ export function LabelQueue({ pending, reviewed }: { pending: LabelTask[]; review
             <li key={t.id} className="grid gap-3 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 text-[12px] text-muted">
-                  <span className="font-semibold text-ink-2">{t.source}</span>· {KIND[t.kind]} ·{" "}
+                  <span className="font-semibold text-ink-2">{t.source}</span>· {kindLabel(t)} ·{" "}
                   <span className="tabular-nums">{formatDateTime(t.createdAt)}</span>
                   {t.sessionId !== "seed" ? (
                     <Link href={`/session/${t.sessionId}`} className="underline underline-offset-4">
-                      세션 보기
+                      진단 보기
                     </Link>
                   ) : (
                     <span>시연용 예시</span>

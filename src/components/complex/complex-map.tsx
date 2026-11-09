@@ -21,11 +21,12 @@ const MARKER = "#E6FF3D";
  * 선택 사항: AI가 고른 묶음 수거 그룹을 지도에 강조한다 (판정 흐름의 "묶음 수거 매칭" 화면).
  * - groupIds: 그룹 기업(내 회사 포함). 건물과 핀을 형광펜으로 칠한다.
  * - collectorId: 수거 처리업체. 건물을 먹색으로 칠한다(핀은 원래 먹 사각).
+ * - partnerIds: 묶음이 아닌 흐름의 거래처(매각처 등). 수거 업체와 같이 건물을 먹색으로 칠한다.
  * - excludedIds: 허가 불일치 등으로 제외한 업체. 건물을 일반 건물색으로 낮추고 핀을 흐리게 한다.
- * - fit: true면 처음 그릴 때 묶음 그룹 건물이 모두 보이게 화면을 맞춘다(기본 true). 수거 업체는 멀 수 있어 맞춤에서 뺀다.
+ * - fit: true면 처음 그릴 때 묶음 그룹 건물이 모두 보이게 화면을 맞춘다(기본 true). 수거 업체·거래처는 멀 수 있어 맞춤에서 뺀다.
  * 강조하지 않은 나머지 핀은 조금 흐려진다. 주지 않으면 기존 탐색 화면과 똑같이 동작한다.
  */
-export type MapHighlight = { groupIds: string[]; collectorId?: string; excludedIds?: string[]; fit?: boolean };
+export type MapHighlight = { groupIds: string[]; collectorId?: string; partnerIds?: string[]; excludedIds?: string[]; fit?: boolean };
 
 /** 단지 범위 안에 섞인 주거·교육·의료 건물은 산업단지 모형에서 뺀다. */
 const NON_INDUSTRIAL_KINDS = [
@@ -305,10 +306,13 @@ function applyHighlight(map: MapLibreMap, companies: Company[], highlight: MapHi
   const group = new Set(highlight?.groupIds ?? []);
   const excluded = new Set(highlight?.excludedIds ?? []);
   const collector = highlight?.collectorId;
+  const partners = new Set(highlight?.partnerIds ?? []);
   for (const c of companies) {
     const isGroup = group.has(c.id);
-    const isCollector = c.id === collector;
-    const isExcluded = excluded.has(c.id);
+    const isPartner = !isGroup && c.id !== collector && partners.has(c.id);
+    // 거래처는 수거 업체와 같은 모양(먹색 건물, 큰 핀)으로 칠한다
+    const isCollector = c.id === collector || isPartner;
+    const isExcluded = !isCollector && excluded.has(c.id);
     map.setFeatureState(
       { source: "buildings", id: c.buildingOsmId },
       { group: isGroup, collector: isCollector, excluded: isExcluded },
@@ -327,8 +331,8 @@ function applyHighlight(map: MapLibreMap, companies: Company[], highlight: MapHi
       dot.style.width = isGroup || isCollector ? "12px" : "";
       dot.style.height = isGroup || isCollector ? "12px" : "";
     }
-    const label = el.getAttribute("aria-label")?.replace(/ · (AI 묶음 그룹|수거 업체|제외)$/, "") ?? c.name;
-    const suffix = isGroup ? " · AI 묶음 그룹" : isCollector ? " · 수거 업체" : isExcluded ? " · 제외" : "";
+    const label = el.getAttribute("aria-label")?.replace(/ · (AI 묶음 그룹|수거 업체|거래처|제외)$/, "") ?? c.name;
+    const suffix = isGroup ? " · AI 묶음 그룹" : isPartner ? " · 거래처" : isCollector ? " · 수거 업체" : isExcluded ? " · 제외" : "";
     el.setAttribute("aria-label", `${label}${suffix}`);
   }
 }

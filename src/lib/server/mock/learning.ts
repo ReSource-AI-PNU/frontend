@@ -25,7 +25,7 @@ export async function ensureLearningSeeds() {
   await datasets.seed(() => [
     { id: "ds-v7", createdAt: daysAgo(96), images: 3960, newLabels: 210, fromCorrections: 180, fromOutcomes: 30, note: "녹산·사상 단지 시범 수집분", labelTaskIds: [], createdBy: "ML 담당" },
     { id: "ds-v8", createdAt: daysAgo(64), images: 4480, newLabels: 520, fromCorrections: 410, fromOutcomes: 110, note: "테이프·라벨 박스 보강", labelTaskIds: [], createdBy: "ML 담당" },
-    { id: "ds-v9", createdAt: daysAgo(21), images: 4820, newLabels: 340, fromCorrections: 290, fromOutcomes: 50, note: "금속 칩 절삭유 이미지 추가", labelTaskIds: [], createdBy: "ML 담당" },
+    { id: "ds-v9", createdAt: daysAgo(21), images: 4820, newLabels: 340, fromCorrections: 290, fromOutcomes: 50, note: "퍼지·포장 필름 흐름 이미지 추가", labelTaskIds: [], createdBy: "ML 담당" },
   ]);
   await models.seed(() => [
     { id: "mdl-v3.1", name: MODEL_NAME, version: "v3.1", createdAt: daysAgo(92), datasetVersion: "ds-v7", status: "archived", metrics: { mAP50: 0.802, contaminationMae: 0.036, verdictAgreement: 0.861, latencyMs: 112 } },

@@ -152,7 +152,7 @@ async function LearningConsolePageContent() {
         id="labels"
         no={1}
         title="라벨 검수 큐"
-        description="현장 담당자가 고친 박스·라벨·오염 비율과, 처리업체가 기록한 실제 결과입니다. 취소선이 AI 원래 값, 먹색 굵은 글씨가 사람이 고친 값입니다. 수락한 라벨만 다음 데이터셋에 들어갑니다."
+        description="현장 담당자가 고친 박스·라벨·오염 비율, 흐름 출처(공정 부산물 PIR · 사용 후 포장재 PCR)와 흐름 경로, 그리고 처리업체가 흐름별로 기록한 실제 결과입니다. 취소선이 바꾸기 전 값, 먹색 굵은 글씨가 사람이 고친 값입니다. 수락한 라벨만 다음 데이터셋에 들어갑니다."
       >
         <LabelQueue pending={pending} reviewed={reviewed} />
       </Section>

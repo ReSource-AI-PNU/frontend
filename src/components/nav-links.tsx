@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/upload", label: "업로드" },
-  { href: "/session", label: "세션" },
+  { href: "/upload", label: "새 진단" },
+  { href: "/session", label: "진단 이력" },
   { href: "/complex", label: "산업단지" },
   { href: "/knowledge", label: "현장 지식" },
   { href: "/dashboard", label: "대시보드" },

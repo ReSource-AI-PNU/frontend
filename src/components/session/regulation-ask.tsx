@@ -14,13 +14,26 @@ function SubmitButton({ answered }: { answered: boolean }) {
 }
 
 /**
- * 규정 검토의 되묻기 상자. 형광펜 ? 아이콘은 AI가 정보 부족을 표시한 것이다.
+ * 규정 검토의 되묻기 상자(공장 공통 성분분석표, 흐름별 PCR 출처 증빙). 형광펜 ? 아이콘은 AI가 정보 부족을 표시한 것이다.
  * 답은 사람이 한 것이므로 먹색으로 남긴다 (DESIGN.md 사람과 AI의 표시 구분).
  */
-export function RegulationAsk({ question, action }: { question: Question; action: (formData: FormData) => Promise<void> }) {
+export function RegulationAsk({
+  question,
+  action,
+  hint,
+  className = "my-3",
+}: {
+  question: Question;
+  action: (formData: FormData) => Promise<void>;
+  /** 답하기 전 안내 문장. 답하면 무엇이 바뀌는지 적는다 */
+  hint?: string;
+  className?: string;
+}) {
   const answered = Boolean(question.answer);
+  // 흐름별 질문 id에는 ":"가 들어가므로 HTML id로 쓸 수 있게 바꾼다
+  const labelId = `ask-${question.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   return (
-    <form action={action} className="my-3 grid gap-3 rounded-md bg-sunken p-4" aria-labelledby={`ask-${question.id}`}>
+    <form action={action} className={`${className} grid gap-3 rounded-md bg-sunken p-4`} aria-labelledby={labelId}>
       <div className="grid grid-cols-[22px_minmax(0,1fr)] gap-2">
         {answered ? (
           // 사람이 답한 질문은 먹색
@@ -35,7 +48,7 @@ export function RegulationAsk({ question, action }: { question: Question; action
           </span>
         )}
         <div>
-          <p id={`ask-${question.id}`} className="text-sm font-semibold">
+          <p id={labelId} className="text-sm font-semibold">
             {question.text}
           </p>
           <p className="mt-0.5 text-[13px] text-muted">{question.why}</p>
@@ -57,11 +70,11 @@ export function RegulationAsk({ question, action }: { question: Question; action
         <p className="mt-2 text-[13px] text-ink-2">
           {answered ? (
             <>
-              담당자 답변 <b className="font-semibold text-ink">{question.answer}</b>을(를) 반영해 결론을 다시 계산했습니다. 분석표를 새로 받으면 답을
-              바꿔 주세요.
+              담당자 답변 <b className="font-semibold text-ink">{question.answer}</b>을(를) 반영해 결론을 다시 계산했습니다. 자료가 바뀌면 답을 바꿔
+              주세요.
             </>
           ) : (
-            "답하면 순환자원 인정 신청과 유해물질 기준 항목을 다시 검토하고, 결론이 바뀔 수 있습니다."
+            (hint ?? "답하면 관련 항목을 다시 검토하고, 결론이 바뀔 수 있습니다.")
           )}
         </p>
       </fieldset>

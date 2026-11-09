@@ -57,11 +57,14 @@ export function MarketingHeader() {
     <HeaderFrame>
       <BrandLink />
       <nav aria-label="소개 메뉴" className="mr-auto hidden items-center gap-1 text-sm text-muted md:flex">
-        <Link href="/#how" className="rounded-md px-3 py-2 hover:text-ink">
-          작동 방식
+        <Link href="/#problem" className="rounded-md px-3 py-2 hover:text-ink">
+          왜 필요한가
         </Link>
-        <Link href="/#bundle" className="rounded-md px-3 py-2 hover:text-ink">
-          묶음 수거
+        <Link href="/#streams" className="rounded-md px-3 py-2 hover:text-ink">
+          시연 공장
+        </Link>
+        <Link href="/#how" className="rounded-md px-3 py-2 hover:text-ink">
+          진단 절차
         </Link>
         <Link href="/#loop" className="rounded-md px-3 py-2 hover:text-ink">
           현장 지식
@@ -72,7 +75,7 @@ export function MarketingHeader() {
         <ButtonLink href="/login" variant="ghost" size="sm">
           로그인
         </ButtonLink>
-        <ButtonLink href="/signup" size="sm">
+        <ButtonLink href="/signup" variant="secondary" size="sm">
           시작하기
         </ButtonLink>
       </div>

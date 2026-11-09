@@ -8,7 +8,7 @@ import type { Route } from "@/lib/session/types";
 const signTone = (v: number) => (v > 0 ? "text-gain font-semibold" : v < 0 ? "text-loss" : "text-ink");
 
 /**
- * 경로 A~D 비교표. 금액은 오른쪽 정렬, 단위는 열 제목에 둔다 (DESIGN.md 비교표).
+ * 시나리오 A~D 비교표(A 흐름별 최적안, B 묶음 없이, C 현행 전부 소각, D 전부 매립). 금액은 오른쪽 정렬, 단위는 열 제목에 둔다 (DESIGN.md 비교표).
  * AI 추천 행은 형광펜 13% 바탕 + "AI 추천" 표시, 사람이 고른 행은 왼쪽 먹색 3px 막대와 라디오로 표시한다.
  * 행을 누르면 selectRoute로 선택을 저장한다.
  */
@@ -41,11 +41,11 @@ export function CostCarbonTable({
   return (
     <div className="overflow-x-auto" aria-busy={pending}>
       <table className="w-full min-w-[760px] border-collapse text-sm">
-        <caption className="sr-only">처리 경로별 월 손익, 순 탄소, KAU 환산, 실행 조건 비교. 행을 고르면 다음 단계의 서류가 그 경로로 만들어집니다.</caption>
+        <caption className="sr-only">시나리오별 공장 월 손익, 순 탄소, KAU 환산, 실행 조건 비교. 행을 고르면 다음 단계의 서류와 발송 대상이 그 시나리오로 바뀝니다.</caption>
         <thead>
           <tr className="border-b border-ink text-left text-[12px] text-muted">
             <th scope="col" className="pb-2.5 pl-3.5 font-[550]">
-              처리 경로
+              시나리오
             </th>
             <th scope="col" className="pb-2.5 pl-4 text-right font-[550] whitespace-nowrap">
               월 손익 (원)
@@ -103,7 +103,7 @@ export function CostCarbonTable({
         </tbody>
       </table>
       <p className="mt-2 text-[12.5px] text-muted">
-        형광펜 바탕은 AI 추천, 왼쪽 먹색 막대는 담당자가 고른 경로입니다. 월 손익의 +는 수익, −는 지출이고, 순 탄소의 −는 줄어드는 배출입니다.
+        형광펜 바탕은 AI 추천, 왼쪽 먹색 막대는 담당자가 고른 시나리오입니다. 월 손익의 +는 수익, −는 지출이고, 순 탄소의 −는 줄어드는 배출입니다.
       </p>
     </div>
   );

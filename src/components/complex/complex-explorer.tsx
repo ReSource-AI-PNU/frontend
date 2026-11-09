@@ -3,12 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import { formatNumber } from "@/lib/format";
+import { MIN_KG } from "@/lib/pickup";
 import { COMPANY_ROLES, WASTE_ITEMS, type Company, type CompanyRole, type IndustrialComplex, type WasteItem } from "@/lib/domain";
 import { Badge } from "../ui/badge";
 import { ComplexMap } from "./complex-map";
 
-/** 처리업체 1회 방문 최소 물량 (가정값). 업체별 실제 값은 백엔드 be#15에서 받는다. */
-const MIN_PICKUP_KG = 2000;
+/** 품목별 업체 출장 기준 물량과 수거 차량 적재량 (src/lib/pickup.ts, 서버 모의 파이프라인과 같은 값) */
+const PICKUP_RULE = MIN_KG;
+
+function truckName(kg: number) {
+  return `${(kg / 1000).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}톤 트럭`;
+}
 
 const ROLE_TONE: Record<CompanyRole, "neutral" | "gain" | "warn"> = { 배출: "neutral", 처리업체: "gain", 수요처: "warn" };
 
@@ -56,6 +61,8 @@ export function ComplexExplorer({
   const emitters = companies.filter((c) => c.role === "배출");
   const bundleKg = item ? emitters.reduce((s, c) => s + monthlyKg(c, item), 0) : 0;
   const bundleCount = item ? emitters.filter((c) => monthlyKg(c, item) > 0).length : 0;
+  const rule = PICKUP_RULE[item ?? "폐플라스틱"];
+  const fillPct = Math.round((bundleKg / rule.truckKg) * 100);
   const selected = companies.find((c) => c.id === selectedId) ?? null;
 
   return (
@@ -130,16 +137,21 @@ export function ComplexExplorer({
                 <span>
                   단지 내 <b>{item}</b> 배출 {bundleCount}곳 합계
                 </span>
-                <span className="num font-semibold">{formatNumber(bundleKg)} kg/월</span>
+                <span className="font-semibold whitespace-nowrap tabular-nums">{formatNumber(bundleKg)} kg/월</span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
-                <div className="h-full rounded-full bg-ink" style={{ width: `${Math.min(100, (bundleKg / MIN_PICKUP_KG) * 100)}%` }} />
+              <div className="mt-2 flex items-baseline justify-between gap-3 text-[13px]">
+                <span className="text-muted">{truckName(rule.truckKg)} 적재율</span>
+                <span className="num font-semibold">{fillPct}%</span>
               </div>
-              <p className={`mt-1.5 text-[13px] ${bundleKg >= MIN_PICKUP_KG ? "text-gain" : "text-muted"}`}>
-                {bundleKg >= MIN_PICKUP_KG
-                  ? `묶으면 최소 수거 물량 ${formatNumber(MIN_PICKUP_KG)}kg을 넘깁니다.`
-                  : `최소 수거 물량 ${formatNumber(MIN_PICKUP_KG)}kg까지 ${formatNumber(MIN_PICKUP_KG - bundleKg)}kg 부족합니다.`}
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
+                <div className="h-full rounded-full bg-ink" style={{ width: `${Math.min(100, fillPct)}%` }} />
+              </div>
+              <p className={`mt-1.5 text-[13px] ${bundleKg >= rule.minKg ? "font-semibold text-ink" : "text-muted"}`}>
+                {bundleKg >= rule.minKg
+                  ? `묶으면 업체 출장 기준 ${formatNumber(rule.minKg)}kg을 넘깁니다.${fillPct > 100 ? ` 트럭 ${formatNumber(Math.ceil(bundleKg / rule.truckKg))}대 분량입니다.` : ""}`
+                  : `업체 출장 기준 ${formatNumber(rule.minKg)}kg까지 ${formatNumber(rule.minKg - bundleKg)}kg 부족합니다.`}
               </p>
+              <p className="mt-1 text-[12px] text-muted">출장 기준과 트럭 크기는 품목별 가정값입니다.</p>
             </div>
           ) : null}
         </div>

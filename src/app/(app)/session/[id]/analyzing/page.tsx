@@ -9,5 +9,5 @@ export default async function AnalyzingPage({ params }: PageProps<"/session/[id]
   const { id } = await params;
   const { session } = await getSessionForCurrentOrg(id);
   if (session.status !== "analyzing") redirect(`/session/${id}/classify`);
-  return <AnalyzingView sessionId={session.id} media={session.media[0]} classify={session.classify} />;
+  return <AnalyzingView sessionId={session.id} streams={session.streams} />;
 }

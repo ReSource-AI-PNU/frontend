@@ -1,12 +1,12 @@
 import type { Detection, Media } from "@/lib/session/types";
-import { WastePileIllustration } from "../verdict/waste-pile";
+import { SampleIllustration } from "./sample-photo";
 
 /**
  * 세션 사진과 탐지 박스(읽기 전용). AI 박스는 형광펜, 사람이 고친 박스는 먹색이다 (DESIGN.md).
  * 편집이 필요한 화면은 components/session/detection-editor.tsx를 쓴다.
  */
 export function MediaView({ media, label }: { media: Media; label: string }) {
-  if (media.kind === "sample") return <WastePileIllustration label={label} />;
+  if (media.kind === "sample") return <SampleIllustration variant={media.url.replace(/^sample:?/, "")} label={label} />;
   if (media.kind === "image") {
     // eslint-disable-next-line @next/next/no-img-element -- 인증이 필요한 업로드 경로라 next/image 최적화를 쓰지 않는다
     return <img src={media.url} alt={label} className="absolute inset-0 size-full object-cover" />;

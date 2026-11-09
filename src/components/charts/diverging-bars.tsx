@@ -44,6 +44,8 @@
  * - captions: 0 기준 양쪽의 방향 설명. 가로는 아래, 세로는 왼쪽에 작게 쓴다.
  * - labelWidth: 가로 차트의 범주 라벨 너비(px, 기본 136). height: 세로 차트의 그림 높이(px, 기본 200).
  * - emphasisLabel: 툴팁에서 emphasis 항목에 붙일 말(기본 "AI 추천").
+ * - tableView: 주면 차트 아래에 접힌 "표로 보기"를 둔다. { categoryHeader, valueHeader, caption? }.
+ *   화면에 같은 값의 표가 따로 없을 때 꼭 준다(툴팁은 보조일 뿐이다).
  */
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
@@ -70,6 +72,8 @@ export type DivergingBarsProps = {
   labelWidth?: number;
   height?: number;
   emphasisLabel?: string;
+  /** 접힌 "표로 보기". 범주 열 제목, 값 열 제목(단위 포함), 표 설명 */
+  tableView?: { categoryHeader: string; valueHeader: string; caption?: string };
   className?: string;
 };
 
@@ -132,6 +136,7 @@ export function DivergingBars({
   labelWidth = 136,
   height = 200,
   emphasisLabel = "AI 추천",
+  tableView,
   className = "",
 }: DivergingBarsProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -367,6 +372,35 @@ export function DivergingBars({
           <span className="pt-5">{captions.positive ? `↑ ${captions.positive}` : ""}</span>
           <span className="pb-5">{captions.negative ? `↓ ${captions.negative}` : ""}</span>
         </div>
+      ) : null}
+      {tableView ? (
+        <details className="mt-2 text-[13px]">
+          <summary className="w-fit cursor-pointer text-muted underline-offset-4 hover:text-ink hover:underline">표로 보기</summary>
+          <table className="mt-2 w-full border-collapse">
+            <caption className="sr-only">{tableView.caption ?? ariaLabel}</caption>
+            <thead>
+              <tr className="border-b border-ink text-left text-[12px] text-muted">
+                <th scope="col" className="pb-1.5 font-[550]">
+                  {tableView.categoryHeader}
+                </th>
+                <th scope="col" className="pb-1.5 pl-3 text-right font-[550]">
+                  {tableView.valueHeader}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((d) => (
+                <tr key={d.id} className="border-b border-line">
+                  <th scope="row" className={`py-1.5 text-left font-normal ${d.emphasis ? "font-semibold" : ""}`}>
+                    {d.label}
+                    {d.emphasis ? <span className="ml-1.5 rounded-sm bg-marker px-1 text-[11px] font-semibold text-marker-ink">{emphasisLabel}</span> : null}
+                  </th>
+                  <td className="num py-1.5 pl-3 text-right">{fmt(d.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
       ) : null}
     </div>
   );

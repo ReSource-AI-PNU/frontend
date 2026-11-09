@@ -36,11 +36,13 @@ function touch(d: Detection, patch: Partial<Detection>): Detection {
  */
 export function DetectionEditor({
   sessionId,
+  streamId,
   media,
   item,
   initial,
 }: {
   sessionId: string;
+  streamId: string;
   media: Media | undefined;
   item: WasteItem;
   initial: Detection[];
@@ -166,7 +168,7 @@ export function DetectionEditor({
     const judgment = String(formData?.get("judgment") ?? "").trim() || undefined;
     const makeCard = formData?.get("makeCard") === "on";
     startTransition(async () => {
-      const res = await saveDetections(sessionId, { detections: dets, rationale, condition, judgment, makeCard });
+      const res = await saveDetections(sessionId, streamId, { detections: dets, rationale, condition, judgment, makeCard });
       dialogRef.current?.close();
       setMessage(`수정 ${res.saved}건을 저장했습니다.${res.cardId ? " 현장 지식 카드도 남겼습니다." : ""} 검수를 거쳐 다음 학습에 쓰입니다.`);
       router.refresh();

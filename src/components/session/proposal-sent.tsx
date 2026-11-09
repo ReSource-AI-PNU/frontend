@@ -1,7 +1,8 @@
 import { formatNumber, formatSigned } from "@/lib/format";
-import type { Approval, Outcome } from "@/lib/session/types";
+import type { Approval, Outcome, StreamRoute } from "@/lib/session/types";
 import { CheckIcon } from "../icons";
 import { Badge } from "../ui/badge";
+import { RouteBadge } from "./stream-badges";
 
 export function formatKoreanTime(iso: string) {
   return new Date(iso).toLocaleString("ko-KR", {
@@ -16,68 +17,77 @@ export function formatKoreanTime(iso: string) {
 }
 
 /** 발송 완료 상태: 누구에게 무엇이 갔는지, 승인자와 시각. 승인은 사람이 한 일이므로 먹색으로 표시한다. */
-export function ProposalSent({ approval, routeLabel }: { approval: Approval; routeLabel: string }) {
+export function ProposalSent({ approval, routeLabel, internalDocs }: { approval: Approval; routeLabel: string; internalDocs: string[] }) {
+  const places = new Set(approval.sentTo.map((t) => t.name)).size;
   return (
     <section aria-labelledby="sent-title" className="grid gap-3 rounded-lg border border-line bg-surface p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="sent-title" className="text-[16px] font-semibold">
-            {approval.sentTo.length}곳에 발송했습니다
+            {approval.sentTo.length ? `${places}곳에 서류 ${approval.sentTo.length}건을 발송했습니다` : "외부로 보낸 서류가 없습니다"}
           </h2>
-          <p className="mt-0.5 text-[13px] text-muted">승인한 경로: {routeLabel}</p>
+          <p className="mt-0.5 text-[13px] text-muted">승인한 방안: {routeLabel}</p>
         </div>
-        <Badge tone="gain">발송 완료</Badge>
+        <Badge tone="gain">승인 완료</Badge>
       </div>
-      <table className="w-full border-collapse text-sm">
-        <caption className="sr-only">발송 내역</caption>
-        <thead>
-          <tr className="border-b border-ink text-left text-[12px] text-muted">
-            <th scope="col" className="pb-2 font-[550]">
-              받는 곳
-            </th>
-            <th scope="col" className="pb-2 pl-3 font-[550]">
-              보낸 문서
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {approval.sentTo.map((t) => (
-            <tr key={`${t.name}-${t.kind}`} className="border-b border-line">
-              <td className="py-2">
-                <span className="inline-flex items-center gap-2 [&_svg]:size-3.5 [&_svg]:text-ink">
-                  <CheckIcon />
-                  <span className="font-semibold">{t.name}</span>
-                </span>
-              </td>
-              <td className="py-2 pl-3 text-ink-2">{t.kind}</td>
+      {approval.sentTo.length ? (
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">발송 내역</caption>
+          <thead>
+            <tr className="border-b border-ink text-left text-[12px] text-muted">
+              <th scope="col" className="pb-2 font-[550]">
+                받는 곳
+              </th>
+              <th scope="col" className="pb-2 pl-3 font-[550]">
+                보낸 서류
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {approval.sentTo.map((t, i) => (
+              <tr key={`${t.name}-${t.kind}-${i}`} className="border-b border-line">
+                <td className="py-2">
+                  <span className="inline-flex items-center gap-2 [&_svg]:size-3.5 [&_svg]:text-ink">
+                    <CheckIcon />
+                    <span className="font-semibold">{t.name}</span>
+                  </span>
+                </td>
+                <td className="py-2 pl-3 text-ink-2">{t.kind}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
       <p className="flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
         <span className="rounded-sm bg-ink px-1.5 text-[12px] font-semibold text-on-ink">승인</span>
         {approval.approvedBy} · <span className="tabular-nums">{formatKoreanTime(approval.approvedAt)}</span>
       </p>
-      <p className="text-[12.5px] text-muted">견적 회신과 참여 동의는 대시보드의 발송함에서 확인할 수 있습니다. 공동처리 신고서와 인계서는 초안으로 저장했습니다.</p>
+      <p className="text-[12.5px] text-muted">
+        수거 업체의 회신과 그룹 기업의 참여 동의는 대시보드의 발송함에서 확인할 수 있습니다.
+        {internalDocs.length ? ` ${internalDocs.join(", ")}은(는) 내부용으로 저장했습니다.` : ""}
+      </p>
     </section>
   );
 }
 
-type Row = { label: string; unit?: string; expected: string; actual: string; diff?: number; diffDigits?: number; money?: boolean };
+type Row = { label: string; unit?: string; expected: string; actual: string; diff?: number; money?: boolean };
 
-/** 예상 대비 실제. 손익 차이는 부호와 색을 함께 쓴다. 사람이 기록한 실제값은 먹색으로 굵게 쓴다. */
+/**
+ * 흐름 하나의 예상 대비 실제. 손익 차이는 부호와 색을 함께 쓴다. 사람이 기록한 실제값은 먹색으로 굵게 쓴다.
+ * 예상 단가는 경로 판정의 kg당 손익(묶음은 운반비 분담 후), 예상 수거량은 그 흐름의 월 발생량이다.
+ */
 export function ProposalOutcomeCompare({
   outcome,
   expected,
 }: {
   outcome: Outcome;
-  expected: { verdictLabel: string; perKg: number; kg: number; kgNote?: string };
+  expected: { streamName: string; route: StreamRoute; perKg: number; kg: number };
 }) {
   const expectedAmount = expected.perKg * expected.kg;
   const actualAmount = outcome.accepted ? outcome.actualPerKg * outcome.actualKg : 0;
   const rows: Row[] = [
     { label: "매입 여부", expected: "매입", actual: outcome.accepted ? "매입" : "거절" },
-    { label: "등급·판정", expected: expected.verdictLabel, actual: outcome.actualGrade },
+    { label: "등급", expected: "—", actual: outcome.actualGrade },
     {
       label: "단가",
       unit: "원/kg",
@@ -87,14 +97,14 @@ export function ProposalOutcomeCompare({
       money: true,
     },
     {
-      label: expected.kgNote ? `수거량 (${expected.kgNote})` : "수거량",
-      unit: "kg",
+      label: "수거량",
+      unit: "kg/월",
       expected: formatNumber(expected.kg),
       actual: formatNumber(outcome.actualKg),
       diff: outcome.actualKg - expected.kg,
     },
     {
-      label: "매각 금액",
+      label: "정산 금액",
       unit: "원",
       expected: formatSigned(expectedAmount),
       actual: formatSigned(actualAmount),
@@ -105,10 +115,11 @@ export function ProposalOutcomeCompare({
   const amountDiff = actualAmount - expectedAmount;
 
   return (
-    <section aria-labelledby="compare-title" className="grid gap-3">
+    <section aria-labelledby={`compare-${outcome.streamId ?? "stream"}`} className="grid gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="compare-title" className="text-h2">
-          예상과 실제
+        <h2 id={`compare-${outcome.streamId ?? "stream"}`} className="flex flex-wrap items-center gap-2 text-h2">
+          {expected.streamName} · 예상과 실제
+          <RouteBadge route={expected.route} size="sm" />
         </h2>
         <p className="text-[13px] text-muted">
           {outcome.recordedBy} · {outcome.recorderRole} · <span className="tabular-nums">{formatKoreanTime(outcome.recordedAt)}</span>
@@ -117,13 +128,13 @@ export function ProposalOutcomeCompare({
       <p className="text-[15px] text-ink-2">
         {outcome.accepted
           ? amountDiff === 0
-            ? "실제 매각 금액이 예상과 같습니다."
-            : `실제 매각 금액이 예상보다 ${formatNumber(Math.abs(amountDiff))}원 ${amountDiff > 0 ? "많았습니다" : "적었습니다"}.`
-          : `업체가 매입을 거절했습니다.${outcome.reason ? ` 사유는 "${outcome.reason}"입니다.` : ""}`}{" "}
+            ? "실제 정산 금액이 예상과 같습니다."
+            : `${expected.streamName}의 실제 정산 금액이 예상보다 ${formatNumber(Math.abs(amountDiff))}원 ${amountDiff > 0 ? "많았습니다" : "적었습니다"}.`
+          : `업체가 ${expected.streamName} 매입을 거절했습니다.${outcome.reason ? ` 사유는 "${outcome.reason}"입니다.` : ""}`}{" "}
         이 차이는 라벨 검수 대기열에 올라가 다음 학습에 쓰입니다.
       </p>
       <table className="w-full border-collapse text-sm">
-        <caption className="sr-only">예상 대비 실제 결과</caption>
+        <caption className="sr-only">{expected.streamName}의 예상 대비 실제 결과</caption>
         <thead>
           <tr className="border-b border-ink text-left text-[12px] text-muted">
             <th scope="col" className="pb-2 font-[550]">
@@ -150,10 +161,19 @@ export function ProposalOutcomeCompare({
                   {r.label}
                   {r.unit ? <span className="ml-1 text-[12px] text-muted">({r.unit})</span> : null}
                 </th>
-                <td className={`py-2.5 pl-3 text-right text-muted ${numeric ? "num" : ""}`}>{r.expected}</td>
+                <td className={`py-2.5 pl-3 text-right text-muted ${numeric ? "num" : ""}`}>
+                  {r.expected === "—" ? (
+                    <>
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">예상 없음</span>
+                    </>
+                  ) : (
+                    r.expected
+                  )}
+                </td>
                 <td className={`py-2.5 pl-3 text-right font-semibold text-ink ${numeric ? "num" : ""}`}>{r.actual}</td>
                 <td className={`py-2.5 pl-3 text-right ${numeric ? `num ${tone}` : "text-muted"}`}>
-                  {numeric ? formatSigned(r.diff ?? 0) : r.expected === r.actual ? "같음" : "다름"}
+                  {numeric ? formatSigned(r.diff ?? 0) : r.expected === "—" ? "" : r.expected === r.actual ? "같음" : "다름"}
                 </td>
               </tr>
             );

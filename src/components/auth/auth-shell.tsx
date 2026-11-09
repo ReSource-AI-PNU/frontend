@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
+/** 시연 공장 (주)한빛정밀(가상)의 진단 결과. 문제 정의 v2 9장, 숫자는 시연용 가정값이다 */
 const LEDGER = [
-  { label: "PP 압축품 · 월 800kg", value: "−250 → +300", unit: "원/kg" },
-  { label: "녹산단지 묶음 수거 · 3개사", value: "2,410", unit: "kg" },
-  { label: "현행 대비 월 손익", value: "+395,000", unit: "원" },
+  { label: "공장 폐플라스틱 흐름", value: "4", unit: "개", note: "스프루 · 불량품 · 퍼지 · 포장 필름" },
+  { label: "AI가 정한 갈 곳", value: "4", unit: "가지", note: "재투입 · 매각 · 열분해 · 단지 묶음" },
+  { label: "공장 월 손익", value: "−387,500 → +595,000", unit: "원", note: "현행 전부 소각 → 흐름별 최적안" },
 ];
 
 /** 로그인·가입 화면의 2단 구성. 왼쪽은 폼, 오른쪽은 제품이 하는 일을 숫자로 보여 준다. */
@@ -23,20 +24,20 @@ export function AuthShell({ title, description, children }: { title: string; des
           className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:48px_48px]"
         />
         <p className="relative max-w-md text-[40px] leading-[1.15] font-bold tracking-[-0.035em]">
-          사진 한 장이면,
+          흐름별 사진이면,
           <br />
-          <span className="bg-[linear-gradient(transparent_58%,var(--color-marker)_58%,var(--color-marker)_92%,transparent_92%)] text-[#FAFAFA] [-webkit-box-decoration-break:clone]">
-            견적 요청서
-          </span>
-          까지.
+          공장 폐플라스틱의 갈 곳까지.
         </p>
         <dl className="relative mt-10 max-w-md border-t border-white/15">
           {LEDGER.map((row) => (
             <div key={row.label} className="flex items-baseline justify-between gap-6 border-b border-white/15 py-3.5">
-              <dt className="text-sm text-white/60">{row.label}</dt>
-              <dd className="num text-lg font-semibold">
-                {row.value}
-                <span className="ml-1 font-sans text-[13px] font-normal text-white/60">{row.unit}</span>
+              <dt className="text-sm text-white/60">
+                {row.label}
+                <span className="mt-0.5 block text-[12px] text-white/40">{row.note}</span>
+              </dt>
+              <dd className="shrink-0 text-lg font-semibold whitespace-nowrap">
+                <span className="num">{row.value}</span>
+                <span className="ml-1 text-[13px] font-normal text-white/60">{row.unit}</span>
               </dd>
             </div>
           ))}
