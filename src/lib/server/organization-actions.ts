@@ -5,7 +5,7 @@ import { z } from "zod";
 import { isValidBizNo, normalizeBizNo } from "@/lib/bizno";
 import { COMPLEXES } from "@/lib/complexes";
 import { COMPANY_ROLES, STORAGE_TYPES, WASTE_ITEMS } from "@/lib/domain";
-import { upsertOrganization } from "./mock-store";
+import { findOrganizationByOwner, upsertOrganization } from "./mock-store";
 import { getCurrentUser } from "./session";
 
 const schema = z.object({
@@ -69,6 +69,8 @@ export async function saveOrganization(_prev: OnboardingState, formData: FormDat
     return { errors, values };
   }
 
+  const existed = Boolean(await findOrganizationByOwner(user.id));
   const org = await upsertOrganization(user.id, parsed.data);
-  redirect(`/complex/${org.complexId}`);
+  // 처음 등록이면 내 산업단지 지도로, 수정이면 설정 화면으로 돌아간다
+  redirect(existed ? "/settings?saved=1" : `/complex/${org.complexId}`);
 }

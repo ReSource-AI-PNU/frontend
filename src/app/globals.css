@@ -29,6 +29,17 @@
   --color-warn-bg: #f6ecd8;
   --color-photo: #2b2a24;
 
+  /* 차트 전용 (dataviz 검증기 통과값). 글자에는 쓰지 않는다: 값·라벨은 ink 계열로 쓴다.
+     손익: 발산형, 항상 부호와 직접 라벨을 함께 쓴다 (라이트 CVD ΔE 7.6 → 보조 표기 필수).
+     품목: 범주형 고정 순서 폐플라스틱·금속 스크랩·폐목재·포장재 (라이트 대비 경고 → 라벨·표 필수). */
+  --color-chart-gain: #0c7148;
+  --color-chart-loss: #b5332a;
+  --color-chart-zero: #c9c5ba;
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-3: #1baf7a;
+  --color-chart-4: #eda100;
+
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
@@ -52,6 +63,15 @@
 
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
+
+  @keyframes rs-scan {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
 
   @keyframes rs-wash {
     0% {
@@ -88,6 +108,13 @@
   --color-warn: #e0a23a;
   --color-warn-bg: #2a2112;
   --color-photo: #0b0a08;
+  --color-chart-gain: #279763;
+  --color-chart-loss: #e5533f;
+  --color-chart-zero: #3e3b32;
+  --color-chart-1: #3987e5;
+  --color-chart-2: #d95926;
+  --color-chart-3: #199e70;
+  --color-chart-4: #c98500;
   color-scheme: dark;
 }
 

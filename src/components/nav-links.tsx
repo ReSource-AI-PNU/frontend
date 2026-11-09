@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: "/upload", label: "업로드" },
   { href: "/session", label: "세션" },
   { href: "/complex", label: "산업단지" },
+  { href: "/knowledge", label: "현장 지식" },
   { href: "/dashboard", label: "대시보드" },
 ] as const;
 

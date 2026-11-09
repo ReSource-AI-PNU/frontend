@@ -48,8 +48,18 @@ export async function UserMenu() {
         </div>
         <ul className="py-1">
           <li>
-            <Link href="/onboarding" className="flex min-h-10 items-center rounded-md px-2 hover:bg-sunken">
-              회사 정보 수정
+            <Link href="/settings" className="flex min-h-10 items-center rounded-md px-2 hover:bg-sunken">
+              설정 · 멤버
+            </Link>
+          </li>
+          <li>
+            <Link href="/vendor" className="flex min-h-10 items-center rounded-md px-2 hover:bg-sunken">
+              업체 화면으로 보기
+            </Link>
+          </li>
+          <li>
+            <Link href="/admin/learning" className="flex min-h-10 items-center rounded-md px-2 hover:bg-sunken">
+              학습 관리 (관리자)
             </Link>
           </li>
           {complex ? (

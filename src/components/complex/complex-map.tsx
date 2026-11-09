@@ -14,6 +14,19 @@ const MAP_COLORS = {
 
 const VIEW_3D = { pitch: 52, bearing: -20 };
 
+/** AI가 고른 묶음 수거 그룹은 형광펜으로 칠한다 (DESIGN.md 형광펜 규칙). 라이트·다크 같은 값 */
+const MARKER = "#E6FF3D";
+
+/**
+ * 선택 사항: AI가 고른 묶음 수거 그룹을 지도에 강조한다 (판정 흐름의 "묶음 수거 매칭" 화면).
+ * - groupIds: 그룹 기업(내 회사 포함). 건물과 핀을 형광펜으로 칠한다.
+ * - collectorId: 수거 처리업체. 건물을 먹색으로 칠한다(핀은 원래 먹 사각).
+ * - excludedIds: 허가 불일치 등으로 제외한 업체. 건물을 일반 건물색으로 낮추고 핀을 흐리게 한다.
+ * - fit: true면 처음 그릴 때 묶음 그룹 건물이 모두 보이게 화면을 맞춘다(기본 true). 수거 업체는 멀 수 있어 맞춤에서 뺀다.
+ * 강조하지 않은 나머지 핀은 조금 흐려진다. 주지 않으면 기존 탐색 화면과 똑같이 동작한다.
+ */
+export type MapHighlight = { groupIds: string[]; collectorId?: string; excludedIds?: string[]; fit?: boolean };
+
 /** 단지 범위 안에 섞인 주거·교육·의료 건물은 산업단지 모형에서 뺀다. */
 const NON_INDUSTRIAL_KINDS = [
   "apartments", "house", "residential", "detached", "school", "kindergarten",
@@ -38,6 +51,12 @@ function extrusionColor(theme: Theme) {
     c.selected,
     ["boolean", ["feature-state", "hover"], false],
     c.hover,
+    ["boolean", ["feature-state", "group"], false],
+    MARKER,
+    ["boolean", ["feature-state", "collector"], false],
+    c.selected,
+    ["boolean", ["feature-state", "excluded"], false],
+    c.base,
     ["boolean", ["feature-state", "tenant"], false],
     c.tenant,
     c.base,
@@ -66,17 +85,22 @@ export function ComplexMap({
   companies,
   selectedId,
   onSelect,
+  highlight,
 }: {
   complex: IndustrialComplex;
   companies: Company[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  highlight?: MapHighlight;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef(new Map<string, Marker>());
   const onSelectRef = useRef(onSelect);
   const selectedRef = useRef<string | null>(selectedId);
+  // 강조 대상이 같으면 다시 칠하지 않도록 내용으로 비교한다
+  const highlightKey = highlight ? JSON.stringify(highlight) : "";
+  const highlightRef = useRef<MapHighlight | undefined>(highlight);
   const [status, setStatus] = useState<ComplexMapStatus>("loading");
   const [is3D, setIs3D] = useState(true);
 
@@ -149,7 +173,9 @@ export function ComplexMap({
           });
           markers.set(c.id, new maplibre.Marker({ element: el, anchor: "center" }).setLngLat(c.location).addTo(map));
         }
+        applyHighlight(map, companies, highlightRef.current, markers);
         applySelection(map, companies, selectedRef.current, markers, false);
+        fitHighlight(map, companies, highlightRef.current);
       });
 
       let hovered: number | null = null;
@@ -197,6 +223,14 @@ export function ComplexMap({
     if (map?.loaded()) applySelection(map, companies, selectedId, markersRef.current, true);
   }, [selectedId, companies]);
 
+  // 묶음 그룹 강조 반영
+  useEffect(() => {
+    const next: MapHighlight | undefined = highlightKey ? (JSON.parse(highlightKey) as MapHighlight) : undefined;
+    highlightRef.current = next;
+    const map = mapRef.current;
+    if (map?.loaded()) applyHighlight(map, companies, next, markersRef.current);
+  }, [highlightKey, companies]);
+
   const zoomBy = (delta: number) => mapRef.current?.zoomTo((mapRef.current?.getZoom() ?? 14) + delta, { animate: !reducedMotion() });
   const toggle3D = () => {
     const next = !is3D;
@@ -205,6 +239,10 @@ export function ComplexMap({
   };
   const resetView = () => {
     onSelect(null);
+    if (highlightRef.current && mapRef.current) {
+      fitHighlight(mapRef.current, companies, highlightRef.current, is3D, true);
+      return;
+    }
     mapRef.current?.fitBounds(complex.bbox, { padding: 32, ...(is3D ? VIEW_3D : { pitch: 0, bearing: 0 }), animate: !reducedMotion() });
   };
 
@@ -261,4 +299,50 @@ function applySelection(
       duration: animate && !reducedMotion() ? 700 : 0,
     });
   }
+}
+
+function applyHighlight(map: MapLibreMap, companies: Company[], highlight: MapHighlight | undefined, markers: Map<string, Marker>) {
+  const group = new Set(highlight?.groupIds ?? []);
+  const excluded = new Set(highlight?.excludedIds ?? []);
+  const collector = highlight?.collectorId;
+  for (const c of companies) {
+    const isGroup = group.has(c.id);
+    const isCollector = c.id === collector;
+    const isExcluded = excluded.has(c.id);
+    map.setFeatureState(
+      { source: "buildings", id: c.buildingOsmId },
+      { group: isGroup, collector: isCollector, excluded: isExcluded },
+    );
+    const el = markers.get(c.id)?.getElement();
+    if (!el) continue;
+    const dot = el.querySelector<HTMLElement>(".rs-pin-dot");
+    el.toggleAttribute("data-group", isGroup);
+    el.toggleAttribute("data-excluded", isExcluded);
+    // 핀 스타일은 globals.css(.rs-pin)를 건드리지 않고 인라인으로 덧칠한다.
+    // 핀 루트의 opacity는 MapLibre Marker가 직접 관리하므로 점(dot)에만 흐림을 준다.
+    if (dot) {
+      dot.style.opacity = !highlight || isGroup || isCollector ? "" : isExcluded ? "0.3" : "0.5";
+      dot.style.background = isGroup ? MARKER : "";
+      dot.style.boxShadow = isGroup ? "0 0 0 2px var(--color-ink), 0 0 0 4px var(--color-surface)" : "";
+      dot.style.width = isGroup || isCollector ? "12px" : "";
+      dot.style.height = isGroup || isCollector ? "12px" : "";
+    }
+    const label = el.getAttribute("aria-label")?.replace(/ · (AI 묶음 그룹|수거 업체|제외)$/, "") ?? c.name;
+    const suffix = isGroup ? " · AI 묶음 그룹" : isCollector ? " · 수거 업체" : isExcluded ? " · 제외" : "";
+    el.setAttribute("aria-label", `${label}${suffix}`);
+  }
+}
+
+function fitHighlight(map: MapLibreMap, companies: Company[], highlight: MapHighlight | undefined, is3D = true, animate = false) {
+  if (!highlight || highlight.fit === false) return;
+  const ids = new Set(highlight.groupIds);
+  const points = companies.filter((c) => ids.has(c.id)).map((c) => c.location);
+  if (points.length === 0) return;
+  const lngs = points.map((p) => p[0]);
+  const lats = points.map((p) => p[1]);
+  const pad = 0.0015;
+  map.fitBounds(
+    [Math.min(...lngs) - pad, Math.min(...lats) - pad, Math.max(...lngs) + pad, Math.max(...lats) + pad],
+    { padding: 64, maxZoom: 16.5, ...(is3D ? VIEW_3D : { pitch: 0, bearing: 0 }), duration: animate && !reducedMotion() ? 700 : 0 },
+  );
 }

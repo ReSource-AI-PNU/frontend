@@ -65,9 +65,18 @@ export function AuthForms({
             className="mt-0.5 size-[18px] accent-ink"
           />
           <span>
-            <span className="font-semibold">(필수)</span> 서비스 이용약관과 개인정보 수집·이용에 동의합니다.
+            <span className="font-semibold">(필수)</span>{" "}
+            <Link href="/terms" className="font-semibold text-ink underline underline-offset-4">
+              서비스 이용약관
+            </Link>
+            과{" "}
+            <Link href="/privacy" className="font-semibold text-ink underline underline-offset-4">
+              개인정보 수집·이용
+            </Link>
+            에 동의합니다.
             <span className="block text-[13px] text-muted">
-              수집 항목: 이름, 이메일, 회사명, 사업자등록번호, 사업장 위치. 탈퇴 시 지체 없이 파기합니다.
+              수집 항목: 이름, 이메일, 회사명, 사업자등록번호, 사업장 위치, 업로드한 사진·영상·PDF, 접속 기록. 탈퇴하면 지체 없이 파기하며,
+              접속 기록은 법령에 따라 3개월 보관합니다.
             </span>
           </span>
         </label>

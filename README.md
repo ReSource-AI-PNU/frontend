@@ -29,26 +29,30 @@ npm run build
 
 ## 모의 API
 
-백엔드 API(be#23 기업 프로필, be#13 기업 DB)가 생기기 전까지 다음을 쓴다.
+백엔드가 생기기 전까지 모든 데이터는 `.mock-db/<컬렉션>.json`(git 제외)에 저장한다. 단일 개발 서버 기준이다. 지우면 처음 상태로 돌아간다.
 
-- 회사 정보(온보딩): `.mock-db/db.json` (git 제외). 단일 개발 서버 기준이다.
-- 산업단지·건물·기업: `data/complexes.json`, `public/data/buildings/*.geojson`(OpenStreetMap), `public/data/companies/*.json`(가상 기업). 자세한 출처와 재생성 방법은 [data/README.md](data/README.md)에 있다.
+- 세션 데이터 계약: `src/lib/session/types.ts` (백엔드 be#1 `app/schemas.py`와 같은 모양으로 맞춘다)
+- 6단계 결과: `src/lib/server/mock/pipeline.ts`가 품목별 설정표로 결정적으로 만든다. 폐플라스틱 월 800kg 기준 값은 설계안 시나리오와 같다.
+- 서버 액션: `src/lib/server/session-actions.ts` (세션 생성, 단계 이동, 박스 수정, 질문 답변, 승인·발송, 실제 결과, 현장 지식 카드)
+- 학습 루프: `src/lib/server/mock/learning.ts`, `learning-actions.ts` (데이터셋, 재학습, 모델 비교, 배포 게이트)
+- 멤버·탈퇴: `src/lib/server/mock/members.ts`, `member-actions.ts`, `account-actions.ts`
+- 산업단지·건물·기업: `data/complexes.json`, `public/data/buildings/*.geojson`(OpenStreetMap), `public/data/companies/*.json`(가상 기업). 출처와 재생성 방법은 [data/README.md](data/README.md)에 있다.
+- 업로드는 서버 액션으로 받는다(최대 60MB). 운영에서는 Azure Blob SAS 직접 업로드로 바꾼다.
 
-## 구조
+## 화면
 
-```
-src/app/(marketing)/  # 로그인 전 소개 화면 (/)
-src/app/(focus)/      # 로그인, 회원가입, 온보딩
-src/app/(app)/        # 로그인 후 앱: /upload, /session, /complex/[id], /dashboard
-src/app/globals.css   # 디자인 토큰 (Tailwind 4 @theme, 라이트·다크), 지도 핀 스타일
-src/app/fonts/        # Wanted Sans 가변 글꼴 (SIL OFL 1.1)
-src/auth.ts           # Auth.js 설정과 보호 경로
-src/proxy.ts          # 낙관적 로그인 검사 (Next 16의 middleware)
-src/components/       # 헤더, 단계 메뉴, 3D 지도(complex/), 시세 카드(verdict/), ui/
-src/lib/              # 도메인 타입, 숫자 포맷, 사업자번호 검증, 세션 8단계
-src/lib/server/       # 서버 전용: 세션, 모의 저장소, 서버 액션
-scripts/              # 건물·기업 시드 생성, MapLibre 워커 복사
-```
+| 경로 | 화면 |
+|---|---|
+| `/` · `/terms` · `/privacy` | 소개, 이용약관, 개인정보처리방침 (초안, 법률 검토 전) |
+| `/login` · `/signup` · `/onboarding` | 로그인, 회원가입, 회사·단지·배출 품목 등록 |
+| `/upload` | 사진·영상·PDF 업로드, 샘플 사진으로 체험 |
+| `/session/[id]/analyzing` → `classify` → `feasibility` → `regulation` → `matching` → `cost-carbon` → `proposal` | 판정 흐름 6단계 (박스 수정, 되묻기, 손익 전환, 규정 영수증, 묶음 3D 지도, 경로 비교, 서류·승인·실제 결과) |
+| `/session` · `/dashboard` | 세션 이력, 절감 비용·탄소·예측 정확도 |
+| `/complex` · `/complex/[id]` | 산업단지 목록, 건물 3D 지도와 입주 기업 |
+| `/knowledge` | 현장 지식 카드 (암묵지: 조건 → 판단 → 근거, 동의, 채택) |
+| `/vendor` | 처리업체 시점: 받은 요청, 단지 묶음, 실제 매입 결과 기록 |
+| `/admin/learning` | 라벨 검수 → 데이터셋 → 재학습 → 모델 비교 → 배포 게이트 |
+| `/settings` · `/settings/members` · `/settings/account` | 회사 정보, 멤버·역할, 데이터 내보내기, 탈퇴 |
 
 ## 디자인
 

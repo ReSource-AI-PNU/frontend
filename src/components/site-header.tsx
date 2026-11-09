@@ -57,15 +57,15 @@ export function MarketingHeader() {
     <HeaderFrame>
       <BrandLink />
       <nav aria-label="소개 메뉴" className="mr-auto hidden items-center gap-1 text-sm text-muted md:flex">
-        <a href="#how" className="rounded-md px-3 py-2 hover:text-ink">
+        <Link href="/#how" className="rounded-md px-3 py-2 hover:text-ink">
           작동 방식
-        </a>
-        <a href="#bundle" className="rounded-md px-3 py-2 hover:text-ink">
+        </Link>
+        <Link href="/#bundle" className="rounded-md px-3 py-2 hover:text-ink">
           묶음 수거
-        </a>
-        <a href="#loop" className="rounded-md px-3 py-2 hover:text-ink">
+        </Link>
+        <Link href="/#loop" className="rounded-md px-3 py-2 hover:text-ink">
           현장 지식
-        </a>
+        </Link>
       </nav>
       <div className="ml-auto flex items-center gap-2 md:ml-0">
         <ThemeToggle />
