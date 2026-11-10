@@ -494,7 +494,12 @@ function distanceM(a: [number, number], b: [number, number]) {
 /** 단지 밖 열분해 업체. 업체 화면(단지 처리업체 시점)에는 나오지 않고, 결과는 배출 기업 담당자가 기록한다 */
 const PYROLYSIS_PARTNERS = [{ id: "ext_namhae_pyro", name: "(주)남해열분해", location: "경남 김해 · 단지에서 약 18km", distanceM: 18000 }];
 
-const isFilm = (s: Stream) => /LDPE|PE/.test(s.classify.material);
+/**
+ * 필름 흐름인가. 수지는 PP·HDPE·LDPE·PET·PS·ABS·PVC 같은 정해진 이름으로 저장된다(backend ① 식별의 답 형식).
+ * "PE"로 부분 일치하면 PET(페트)와 HDPE(경질 통)까지 필름으로 잡히므로 이름 전체로 맞춘다.
+ */
+const FILM_RESINS = new Set(["LDPE", "LLDPE"]);
+const isFilm = (s: Stream) => FILM_RESINS.has(s.classify.material.trim().toUpperCase());
 
 /**
  * 같은 묶음에 넣을 수 있는 다른 회사의 흐름인가. 같은 재질·같은 출처끼리만 묶는다.
