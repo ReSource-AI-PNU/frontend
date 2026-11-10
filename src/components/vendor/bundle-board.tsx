@@ -21,6 +21,8 @@ export type AiBundle = {
   members: { name: string; kg: number }[];
   schedule: string;
   done: boolean;
+  /** 그룹 기업(배출 기업 제외)의 참여 동의 현황 */
+  consent?: { accepted: number; invited: number; pending: number };
 };
 
 function kgOf(c: Company, item: WasteItem) {
@@ -78,7 +80,10 @@ export function BundleBoard({ vendor, companies, aiBundles, pickup }: { vendor: 
                 <p className="text-sm md:text-right">
                   <span className="tabular-nums font-semibold">{formatNumber(b.totalKg)}</span>kg/월 · {truckName(b.truckKg)} 적재율{" "}
                   <span className="tabular-nums font-semibold">{Math.round(b.fillRate * 100)}%</span>
-                  <span className="block text-[12px] text-muted">{b.done ? "수거 완료" : "수거 대기"}</span>
+                  <span className="block text-[12px] text-muted">
+                    {b.consent ? `참여 동의 ${b.consent.accepted}/${b.consent.invited}${b.consent.pending ? ` · ${b.consent.pending}곳 회신 대기` : ""} · ` : ""}
+                    {b.done ? "수거 완료" : "수거 대기"}
+                  </span>
                 </p>
               </li>
             ))}

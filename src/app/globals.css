@@ -207,6 +207,22 @@
 .rs-pin[data-selected] .rs-pin-dot {
   transform: scale(1.5);
 }
+/* 순회 순번: 묶음 그룹 핀 오른쪽 위의 먹색 숫자 */
+.rs-pin[data-order]::after {
+  content: attr(data-order);
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font: 700 10.5px/17px var(--font-mono);
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
 .rs-pin[data-selected] .rs-pin-label {
   background: var(--color-ink);
   color: var(--color-on-ink);

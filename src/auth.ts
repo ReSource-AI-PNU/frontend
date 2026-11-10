@@ -13,7 +13,7 @@ declare module "next-auth" {
 /** 로그인해야 들어갈 수 있는 경로. proxy.ts가 낙관적으로 먼저 거른다. */
 export const PROTECTED_PREFIXES = [
   "/upload", "/session", "/complex", "/dashboard", "/onboarding",
-  "/knowledge", "/vendor", "/admin", "/settings",
+  "/knowledge", "/vendor", "/neighbor", "/admin", "/settings",
 ];
 
 export const entraConfigured = Boolean(

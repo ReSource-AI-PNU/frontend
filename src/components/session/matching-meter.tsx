@@ -10,6 +10,8 @@ const pct = (r: number) => `${Math.round(r * 100)}%`;
  * 단독일 때와 순회 수거로 묶었을 때를 같은 눈금에 놓는다. 회색 바탕 칸이 트럭 한 대(100%)이고,
  * 먹색 세로선이 트럭 가득, 최소 물량이 다르면 회색 세로선을 하나 더 긋는다.
  * 묶음은 AI가 고른 그룹이므로 형광펜, 단독은 중립색(muted)이다. 값은 막대 옆 열에 직접 적는다.
+ * confirmed를 주면 셋째 줄에 참여 동의를 받은 물량을 먹색(사람이 정한 값)으로 그린다.
+ * 묶음이 하나씩 차오르는 연출에서는 scaleMax로 눈금을 고정해, 값이 바뀌어도 눈금이 흔들리지 않게 한다.
  * 마우스를 올리거나 포커스 후 방향키를 누르면 툴팁이 뜨고, 같은 값을 "표로 보기"에서도 볼 수 있다.
  */
 export function TruckFillMeter({
@@ -20,6 +22,8 @@ export function TruckFillMeter({
   soloFillRate,
   fillRate,
   members,
+  confirmed,
+  scaleMax,
 }: {
   soloKg: number;
   totalKg: number;
@@ -28,19 +32,22 @@ export function TruckFillMeter({
   soloFillRate: number;
   fillRate: number;
   members: number;
+  confirmed?: { kg: number; rate: number; members: number };
+  scaleMax?: number;
 }) {
   const [active, setActive] = useState<number | null>(null);
   const tipId = useId();
   const minRate = truckKg > 0 ? minKg / truckKg : 1;
   // 눈금 끝: 트럭 한 대·최소 물량·묶음 중 큰 값에 여유를 조금 둔다
-  const max = Math.max(1, minRate, fillRate, soloFillRate) * 1.06;
+  const max = Math.max(1, minRate, fillRate, soloFillRate, scaleMax ?? 0, confirmed?.rate ?? 0) * 1.06;
   const at = (r: number) => `${(Math.min(Math.max(r, 0), max) / max) * 100}%`;
   const tons = (truckKg / 1000).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
   const sameLine = Math.abs(minRate - 1) < 0.001;
 
   const rows = [
     { key: "solo", label: "단독", sub: "내 회사만", kg: soloKg, rate: soloFillRate, bar: "bg-muted" },
-    { key: "bundle", label: `묶음 ${members}개사`, sub: "순회 수거", kg: totalKg, rate: fillRate, bar: "bg-marker shadow-[inset_0_0_0_1px_var(--color-ink)]" },
+    { key: "bundle", label: `묶음 ${members}개사`, sub: confirmed ? "AI 제안" : "순회 수거", kg: totalKg, rate: fillRate, bar: "bg-marker shadow-[inset_0_0_0_1px_var(--color-ink)]" },
+    ...(confirmed ? [{ key: "confirmed", label: `확정 ${confirmed.members}개사`, sub: "참여 동의 기준", kg: confirmed.kg, rate: confirmed.rate, bar: "bg-ink" }] : []),
   ];
   const status = (kg: number) => (kg >= minKg ? "최소 물량 충족" : `최소 물량에 ${formatNumber(minKg - kg)}kg 모자람`);
 
@@ -61,7 +68,7 @@ export function TruckFillMeter({
       <div
         role="img"
         tabIndex={0}
-        aria-label={`${tons}톤 트럭 적재율. 단독 ${pct(soloFillRate)}(월 ${formatNumber(soloKg)}kg), 묶음 ${members}개사 ${pct(fillRate)}(월 ${formatNumber(totalKg)}kg). 최소 물량은 ${formatNumber(minKg)}kg입니다.`}
+        aria-label={`${tons}톤 트럭 적재율. 단독 ${pct(soloFillRate)}(월 ${formatNumber(soloKg)}kg), 묶음 ${members}개사 ${pct(fillRate)}(월 ${formatNumber(totalKg)}kg)${confirmed ? `, 참여 동의 기준 ${confirmed.members}개사 ${pct(confirmed.rate)}(월 ${formatNumber(confirmed.kg)}kg)` : ""}. 최소 물량은 ${formatNumber(minKg)}kg입니다.`}
         aria-describedby={active !== null ? tipId : undefined}
         onKeyDown={onKey}
         onFocus={(e) => {
@@ -99,7 +106,11 @@ export function TruckFillMeter({
             <div className="relative h-6">
               {/* 트럭 한 대 칸 */}
               <div aria-hidden="true" className="absolute inset-y-0 left-0 rounded-r-[4px] bg-sunken" style={{ width: at(1) }} />
-              <div aria-hidden="true" className={`absolute inset-y-0 left-0 rounded-r-[4px] ${r.bar}`} style={{ width: at(r.rate) }} />
+              <div
+                aria-hidden="true"
+                className={`absolute inset-y-0 left-0 rounded-r-[4px] transition-[width] duration-700 ease-out motion-reduce:transition-none ${r.bar}`}
+                style={{ width: at(r.rate) }}
+              />
               {active === i ? (
                 <div
                   id={tipId}

@@ -420,6 +420,31 @@ export async function recordOutcome(sessionId: string, recorderRole: "처리업�
   return { ok: true as const };
 }
 
+const replySchema = z.object({
+  decision: z.enum(["accepted", "declined"]),
+  reason: z.string().trim().max(200).optional(),
+});
+
+/**
+ * 이웃 기업이 묶음 참여 제안에 회신한다(이웃 기업 화면). 시연에서는 한 계정이 그 기업 시점으로 바꿔 본다.
+ * 참여하지 않으면 그 기업 물량만 묶음에서 빠지고, 나머지 기업의 순회 수거는 그대로 둔다.
+ */
+export async function respondBundleInvite(messageId: string, _prev: unknown, formData: FormData) {
+  await getCurrentUser();
+  const message = await outbox.get(messageId);
+  if (!message || message.kind !== "bundle-invite") return { error: "묶음 참여 제안을 찾을 수 없습니다." };
+  const parsed = replySchema.safeParse({ decision: formData.get("decision"), reason: formData.get("reason") || undefined });
+  if (!parsed.success) return { error: "참여 여부를 골라 주세요." };
+  if (parsed.data.decision === "declined" && !parsed.data.reason) return { error: "참여하지 않는 이유를 적어 주세요. 묶음을 다시 짤 때 씁니다." };
+  await outbox.update(messageId, (m) => ({
+    ...m,
+    status: "replied",
+    reply: { decision: parsed.data.decision, at: nowIso(), by: `${m.toName} 담당자`, reason: parsed.data.reason },
+  }));
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
 const cardSchema = z.object({
   item: z.enum(WASTE_ITEMS),
   condition: z.string().trim().min(4, "조건을 4자 이상 적어 주세요.").max(120),

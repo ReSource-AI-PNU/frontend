@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { Map as MapLibreMap, Marker } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { buildingsUrl } from "@/lib/complexes";
 import type { Company, IndustrialComplex } from "@/lib/domain";
@@ -24,9 +24,21 @@ const MARKER = "#E6FF3D";
  * - partnerIds: 묶음이 아닌 흐름의 거래처(매각처 등). 수거 업체와 같이 건물을 먹색으로 칠한다.
  * - excludedIds: 허가 불일치 등으로 제외한 업체. 건물을 일반 건물색으로 낮추고 핀을 흐리게 한다.
  * - fit: true면 처음 그릴 때 묶음 그룹 건물이 모두 보이게 화면을 맞춘다(기본 true). 수거 업체·거래처는 멀 수 있어 맞춤에서 뺀다.
+ * - fitIds: 화면을 맞출 기업. 없으면 groupIds. 묶음이 하나씩 켜지는 연출 중에도 화면이 흔들리지 않게 전체 그룹을 준다.
+ * - route: 순회 경로(기업 id 순서, 수거 업체에서 출발해 복귀). 먹색 점선으로 잇는다.
+ * - order: 기업별 순회 순번. 핀 오른쪽 위에 숫자를 붙인다.
  * 강조하지 않은 나머지 핀은 조금 흐려진다. 주지 않으면 기존 탐색 화면과 똑같이 동작한다.
  */
-export type MapHighlight = { groupIds: string[]; collectorId?: string; partnerIds?: string[]; excludedIds?: string[]; fit?: boolean };
+export type MapHighlight = {
+  groupIds: string[];
+  collectorId?: string;
+  partnerIds?: string[];
+  excludedIds?: string[];
+  fit?: boolean;
+  fitIds?: string[];
+  route?: string[];
+  order?: Record<string, number>;
+};
 
 /** 단지 범위 안에 섞인 주거·교육·의료 건물은 산업단지 모형에서 뺀다. */
 const NON_INDUSTRIAL_KINDS = [
@@ -128,6 +140,7 @@ export function ComplexMap({
           version: 8,
           sources: {
             buildings: { type: "geojson", data: buildingsUrl(complex.id), promoteId: "osmId" },
+            "visit-route": { type: "geojson", data: { type: "FeatureCollection", features: [] } },
           },
           layers: [
             { id: "bg", type: "background", paint: { "background-color": MAP_COLORS[theme].bg } },
@@ -143,6 +156,13 @@ export function ComplexMap({
                 "fill-extrusion-opacity": 0.95,
                 "fill-extrusion-vertical-gradient": true,
               },
+            },
+            {
+              id: "visit-route",
+              type: "line",
+              source: "visit-route",
+              layout: { "line-cap": "round", "line-join": "round" },
+              paint: { "line-color": MAP_COLORS[theme].selected, "line-width": 3, "line-dasharray": [1.4, 1.2] },
             },
           ],
         },
@@ -203,6 +223,7 @@ export function ComplexMap({
         const t = currentTheme();
         map.setPaintProperty("bg", "background-color", MAP_COLORS[t].bg);
         map.setPaintProperty("buildings-3d", "fill-extrusion-color", extrusionColor(t));
+        map.setPaintProperty("visit-route", "line-color", MAP_COLORS[t].selected);
       });
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     })().catch(() => setStatus("error"));
@@ -307,6 +328,12 @@ function applyHighlight(map: MapLibreMap, companies: Company[], highlight: MapHi
   const excluded = new Set(highlight?.excludedIds ?? []);
   const collector = highlight?.collectorId;
   const partners = new Set(highlight?.partnerIds ?? []);
+  const loc = new Map(companies.map((c) => [c.id, c.location]));
+  const path = (highlight?.route ?? []).map((id) => loc.get(id)).filter((p): p is [number, number] => Boolean(p));
+  (map.getSource("visit-route") as GeoJSONSource | undefined)?.setData({
+    type: "FeatureCollection",
+    features: path.length > 1 ? [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: path } }] : [],
+  });
   for (const c of companies) {
     const isGroup = group.has(c.id);
     const isPartner = !isGroup && c.id !== collector && partners.has(c.id);
@@ -322,6 +349,9 @@ function applyHighlight(map: MapLibreMap, companies: Company[], highlight: MapHi
     const dot = el.querySelector<HTMLElement>(".rs-pin-dot");
     el.toggleAttribute("data-group", isGroup);
     el.toggleAttribute("data-excluded", isExcluded);
+    const order = highlight?.order?.[c.id];
+    if (order) el.dataset.order = String(order);
+    else delete el.dataset.order;
     // 핀 스타일은 globals.css(.rs-pin)를 건드리지 않고 인라인으로 덧칠한다.
     // 핀 루트의 opacity는 MapLibre Marker가 직접 관리하므로 점(dot)에만 흐림을 준다.
     if (dot) {
@@ -331,15 +361,17 @@ function applyHighlight(map: MapLibreMap, companies: Company[], highlight: MapHi
       dot.style.width = isGroup || isCollector ? "12px" : "";
       dot.style.height = isGroup || isCollector ? "12px" : "";
     }
-    const label = el.getAttribute("aria-label")?.replace(/ · (AI 묶음 그룹|수거 업체|거래처|제외)$/, "") ?? c.name;
-    const suffix = isGroup ? " · AI 묶음 그룹" : isPartner ? " · 거래처" : isCollector ? " · 수거 업체" : isExcluded ? " · 제외" : "";
+    const label = el.getAttribute("aria-label")?.replace(/ · (AI 묶음 그룹|수거 업체|거래처|제외)( · 순회 \d+번째)?$/, "") ?? c.name;
+    const suffix =
+      (isGroup ? " · AI 묶음 그룹" : isPartner ? " · 거래처" : isCollector ? " · 수거 업체" : isExcluded ? " · 제외" : "") +
+      (order ? ` · 순회 ${order}번째` : "");
     el.setAttribute("aria-label", `${label}${suffix}`);
   }
 }
 
 function fitHighlight(map: MapLibreMap, companies: Company[], highlight: MapHighlight | undefined, is3D = true, animate = false) {
   if (!highlight || highlight.fit === false) return;
-  const ids = new Set(highlight.groupIds);
+  const ids = new Set(highlight.fitIds ?? highlight.groupIds);
   const points = companies.filter((c) => ids.has(c.id)).map((c) => c.location);
   if (points.length === 0) return;
   const lngs = points.map((p) => p[0]);

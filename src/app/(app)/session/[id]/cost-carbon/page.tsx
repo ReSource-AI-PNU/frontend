@@ -7,6 +7,7 @@ import { DisagreeDialog } from "@/components/session/disagree-dialog";
 import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { CARBON_BASE_LABEL, rebaseCarbon, type CarbonBase } from "@/lib/carbon";
 import { formatNumber, formatSigned } from "@/lib/format";
 import { goToStep } from "@/lib/server/session-actions";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
@@ -25,8 +26,16 @@ function withRo(word: string) {
   return jong === 0 || jong === 8 ? `${word}로` : `${word}으로`;
 }
 
-export default async function CostCarbonPage({ params }: { params: Promise<{ id: string }> }) {
+/** 탄소 기준별 설명. 시나리오끼리의 차이는 기준과 관계없이 같다 */
+const BASE_NOTE: Record<CarbonBase, string> = {
+  virgin: "재활용·재투입으로 새 수지를 만들지 않아 피한 배출까지 셉니다. 음수면 그만큼 배출을 줄인 것입니다.",
+  landfill: "같은 흐름을 모두 매립했을 때(시나리오 D)를 0으로 놓고, 그보다 얼마나 더·덜 배출하는지 봅니다. 시나리오끼리의 차이는 신재 대비와 같습니다.",
+};
+
+export default async function CostCarbonPage({ params, searchParams }: PageProps<"/session/[id]/cost-carbon">) {
   const { id } = await params;
+  const sp = await searchParams;
+  const base: CarbonBase = sp.base === "landfill" ? "landfill" : "virgin";
   const { session } = await getSessionForCurrentOrg(id);
   const result = session.costCarbon;
   const disagree = (
@@ -62,7 +71,9 @@ export default async function CostCarbonPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const routes = result.routes;
+  const hasLandfill = result.routes.some((r) => r.id === "D");
+  const routes = rebaseCarbon(result.routes, hasLandfill ? base : "virgin");
+  const baseLabel = CARBON_BASE_LABEL[hasLandfill ? base : "virgin"];
   const recommended = routes.find((r) => r.recommended) ?? routes[0];
   const routeA = routes.find((r) => r.id === "A") ?? recommended;
   const current = routes.find((r) => r.id === "C");
@@ -99,7 +110,7 @@ export default async function CostCarbonPage({ params }: { params: Promise<{ id:
       <StepHeader
         step="cost-carbon"
         title="비용·탄소 비교"
-        description={`공장의 흐름 ${session.streams.length}개를 합쳐 시나리오 ${routes.length}개를 월 손익과 순 탄소로 비교했습니다. 탄소는 ${result.baseline} 기준이며, 숫자는 모두 시연용 가정값입니다.`}
+        description={`공장의 흐름 ${session.streams.length}개를 합쳐 시나리오 ${routes.length}개를 월 손익과 순 탄소로 비교했습니다. 탄소는 ${baseLabel} 기준이며, 숫자는 모두 시연용 가정값입니다.`}
         aside={disagree}
       />
 
@@ -120,6 +131,24 @@ export default async function CostCarbonPage({ params }: { params: Promise<{ id:
             {locked ? "발송을 마친 진단이라 시나리오를 바꿀 수 없습니다." : "행을 누르면 다음 단계의 서류와 발송 대상이 그 시나리오로 바뀝니다."}
           </p>
         </div>
+        {hasLandfill ? (
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <nav aria-label="탄소 기준" className="inline-flex rounded-md bg-sunken p-[3px]">
+              {(["virgin", "landfill"] as CarbonBase[]).map((b) => (
+                <Link
+                  key={b}
+                  href={b === "virgin" ? `/session/${session.id}/cost-carbon` : `/session/${session.id}/cost-carbon?base=landfill`}
+                  scroll={false}
+                  aria-current={base === b ? "true" : undefined}
+                  className="flex h-8 items-center rounded-sm px-3 text-[13px] text-muted hover:text-ink aria-[current=true]:bg-surface aria-[current=true]:font-semibold aria-[current=true]:text-ink aria-[current=true]:shadow-[0_1px_0_var(--color-line-strong)]"
+                >
+                  탄소 {CARBON_BASE_LABEL[b]}
+                </Link>
+              ))}
+            </nav>
+            <p className="max-w-2xl text-[13px] text-ink-2">{BASE_NOTE[base]}</p>
+          </div>
+        ) : null}
         <CostCarbonTable sessionId={session.id} routes={routes} selectedId={selectedId} disabled={locked} />
       </section>
 
@@ -140,7 +169,7 @@ export default async function CostCarbonPage({ params }: { params: Promise<{ id:
         </section>
         <section aria-labelledby="chart-co2-title">
           <h2 id="chart-co2-title" className="text-label text-muted">
-            시나리오별 순 탄소 (tCO₂e/월)
+            시나리오별 순 탄소 (tCO₂e/월, {baseLabel})
           </h2>
           <DivergingBars
             className="mt-3"
@@ -195,7 +224,9 @@ export default async function CostCarbonPage({ params }: { params: Promise<{ id:
               <th scope="row" className="py-2.5 pr-4 text-left align-top font-normal text-muted">
                 탄소 기준
               </th>
-              <td className="py-2.5 text-ink-2">{result.baseline}로 계산했습니다. KAU 환산은 줄인 탄소를 배출권 가격으로 바꾼 참고값입니다.</td>
+              <td className="py-2.5 text-ink-2">
+                지금은 {baseLabel} 기준으로 보고 있습니다. {BASE_NOTE[hasLandfill ? base : "virgin"]} KAU 환산은 줄인 탄소를 배출권 가격으로 바꾼 참고값입니다.
+              </td>
             </tr>
           </tbody>
         </table>

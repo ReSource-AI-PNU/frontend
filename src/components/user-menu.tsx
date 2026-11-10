@@ -58,6 +58,11 @@ export async function UserMenu() {
             </Link>
           </li>
           <li>
+            <Link href="/neighbor" className="flex min-h-10 items-center rounded-md px-2 hover:bg-sunken">
+              이웃 기업 화면으로 보기
+            </Link>
+          </li>
+          <li>
             <Link href="/admin/learning" className="flex min-h-10 items-center rounded-md px-2 hover:bg-sunken">
               학습 관리 (관리자)
             </Link>

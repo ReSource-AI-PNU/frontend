@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LiveRefresh } from "@/components/live-refresh";
 import { DisagreeDialog } from "@/components/session/disagree-dialog";
 import { ProposalDocuments, type DocStatus, type DocView } from "@/components/session/proposal-documents";
 import { ProposalGate, type GateTarget } from "@/components/session/proposal-gate";
@@ -9,6 +10,7 @@ import { formatKoreanTime, ProposalOutcomeCompare, ProposalSent } from "@/compon
 import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { bundleConsents } from "@/lib/server/bundle-consent";
 import { goToStep } from "@/lib/server/session-actions";
 import { getCurrentUser } from "@/lib/server/session";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
@@ -77,6 +79,16 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
   const byId = new Map(routesAll.map((r) => [r.id, r]));
   const cards = [proposal.recommended, ...proposal.alternatives].map((rid) => byId.get(rid)).filter((r): r is Route => Boolean(r));
   const approval = session.approval;
+  // 묶음 참여 제안의 회신 상태(받는 곳 이름 기준). 회신을 기다리는 동안 화면을 주기적으로 새로 읽는다
+  const replies = approval
+    ? Object.fromEntries(
+        [...(await bundleConsents(session)).values()]
+          .flat()
+          .filter((c) => c.state !== "self" && c.state !== "not-sent")
+          .map((c) => [c.name, c.state]),
+      )
+    : undefined;
+  const waitingReplies = replies ? Object.values(replies).includes("pending") : false;
   const routeId = approval?.routeId ?? session.selectedRoute ?? proposal.recommended;
   const selected = byId.get(routeId);
   const routeLabel = selected ? `${selected.id}. ${selected.name}` : routeId;
@@ -185,7 +197,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
 
         <aside className="grid content-start gap-4 lg:col-span-4">
           {approval ? (
-            <ProposalSent approval={approval} routeLabel={routeLabel} internalDocs={internalDocs} />
+            <ProposalSent approval={approval} routeLabel={routeLabel} internalDocs={internalDocs} replies={replies} />
           ) : (
             <ProposalGate
               sessionId={session.id}
@@ -226,6 +238,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
         </section>
       ) : null}
 
+      <LiveRefresh active={waitingReplies} />
       <StepFooter
         sessionId={session.id}
         step="proposal"

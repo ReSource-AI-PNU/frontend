@@ -9,8 +9,10 @@ import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BundleBoard, type AiBundle } from "@/components/vendor/bundle-board";
 import { OutcomeForm } from "@/components/vendor/outcome-form";
+import { summarizeConsent } from "@/lib/bundle-consent";
 import { findComplex } from "@/lib/complexes";
 import { formatNumber, formatSigned } from "@/lib/format";
+import { bundleConsents } from "@/lib/server/bundle-consent";
 import { getCompanies } from "@/lib/server/companies";
 import { MIN_KG } from "@/lib/server/mock/pipeline";
 import { requireOrganization } from "@/lib/server/organization";
@@ -153,14 +155,17 @@ async function VendorPageContent({ searchParams }: { searchParams: Promise<Recor
     return (m.kind === "pickup" || m.kind === "quote") && s?.status === "sent" && t && !outcomesOf(s).some((o) => o.streamId === t.stream.id);
   });
 
-  const aiBundles: AiBundle[] = allSessions
-    .filter((s) => s.approval && s.approval.routeId === "A")
+  const approvedA = allSessions.filter((s) => s.approval && s.approval.routeId === "A");
+  const consentsBySession = new Map(await Promise.all(approvedA.map(async (s) => [s.id, await bundleConsents(s)] as const)));
+  const aiBundles: AiBundle[] = approvedA
     .flatMap((s) =>
       (s.matching?.bundles ?? [])
         .filter((b) => b.collector.companyId === vendor.id)
         .map((b) => {
           const st = (s.streams ?? []).find((x) => x.id === b.streamId);
+          const sum = summarizeConsent(b, consentsBySession.get(s.id)?.get(b.streamId) ?? []);
           return {
+            consent: { accepted: sum.accepted, invited: sum.invited, pending: sum.pending },
             key: `${s.id}:${b.streamId}`,
             sessionId: s.id,
             streamId: b.streamId,

@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlipNumber } from "@/components/verdict/flip-number";
+import { summarizeConsent } from "@/lib/bundle-consent";
 import { formatNumber, formatSigned } from "@/lib/format";
+import { bundleConsents } from "@/lib/server/bundle-consent";
 import { goToStep, setStreamRoute } from "@/lib/server/session-actions";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
 import { STREAM_ROUTE_LABEL } from "@/lib/session/types";
@@ -45,6 +47,20 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
   const focusStream = byStream.get(focus.streamId)!;
   const diff = f.totalAfter - f.totalNow;
   const totalKg = session.streams.reduce((a, s) => a + s.monthlyKg, 0);
+  const consents = await bundleConsents(session);
+  /** 단지 묶음 매각은 이웃 기업과 묶여야 성립한다. ④ 업체·묶음 매칭에서 풀리는 조건을 여기서 미리 보여 준다 */
+  const bundleCondition = (streamId: string, monthlyAfter: number) => {
+    const b = session.matching?.bundles.find((x) => x.streamId === streamId);
+    const won = `${formatSigned(monthlyAfter)}원은 묶음이 성사될 때의 값입니다.`;
+    if (!b) return `같은 단지 기업과 묶여야 트럭이 옵니다. 업체·묶음 매칭에서 확인합니다. ${won}`;
+    const sum = summarizeConsent(b, consents.get(streamId) ?? []);
+    const fill = `${b.group.length}개사 · 적재율 ${Math.round(b.fillRate * 100)}%`;
+    if (!sum.sent) return `업체·묶음 매칭에서 ${fill}로 묶었습니다. 승인하면 참여 제안이 나갑니다. ${won}`;
+    if (sum.settled) return `묶음 확정 · 참여 동의 ${sum.accepted}/${sum.invited} · 확정 적재율 ${Math.round(sum.confirmedRate * 100)}%`;
+    return sum.pending > 0
+      ? `참여 동의 ${sum.accepted}/${sum.invited} · ${sum.pending}곳 회신 대기 (${fill})`
+      : `참여하지 않은 기업이 있어 최소 물량에 ${formatNumber(Math.max(0, b.minKg - sum.confirmedKg))}kg 모자랍니다. 다음 후보를 찾아야 합니다.`;
+  };
 
   return (
     <div className="grid gap-8">
@@ -122,6 +138,17 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
                   {d.action ? (
                     <p className="mt-1 text-[13px] text-ink-2">
                       할 일: <b className="font-semibold">{d.action.title}</b> · 월 <span className="num">{d.action.laborHours}</span>시간
+                    </p>
+                  ) : null}
+                  {d.route === "bundle" ? (
+                    <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-ink-2">
+                      <span className="rounded-sm bg-marker px-1.5 text-[12px] font-semibold text-marker-ink">조건</span>
+                      <span>{bundleCondition(d.streamId, d.monthlyAfter)}</span>
+                      {session.matching ? (
+                        <Link href={`/session/${session.id}/matching`} className="font-semibold underline underline-offset-2">
+                          묶음 보기
+                        </Link>
+                      ) : null}
                     </p>
                   ) : null}
                   <details className="mt-2 text-[13px]">

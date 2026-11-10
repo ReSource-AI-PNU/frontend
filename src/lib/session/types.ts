@@ -177,6 +177,10 @@ export type BundleGroup = {
   excluded: { companyId: string; name: string; reason: string }[];
   schedule: string;
   costShare: { companyId: string; name: string; sharePct: number }[];
+  /** 수거 업체가 출발해 도는 사업장 순서(그룹 기업 id). 업체 위치에서 시작해 가장 가까운 곳부터 돈다 */
+  visitOrder?: string[];
+  /** 수거 업체 출발 → 순회 → 복귀까지의 거리(m). 직선거리에 도로 계수 1.3을 곱한 가정값 */
+  routeM?: number;
 };
 
 /** 묶음이 아닌 흐름의 거래처(매각처·열분해 업체). 재투입·소각은 거래처가 없다 */
@@ -380,6 +384,14 @@ export type Member = {
   invitedAt: string;
 };
 
+/** 요청서에 대한 받는 쪽의 회신. 묶음 참여 제안이면 참여 여부다 */
+export type MessageReply = {
+  decision: "accepted" | "declined";
+  at: string;
+  by: string;
+  reason?: string;
+};
+
 export type OutboxMessage = {
   id: string;
   sessionId: string;
@@ -393,4 +405,5 @@ export type OutboxMessage = {
   subject: string;
   sentAt: string;
   status: "sent" | "read" | "replied" | "completed";
+  reply?: MessageReply;
 };

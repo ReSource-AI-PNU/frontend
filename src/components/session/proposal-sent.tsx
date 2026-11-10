@@ -1,4 +1,5 @@
 import { formatNumber, formatSigned } from "@/lib/format";
+import { CONSENT_LABEL, CONSENT_TONE, type ConsentState } from "@/lib/bundle-consent";
 import type { Approval, Outcome, StreamRoute } from "@/lib/session/types";
 import { CheckIcon } from "../icons";
 import { Badge } from "../ui/badge";
@@ -17,7 +18,18 @@ export function formatKoreanTime(iso: string) {
 }
 
 /** 발송 완료 상태: 누구에게 무엇이 갔는지, 승인자와 시각. 승인은 사람이 한 일이므로 먹색으로 표시한다. */
-export function ProposalSent({ approval, routeLabel, internalDocs }: { approval: Approval; routeLabel: string; internalDocs: string[] }) {
+export function ProposalSent({
+  approval,
+  routeLabel,
+  internalDocs,
+  replies,
+}: {
+  approval: Approval;
+  routeLabel: string;
+  internalDocs: string[];
+  /** 받는 곳 이름 → 묶음 참여 제안 회신 상태 */
+  replies?: Record<string, ConsentState>;
+}) {
   const places = new Set(approval.sentTo.map((t) => t.name)).size;
   return (
     <section aria-labelledby="sent-title" className="grid gap-3 rounded-lg border border-line bg-surface p-5">
@@ -41,6 +53,11 @@ export function ProposalSent({ approval, routeLabel, internalDocs }: { approval:
               <th scope="col" className="pb-2 pl-3 font-[550]">
                 보낸 서류
               </th>
+              {replies ? (
+                <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                  회신
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -53,6 +70,15 @@ export function ProposalSent({ approval, routeLabel, internalDocs }: { approval:
                   </span>
                 </td>
                 <td className="py-2 pl-3 text-ink-2">{t.kind}</td>
+                {replies ? (
+                  <td className="py-2 pl-3 text-right">
+                    {t.kind === "묶음 참여 제안" && replies[t.name] ? (
+                      <Badge tone={CONSENT_TONE[replies[t.name]]}>{CONSENT_LABEL[replies[t.name]]}</Badge>
+                    ) : (
+                      <span className="text-[12.5px] text-muted">—</span>
+                    )}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -63,7 +89,7 @@ export function ProposalSent({ approval, routeLabel, internalDocs }: { approval:
         {approval.approvedBy} · <span className="tabular-nums">{formatKoreanTime(approval.approvedAt)}</span>
       </p>
       <p className="text-[12.5px] text-muted">
-        수거 업체의 회신과 그룹 기업의 참여 동의는 대시보드의 발송함에서 확인할 수 있습니다.
+        묶음 참여 동의는 위 표와 업체·묶음 매칭 화면에 바로 반영됩니다. 시연에서는 메뉴의 &ldquo;이웃 기업 화면으로 보기&rdquo;에서 그 기업 시점으로 회신해 볼 수 있습니다.
         {internalDocs.length ? ` ${internalDocs.join(", ")}은(는) 내부용으로 저장했습니다.` : ""}
       </p>
     </section>

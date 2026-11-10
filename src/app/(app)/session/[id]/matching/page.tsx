@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LiveRefresh } from "@/components/live-refresh";
 import { DisagreeDialog } from "@/components/session/disagree-dialog";
 import { MatchingWorkspace, type BundleView, type PartnerRow } from "@/components/session/matching-workspace";
 import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { ORIGIN_LABEL } from "@/components/session/stream-badges";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { summarizeConsent } from "@/lib/bundle-consent";
 import { findComplex } from "@/lib/complexes";
 import { formatNumber } from "@/lib/format";
+import { bundleConsents } from "@/lib/server/bundle-consent";
 import { getCompanies } from "@/lib/server/companies";
+import { isPeerStream } from "@/lib/server/mock/pipeline";
 import { goToStep } from "@/lib/server/session-actions";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
 import type { MatchingResult, Stream, StreamDecision } from "@/lib/session/types";
@@ -100,10 +104,28 @@ export default async function MatchingPage({ params }: { params: Promise<{ id: s
     const d = decisionOf.get(s.id);
     return d ? [partnerRow(s, d, matching)] : [];
   });
+  const consents = await bundleConsents(session);
+  const selfId = matching.bundles[0]?.group.find((g) => g.isSelf)?.companyId;
   const bundles: BundleView[] = matching.bundles.flatMap((b) => {
     const s = streamOf.get(b.streamId);
-    return s ? [{ bundle: b, streamName: s.name, detail: s.classify.detail, originLabel: ORIGIN_LABEL[s.origin].short }] : [];
+    if (!s) return [];
+    // 단지 전체에서 같은 재질·출처 흐름을 내놓는 배출 기업(내 회사 제외)
+    const peers = companies
+      .filter((c) => c.role === "배출" && c.id !== selfId)
+      .map((c) => c.wasteStreams.filter((w) => isPeerStream(s, w)).reduce((a, w) => a + w.monthlyKg, 0))
+      .filter((kg) => kg > 0);
+    return [
+      {
+        bundle: b,
+        streamName: s.name,
+        detail: s.classify.detail,
+        originLabel: ORIGIN_LABEL[s.origin].short,
+        consents: consents.get(b.streamId),
+        potential: { companies: peers.length + 1, kg: peers.reduce((a, kg) => a + kg, 0) + s.monthlyKg, complexName: complex?.shortName ?? complex?.name ?? "산업단지" },
+      },
+    ];
   });
+  const waiting = bundles.some((v) => v.consents && summarizeConsent(v.bundle, v.consents).pending > 0);
   const outside = rows.filter((r) => r.route === "sell" || r.route === "pyrolysis").length;
 
   // 첫 문장: 묶음 흐름이 있으면 단독과 묶음의 트럭 적재율 차이, 없으면 거래처 요약
@@ -143,12 +165,13 @@ export default async function MatchingPage({ params }: { params: Promise<{ id: s
 
       <div className="mt-8">
         {complex ? (
-          <MatchingWorkspace rows={rows} bundles={bundles} complex={complex} companies={companies} />
+          <MatchingWorkspace sessionId={session.id} rows={rows} bundles={bundles} complex={complex} companies={companies} />
         ) : (
           <EmptyState title="산업단지 정보를 찾지 못했습니다." description="지도를 그릴 수 없습니다. 온보딩에서 고른 산업단지를 확인해 주세요." />
         )}
       </div>
 
+      <LiveRefresh active={waiting} />
       <StepFooter sessionId={session.id} step="matching" nextLabel="흐름별 비용·탄소 비교" />
     </div>
   );

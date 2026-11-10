@@ -1,4 +1,5 @@
 import "server-only";
+import { KAU_PER_T, kauOf } from "@/lib/carbon";
 import { findComplex } from "@/lib/complexes";
 import { MIN_KG } from "@/lib/pickup";
 import type { Company, Organization, WasteItem } from "@/lib/domain";
@@ -236,7 +237,6 @@ export function initialQuestions(streams: Stream[]): Question[] {
 // ── 가격·탄소 가정값 ──────────────────────────────────────────────────────
 
 const LABOR_PER_HOUR = 15000;
-const KAU_PER_T = 9000;
 
 /** 혼합 사업장폐기물로 소각 위탁할 때 kg당 손익(처리비라 음수) */
 const INCINERATE_PER_KG: Record<WasteItem, number> = { 폐플라스틱: -250, 포장재: -250, "금속 스크랩": -250, 폐목재: -120 };
@@ -491,9 +491,43 @@ function distanceM(a: [number, number], b: [number, number]) {
   return Math.round(2 * R * Math.asin(Math.sqrt(h)));
 }
 
-/** 단지 밖 열분해 업체(가상). 실제로는 허가업체 목록에서 찾는다 */
 /** 단지 밖 열분해 업체. 업체 화면(단지 처리업체 시점)에는 나오지 않고, 결과는 배출 기업 담당자가 기록한다 */
 const PYROLYSIS_PARTNERS = [{ id: "ext_namhae_pyro", name: "(주)남해열분해", location: "경남 김해 · 단지에서 약 18km", distanceM: 18000 }];
+
+const isFilm = (s: Stream) => /LDPE|PE/.test(s.classify.material);
+
+/**
+ * 같은 묶음에 넣을 수 있는 다른 회사의 흐름인가. 같은 재질·같은 출처끼리만 묶는다.
+ * 사용 후 필름(PCR)에 공정 스크랩(PIR)이나 골판지를 섞으면 출처 증빙과 품질이 흐려진다.
+ */
+export function isPeerStream(s: Stream, w: Company["wasteStreams"][number]) {
+  if (isFilm(s)) return s.origin === "PCR" ? /스트레치|포장 필름/.test(w.detail ?? "") : /필름/.test(w.detail ?? "");
+  return w.item === s.classify.item && (w.detail ?? "").includes(s.classify.material);
+}
+
+/** 도로 계수: 단지 안 도로는 직선거리보다 약 30% 길다고 본다(가정) */
+const ROAD_FACTOR = 1.3;
+
+/**
+ * 순회 순서. 수거 업체 위치에서 출발해 아직 들르지 않은 사업장 중 가장 가까운 곳으로 간다(가장 가까운 이웃).
+ * 사업장이 서너 곳이라 최적 경로와 거의 같다. 실제 서비스에서는 OR-Tools 차량 경로 문제로 푼다(backend#14).
+ */
+function visitRoute(start: [number, number], group: BundleGroup["group"], companies: Company[], selfId: string | undefined, selfLoc: [number, number]) {
+  const loc = new Map(companies.map((c) => [c.id, c.location]));
+  const left = group.map((g) => ({ id: g.companyId, at: (g.isSelf ? loc.get(selfId ?? "") : loc.get(g.companyId)) ?? selfLoc }));
+  const order: string[] = [];
+  let here = start;
+  let meters = 0;
+  while (left.length) {
+    left.sort((a, b) => distanceM(here, a.at) - distanceM(here, b.at));
+    const next = left.shift()!;
+    meters += distanceM(here, next.at);
+    order.push(next.id);
+    here = next.at;
+  }
+  meters += distanceM(here, start);
+  return { order, routeM: Math.round((meters * ROAD_FACTOR) / 10) * 10 };
+}
 
 export function buildMatching(session: Session, org: Organization, companies: Company[]): MatchingResult {
   const anchor =
@@ -516,14 +550,8 @@ export function buildMatching(session: Session, org: Organization, companies: Co
     const item = s.classify.item;
     if (d.route === "bundle") {
       const { minKg, truckKg } = MIN_KG[item];
-      // 같은 재질·같은 출처끼리만 묶는다. 사용 후 필름(PCR)에 공정 스크랩(PIR)이나 골판지를 섞으면 출처 증빙과 품질이 흐려진다
-      const film = /LDPE|PE/.test(s.classify.material);
-      const compatible = (w: Company["wasteStreams"][number]) =>
-        film
-          ? s.origin === "PCR"
-            ? /스트레치|포장 필름/.test(w.detail ?? "")
-            : /필름/.test(w.detail ?? "")
-          : w.item === item && (w.detail ?? "").includes(s.classify.material);
+      const film = isFilm(s);
+      const compatible = (w: Company["wasteStreams"][number]) => isPeerStream(s, w);
       const peers = companies
         .filter((c) => c.id !== anchor?.id && c.role === "배출")
         .map((c) => ({ c, kg: c.wasteStreams.filter(compatible).reduce((a, w) => a + w.monthlyKg, 0), d: distanceM(self, c.location) }))
@@ -538,6 +566,7 @@ export function buildMatching(session: Session, org: Organization, companies: Co
       }
       const cols = collectorsFor(film ? "폐플라스틱" : item);
       const licensed = cols.find((x) => x.ok) ?? cols[0];
+      const visit = visitRoute(licensed?.c.location ?? self, group, companies, anchor?.id, self);
       bundles.push({
         streamId: s.id,
         mode: "순회 수거",
@@ -552,6 +581,8 @@ export function buildMatching(session: Session, org: Organization, companies: Co
         excluded: cols.filter((x) => !x.ok).map((x) => ({ companyId: x.c.id, name: x.c.name, reason: `${film ? "폐플라스틱(필름)" : item} 허가 품목 없음` })),
         schedule: "매월 둘째·넷째 주 화요일 오전, 사업장별 순회",
         costShare: group.map((g) => ({ companyId: g.companyId, name: g.name, sharePct: Math.round((g.kg / total) * 1000) / 10 })),
+        visitOrder: visit.order,
+        routeM: visit.routeM,
       });
     } else if (d.route === "sell") {
       const cols = collectorsFor(item);
@@ -584,7 +615,7 @@ export function buildCostCarbon(session: Session): CostCarbonResult {
   const sum = (rows: Route["breakdown"]) => ({ krw: Math.round(rows.reduce((a, r) => a + r.monthlyKrw, 0)), t: carbon(rows.reduce((a, r) => a + r.carbonT, 0)) });
   const make = (id: Route["id"], name: string, description: string, condition: string, rows: Route["breakdown"], recommended = false): Route => {
     const { krw, t } = sum(rows);
-    return { id, name, description, monthlyKrw: krw, carbonT: t, kauKrw: Math.round((-t * KAU_PER_T) / 10) * 10, condition, recommended, breakdown: rows };
+    return { id, name, description, monthlyKrw: krw, carbonT: t, kauKrw: kauOf(t), condition, recommended, breakdown: rows };
   };
   const routes: Route[] = [
     make("A", "흐름별 최적안", decisions.map((d) => `${byStream.get(d.streamId)?.name} ${STREAM_ROUTE_LABEL[d.route]}`).join(" · "), "분리 보관 구역, 분쇄기 사용, 단지 3개사 순회 수거 동의", optimal, true),
@@ -675,6 +706,10 @@ export function buildProposal(session: Session, org: Organization): ProposalResu
         { label: "월 합계", value: `${b.totalKg.toLocaleString("ko-KR")}kg · 1톤 트럭 적재율 ${Math.round(b.fillRate * 100)}%` },
         { label: "수거 방식", value: "순회 수거 · 각 사업장 개별 계약 · 사업장별 계량과 전자인계서" },
         { label: "수거 주기", value: b.schedule },
+        {
+          label: "순회 순서(제안)",
+          value: `${b.collector.name} 출발 → ${(b.visitOrder ?? b.group.map((g) => g.companyId)).map((id, i) => `${i + 1}. ${b.group.find((g) => g.companyId === id)?.name ?? id}`).join(" → ")} → 복귀${b.routeM ? ` · 약 ${(b.routeM / 1000).toFixed(1)}km` : ""}`,
+        },
         { label: "희망 단가", value: "LDPE 필름 kg당 150원 이상(운반비 별도 분담)" },
       ],
       body: `${b.collector.name} 담당자님께. ${complexName} 내 ${b.group.length}개 사업장이 원자재 포장 필름을 사업장별로 분리 보관하고 있습니다. 매월 정해진 날 한 번에 순회해 주실 수 있는지, 매입 단가와 사업장별 계량·인계 방식을 회신해 주시기 바랍니다.`,
