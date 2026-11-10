@@ -3,6 +3,7 @@ import { CONSENT_LABEL, CONSENT_TONE, type ConsentState } from "@/lib/bundle-con
 import type { Approval, Outcome, StreamRoute } from "@/lib/session/types";
 import { CheckIcon } from "../icons";
 import { Badge } from "../ui/badge";
+import { MoreDetails } from "../ui/more-details";
 import { RouteBadge } from "./stream-badges";
 
 export function formatKoreanTime(iso: string) {
@@ -159,53 +160,55 @@ export function ProposalOutcomeCompare({
           : `업체가 ${expected.streamName} 매입을 거절했습니다.${outcome.reason ? ` 사유는 "${outcome.reason}"입니다.` : ""}`}{" "}
         이 차이는 라벨 검수 대기열에 올라가 다음 학습에 쓰입니다.
       </p>
-      <table className="w-full border-collapse text-sm">
-        <caption className="sr-only">{expected.streamName}의 예상 대비 실제 결과</caption>
-        <thead>
-          <tr className="border-b border-ink text-left text-[12px] text-muted">
-            <th scope="col" className="pb-2 font-[550]">
-              항목
-            </th>
-            <th scope="col" className="pb-2 pl-3 text-right font-[550]">
-              AI 예상
-            </th>
-            <th scope="col" className="pb-2 pl-3 text-right font-[550]">
-              실제
-            </th>
-            <th scope="col" className="pb-2 pl-3 text-right font-[550]">
-              차이
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const numeric = r.diff !== undefined;
-            const tone = r.money && r.diff ? (r.diff > 0 ? "text-gain font-semibold" : "text-loss") : "text-ink-2";
-            return (
-              <tr key={r.label} className="border-b border-line">
-                <th scope="row" className="py-2.5 text-left font-normal text-ink-2">
-                  {r.label}
-                  {r.unit ? <span className="ml-1 text-[12px] text-muted">({r.unit})</span> : null}
-                </th>
-                <td className={`py-2.5 pl-3 text-right text-muted ${numeric ? "num" : ""}`}>
-                  {r.expected === "—" ? (
-                    <>
-                      <span aria-hidden="true">—</span>
-                      <span className="sr-only">예상 없음</span>
-                    </>
-                  ) : (
-                    r.expected
-                  )}
-                </td>
-                <td className={`py-2.5 pl-3 text-right font-semibold text-ink ${numeric ? "num" : ""}`}>{r.actual}</td>
-                <td className={`py-2.5 pl-3 text-right ${numeric ? `num ${tone}` : "text-muted"}`}>
-                  {numeric ? formatSigned(r.diff ?? 0) : r.expected === "—" ? "" : r.expected === r.actual ? "같음" : "다름"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <MoreDetails label="예상과 실제 비교표 보기" closeLabel="비교표 접기" hint="매입 여부·등급·단가·수거량·정산 금액">
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">{expected.streamName}의 예상 대비 실제 결과</caption>
+          <thead>
+            <tr className="border-b border-ink text-left text-[12px] text-muted">
+              <th scope="col" className="pb-2 font-[550]">
+                항목
+              </th>
+              <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                AI 예상
+              </th>
+              <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                실제
+              </th>
+              <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                차이
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const numeric = r.diff !== undefined;
+              const tone = r.money && r.diff ? (r.diff > 0 ? "text-gain font-semibold" : "text-loss") : "text-ink-2";
+              return (
+                <tr key={r.label} className="border-b border-line">
+                  <th scope="row" className="py-2.5 text-left font-normal text-ink-2">
+                    {r.label}
+                    {r.unit ? <span className="ml-1 text-[12px] text-muted">({r.unit})</span> : null}
+                  </th>
+                  <td className={`py-2.5 pl-3 text-right text-muted ${numeric ? "num" : ""}`}>
+                    {r.expected === "—" ? (
+                      <>
+                        <span aria-hidden="true">—</span>
+                        <span className="sr-only">예상 없음</span>
+                      </>
+                    ) : (
+                      r.expected
+                    )}
+                  </td>
+                  <td className={`py-2.5 pl-3 text-right font-semibold text-ink ${numeric ? "num" : ""}`}>{r.actual}</td>
+                  <td className={`py-2.5 pl-3 text-right ${numeric ? `num ${tone}` : "text-muted"}`}>
+                    {numeric ? formatSigned(r.diff ?? 0) : r.expected === "—" ? "" : r.expected === r.actual ? "같음" : "다름"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </MoreDetails>
       {outcome.reason && outcome.accepted ? <p className="text-[13px] text-ink-2">감량·감가 사유: {outcome.reason}</p> : null}
     </section>
   );

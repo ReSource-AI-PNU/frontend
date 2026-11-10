@@ -6,6 +6,7 @@ import { CONCLUSION_LABEL, RegulationReceipt, type ReceiptGroup } from "@/compon
 import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { ORIGIN_LABEL } from "@/components/session/stream-badges";
 import { buttonClass } from "@/components/ui/button";
+import { MoreDetails } from "@/components/ui/more-details";
 import { EmptyState } from "@/components/ui/empty-state";
 import { goToStep } from "@/lib/server/session-actions";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
@@ -147,24 +148,26 @@ export default async function RegulationPage({ params }: { params: Promise<{ id:
             </h2>
           </section>
 
-          <section aria-labelledby="regulation-next" className="border-t border-line pt-4">
-            <h2 id="regulation-next" className="text-label text-muted">
+          <section aria-labelledby="regulation-next" className="border-t border-line pt-2">
+            <h2 id="regulation-next" className="sr-only">
               다음 단계에 미치는 영향
             </h2>
-            <ul className="mt-2 grid list-disc gap-2 pl-4 text-sm text-ink-2 marker:text-muted">
-              {bundleNames.length ? (
-                <li>
-                  {joinNames(bundleNames)}은(는) 다음 단계에서 같은 단지 기업과 순회 수거로 묶습니다. 각 사업장이 수거 업체와 따로 계약하므로 공동처리 신고는
-                  필요하지 않습니다.
-                </li>
-              ) : null}
-              {noProof.length ? (
-                <li>{joinNames(noProof)}은(는) 입고 기록이 없어 사용 후(PCR) 원료가 아닌 일반 재생원료로 팝니다.</li>
-              ) : null}
-              {sellNames.length ? <li>{joinNames(sellNames)}의 매입처가 폐합성수지 재활용 허가를 가졌는지 매칭 단계에서 다시 확인합니다.</li> : null}
-              {pyroNames.length ? <li>{joinNames(pyroNames)}은(는) 열분해 재활용 허가를 가진 업체를 찾습니다.</li> : null}
-              {hasAsk ? <li>확인이 필요한 항목은 되묻기에 답하면 다시 검토합니다. 답하지 않으면 보수적인 조건으로 계산합니다.</li> : null}
-            </ul>
+            <MoreDetails label="다음 단계에 미치는 영향 보기" closeLabel="다음 단계에 미치는 영향 접기">
+              <ul className="mt-2 grid list-disc gap-2 pl-4 text-sm text-ink-2 marker:text-muted">
+                {bundleNames.length ? (
+                  <li>
+                    {joinNames(bundleNames)}은(는) 다음 단계에서 같은 단지 기업과 순회 수거로 묶습니다. 각 사업장이 수거 업체와 따로 계약하므로 공동처리 신고는
+                    필요하지 않습니다.
+                  </li>
+                ) : null}
+                {noProof.length ? (
+                  <li>{joinNames(noProof)}은(는) 입고 기록이 없어 사용 후(PCR) 원료가 아닌 일반 재생원료로 팝니다.</li>
+                ) : null}
+                {sellNames.length ? <li>{joinNames(sellNames)}의 매입처가 폐합성수지 재활용 허가를 가졌는지 매칭 단계에서 다시 확인합니다.</li> : null}
+                {pyroNames.length ? <li>{joinNames(pyroNames)}은(는) 열분해 재활용 허가를 가진 업체를 찾습니다.</li> : null}
+                {hasAsk ? <li>확인이 필요한 항목은 되묻기에 답하면 다시 검토합니다. 답하지 않으면 보수적인 조건으로 계산합니다.</li> : null}
+              </ul>
+            </MoreDetails>
           </section>
 
           <p className="border-t border-line pt-4 text-[12.5px] leading-relaxed text-muted">

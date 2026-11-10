@@ -7,6 +7,7 @@ import { DisagreeDialog } from "@/components/session/disagree-dialog";
 import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MoreDetails } from "@/components/ui/more-details";
 import { CARBON_BASE_LABEL, rebaseCarbon, type CarbonBase } from "@/lib/carbon";
 import { formatNumber, formatSigned } from "@/lib/format";
 import { goToStep } from "@/lib/server/session-actions";
@@ -152,46 +153,48 @@ export default async function CostCarbonPage({ params, searchParams }: PageProps
         <CostCarbonTable sessionId={session.id} routes={routes} selectedId={selectedId} disabled={locked} />
       </section>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-2 lg:gap-8">
-        <section aria-labelledby="chart-krw-title">
-          <h2 id="chart-krw-title" className="text-label text-muted">
-            시나리오별 공장 월 손익 (원/월)
-          </h2>
-          <DivergingBars
-            className="mt-3"
-            data={krwData}
-            ariaLabel={krwSummary}
-            unit="원/월"
-            labelWidth={150}
-            captions={{ negative: "지출", positive: "수익" }}
-            tableView={{ categoryHeader: "시나리오", valueHeader: "월 손익 (원)" }}
-          />
-        </section>
-        <section aria-labelledby="chart-co2-title">
-          <h2 id="chart-co2-title" className="text-label text-muted">
-            시나리오별 순 탄소 (tCO₂e/월, {baseLabel})
-          </h2>
-          <DivergingBars
-            className="mt-3"
-            data={co2Data}
-            ariaLabel={co2Summary}
-            goodWhen="negative"
-            fractionDigits={2}
-            unit="tCO₂e/월"
-            labelWidth={150}
-            captions={{ negative: "줄어드는 배출", positive: "늘어나는 배출" }}
-            tableView={{ categoryHeader: "시나리오", valueHeader: "순 탄소 (tCO₂e/월)" }}
-          />
-        </section>
-      </div>
-      <p className="mt-3 text-[12.5px] text-muted">두 차트는 위 비교표와 같은 값입니다. 단위가 달라 한 차트에 겹치지 않고 나눠 그렸습니다.</p>
+      <MoreDetails className="mt-4" label="차트로 보기" closeLabel="차트 접기" hint="월 손익과 순 탄소를 막대로 비교">
+        <div className="mt-3 grid gap-10 lg:grid-cols-2 lg:gap-8">
+          <section aria-labelledby="chart-krw-title">
+            <h2 id="chart-krw-title" className="text-label text-muted">
+              시나리오별 공장 월 손익 (원/월)
+            </h2>
+            <DivergingBars
+              className="mt-3"
+              data={krwData}
+              ariaLabel={krwSummary}
+              unit="원/월"
+              labelWidth={150}
+              captions={{ negative: "지출", positive: "수익" }}
+              tableView={{ categoryHeader: "시나리오", valueHeader: "월 손익 (원)" }}
+            />
+          </section>
+          <section aria-labelledby="chart-co2-title">
+            <h2 id="chart-co2-title" className="text-label text-muted">
+              시나리오별 순 탄소 (tCO₂e/월, {baseLabel})
+            </h2>
+            <DivergingBars
+              className="mt-3"
+              data={co2Data}
+              ariaLabel={co2Summary}
+              goodWhen="negative"
+              fractionDigits={2}
+              unit="tCO₂e/월"
+              labelWidth={150}
+              captions={{ negative: "줄어드는 배출", positive: "늘어나는 배출" }}
+              tableView={{ categoryHeader: "시나리오", valueHeader: "순 탄소 (tCO₂e/월)" }}
+            />
+          </section>
+        </div>
+        <p className="mt-3 text-[12.5px] text-muted">두 차트는 위 비교표와 같은 값입니다. 단위가 달라 한 차트에 겹치지 않고 나눠 그렸습니다.</p>
+      </MoreDetails>
 
       {current ? (
         <section aria-labelledby="streams-title" className="mt-12">
           <h2 id="streams-title" className="text-h2">
             흐름별 내역
           </h2>
-          <p className="mt-1 mb-4 max-w-3xl text-[15px] text-ink-2 tabular-nums">
+          <p className="mt-1 mb-1 max-w-3xl text-[15px] text-ink-2 tabular-nums">
             {top && topDiff > 0 ? (
               <>
                 차이가 가장 큰 흐름은 <b className="font-semibold text-ink">{top.name}</b>입니다. 현행 소각을 {withRo(STREAM_ROUTE_LABEL[top.route])} 바꾸면 월{" "}
@@ -201,7 +204,9 @@ export default async function CostCarbonPage({ params, searchParams }: PageProps
               "흐름마다 현행 소각과 최적안의 차이를 나눠 보여 줍니다."
             )}
           </p>
-          <CostCarbonStreams rows={streamRows} routeA={routeA} routeC={current} />
+          <MoreDetails label="흐름별 내역 표 보기" closeLabel="흐름별 내역 표 접기" hint={`흐름 ${streamRows.length}개의 손익·탄소·차이`}>
+            <CostCarbonStreams rows={streamRows} routeA={routeA} routeC={current} />
+          </MoreDetails>
         </section>
       ) : null}
 
@@ -209,27 +214,29 @@ export default async function CostCarbonPage({ params, searchParams }: PageProps
         <h2 id="assumptions-title" className="text-h2">
           계산 가정
         </h2>
-        <table className="mt-3 w-full border-collapse text-sm">
-          <caption className="sr-only">비용과 탄소 계산에 쓴 가정값</caption>
-          <tbody>
-            {result.assumptions.map((a) => (
-              <tr key={a.label} className="border-t border-line">
-                <th scope="row" className="w-28 py-2.5 pr-4 text-left align-top font-normal text-muted">
-                  {a.label}
+        <MoreDetails label="계산 가정 보기" closeLabel="계산 가정 접기" hint={`단가·계수 ${result.assumptions.length + 1}개`}>
+          <table className="mt-1 w-full border-collapse text-sm">
+            <caption className="sr-only">비용과 탄소 계산에 쓴 가정값</caption>
+            <tbody>
+              {result.assumptions.map((a) => (
+                <tr key={a.label} className="border-t border-line">
+                  <th scope="row" className="w-28 py-2.5 pr-4 text-left align-top font-normal text-muted">
+                    {a.label}
+                  </th>
+                  <td className="py-2.5 text-ink-2 tabular-nums">{a.value}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-line">
+                <th scope="row" className="py-2.5 pr-4 text-left align-top font-normal text-muted">
+                  탄소 기준
                 </th>
-                <td className="py-2.5 text-ink-2 tabular-nums">{a.value}</td>
+                <td className="py-2.5 text-ink-2">
+                  지금은 {baseLabel} 기준으로 보고 있습니다. {BASE_NOTE[hasLandfill ? base : "virgin"]} KAU 환산은 줄인 탄소를 배출권 가격으로 바꾼 참고값입니다.
+                </td>
               </tr>
-            ))}
-            <tr className="border-t border-line">
-              <th scope="row" className="py-2.5 pr-4 text-left align-top font-normal text-muted">
-                탄소 기준
-              </th>
-              <td className="py-2.5 text-ink-2">
-                지금은 {baseLabel} 기준으로 보고 있습니다. {BASE_NOTE[hasLandfill ? base : "virgin"]} KAU 환산은 줄인 탄소를 배출권 가격으로 바꾼 참고값입니다.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </MoreDetails>
         <p className="mt-2 text-[12.5px] text-muted">모든 단가와 계수는 시연용 가정값입니다. 실제 견적과 정산 결과가 들어오면 다시 계산합니다.</p>
       </section>
 

@@ -8,6 +8,7 @@ import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { OriginChip, RouteBadge } from "@/components/session/stream-badges";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
+import { MoreDetails } from "@/components/ui/more-details";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlipNumber } from "@/components/verdict/flip-number";
 import { summarizeConsent } from "@/lib/bundle-consent";
@@ -135,11 +136,6 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
                     ) : null}
                   </div>
                   <p className="mt-2 text-sm">{d.reason}</p>
-                  {d.action ? (
-                    <p className="mt-1 text-[13px] text-ink-2">
-                      할 일: <b className="font-semibold">{d.action.title}</b> · 월 <span className="num">{d.action.laborHours}</span>시간
-                    </p>
-                  ) : null}
                   {d.route === "bundle" ? (
                     <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-ink-2">
                       <span className="rounded-sm bg-marker px-1.5 text-[12px] font-semibold text-marker-ink">조건</span>
@@ -151,9 +147,23 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
                       ) : null}
                     </p>
                   ) : null}
-                  <details className="mt-2 text-[13px]">
-                    <summary className="cursor-pointer text-muted">다른 경로 {d.alternatives.length}개</summary>
-                    <ul className="mt-2 grid gap-1.5">
+                  <MoreDetails className="mt-1" hint={`${d.action ? "할 일 · " : ""}kg당 손익 · 다른 경로 ${d.alternatives.length}개`}>
+                    <div className="grid gap-2 text-[13px] text-ink-2">
+                      {d.action ? (
+                        <p>
+                          할 일: <b className="font-semibold text-ink">{d.action.title}</b> · 월 <span className="num">{d.action.laborHours}</span>시간(인건비{" "}
+                          <span className="num">{formatNumber(d.action.laborCost)}</span>원)
+                        </p>
+                      ) : null}
+                      <p>
+                        kg당 손익: <span className="num">{formatSigned(d.currentPerKg)}</span> → <b className="num font-semibold text-ink">{formatSigned(d.afterPerKg)}</b>원{" "}
+                        <Link href={`/session/${session.id}/feasibility?s=${d.streamId}#ladder-title`} scroll={false} className="ml-1 font-semibold text-ink underline underline-offset-2">
+                          단계별 손익 보기
+                        </Link>
+                      </p>
+                      <p className="text-label text-muted">다른 경로 {d.alternatives.length}개</p>
+                    </div>
+                    <ul className="mt-1.5 grid gap-1.5 text-[13px]">
                       {d.alternatives.map((a) => (
                         <li key={a.route} className="flex flex-wrap items-center gap-2">
                           <RouteBadge route={a.route} size="sm" />
@@ -169,7 +179,7 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
                         </li>
                       ))}
                     </ul>
-                  </details>
+                  </MoreDetails>
                 </div>
                 <dl className="grid content-start gap-1 text-right text-[13px]">
                   <div className="flex items-baseline justify-between gap-3">
@@ -180,15 +190,6 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
                     <dt className="text-muted">바꾸면</dt>
                     <dd className={`num text-[15px] font-semibold ${d.monthlyAfter >= 0 ? "text-gain" : "text-loss"}`}>{formatSigned(d.monthlyAfter)}원</dd>
                   </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-muted">kg당</dt>
-                    <dd className="num">
-                      {formatSigned(d.currentPerKg)} → {formatSigned(d.afterPerKg)}
-                    </dd>
-                  </div>
-                  <Link href={`/session/${session.id}/feasibility?s=${d.streamId}#ladder-title`} scroll={false} className="mt-1 text-[12px] font-semibold underline underline-offset-2">
-                    단계별 손익 보기
-                  </Link>
                 </dl>
               </li>
             );
@@ -196,46 +197,54 @@ export default async function FeasibilityPage({ params, searchParams }: PageProp
         </ol>
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <section aria-labelledby="ladder-title">
-          <h2 id="ladder-title" className="text-h2">
-            {focusStream.name} · 단계별 kg당 손익
-          </h2>
-          <p className="mt-1 text-sm text-muted">무엇을 하면 어디서부터 돈이 되는지 보여 줍니다. 단가는 시연용 가정값입니다.</p>
-          <div className="mt-4">
-            <FeasibilityLadder ladder={focus.ladder} />
-          </div>
-        </section>
+      <MoreDetails
+        label="판정 근거와 단계별 손익 보기"
+        closeLabel="판정 근거와 단계별 손익 접기"
+        hint={`근거 ${f.reasons.length}개${f.reasons.some((r) => r.knowledgeCardId) ? ` · 현장 지식 ${f.reasons.filter((r) => r.knowledgeCardId).length}개` : ""}`}
+        defaultOpen={Boolean(pick)}
+        className="border-t border-line pt-2"
+      >
+        <div className="grid gap-8 pt-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          <section aria-labelledby="ladder-title">
+            <h2 id="ladder-title" className="text-h2">
+              {focusStream.name} · 단계별 kg당 손익
+            </h2>
+            <p className="mt-1 text-sm text-muted">무엇을 하면 어디서부터 돈이 되는지 보여 줍니다. 단가는 시연용 가정값입니다.</p>
+            <div className="mt-4">
+              <FeasibilityLadder ladder={focus.ladder} />
+            </div>
+          </section>
 
-        <section aria-labelledby="reason-title">
-          <h2 id="reason-title" className="text-h2">
-            판정 근거
-          </h2>
-          <ol className="mt-3 border-t border-line">
-            {f.reasons.map((r, i) => (
-              <li key={i} className="grid gap-1 border-b border-line py-3 text-sm">
-                <p>{r.text}</p>
-                <p className="flex items-center gap-2 text-[12px] text-muted">
-                  {r.knowledgeCardId ? (
-                    <>
-                      <Badge tone="neutral">현장 지식</Badge>
-                      <Link href="/knowledge" className="underline underline-offset-2">
-                        {r.source}
-                      </Link>
-                    </>
-                  ) : (
-                    r.source
-                  )}
-                </p>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-3 flex items-start gap-2 rounded-md bg-sunken px-3.5 py-3 text-sm [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted">
-            <InfoIcon />
-            {f.note}
-          </p>
-        </section>
-      </div>
+          <section aria-labelledby="reason-title">
+            <h2 id="reason-title" className="text-h2">
+              판정 근거
+            </h2>
+            <ol className="mt-3 border-t border-line">
+              {f.reasons.map((r, i) => (
+                <li key={i} className="grid gap-1 border-b border-line py-3 text-sm">
+                  <p>{r.text}</p>
+                  <p className="flex items-center gap-2 text-[12px] text-muted">
+                    {r.knowledgeCardId ? (
+                      <>
+                        <Badge tone="neutral">현장 지식</Badge>
+                        <Link href="/knowledge" className="underline underline-offset-2">
+                          {r.source}
+                        </Link>
+                      </>
+                    ) : (
+                      r.source
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 flex items-start gap-2 rounded-md bg-sunken px-3.5 py-3 text-sm [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted">
+              <InfoIcon />
+              {f.note}
+            </p>
+          </section>
+        </div>
+      </MoreDetails>
 
       <StepFooter sessionId={session.id} step="feasibility" nextLabel="규정 검토" />
     </div>

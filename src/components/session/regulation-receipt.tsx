@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { RegulationItem, RegulationResult, StreamRoute } from "@/lib/session/types";
 import { Badge } from "../ui/badge";
+import { MoreDetails } from "../ui/more-details";
 import { RouteBadge } from "./stream-badges";
 
 const STATUS: Record<RegulationItem["status"], { sr: string; icon: string; result: string }> = {
@@ -93,6 +94,7 @@ function ReceiptItem({ item }: { item: RegulationItem }) {
  * 문제 정의 v2: 항목을 공장의 폐플라스틱 흐름별로 묶는다. 흐름 머리말에 경로 배지를 달고, 그 흐름의 되묻기를 바로 아래에 둔다.
  * common: 공장 공통 되묻기(성분분석표 등). note: 머리말 아래 한 줄 설명.
  * 인용 조항은 AI가 고른 근거이므로 형광펜 밑줄을 긋는다.
+ * 요약 먼저: 모두 충족한 흐름은 한 줄 요약만 보이고 조항은 "조항 보기"로 펼친다. 확인이 필요하거나 막힌 흐름은 조항을 바로 보여 준다.
  */
 export function RegulationReceipt({
   result,
@@ -126,7 +128,11 @@ export function RegulationReceipt({
         <p className="mt-0.5 text-[13px] text-muted">
           흐름 {groups.length}개에 대해 조항 {result.items.length}건을 인용했습니다. {tally}입니다. 항목을 누르면 조문 요지를 볼 수 있습니다.
         </p>
-        {note ? <p className="mt-2 text-[13px] text-ink-2">{note}</p> : null}
+        {note ? (
+          <MoreDetails label="출처를 묻는 이유 보기" closeLabel="접기">
+            <p className="text-[13px] text-ink-2">{note}</p>
+          </MoreDetails>
+        ) : null}
       </header>
 
       {common ? (
@@ -151,7 +157,21 @@ export function RegulationReceipt({
             </div>
             {g.route ? <RouteBadge route={g.route} size="sm" /> : null}
           </div>
-          {g.items.length ? (
+          {g.items.length && g.items.every((i) => i.status === "ok") && !g.ask ? (
+            <MoreDetails
+              label="조항 보기"
+              closeLabel="조항 접기"
+              hint={g.items.length <= 2 ? g.items.map((i) => `${i.label} ${i.result}`).join(" · ") : `충족 ${g.items.length}건`}
+            >
+              <ul className="divide-y divide-dashed divide-line">
+                {g.items.map((item) => (
+                  <li key={item.id}>
+                    <ReceiptItem item={item} />
+                  </li>
+                ))}
+              </ul>
+            </MoreDetails>
+          ) : g.items.length ? (
             <ul className="mt-1 divide-y divide-dashed divide-line">
               {g.items.map((item) => (
                 <li key={item.id}>

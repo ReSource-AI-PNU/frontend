@@ -8,6 +8,7 @@ import { OriginChip } from "@/components/session/stream-badges";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MoreDetails } from "@/components/ui/more-details";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { CONSENT_LABEL, CONSENT_TONE, summarizeConsent } from "@/lib/bundle-consent";
 import { findComplex } from "@/lib/complexes";
@@ -159,44 +160,53 @@ async function NeighborPageContent({ searchParams }: { searchParams: Promise<Rec
                             가 되어 업체가 정기적으로 가지러 옵니다.
                           </p>
                           <dl className="mt-3 border-t border-line text-sm">
-                            <Row label="품목">
-                              <span className="inline-flex flex-wrap items-center gap-2">
-                                {stream.classify.detail}
-                                <OriginChip origin={stream.origin} source="human" />
-                              </span>
-                            </Row>
                             <Row label="우리 회사 월 물량">
                               <span className="num font-semibold">{formatNumber(mine.kg)}kg</span>
-                              <span className="ml-2 text-[12.5px] text-muted">회사 프로필 기준. 다른 회사 물량은 서로 보지 않습니다.</span>
+                              <span className="ml-2 text-[12.5px] text-muted">다른 회사 물량은 서로 보지 않습니다.</span>
                             </Row>
                             <Row label="운반비 분담">
                               <span className="num font-semibold">{share.toFixed(1)}%</span>
                               <span className="ml-2 text-[12.5px] text-muted">월 물량 비율</span>
                             </Row>
-                            <Row label="수거 업체">
-                              {bundle.collector.name} · 허가 {bundle.collector.permits.join(", ") || "없음"}
-                            </Row>
-                            <Row label="수거 일정">{bundle.schedule}</Row>
-                            {position >= 0 ? (
-                              <Row label="순회 순서">
-                                {bundle.group.length}곳 중 <span className="num font-semibold">{position + 1}</span>번째
-                                {bundle.routeM ? <span className="ml-2 text-[12.5px] text-muted">전체 약 {(bundle.routeM / 1000).toFixed(1)}km</span> : null}
-                              </Row>
-                            ) : null}
                             {decision && gain !== null ? (
                               <Row label="예상 효과">
                                 <span className="num font-semibold text-gain">{formatSigned(decision.afterPerKg)}원/kg</span>
-                                <span className="ml-2 text-[12.5px] text-muted">
-                                  운반비 분담 후. 지금 소각 위탁(kg당 {formatNumber(Math.abs(decision.currentPerKg))}원)한다면 월 {formatSigned(gain)}원(가정)
-                                </span>
+                                <span className="ml-2 text-[12.5px] text-muted">지금 소각한다면 월 {formatSigned(gain)}원 개선(가정)</span>
                               </Row>
                             ) : null}
                           </dl>
-                          <p className="mt-3 rounded-md bg-sunken px-3.5 py-3 text-[13px] leading-relaxed text-ink-2">
-                            <b className="font-semibold text-ink">순회 수거:</b> 각 사업장이 {josa(bundle.collector.name, "와/과")} 따로 계약하고, 업체가 사업장을 차례로
-                            돌며 사업장마다 계량하고 전자인계서를 씁니다. 폐기물을 한곳에 모아 두는 공동 보관은 하지 않습니다(「폐기물관리법 시행규칙」
-                            제21조제1항제7호의2).
-                          </p>
+                          <MoreDetails label="제안 상세 보기" closeLabel="제안 상세 접기" hint="품목·수거 업체·일정·순회 순서·계약 방식">
+                            <dl className="border-t border-line text-sm">
+                              <Row label="품목">
+                                <span className="inline-flex flex-wrap items-center gap-2">
+                                  {stream.classify.detail}
+                                  <OriginChip origin={stream.origin} source="human" />
+                                </span>
+                              </Row>
+                              <Row label="수거 업체">
+                                {bundle.collector.name} · 허가 {bundle.collector.permits.join(", ") || "없음"}
+                              </Row>
+                              <Row label="수거 일정">{bundle.schedule}</Row>
+                              {position >= 0 ? (
+                                <Row label="순회 순서">
+                                  {bundle.group.length}곳 중 <span className="num font-semibold">{position + 1}</span>번째
+                                  {bundle.routeM ? <span className="ml-2 text-[12.5px] text-muted">전체 약 {(bundle.routeM / 1000).toFixed(1)}km</span> : null}
+                                </Row>
+                              ) : null}
+                              {decision ? (
+                                <Row label="예상 효과 계산">
+                                  <span className="text-[13px] text-ink-2">
+                                    운반비 분담 후 kg당 {formatSigned(decision.afterPerKg)}원, 지금 소각 위탁비 kg당 {formatNumber(Math.abs(decision.currentPerKg))}원(가정)의 차이
+                                  </span>
+                                </Row>
+                              ) : null}
+                            </dl>
+                            <p className="mt-3 rounded-md bg-sunken px-3.5 py-3 text-[13px] leading-relaxed text-ink-2">
+                              <b className="font-semibold text-ink">순회 수거:</b> 각 사업장이 {josa(bundle.collector.name, "와/과")} 따로 계약하고, 업체가 사업장을 차례로
+                              돌며 사업장마다 계량하고 전자인계서를 씁니다. 폐기물을 한곳에 모아 두는 공동 보관은 하지 않습니다(「폐기물관리법 시행규칙」
+                              제21조제1항제7호의2).
+                            </p>
+                          </MoreDetails>
                         </div>
 
                         <div className="grid content-start gap-4">

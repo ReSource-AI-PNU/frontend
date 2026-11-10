@@ -8,6 +8,7 @@ import { josa } from "@/lib/josa";
 import type { BundleGroup, StreamRoute } from "@/lib/session/types";
 import { ComplexMap, type MapHighlight } from "../complex/complex-map";
 import { Badge } from "../ui/badge";
+import { MoreDetails } from "../ui/more-details";
 import { buttonClass } from "../ui/button";
 import { TruckFillMeter } from "./matching-meter";
 import { RouteBadge } from "./stream-badges";
@@ -454,136 +455,146 @@ function BundlePanel({
         </div>
       ) : null}
 
-      <p className="rounded-md bg-sunken px-3.5 py-3 text-[13.5px] leading-relaxed text-ink-2">
-        <b className="font-semibold text-ink">순회 수거:</b> 각 사업장이 같은 업체와 따로 계약하고 업체가 차례로 돕니다. 공동 보관은 금지됩니다.
+      <p className="text-[13.5px] text-ink-2 tabular-nums">
+        수거 업체 <b className="font-semibold text-ink">{b.collector.name}</b> · {formatNumber(b.collector.distanceM)}m
+        {visit?.length && b.routeM ? ` · 순회 ${visit.length}곳 약 ${km(b.routeM)}km` : ""}
+        {b.excluded.length ? ` · 허가 불일치 제외 ${b.excluded.length}곳` : ""}
       </p>
 
-      <div>
-        <h3 className="text-label text-muted">묶음 그룹 {b.group.length}개사</h3>
-        <table className="mt-2 w-full border-collapse text-sm">
-          <caption className="sr-only">{view.streamName} 순회 수거 그룹. 기업별 거리, 월 물량, 비용 분담 비율</caption>
-          <thead>
-            <tr className="border-b border-ink text-left text-[12px] text-muted">
-              <th scope="col" className="pb-2 font-[550]">
-                기업
-              </th>
-              <th scope="col" className="pb-2 pl-3 text-right font-[550]">
-                거리 (m)
-              </th>
-              <th scope="col" className="pb-2 pl-3 text-right font-[550]">
-                월 물량 (kg)
-              </th>
-              <th scope="col" className="pb-2 pl-3 text-right font-[550]">
-                분담 (%)
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {b.group.map((g, i) => (
-              <tr
-                key={g.companyId}
-                aria-hidden={i >= revealed ? true : undefined}
-                className={`border-b border-line transition-opacity duration-500 motion-reduce:transition-none ${i >= revealed ? "opacity-0" : ""} ${selectedId === g.companyId ? "bg-sunken" : ""}`}
-              >
-                <th scope="row" className="py-1.5 text-left font-normal">
-                  <button type="button" onClick={() => onSelect(g.companyId)} aria-pressed={selectedId === g.companyId} className={nameButton}>
-                    <Shape kind="group" />
-                    <span className={g.isSelf ? "font-semibold" : ""}>{g.name}</span>
-                    {g.isSelf ? <span className="rounded-sm bg-sunken px-1.5 text-[11.5px] text-ink-2">내 회사</span> : null}
-                    {consentOf.get(g.companyId)?.state === "declined" ? <span className="rounded-sm bg-loss-bg px-1.5 text-[11.5px] text-loss">불참</span> : null}
-                  </button>
-                </th>
-                <td className={`py-1.5 pl-3 text-right ${g.isSelf ? "text-[13px] text-muted" : "num"}`}>{g.isSelf ? "기준" : formatNumber(g.distanceM)}</td>
-                <td className={`py-1.5 pl-3 text-right ${g.isSelf ? "num" : "text-[13px] text-muted"}`}>{g.isSelf ? formatNumber(g.kg) : "비공개"}</td>
-                <td className="num py-1.5 pl-3 text-right">{final ? (share.get(g.companyId) ?? 0).toFixed(1) : "·"}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="font-semibold">
-              <th scope="row" className="py-2.5 text-left">
-                합계
-              </th>
-              <td className="py-2.5" />
-              <td className="num py-2.5 pl-3 text-right">{formatNumber(final ? b.totalKg : shownKg)}</td>
-              <td className="num py-2.5 pl-3 text-right">{final ? "100.0" : "·"}</td>
-            </tr>
-          </tfoot>
-        </table>
-        <p className="mt-2 text-[13px] text-muted">
-          운반비는 월 물량 비율로 나눕니다. 다른 회사의 물량은 공정 정보가 드러나지 않도록 숨기고, 묶음 합계와 분담 비율만 보여 줍니다.
-        </p>
-      </div>
+      <MoreDetails label="묶음 상세 보기" hint="그룹·분담 비율·순회 순서·제외 업체">
+        <div className="grid gap-5 pt-2">
+          <p className="rounded-md bg-sunken px-3.5 py-3 text-[13.5px] leading-relaxed text-ink-2">
+            <b className="font-semibold text-ink">순회 수거:</b> 각 사업장이 같은 업체와 따로 계약하고 업체가 차례로 돕니다. 공동 보관은 금지됩니다.
+          </p>
 
-      <div>
-        <h3 className="text-label text-muted">수거 업체</h3>
-        <div className="mt-1 flex items-start justify-between gap-3">
-          <button type="button" onClick={() => onSelect(b.collector.companyId)} className={`${nameButton} text-[17px] font-semibold`}>
-            <Shape kind="collector" />
-            {b.collector.name}
-          </button>
-          <span className="num pt-1.5 text-sm text-muted">{formatNumber(b.collector.distanceM)}m</span>
-        </div>
-        <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-line text-sm">
-          <dt className="border-b border-line py-2 text-muted">허가 품목</dt>
-          <dd className="flex flex-wrap justify-end gap-1.5 border-b border-line py-2">
-            {b.collector.permits.length ? (
-              b.collector.permits.map((p) => (
-                <span key={p} className={`rounded-sm px-1.5 text-[12.5px] ${permitted(p) ? "bg-ink font-semibold text-on-ink" : "bg-sunken text-ink-2"}`}>
-                  {p}
-                </span>
-              ))
-            ) : (
-              <span className="text-muted">등록된 허가 품목 없음</span>
-            )}
-          </dd>
-          <dt className="border-b border-line py-2 text-muted">수거 일정</dt>
-          <dd className="border-b border-line py-2 text-right">{b.schedule}</dd>
-        </dl>
-        {visit?.length ? (
-          <div className={`mt-4 transition-opacity duration-500 motion-reduce:transition-none ${final ? "" : "opacity-0"}`} aria-hidden={final ? undefined : true}>
-            <h4 className="text-label text-muted">순회 순서 (제안)</h4>
-            <ol className="mt-2 grid gap-1.5 text-sm">
-              <li className="flex items-center gap-2.5 text-ink-2">
-                <span aria-hidden="true" className="inline-block size-2.5 rounded-[2px] bg-ink" />
-                {b.collector.name} 출발
-              </li>
-              {visit.map((id, i) => (
-                <li key={id} className="flex items-center gap-2.5">
-                  <span className="num grid size-[18px] place-items-center rounded-full bg-ink text-[10.5px] font-bold text-on-ink">{i + 1}</span>
-                  <span className={b.group.find((g) => g.companyId === id)?.isSelf ? "font-semibold" : ""}>{nameOf(id)}</span>
-                </li>
-              ))}
-              <li className="flex items-center gap-2.5 text-ink-2">
-                <span aria-hidden="true" className="inline-block size-2.5 rounded-[2px] bg-ink" />
-                복귀{b.routeM ? <span className="num text-muted">· 약 {km(b.routeM)}km</span> : null}
-              </li>
-            </ol>
-            <p className="mt-2 text-[12.5px] text-muted">
-              업체 위치에서 가장 가까운 사업장부터 도는 순서입니다. 거리는 직선거리에 도로 계수 1.3을 곱한 가정값이고, 사업장마다 따로 계량해 전자인계서를 씁니다.
+          <div>
+            <h3 className="text-label text-muted">묶음 그룹 {b.group.length}개사</h3>
+            <table className="mt-2 w-full border-collapse text-sm">
+              <caption className="sr-only">{view.streamName} 순회 수거 그룹. 기업별 거리, 월 물량, 비용 분담 비율</caption>
+              <thead>
+                <tr className="border-b border-ink text-left text-[12px] text-muted">
+                  <th scope="col" className="pb-2 font-[550]">
+                    기업
+                  </th>
+                  <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                    거리 (m)
+                  </th>
+                  <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                    월 물량 (kg)
+                  </th>
+                  <th scope="col" className="pb-2 pl-3 text-right font-[550]">
+                    분담 (%)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {b.group.map((g, i) => (
+                  <tr
+                    key={g.companyId}
+                    aria-hidden={i >= revealed ? true : undefined}
+                    className={`border-b border-line transition-opacity duration-500 motion-reduce:transition-none ${i >= revealed ? "opacity-0" : ""} ${selectedId === g.companyId ? "bg-sunken" : ""}`}
+                  >
+                    <th scope="row" className="py-1.5 text-left font-normal">
+                      <button type="button" onClick={() => onSelect(g.companyId)} aria-pressed={selectedId === g.companyId} className={nameButton}>
+                        <Shape kind="group" />
+                        <span className={g.isSelf ? "font-semibold" : ""}>{g.name}</span>
+                        {g.isSelf ? <span className="rounded-sm bg-sunken px-1.5 text-[11.5px] text-ink-2">내 회사</span> : null}
+                        {consentOf.get(g.companyId)?.state === "declined" ? <span className="rounded-sm bg-loss-bg px-1.5 text-[11.5px] text-loss">불참</span> : null}
+                      </button>
+                    </th>
+                    <td className={`py-1.5 pl-3 text-right ${g.isSelf ? "text-[13px] text-muted" : "num"}`}>{g.isSelf ? "기준" : formatNumber(g.distanceM)}</td>
+                    <td className={`py-1.5 pl-3 text-right ${g.isSelf ? "num" : "text-[13px] text-muted"}`}>{g.isSelf ? formatNumber(g.kg) : "비공개"}</td>
+                    <td className="num py-1.5 pl-3 text-right">{final ? (share.get(g.companyId) ?? 0).toFixed(1) : "·"}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="font-semibold">
+                  <th scope="row" className="py-2.5 text-left">
+                    합계
+                  </th>
+                  <td className="py-2.5" />
+                  <td className="num py-2.5 pl-3 text-right">{formatNumber(final ? b.totalKg : shownKg)}</td>
+                  <td className="num py-2.5 pl-3 text-right">{final ? "100.0" : "·"}</td>
+                </tr>
+              </tfoot>
+            </table>
+            <p className="mt-2 text-[13px] text-muted">
+              운반비는 월 물량 비율로 나눕니다. 다른 회사의 물량은 공정 정보가 드러나지 않도록 숨기고, 묶음 합계와 분담 비율만 보여 줍니다.
             </p>
           </div>
-        ) : null}
-        <p className="mt-2 text-[13px] text-muted">일정은 업체가 요청서에 회신하면 확정됩니다. 지금 일정은 업체 공개 정보를 바탕으로 한 가정입니다.</p>
-      </div>
 
-      <div>
-        <h3 className="text-label text-muted">허가 불일치로 제외한 업체 {b.excluded.length}곳</h3>
-        {b.excluded.length ? (
-          <ul className="mt-2 grid gap-2">
-            {b.excluded.map((e) => (
-              <li key={e.companyId} className="grid grid-cols-[18px_minmax(0,1fr)] gap-2.5 rounded-md bg-warn-bg px-3.5 py-2.5 text-sm [&_svg]:mt-0.5 [&_svg]:text-warn">
-                <AlertIcon />
-                <p>
-                  <b className="font-semibold">{josa(e.name, "을/를")}</b> 후보에서 제외했습니다. 사유는 {e.reason}입니다.
+          <div>
+            <h3 className="text-label text-muted">수거 업체</h3>
+            <div className="mt-1 flex items-start justify-between gap-3">
+              <button type="button" onClick={() => onSelect(b.collector.companyId)} className={`${nameButton} text-[17px] font-semibold`}>
+                <Shape kind="collector" />
+                {b.collector.name}
+              </button>
+              <span className="num pt-1.5 text-sm text-muted">{formatNumber(b.collector.distanceM)}m</span>
+            </div>
+            <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-line text-sm">
+              <dt className="border-b border-line py-2 text-muted">허가 품목</dt>
+              <dd className="flex flex-wrap justify-end gap-1.5 border-b border-line py-2">
+                {b.collector.permits.length ? (
+                  b.collector.permits.map((p) => (
+                    <span key={p} className={`rounded-sm px-1.5 text-[12.5px] ${permitted(p) ? "bg-ink font-semibold text-on-ink" : "bg-sunken text-ink-2"}`}>
+                      {p}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-muted">등록된 허가 품목 없음</span>
+                )}
+              </dd>
+              <dt className="border-b border-line py-2 text-muted">수거 일정</dt>
+              <dd className="border-b border-line py-2 text-right">{b.schedule}</dd>
+            </dl>
+            {visit?.length ? (
+              <div className={`mt-4 transition-opacity duration-500 motion-reduce:transition-none ${final ? "" : "opacity-0"}`} aria-hidden={final ? undefined : true}>
+                <h4 className="text-label text-muted">순회 순서 (제안)</h4>
+                <ol className="mt-2 grid gap-1.5 text-sm">
+                  <li className="flex items-center gap-2.5 text-ink-2">
+                    <span aria-hidden="true" className="inline-block size-2.5 rounded-[2px] bg-ink" />
+                    {b.collector.name} 출발
+                  </li>
+                  {visit.map((id, i) => (
+                    <li key={id} className="flex items-center gap-2.5">
+                      <span className="num grid size-[18px] place-items-center rounded-full bg-ink text-[10.5px] font-bold text-on-ink">{i + 1}</span>
+                      <span className={b.group.find((g) => g.companyId === id)?.isSelf ? "font-semibold" : ""}>{nameOf(id)}</span>
+                    </li>
+                  ))}
+                  <li className="flex items-center gap-2.5 text-ink-2">
+                    <span aria-hidden="true" className="inline-block size-2.5 rounded-[2px] bg-ink" />
+                    복귀{b.routeM ? <span className="num text-muted">· 약 {km(b.routeM)}km</span> : null}
+                  </li>
+                </ol>
+                <p className="mt-2 text-[12.5px] text-muted">
+                  업체 위치에서 가장 가까운 사업장부터 도는 순서입니다. 거리는 직선거리에 도로 계수 1.3을 곱한 가정값이고, 사업장마다 따로 계량해 전자인계서를 씁니다.
                 </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-1 text-[13px] text-ink-2">단지 안 처리업체가 모두 이 품목 허가를 갖고 있어, 제외한 업체가 없습니다.</p>
-        )}
-      </div>
+              </div>
+            ) : null}
+            <p className="mt-2 text-[13px] text-muted">일정은 업체가 요청서에 회신하면 확정됩니다. 지금 일정은 업체 공개 정보를 바탕으로 한 가정입니다.</p>
+          </div>
+
+          <div>
+            <h3 className="text-label text-muted">허가 불일치로 제외한 업체 {b.excluded.length}곳</h3>
+            {b.excluded.length ? (
+              <ul className="mt-2 grid gap-2">
+                {b.excluded.map((e) => (
+                  <li key={e.companyId} className="grid grid-cols-[18px_minmax(0,1fr)] gap-2.5 rounded-md bg-warn-bg px-3.5 py-2.5 text-sm [&_svg]:mt-0.5 [&_svg]:text-warn">
+                    <AlertIcon />
+                    <p>
+                      <b className="font-semibold">{josa(e.name, "을/를")}</b> 후보에서 제외했습니다. 사유는 {e.reason}입니다.
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-[13px] text-ink-2">단지 안 처리업체가 모두 이 품목 허가를 갖고 있어, 제외한 업체가 없습니다.</p>
+            )}
+          </div>
+        </div>
+      </MoreDetails>
     </section>
   );
 }
