@@ -14,6 +14,7 @@ import { getCompanies } from "./companies";
 import { ensureLearningSeeds, models } from "./mock/learning";
 import { ensureOwnerMember, findMemberForUser } from "./mock/members";
 import { newId, nowIso, UPLOAD_DIR } from "./mock/db";
+import { negotiate, termsText, WEEKDAYS } from "./mock/negotiation";
 import { appendRun, classifyEvents, human, reply, startEvents, STEP_OF_WORD, stepEvents } from "./mock/run-log";
 import {
   buildCostCarbon,
@@ -567,6 +568,99 @@ export async function runCommand(sessionId: string, _prev: unknown, formData: Fo
     await goToStep(sessionId, step);
   }
   return done("아직 이해하지 못하는 명령입니다.", COMMAND_HELP);
+}
+
+const guardrailSchema = z.object({
+  minPerKg: z.coerce.number().int().min(50, "하한 단가는 50원 이상이어야 합니다.").max(300),
+  minPerMonth: z.coerce.number().int().min(1).max(4),
+  days: z.array(z.enum(WEEKDAYS)).min(1, "가능한 요일을 하나 이상 골라 주세요."),
+});
+
+/**
+ * 수거 조건 협상을 에이전트에게 맡긴다. 사람은 가드레일(하한 단가, 가능 요일, 월 최소 횟수)만 정하고,
+ * 우리 에이전트와 수거 업체 에이전트가 조건을 주고받는다. 합의안은 승인권자가 승인해야 확정된다.
+ */
+export async function startNegotiation(sessionId: string, streamId: string, _prev: unknown, formData: FormData) {
+  const { session } = await getSessionForCurrentOrg(sessionId);
+  const bundle = session.matching?.bundles.find((b) => b.streamId === streamId);
+  if (!session.approval || session.approval.routeId !== "A" || !bundle) return { error: "A. 흐름별 최적안을 승인해 순회 수거 요청서를 보낸 뒤에 협상할 수 있습니다." };
+  if (session.negotiations?.some((n) => n.streamId === streamId && n.status === "approved")) return { error: "이미 승인한 합의안이 있습니다." };
+  const parsed = guardrailSchema.safeParse({ minPerKg: formData.get("minPerKg"), minPerMonth: formData.get("minPerMonth"), days: formData.getAll("days") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "가드레일을 확인해 주세요." };
+  const g = { ...parsed.data, maxRounds: 6 };
+  const n = negotiate(bundle, g);
+  const who = (by: "ours" | "theirs") => (by === "ours" ? "우리 에이전트" : `${bundle.collector.name} 에이전트`);
+  await saveSession(sessionId, (s) =>
+    appendRun({ ...s, negotiations: [...(s.negotiations ?? []).filter((x) => x.streamId !== streamId), n] }, [
+      human(`협상 위임 · 하한 ${g.minPerKg}원/kg, ${g.days.join("·")}요일, 월 ${g.minPerMonth}회 이상`, {
+        agent: "negotiation",
+        step: "proposal",
+        streamId,
+        detail: "에이전트는 이 범위 안에서만 양보하고, 벗어나면 사람에게 넘깁니다.",
+      }),
+      ...n.rounds.map((r) => ({
+        agent: "negotiation" as const,
+        actor: "ai" as const,
+        kind: "decision" as const,
+        tool: "A2A · 에이전트 간 메시지",
+        title: `${who(r.by)} · ${termsText(r.terms)}${r.accept ? " · 수락" : ""}`,
+        detail: r.message,
+        refs: [r.within ? "우리 가드레일 안" : "우리 가드레일 밖"],
+        step: "proposal" as const,
+        streamId,
+        durationMs: 1600,
+      })),
+      n.status === "agreed"
+        ? { agent: "negotiation" as const, actor: "ai" as const, kind: "ask" as const, title: `합의안 · ${termsText(n.agreed!)} · 사람 승인 대기`, step: "proposal" as const, streamId, durationMs: 100 }
+        : { agent: "negotiation" as const, actor: "ai" as const, kind: "ask" as const, title: "합의하지 못해 사람에게 넘깁니다", detail: n.note, step: "proposal" as const, streamId, durationMs: 100 },
+    ]),
+  );
+  revalidatePath(`/session/${sessionId}`, "layout");
+  return { ok: true as const };
+}
+
+/** 합의안 승인(승인권자). 순회 수거 일정과 업체 회신을 확정하고 이웃 기업에 알린다 */
+export async function approveNegotiation(sessionId: string, negotiationId: string) {
+  const { session, org } = await getSessionForCurrentOrg(sessionId);
+  const user = await getCurrentUser();
+  await ensureOwnerMember(org, user);
+  const member = await findMemberForUser(org.id, user.id);
+  if (member?.role === "담당자") return { error: "합의안 승인은 승인권자 이상만 할 수 있습니다." };
+  const n = session.negotiations?.find((x) => x.id === negotiationId);
+  if (!n || n.status !== "agreed" || !n.agreed) return { error: "승인할 합의안이 없습니다." };
+  const agreed = n.agreed;
+  const schedule = `매월 ${agreed.perMonth === 2 ? "둘째·넷째 주" : `${agreed.perMonth}회`} ${agreed.day}요일 ${agreed.slot}, 사업장별 순회`;
+  const neighbors = session.matching?.bundles.find((b) => b.streamId === n.streamId)?.group.filter((g) => !g.isSelf).length ?? 0;
+  await saveSession(sessionId, (s) =>
+    appendRun(
+      {
+        ...s,
+        negotiations: (s.negotiations ?? []).map((x) => (x.id === negotiationId ? { ...x, status: "approved", approvedBy: user.name, approvedAt: nowIso() } : x)),
+        matching: s.matching ? { ...s.matching, bundles: s.matching.bundles.map((b) => (b.streamId === n.streamId ? { ...b, schedule } : b)) } : s.matching,
+      },
+      [
+        human(`합의안 승인 · ${termsText(agreed)}`, { agent: "negotiation", step: "proposal", streamId: n.streamId, detail: `${josa(user.name, "이/가")} 승인했습니다.` }),
+        reply(`순회 일정 확정 · ${schedule}`, `${n.counterparty.name}의 순회 수거 요청서에 수락 회신을 남기고, 이웃 기업 ${neighbors}곳에 확정 일정을 알렸습니다(모의).`),
+      ],
+    ),
+  );
+  const pickup = await outbox.find((m) => m.sessionId === sessionId && m.kind === "pickup" && m.streamId === n.streamId);
+  if (pickup) await outbox.update(pickup.id, (m) => ({ ...m, status: m.status === "completed" ? m.status : "replied", reply: { decision: "accepted", at: nowIso(), by: `${n.counterparty.name} 에이전트`, reason: termsText(agreed) } }));
+  revalidatePath("/", "layout");
+  return { ok: true as const };
+}
+
+/** 합의하지 못했거나 조건을 바꾸고 싶을 때 협상 기록을 지우고 가드레일부터 다시 정한다(승인 전만) */
+export async function resetNegotiation(sessionId: string, negotiationId: string) {
+  await getSessionForCurrentOrg(sessionId);
+  await saveSession(sessionId, (s) => {
+    const n = s.negotiations?.find((x) => x.id === negotiationId);
+    if (!n || n.status === "approved") return s;
+    return appendRun({ ...s, negotiations: (s.negotiations ?? []).filter((x) => x.id !== negotiationId) }, [
+      human("협상 다시 하기 · 가드레일부터 다시 정합니다", { agent: "negotiation", step: "proposal", streamId: n.streamId }),
+    ]);
+  });
+  revalidatePath(`/session/${sessionId}`, "layout");
 }
 
 const replySchema = z.object({

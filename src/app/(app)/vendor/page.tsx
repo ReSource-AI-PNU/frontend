@@ -14,6 +14,7 @@ import { findComplex } from "@/lib/complexes";
 import { formatNumber, formatSigned } from "@/lib/format";
 import { bundleConsents } from "@/lib/server/bundle-consent";
 import { getCompanies } from "@/lib/server/companies";
+import { termsText } from "@/lib/server/mock/negotiation";
 import { MIN_KG } from "@/lib/server/mock/pipeline";
 import { requireOrganization } from "@/lib/server/organization";
 import { outbox, sessions } from "@/lib/server/sessions";
@@ -291,6 +292,16 @@ async function VendorPageContent({ searchParams }: { searchParams: Promise<Recor
                               </span>
                             </Row>
                             <Row label="수거 주기">{t.bundle.schedule}</Row>
+                            {(() => {
+                              const n = s.negotiations?.find((x) => x.streamId === t.stream.id);
+                              if (!n) return null;
+                              return (
+                                <Row label="에이전트 협상">
+                                  {n.status === "approved" ? "합의 · 배출 기업 승인 완료" : n.status === "agreed" ? "합의 · 배출 기업 승인 대기" : "합의 실패"}
+                                  {n.agreed ? <span className="num block text-[12px] text-muted">{termsText(n.agreed)}</span> : null}
+                                </Row>
+                              );
+                            })()}
                           </>
                         ) : (
                           <Row label="수거 주기">협의</Row>

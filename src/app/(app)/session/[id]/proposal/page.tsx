@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LiveRefresh } from "@/components/live-refresh";
 import { DisagreeDialog } from "@/components/session/disagree-dialog";
+import { NegotiationPanel } from "@/components/session/negotiation-panel";
 import { ProposalDocuments, type DocStatus, type DocView } from "@/components/session/proposal-documents";
 import { ProposalGate, type GateTarget } from "@/components/session/proposal-gate";
 import { ProposalOutcomeForm, type OutcomeStream } from "@/components/session/proposal-outcome";
@@ -11,6 +12,7 @@ import { StepFooter, StepHeader } from "@/components/session/step-chrome";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { bundleConsents } from "@/lib/server/bundle-consent";
+import { DEFAULT_GUARDRAILS, requestedTerms } from "@/lib/server/mock/negotiation";
 import { goToStep } from "@/lib/server/session-actions";
 import { getCurrentUser } from "@/lib/server/session";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
@@ -210,6 +212,31 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
           )}
         </aside>
       </div>
+
+      {approval?.routeId === "A"
+        ? (m?.bundles ?? []).map((b) => {
+            const s = streamOf.get(b.streamId);
+            const d = decisions.find((x) => x.streamId === b.streamId);
+            if (!s || !d) return null;
+            const requested = requestedTerms(b);
+            const n = session.negotiations?.find((x) => x.streamId === b.streamId);
+            const impact = n?.agreed ? { before: d.monthlyAfter, after: d.monthlyAfter + (n.agreed.perKg - requested.perKg) * s.monthlyKg } : undefined;
+            return (
+              <div key={b.streamId} className="mt-10 max-w-4xl border-t border-line pt-8">
+                <NegotiationPanel
+                  sessionId={session.id}
+                  streamId={b.streamId}
+                  streamName={s.name}
+                  collectorName={b.collector.name}
+                  requested={requested}
+                  defaults={DEFAULT_GUARDRAILS}
+                  negotiation={n}
+                  impact={impact}
+                />
+              </div>
+            );
+          })
+        : null}
 
       {approval && outcomeStreams.length ? (
         <section className="mt-10 max-w-3xl border-t border-line pt-8">

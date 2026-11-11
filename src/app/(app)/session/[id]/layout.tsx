@@ -38,6 +38,8 @@ const TIME = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2
 async function consoleStatus(s: Session) {
   if (s.status === "analyzing") return { label: "식별·분류 에이전트 실행 중", live: true };
   if (s.status === "awaiting-approval") return { label: "사람 승인 대기 · 이행안 화면에서 승인해야 발송됩니다", live: false };
+  const deal = s.negotiations?.find((n) => n.status === "agreed");
+  if (deal) return { label: `협상 합의안 승인 대기 · ${deal.counterparty.name}`, live: false };
   if (s.status === "sent") {
     const consents = await bundleConsents(s);
     const pending = (s.matching?.bundles ?? []).reduce((a, b) => a + summarizeConsent(b, consents.get(b.streamId) ?? []).pending, 0);

@@ -281,6 +281,44 @@ export type Correction = {
   knowledgeCardId?: string;
 };
 
+/** 순회 수거 조건 한 벌: 요일·시간대·kg당 단가(원, 수거 업체가 배출 기업에 주는 값)·월 수거 횟수 */
+export type PickupTerms = { day: string; slot: "오전" | "오후"; perKg: number; perMonth: number };
+
+/** 사람이 정한 협상 범위. 에이전트는 이 안에서만 양보하고, 벗어나면 사람에게 넘긴다 */
+export type Guardrails = { minPerKg: number; days: string[]; minPerMonth: number; maxRounds: number };
+
+export type NegotiationRound = {
+  by: "ours" | "theirs";
+  at: string;
+  terms: PickupTerms;
+  message: string;
+  /** 이 제안이 우리 가드레일 안에 있는가 */
+  within: boolean;
+  /** 상대 제안을 받아들인 차례 */
+  accept?: boolean;
+};
+
+/**
+ * 에이전트 간 협상(A2A). 우리 에이전트와 수거 업체 에이전트가 순회 수거 조건을 주고받고, 합의안은 사람이 승인해야 확정된다.
+ * 시연에서는 수거 업체 쪽 에이전트를 모의로 돌린다.
+ */
+export type Negotiation = {
+  id: string;
+  streamId: string;
+  counterparty: { companyId: string; name: string };
+  guardrails: Guardrails;
+  /** 처음 요청한 조건(순회 수거 요청서) */
+  requested: PickupTerms;
+  rounds: NegotiationRound[];
+  status: "agreed" | "failed" | "approved";
+  agreed?: PickupTerms;
+  /** 합의 실패 이유 또는 사람에게 넘기는 이유 */
+  note?: string;
+  startedAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+};
+
 /** 실행 기록을 남기는 에이전트. orchestrator는 6단계를 나눠 맡기는 조정 에이전트다 */
 export type AgentName = "orchestrator" | "classify" | "feasibility" | "regulation" | "matching" | "cost-carbon" | "proposal" | "negotiation" | "passport" | "walkthrough";
 
@@ -336,6 +374,8 @@ export type Session = {
   corrections: Correction[];
   /** 에이전트 실행 기록(오래된 것부터) */
   runLog?: RunEvent[];
+  /** 수거 조건 협상(묶음 흐름마다 하나) */
+  negotiations?: Negotiation[];
 };
 
 export type KnowledgeStatus = "proposed" | "reviewing" | "adopted" | "rejected";
