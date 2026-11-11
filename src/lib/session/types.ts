@@ -281,6 +281,33 @@ export type Correction = {
   knowledgeCardId?: string;
 };
 
+/** 실행 기록을 남기는 에이전트. orchestrator는 6단계를 나눠 맡기는 조정 에이전트다 */
+export type AgentName = "orchestrator" | "classify" | "feasibility" | "regulation" | "matching" | "cost-carbon" | "proposal" | "negotiation" | "passport" | "walkthrough";
+
+/**
+ * 에이전트 실행 기록 한 줄. 화면 오른쪽 실행 콘솔에 시간순으로 쌓인다.
+ * actor가 human이면 사람이 한 일(확정, 수정, 승인, 명령, 회신)이고 먹색으로, ai면 형광펜으로 표시한다.
+ * 실제 서비스에서는 Agent Framework 실행 추적(OpenTelemetry)에서 만든다.
+ */
+export type RunEvent = {
+  id: string;
+  at: string;
+  agent: AgentName;
+  actor: "ai" | "human";
+  kind: "start" | "tool" | "result" | "ask" | "decision" | "command";
+  /** 한 줄 요약 */
+  title: string;
+  /** 펼치면 보이는 설명 */
+  detail?: string;
+  /** 부른 도구. 예: "Azure AI Search · 법령 색인" */
+  tool?: string;
+  /** 근거(인용 조항, 데이터 출처, 현장 지식 카드) */
+  refs?: string[];
+  durationMs?: number;
+  step?: FlowStep;
+  streamId?: string;
+};
+
 export type Session = {
   id: string;
   orgId: string;
@@ -307,6 +334,8 @@ export type Session = {
   /** 흐름별 실제 결과. 같은 흐름은 최신 기록 하나만 남긴다 */
   outcomes?: Outcome[];
   corrections: Correction[];
+  /** 에이전트 실행 기록(오래된 것부터) */
+  runLog?: RunEvent[];
 };
 
 export type KnowledgeStatus = "proposed" | "reviewing" | "adopted" | "rejected";

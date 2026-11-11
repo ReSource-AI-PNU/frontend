@@ -590,7 +590,8 @@ export function buildMatching(session: Session, org: Organization, companies: Co
         routeM: visit.routeM,
       });
     } else if (d.route === "sell") {
-      const cols = collectorsFor(item);
+      // 필름은 법정 분류로 폐합성수지라, 단독 매각이어도 폐플라스틱 허가가 있는 업체에만 보낸다
+      const cols = collectorsFor(isFilm(s) ? "폐플라스틱" : item);
       const buyer = cols.find((x) => x.ok) ?? cols[0];
       if (buyer) partners.push({ streamId: s.id, route: "sell", companyId: buyer.c.id, name: buyer.c.name, distanceM: buyer.d, location: "같은 단지", note: `${s.classify.material} 재생원료 매입 · 허가 품목 ${(buyer.c.permits ?? []).join("·")}` });
     } else if (d.route === "pyrolysis") {

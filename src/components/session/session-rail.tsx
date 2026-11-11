@@ -23,7 +23,8 @@ export function SessionRail({ sessionId, items }: { sessionId: string; items: Ra
         const inner = (
           <>
             <span className={numClass}>{item.state === "done" && !current && item.slug !== "dashboard" ? <CheckIcon /> : item.no}</span>
-            {item.label}
+            {/* 실행 콘솔을 열면 넓은 화면에서 단계 이름을 숨기고 번호만 남긴다(이름은 화면 낭독기에 그대로 읽힌다) */}
+            <span className="xl:group-data-[console=open]/shell:sr-only">{item.label}</span>
           </>
         );
         const common = { "data-state": item.state, "data-current": current ? "" : undefined, "aria-current": current ? ("step" as const) : undefined };

@@ -6,12 +6,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { WASTE_ITEMS } from "@/lib/domain";
+import { formatSigned } from "@/lib/format";
+import { josa } from "@/lib/josa";
 import type { Detection, FlowStep, Media, Route, Session, Stream, StreamOrigin, StreamRoute } from "@/lib/session/types";
 import { FLOW_STEPS, STREAM_ROUTE_LABEL } from "@/lib/session/types";
 import { getCompanies } from "./companies";
 import { ensureLearningSeeds, models } from "./mock/learning";
 import { ensureOwnerMember, findMemberForUser } from "./mock/members";
 import { newId, nowIso, UPLOAD_DIR } from "./mock/db";
+import { appendRun, classifyEvents, human, reply, startEvents, STEP_OF_WORD, stepEvents } from "./mock/run-log";
 import {
   buildCostCarbon,
   buildFeasibility,
@@ -105,14 +108,14 @@ export async function startSession(formData: FormData) {
     questions: initialQuestions(streams),
     corrections: [],
   };
-  await sessions.insert(session);
+  await sessions.insert(appendRun(session, startEvents(session)));
   redirect(`/session/${session.id}/analyzing`);
 }
 
 /** 분석 진행 화면이 끝나면 호출한다. */
 export async function finishAnalyzing(sessionId: string) {
   await getSessionForCurrentOrg(sessionId);
-  await saveSession(sessionId, (s) => ({ ...s, status: s.status === "analyzing" ? "in-progress" : s.status }));
+  await saveSession(sessionId, (s) => (s.status === "analyzing" ? appendRun({ ...s, status: "in-progress" }, classifyEvents(s)) : s));
   revalidatePath(`/session/${sessionId}`, "layout");
   redirect(`/session/${sessionId}/classify`);
 }
@@ -122,12 +125,17 @@ export async function answerQuestion(sessionId: string, questionId: string, form
   await getSessionForCurrentOrg(sessionId);
   const answer = String(formData.get("answer") ?? "").trim();
   if (!answer) return;
-  await saveSession(sessionId, (s) => ({
-    ...s,
-    questions: s.questions.map((q) => (q.id === questionId ? { ...q, answer } : q)),
-    regulation: undefined,
-    proposal: undefined,
-  }));
+  await saveSession(sessionId, (s) =>
+    appendRun(
+      {
+        ...s,
+        questions: s.questions.map((q) => (q.id === questionId ? { ...q, answer } : q)),
+        regulation: undefined,
+        proposal: undefined,
+      },
+      [human(`답변 · ${s.questions.find((q) => q.id === questionId)?.text ?? "되묻기"} → ${answer}`, { agent: "regulation", step: "regulation" })],
+    ),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
 }
 
@@ -137,18 +145,27 @@ export async function setStreamVolume(sessionId: string, streamId: string, formD
   const kg = Math.round(Number(String(formData.get("kg") ?? "").replace(/[^0-9]/g, "")));
   if (!Number.isFinite(kg) || kg < 1 || kg > 1_000_000) return;
   const before = session.streams.find((x) => x.id === streamId);
-  await saveSession(sessionId, (s) => ({
-    ...s,
-    streams: mapStream(s, streamId, (x) => ({ ...x, monthlyKg: kg, monthlyKgConfirmed: true })),
-    ...(before && before.monthlyKg !== kg ? CLEAR_FROM_FEASIBILITY : {}),
-  }));
+  await saveSession(sessionId, (s) =>
+    appendRun(
+      {
+        ...s,
+        streams: mapStream(s, streamId, (x) => ({ ...x, monthlyKg: kg, monthlyKgConfirmed: true })),
+        ...(before && before.monthlyKg !== kg ? CLEAR_FROM_FEASIBILITY : {}),
+      },
+      [human(`${before?.name ?? "흐름"} 월 발생량 확정 · ${kg.toLocaleString("ko-KR")}kg`, { agent: "classify", step: "classify", streamId, detail: before && before.monthlyKg !== kg ? `AI 추정 ${before.monthlyKg.toLocaleString("ko-KR")}kg을 고쳤습니다. 경로 판정부터 다시 계산합니다.` : undefined })],
+    ),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
 }
 
 /** 남은 흐름의 발생량을 AI 추정값 그대로 확정한다 */
 export async function confirmAllVolumes(sessionId: string) {
   await getSessionForCurrentOrg(sessionId);
-  await saveSession(sessionId, (s) => ({ ...s, streams: s.streams.map((x) => ({ ...x, monthlyKgConfirmed: true })) }));
+  await saveSession(sessionId, (s) =>
+    appendRun({ ...s, streams: s.streams.map((x) => ({ ...x, monthlyKgConfirmed: true })) }, [
+      human(`월 발생량을 AI 추정값으로 확정 · 흐름 ${s.streams.filter((x) => !x.monthlyKgConfirmed).length}개`, { agent: "classify", step: "classify" }),
+    ]),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
 }
 
@@ -169,6 +186,9 @@ export async function setStreamOrigin(sessionId: string, streamId: string, origi
     corrections: [...s.corrections, { id: newId("cor"), at: nowIso(), by: user.name, step: "classify", streamId, field: `${st.name} 출처`, before: label(st.origin), after: label(origin) }],
     ...CLEAR_FROM_FEASIBILITY,
   }));
+  await saveSession(sessionId, (s) =>
+    appendRun(s, [human(`${st.name} 출처 변경 · ${label(st.origin)} → ${label(origin)}`, { agent: "classify", step: "classify", streamId, detail: "수정 기록과 라벨 검수 작업을 남겼습니다. 다음 학습에 쓰입니다." })]),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
 }
 
@@ -190,6 +210,11 @@ export async function setStreamRoute(sessionId: string, streamId: string, route:
     corrections: [...s.corrections, { id: newId("cor"), at: nowIso(), by: user.name, step: "feasibility", streamId, field: `${st.name} 경로`, before: STREAM_ROUTE_LABEL[prev.route], after: STREAM_ROUTE_LABEL[route] }],
     ...CLEAR_FROM_MATCHING,
   }));
+  await saveSession(sessionId, (s) =>
+    appendRun(s, [
+      human(`${st.name} 경로 변경 · ${STREAM_ROUTE_LABEL[prev.route]} → ${STREAM_ROUTE_LABEL[route]}`, { agent: "feasibility", step: "feasibility", streamId, detail: "AI 원래 경로는 남겨 두고, 규정 검토부터 다시 계산합니다." }),
+    ]),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
 }
 
@@ -279,12 +304,25 @@ export async function saveDetections(
     corrections: [...s.corrections, ...corrections],
     ...CLEAR_FROM_FEASIBILITY,
   }));
+  if (corrections.length) {
+    await saveSession(sessionId, (s) =>
+      appendRun(s, [
+        human(`${stream.name} 박스 수정 ${corrections.length}건`, { agent: "classify", step: "classify", streamId, detail: cardId ? "이유를 현장 지식 카드(제안됨)로도 남겼습니다." : "라벨 검수 대기열에 올렸습니다." }),
+      ]),
+    );
+  }
   revalidatePath(`/session/${sessionId}`, "layout");
   return { saved: corrections.length, cardId };
 }
 
 /** 지정한 단계까지 필요한 결과를 차례로 계산하고 그 화면으로 보낸다. */
 export async function goToStep(sessionId: string, to: FlowStep) {
+  await computeTo(sessionId, to);
+  redirect(`/session/${sessionId}/${to}`);
+}
+
+/** 지정한 단계까지 빠진 결과를 차례로 계산해 저장한다. 새로 계산한 단계는 실행 기록에 남긴다 */
+async function computeTo(sessionId: string, to: FlowStep) {
   const { session: initial, org } = await getSessionForCurrentOrg(sessionId);
   await ensureSeeds();
   const target = FLOW_STEPS.findIndex((s) => s.slug === to);
@@ -302,19 +340,20 @@ export async function goToStep(sessionId: string, to: FlowStep) {
   if (target >= 4 && !s.costCarbon) s = { ...s, costCarbon: buildCostCarbon(s) };
   if (target >= 5 && !s.proposal) s = { ...s, proposal: buildProposal(s, org) };
   if (target >= 5 && !s.selectedRoute) s = { ...s, selectedRoute: s.proposal?.recommended };
-  const final = s;
+  const final = appendRun(s, stepEvents(initial, s));
   await saveSession(sessionId, () => ({
     ...final,
     step: to,
     status: final.status === "analyzing" ? "in-progress" : final.status === "in-progress" && to === "proposal" ? "awaiting-approval" : final.status,
   }));
   revalidatePath(`/session/${sessionId}`, "layout");
-  redirect(`/session/${sessionId}/${to}`);
 }
 
 export async function selectRoute(sessionId: string, routeId: Route["id"]) {
   await getSessionForCurrentOrg(sessionId);
-  await saveSession(sessionId, (s) => ({ ...s, selectedRoute: routeId }));
+  await saveSession(sessionId, (s) =>
+    s.selectedRoute === routeId ? s : appendRun({ ...s, selectedRoute: routeId }, [human(`시나리오 ${routeId} 선택`, { agent: "cost-carbon", step: "cost-carbon" })]),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
 }
 
@@ -357,11 +396,24 @@ export async function approveAndSend(sessionId: string, formData: FormData) {
       await send(p.companyId!, p.name, "quote", `[${pyro ? "열분해 위탁 요청" : "매각 견적 요청"}] ${st?.classify.detail} 월 ${st?.monthlyKg.toLocaleString("ko-KR")}kg`, pyro ? "열분해 위탁 요청서" : "매각 견적 요청서", p.streamId);
     }
   }
-  await saveSession(sessionId, (s) => ({
-    ...s,
-    status: "sent",
-    approval: { approvedBy: user.name, approvedAt: nowIso(), routeId, sentTo },
-  }));
+  await saveSession(sessionId, (s) =>
+    appendRun(
+      { ...s, status: "sent", approval: { approvedBy: user.name, approvedAt: nowIso(), routeId, sentTo } },
+      [
+        human(`승인 · ${user.name} · 시나리오 ${routeId}`, { agent: "proposal", step: "proposal", detail: "승인권자가 발송 대상과 확인 항목을 체크했습니다." }),
+        {
+          agent: "proposal",
+          actor: "ai",
+          kind: "tool",
+          tool: "모의 메일함 발송",
+          title: `${new Set(sentTo.map((t) => t.name)).size}곳에 서류 ${sentTo.length}건 발송`,
+          refs: sentTo.map((t) => `${t.name} · ${t.kind}`),
+          step: "proposal",
+          durationMs: 600,
+        },
+      ],
+    ),
+  );
   revalidatePath(`/session/${sessionId}`, "layout");
   return { ok: true as const };
 }
@@ -402,7 +454,16 @@ export async function recordOutcome(sessionId: string, recorderRole: "처리업�
     // 외부로 보낸 흐름(묶음·매각·열분해)의 결과가 모두 모이면 수거 완료로 본다
     const sentIds = new Set((s.matching?.bundles ?? []).map((b) => b.streamId).concat((s.matching?.partners ?? []).filter((p) => p.companyId).map((p) => p.streamId)));
     const expected = (s.feasibility?.decisions ?? []).filter((d) => sentIds.has(d.streamId) && (s.approval?.routeId === "A" || d.route !== "bundle")).length || 1;
-    return { ...s, outcome, outcomes, status: outcomes.length >= expected ? "completed" : s.status };
+    const done = outcomes.length >= expected;
+    return appendRun({ ...s, outcome, outcomes, status: done ? "completed" : s.status }, [
+      human(`${stream?.name ?? "흐름"} 실제 결과 기록 · ${o.accepted === "yes" ? `${o.actualPerKg > 0 ? "+" : ""}${o.actualPerKg}원/kg, ${o.actualKg}kg` : "매입 거절"}`, {
+        agent: "proposal",
+        step: "proposal",
+        streamId,
+        detail: `${recorderRole}가 기록했습니다. 예상과의 차이는 라벨 검수 대기열에 올라가 다음 학습에 쓰입니다.`,
+      }),
+      ...(done ? [reply("모든 흐름의 결과가 모여 수거 완료로 바꿨습니다.")] : []),
+    ]);
   });
   await addLabelTask({
     sessionId,
@@ -418,6 +479,94 @@ export async function recordOutcome(sessionId: string, recorderRole: "처리업�
   );
   revalidatePath("/", "layout");
   return { ok: true as const };
+}
+
+const ROUTE_WORDS: [RegExp, StreamRoute][] = [
+  [/재투입/, "reuse"],
+  [/묶음/, "bundle"],
+  [/열분해/, "pyrolysis"],
+  [/소각/, "incinerate"],
+  [/매각|판매|팔아|팔기/, "sell"],
+];
+const CLEAR_FROM: Partial<Record<FlowStep, Partial<Session>>> = {
+  feasibility: CLEAR_FROM_FEASIBILITY,
+  regulation: CLEAR_FROM_MATCHING,
+  matching: { matching: undefined, costCarbon: undefined, proposal: undefined, selectedRoute: undefined },
+  "cost-carbon": { costCarbon: undefined, proposal: undefined, selectedRoute: undefined },
+  proposal: { proposal: undefined },
+};
+const COMMAND_HELP = '예: "필름은 매각으로 바꿔 줘", "규정 다시 검토해 줘", "탄소 매립 대비로 보여 줘", "지금 상황 요약해 줘"';
+
+/**
+ * 실행 콘솔의 명령. 대화가 아니라 화면에서 할 수 있는 일을 말로 시키는 것이다.
+ * 경로 바꾸기, 단계 다시 계산, 탄소 기준 바꾸기, 상황 요약을 알아듣고, 외부 발송 승인은 하지 않는다(사람 승인 게이트).
+ * 실제 서비스에서는 조정 에이전트가 의도를 분류하고 같은 도구를 부른다.
+ */
+export async function runCommand(sessionId: string, _prev: unknown, formData: FormData): Promise<{ message?: string; error?: string }> {
+  const { session } = await getSessionForCurrentOrg(sessionId);
+  const text = String(formData.get("command") ?? "").trim().slice(0, 200);
+  if (!text) return { error: "명령을 입력해 주세요." };
+  const cmd = human(text, { kind: "command" });
+  const log = (...drafts: Parameters<typeof appendRun>[1]) => saveSession(sessionId, (s) => appendRun(s, drafts));
+  const done = async (message: string, detail?: string) => {
+    await log(cmd, reply(message, detail));
+    revalidatePath(`/session/${sessionId}`, "layout");
+    return { message };
+  };
+
+  if (/승인|발송|보내/.test(text)) {
+    return done("외부 발송은 에이전트가 대신 승인하지 않습니다.", "승인권자가 이행안 화면에서 발송 대상과 확인 항목을 직접 체크해야 나갑니다.");
+  }
+
+  const route = ROUTE_WORDS.find(([re]) => re.test(text))?.[1];
+  const stream = session.streams.find((x) =>
+    x.name
+      .split(/[\s·]+/)
+      .filter((t) => t.length >= 2)
+      .some((t) => text.includes(t)),
+  );
+  if (route && stream) {
+    const d = session.feasibility?.decisions.find((x) => x.streamId === stream.id);
+    if (!d) return done("경로 판정을 먼저 해야 경로를 바꿀 수 있습니다.");
+    if (session.approval) return done("발송을 마친 진단이라 경로를 바꿀 수 없습니다.");
+    if (d.route === route) return done(`${josa(stream.name, "은/는")} 이미 ${STREAM_ROUTE_LABEL[route]}입니다.`);
+    await log(cmd);
+    await setStreamRoute(sessionId, stream.id, route);
+    await log(reply(`${stream.name} 경로를 ${josa(STREAM_ROUTE_LABEL[route], "으로/로")} 바꿨습니다.`, "규정 검토부터 다시 계산해야 합니다. 다음 단계로 넘어가면 바뀐 경로로 계산합니다."));
+    revalidatePath(`/session/${sessionId}`, "layout");
+    redirect(`/session/${sessionId}/feasibility`);
+  }
+
+  const step = STEP_OF_WORD.find(([re]) => re.test(text))?.[1];
+  if (/매립 대비|신재 대비/.test(text)) {
+    await log(cmd, reply(`탄소 기준을 ${/매립/.test(text) ? "매립" : "신재"} 대비로 보여 줍니다.`));
+    await computeTo(sessionId, "cost-carbon");
+    redirect(`/session/${sessionId}/cost-carbon${/매립/.test(text) ? "?base=landfill" : ""}`);
+  }
+  if (/다시/.test(text) && step) {
+    if (step === "classify") return done("식별은 사진을 다시 올려야 다시 할 수 있습니다.");
+    if (session.approval) return done("발송을 마친 진단이라 다시 계산하지 않습니다.");
+    const label = FLOW_STEPS.find((f) => f.slug === step)?.label ?? step;
+    await saveSession(sessionId, (s) => appendRun({ ...s, ...CLEAR_FROM[step] }, [cmd, reply(`${label}부터 다시 계산합니다.`)]));
+    await goToStep(sessionId, step);
+  }
+  if (/요약|상황|어디까지|지금/.test(text)) {
+    const f = session.feasibility;
+    const next = FLOW_STEPS.find((x) => !({ feasibility: f, regulation: session.regulation, matching: session.matching, "cost-carbon": session.costCarbon, proposal: session.proposal, classify: true } as Record<string, unknown>)[x.slug]);
+    const asks = session.questions.filter((q) => !q.answer).length;
+    const parts = [
+      `흐름 ${session.streams.length}개`,
+      f ? `공장 월 손익 ${formatSigned(f.totalNow)}원 → ${formatSigned(f.totalAfter)}원` : "경로 판정 전",
+      session.approval ? `발송 완료(${session.approval.sentTo.length}건)` : next ? `다음 단계: ${next.label}` : "승인 대기",
+      asks ? `답하지 않은 되묻기 ${asks}건` : "",
+    ].filter(Boolean);
+    return done(parts.join(" · "));
+  }
+  if (step && /보여|열어|가 ?줘|이동/.test(text)) {
+    await log(cmd, reply(`${FLOW_STEPS.find((f) => f.slug === step)?.label} 화면으로 이동합니다.`));
+    await goToStep(sessionId, step);
+  }
+  return done("아직 이해하지 못하는 명령입니다.", COMMAND_HELP);
 }
 
 const replySchema = z.object({
@@ -441,6 +590,16 @@ export async function respondBundleInvite(messageId: string, _prev: unknown, for
     status: "replied",
     reply: { decision: parsed.data.decision, at: nowIso(), by: `${m.toName} 담당자`, reason: parsed.data.reason },
   }));
+  await saveSession(message.sessionId, (s) =>
+    appendRun(s, [
+      human(`${message.toName} 묶음 참여 ${parsed.data.decision === "accepted" ? "동의" : "불참"}`, {
+        agent: "matching",
+        step: "matching",
+        streamId: message.streamId,
+        detail: parsed.data.reason ? `사유: ${parsed.data.reason}` : "이웃 기업 담당자의 회신입니다.",
+      }),
+    ]),
+  );
   revalidatePath("/", "layout");
   return { ok: true as const };
 }
