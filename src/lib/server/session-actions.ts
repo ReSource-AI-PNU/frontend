@@ -115,6 +115,86 @@ export async function startSession(formData: FormData) {
   redirect(`/session/${session.id}/analyzing`);
 }
 
+const walkSchema = z.array(
+  z.object({
+    name: z.string().trim().min(1).max(30),
+    process: z.string().trim().max(30),
+    monthlyKg: z.number().int().min(1).max(1_000_000),
+    kgBasis: z.string().max(40).optional(),
+    origin: z.enum(["PIR", "PCR"]).optional(),
+    originSource: z.enum(["human", "ai"]).optional(),
+  }),
+);
+
+/**
+ * 걸으며 진단(현장 워크스루)으로 흐름을 만든다. 말로 확인한 월 발생량은 확정값으로, 말로 확인한 출처는 사람 확인으로 둔다.
+ * 사진은 시연용 일러스트를 쓴다(실제로는 워크스루 영상에서 정지점마다 대표 프레임을 뽑는다).
+ */
+export async function startWalkSession(formData: FormData) {
+  const user = await getCurrentUser();
+  const org = await requireOrganization();
+  await ensureSeeds();
+  await ensureLearningSeeds();
+  const parsed = walkSchema.safeParse(JSON.parse(String(formData.get("drafts") ?? "[]")));
+  if (!parsed.success || parsed.data.length === 0) redirect("/upload/walk?error=empty");
+  const mode = formData.get("mode") === "live" ? "live" : "demo";
+  const production = await models.find((m) => m.status === "production");
+  const modelVersion = production?.version ?? "v3.2";
+  const fallbackItem = org.wasteStreams[0]?.item ?? "폐플라스틱";
+  const streams: Stream[] = parsed.data.map((d) => {
+    const profile = profileFor(d.name, fallbackItem);
+    const base = buildStream(newId("st"), profile, { name: d.name, media: sampleMedia(profile), kg: d.monthlyKg, modelVersion });
+    return {
+      ...base,
+      process: d.process || base.process,
+      monthlyKg: d.monthlyKg,
+      monthlyKgConfirmed: true,
+      origin: d.origin ?? base.origin,
+      originSource: d.originSource === "human" ? "human" : base.originSource,
+    };
+  });
+  const now = nowIso();
+  const session: Session = {
+    id: newId("ses"),
+    orgId: org.id,
+    ownerId: user.id,
+    complexId: org.complexId,
+    title: `${org.name} 폐플라스틱 진단 · ${streams.length}개 흐름`,
+    createdAt: now,
+    updatedAt: now,
+    status: "analyzing",
+    step: "classify",
+    streams,
+    questions: initialQuestions(streams),
+    corrections: [],
+  };
+  const walk = parsed.data;
+  await sessions.insert(
+    appendRun(session, [
+      {
+        agent: "walkthrough",
+        actor: "human",
+        kind: "start",
+        title: `현장 워크스루 · 정지점 ${walk.length}곳`,
+        detail: mode === "demo" ? "시연 대본으로 공장을 한 바퀴 돈 기록입니다." : "담당자가 브라우저 마이크로 말한 기록입니다.",
+        durationMs: 300,
+      },
+      { agent: "walkthrough", actor: "ai", kind: "tool", tool: mode === "demo" ? "음성 받아쓰기(시연 대본)" : "브라우저 음성 인식 · 실제 서비스는 Azure AI Speech", title: "한국어 음성을 문장으로 받아쓰기", durationMs: 900 },
+      {
+        agent: "walkthrough",
+        actor: "ai",
+        kind: "tool",
+        tool: "말에서 흐름·공정·양·출처 뽑기",
+        title: `흐름 카드 ${walk.length}개 생성`,
+        refs: walk.map((d) => `${d.name} · ${d.process || "공정 미지정"} · 월 ${d.monthlyKg.toLocaleString("ko-KR")}kg${d.kgBasis ? `(${d.kgBasis})` : ""}${d.origin ? ` · ${d.origin}${d.originSource === "human" ? " 말로 확인" : " 추정"}` : ""}`),
+        durationMs: 700,
+      },
+      ...startEvents(session),
+    ]),
+  );
+  redirect(`/session/${session.id}/analyzing`);
+}
+
 /** 분석 진행 화면이 끝나면 호출한다. */
 export async function finishAnalyzing(sessionId: string) {
   await getSessionForCurrentOrg(sessionId);

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { InfoIcon } from "@/components/icons";
 import { UploadForm } from "@/components/session/upload-form";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,6 +28,16 @@ export default async function UploadPage({ searchParams }: PageProps<"/upload">)
   return (
     <div className="mx-auto grid w-full max-w-[1200px] gap-8 px-6 py-10 lg:px-8">
       <PageHeader title="공장 폐플라스틱 진단 시작" description="공정별로 나오는 폐플라스틱 흐름을 올리면, 에이전트 6개가 흐름마다 갈 곳을 정하고 이행 계획까지 만듭니다." />
+      <Link
+        href="/upload/walk"
+        className="group flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-strong px-5 py-4 transition-colors hover:border-ink"
+      >
+        <span>
+          <span className="block text-[15px] font-semibold">걸으며 진단 · 말로 시작하기</span>
+          <span className="block text-[13px] text-ink-2">공장을 한 바퀴 돌며 흐름 앞에서 말하면 흐름 카드가 만들어집니다. 사진과 입력 양식이 필요 없습니다.</span>
+        </span>
+        <span className="text-[13px] font-semibold underline underline-offset-4">워크스루 열기</span>
+      </Link>
       <div className="grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-7">
           <UploadForm serverError={code ? ERRORS[code] : undefined} />
