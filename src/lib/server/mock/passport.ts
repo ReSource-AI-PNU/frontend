@@ -15,13 +15,13 @@ const ISSUER = "Re:Source AI (시연)";
 
 type Body = Omit<MaterialPassport, "hash">;
 
-/** 중첩된 객체까지 키 순서를 고정한 JSON. 값이 없는 키는 뺀다 */
+/** 중첩된 객체까지 키 순서를 고정한 JSON. 값이 없는 키(undefined·null)는 뺀다. 백엔드 API는 null을 빼고 내보내므로 둘을 같게 본다 */
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
   if (v && typeof v === "object") {
     const o = v as Record<string, unknown>;
     return `{${Object.keys(o)
-      .filter((k) => o[k] !== undefined)
+      .filter((k) => o[k] !== undefined && o[k] !== null)
       .sort()
       .map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`)
       .join(",")}}`;
