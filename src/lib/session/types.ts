@@ -281,6 +281,37 @@ export type Correction = {
   knowledgeCardId?: string;
 };
 
+/**
+ * 재생원료 여권. 수거한 원료 한 묶음(흐름 하나의 한 번 수거)의 출처·재질·중량·근거를 서명된 이력으로 남긴다.
+ * 마대 라벨의 QR로 열어, 매입처나 원청이 재생원료 사용 실적에 넣을 수 있는 원료인지 확인한다.
+ * hash는 여권 내용과 앞 여권의 hash를 이어 붙여 만든 SHA-256이다(위·변조 확인). 실제 서비스에서는 위·변조 방지 원장에 둔다.
+ */
+export type MaterialPassport = {
+  id: string;
+  sessionId: string;
+  streamId: string;
+  issuedAt: string;
+  issuer: string;
+  company: string;
+  complex: string;
+  stream: string;
+  material: string;
+  detail: string;
+  origin: StreamOrigin;
+  /** 출처를 무엇으로 확정했는가. 예: "담당자 확인 · 원자재 입고 기록 있음" */
+  originBasis: string;
+  /** 재생원료 사용 실적에 넣을 수 있는가에 대한 판단 */
+  creditable: "pcr" | "pcr-unverified" | "pir";
+  evidence: { label: string; value: string }[];
+  weightKg: number;
+  grade: string;
+  collectedBy: string;
+  collectedAt: string;
+  route: StreamRoute;
+  prevHash: string | null;
+  hash: string;
+};
+
 /** 순회 수거 조건 한 벌: 요일·시간대·kg당 단가(원, 수거 업체가 배출 기업에 주는 값)·월 수거 횟수 */
 export type PickupTerms = { day: string; slot: "오전" | "오후"; perKg: number; perMonth: number };
 

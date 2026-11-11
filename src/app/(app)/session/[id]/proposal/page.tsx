@@ -13,6 +13,7 @@ import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { bundleConsents } from "@/lib/server/bundle-consent";
 import { DEFAULT_GUARDRAILS, requestedTerms } from "@/lib/server/mock/negotiation";
+import { CREDITABLE_LABEL, passports } from "@/lib/server/mock/passport";
 import { goToStep } from "@/lib/server/session-actions";
 import { getCurrentUser } from "@/lib/server/session";
 import { getSessionForCurrentOrg } from "@/lib/server/sessions";
@@ -166,6 +167,10 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
     return s && d ? [{ o, s, d }] : [];
   });
   const pendingStreams = outcomeStreams.filter((x) => !recorded.some((o) => o.streamId === x.id));
+  // 흐름별로 가장 최근에 발급한 재생원료 여권
+  const passportOf = new Map(
+    (await passports.filter((p) => p.sessionId === session.id)).sort((a, b) => a.issuedAt.localeCompare(b.issuedAt)).map((p) => [p.streamId, p]),
+  );
   const doneStreams = outcomeStreams.filter((x) => recorded.some((o) => o.streamId === x.id));
 
   return (
@@ -241,9 +246,27 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
       {approval && outcomeStreams.length ? (
         <section className="mt-10 max-w-3xl border-t border-line pt-8">
           <div className="grid gap-8">
-            {recordedRows.map(({ o, s, d }) => (
-              <ProposalOutcomeCompare key={s.id} outcome={o} expected={{ streamName: s.name, route: d.route, perKg: d.afterPerKg, kg: s.monthlyKg }} />
-            ))}
+            {recordedRows.map(({ o, s, d }) => {
+              const pp = passportOf.get(s.id);
+              return (
+                <div key={s.id} className="grid gap-3">
+                  <ProposalOutcomeCompare outcome={o} expected={{ streamName: s.name, route: d.route, perKg: d.afterPerKg, kg: s.monthlyKg }} />
+                  {pp ? (
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line px-4 py-3 text-[13.5px]">
+                      <span className="font-semibold">재생원료 여권</span>
+                      <span className="num">{pp.id}</span>
+                      <span className="text-muted">{CREDITABLE_LABEL[pp.creditable].title}</span>
+                      <Link href={`/passport/${pp.id}`} className="font-semibold underline underline-offset-4">
+                        여권 보기
+                      </Link>
+                      <Link href={`/passport-label/${pp.id}`} className="font-semibold underline underline-offset-4">
+                        마대 라벨 인쇄
+                      </Link>
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
             {pendingStreams.length ? (
               <ProposalOutcomeForm
                 key={pendingStreams.map((x) => x.id).join()}

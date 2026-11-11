@@ -15,6 +15,8 @@ import { ensureLearningSeeds, models } from "./mock/learning";
 import { ensureOwnerMember, findMemberForUser } from "./mock/members";
 import { newId, nowIso, UPLOAD_DIR } from "./mock/db";
 import { negotiate, termsText, WEEKDAYS } from "./mock/negotiation";
+import { issuePassport } from "./mock/passport";
+import { organizations } from "./mock-store";
 import { appendRun, classifyEvents, human, reply, startEvents, STEP_OF_WORD, stepEvents } from "./mock/run-log";
 import {
   buildCostCarbon,
@@ -478,6 +480,28 @@ export async function recordOutcome(sessionId: string, recorderRole: "처리업�
     (await outbox.find((m) => m.sessionId === sessionId && (m.kind === "pickup" || m.kind === "quote") && (!m.streamId || m.streamId === streamId)))?.id ?? "",
     (m) => ({ ...m, status: "completed" }),
   );
+  // 재생원료로 팔린 흐름(묶음·매각)이면 그 수거분의 재생원료 여권을 발급한다
+  const saved = await sessions.get(sessionId);
+  const owner = saved ? await organizations.get(saved.orgId) : null;
+  const passport = saved ? await issuePassport(saved, outcome, owner?.name ?? "배출 기업") : null;
+  if (passport) {
+    await saveSession(sessionId, (s) =>
+      appendRun(s, [
+        {
+          agent: "passport",
+          actor: "ai",
+          kind: "result",
+          tool: "이력 원장 · SHA-256 해시 체인",
+          title: `재생원료 여권 발급 · ${passport.id} · ${passport.material} ${passport.origin} ${passport.weightKg.toLocaleString("ko-KR")}kg`,
+          detail: `${passport.originBasis}. 마대 라벨의 QR로 매입처·원청이 출처와 재생원료 사용 실적 인정 여부를 확인합니다.`,
+          refs: [`hash ${passport.hash.slice(0, 16)}…`, `앞 여권 ${passport.prevHash ? `${passport.prevHash.slice(0, 16)}…` : "없음(첫 여권)"}`],
+          step: "proposal",
+          streamId,
+          durationMs: 300,
+        },
+      ]),
+    );
+  }
   revalidatePath("/", "layout");
   return { ok: true as const };
 }

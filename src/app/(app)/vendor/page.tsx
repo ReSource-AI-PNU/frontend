@@ -15,6 +15,7 @@ import { formatNumber, formatSigned } from "@/lib/format";
 import { bundleConsents } from "@/lib/server/bundle-consent";
 import { getCompanies } from "@/lib/server/companies";
 import { termsText } from "@/lib/server/mock/negotiation";
+import { passports } from "@/lib/server/mock/passport";
 import { MIN_KG } from "@/lib/server/mock/pipeline";
 import { requireOrganization } from "@/lib/server/organization";
 import { outbox, sessions } from "@/lib/server/sessions";
@@ -147,6 +148,7 @@ async function VendorPageContent({ searchParams }: { searchParams: Promise<Recor
   const messages = inboxAll.filter((m) => m.toCompanyId === vendor.id);
   const newCount = (id: string) => inboxAll.filter((m) => m.toCompanyId === id && m.status === "sent").length;
   const allSessions = await sessions.filter((s) => s.complexId === org.complexId);
+  const issued = new Map((await passports.all()).sort((a, b) => a.issuedAt.localeCompare(b.issuedAt)).map((p) => [`${p.sessionId}:${p.streamId}`, p.id]));
   const byId = new Map(allSessions.map((s) => [s.id, s]));
   const targets = new Map(messages.map((m) => [m.id, byId.get(m.sessionId) ? targetFor(byId.get(m.sessionId)!, m) : null]));
   // 결과를 받을 수 있는 첫 요청서만 펼치고 기록 버튼을 검정으로 둔다(한 화면에 검정 버튼 하나)
@@ -313,7 +315,17 @@ async function VendorPageContent({ searchParams }: { searchParams: Promise<Recor
                       </dl>
                       <div className="min-w-0">
                         {own ? (
-                          <OutcomeComparison o={own} t={t} />
+                          <>
+                            <OutcomeComparison o={own} t={t} />
+                            {issued.get(`${s.id}:${t.stream.id}`) ? (
+                              <p className="mt-3 text-[13px]">
+                                재생원료 여권 <span className="num">{issued.get(`${s.id}:${t.stream.id}`)}</span> ·{" "}
+                                <Link href={`/passport/${issued.get(`${s.id}:${t.stream.id}`)}`} className="font-semibold underline underline-offset-4">
+                                  여권 보기
+                                </Link>
+                              </p>
+                            ) : null}
+                          </>
                         ) : m.kind === "bundle-invite" ? (
                           <p className="text-sm text-muted">묶음 참여 제안은 참여 여부만 회신합니다. 실제 결과는 순회 수거 요청서를 받은 수거 업체가 사업장별로 기록합니다.</p>
                         ) : (
