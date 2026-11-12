@@ -286,6 +286,8 @@ export async function saveDetections(
 /** 지정한 단계까지 필요한 결과를 차례로 계산하고 그 화면으로 보낸다. */
 export async function goToStep(sessionId: string, to: FlowStep) {
   const { session: initial, org } = await getSessionForCurrentOrg(sessionId);
+  // The feasibility screen uses an independent, unsaved backend preview.
+  if (to === "feasibility") redirect(`/session/${sessionId}/feasibility`);
   await ensureSeeds();
   const target = FLOW_STEPS.findIndex((s) => s.slug === to);
   let s: Session = { ...initial };
