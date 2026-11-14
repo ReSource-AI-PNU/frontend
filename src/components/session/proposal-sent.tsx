@@ -37,7 +37,7 @@ export function ProposalSent({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="sent-title" className="text-[16px] font-semibold">
-            {approval.sentTo.length ? `${places}곳에 서류 ${approval.sentTo.length}건을 발송했습니다` : "외부로 보낸 서류가 없습니다"}
+            {approval.sentTo.length ? `${places}곳에 서류 ${approval.sentTo.length}건을 모의 메일함에 기록했습니다` : "외부로 보낸 서류가 없습니다"}
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">승인한 방안: {routeLabel}</p>
         </div>

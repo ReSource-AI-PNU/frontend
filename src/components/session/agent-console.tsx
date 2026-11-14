@@ -52,7 +52,7 @@ export function AgentConsole({
       <header className="border-b border-line px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-2">
           <h2 id="console-title" className="text-[15px] font-semibold">
-            에이전트 실행 기록
+            에이전트 실행 기록 · 시연
           </h2>
           {onClose ? (
             <button type="button" onClick={onClose} className="min-h-9 rounded-md px-2 text-[13px] text-muted hover:bg-sunken hover:text-ink">
@@ -67,6 +67,7 @@ export function AgentConsole({
           />
           {status.label}
         </p>
+        <p className="mt-1 text-[12px] text-ink-2">모의 실행 기록입니다. 표시된 모델과 도구는 실제 호출되지 않았습니다.</p>
         <p className="num mt-1 text-[11.5px] text-muted">{stats.join(" · ")}</p>
       </header>
 

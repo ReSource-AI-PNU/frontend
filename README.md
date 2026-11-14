@@ -6,7 +6,7 @@ Next.js(App Router) + TypeScript + Tailwind CSS 기반 웹 앱. 사진·영상·
 
 ```bash
 npm ci
-AUTH_SECRET="$(openssl rand -base64 33)" AUTH_DEV_LOGIN=true npm run dev
+AUTH_SECRET="$(openssl rand -base64 33)" AUTH_DEV_LOGIN=true AUTH_TRUST_HOST=true npm run dev
 ```
 
 http://localhost:3000 에서 확인한다. `AUTH_DEV_LOGIN=true`이면 이름·이메일만으로 들어가는 시연용 계정으로 가입할 수 있다. 백엔드([backend](https://github.com/ReSource-AI-PNU/backend))는 8000번 포트에서 함께 띄운다.
@@ -14,8 +14,10 @@ http://localhost:3000 에서 확인한다. `AUTH_DEV_LOGIN=true`이면 이름·�
 경로 판정은 백엔드 PR #40의 `feat/feasibility-session-integration` 브랜치에서
 `uv sync --extra dev` 후 `uv run uvicorn app.main:app --reload`로 실행한 미리보기 API를
 사용한다. 프런트의 `NEXT_PUBLIC_API_BASE_URL` 기본값은 `http://localhost:8000/api/v1`이며,
-다른 주소를 쓰면 `.env.local`에 설정하고 프런트 서버를 다시 시작한다. 브라우저 주소에
-맞게 백엔드 CORS도 설정해야 한다.
+다른 주소를 쓰면 `NEXT_PUBLIC_API_BASE_URL`을 빌드 시 설정한다. 브라우저 주소에
+맞게 백엔드 `CORS_ORIGINS`도 설정해야 한다. 로컬의 `AUTH_TRUST_HOST=true`는
+호스트 헤더를 신뢰할 수 있는 경우에만 사용하며, 운영 환경은 프록시가 호스트 헤더를
+안전하게 설정하도록 구성한다.
 
 샘플 공장 진단에서 흐름을 확인하고 경로 판정으로 이동한 뒤, 발생량·확인 여부·경로를
 입력하고 **경제 효과 계산**을 누른다. 결과는 가상 시연이며 저장되지 않고 다른 모의

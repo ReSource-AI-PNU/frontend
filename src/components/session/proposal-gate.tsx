@@ -11,7 +11,7 @@ export type GateTarget = { name: string; kind: string; stream?: string };
 
 /**
  * 사람 승인 게이트 (DESIGN.md). 먹색 1px 테두리 상자 안에 발송 대상과 확인 항목을 두고,
- * 확인해야만 먹색 "승인 후 발송" 버튼이 켜진다. 승인해야만 외부(모의 메일함)로 나간다.
+ * 확인해야만 먹색 "승인 후 모의 발송" 버튼이 켜진다. 승인해야만 외부(모의 메일함)로 나간다.
  * 발송 대상은 approveAndSend와 같은 규칙으로 page에서 계산한다:
  * A = 순회 수거 요청서(수거 업체) + 묶음 참여 제안(그룹 기업) + 매각 견적 요청서(매입처), B = 매각 견적 요청서만, C·D = 발송 없음.
  * 보낼 곳이 없으면 버튼 대신 안내(emptyNote)를 보여 준다.
@@ -60,7 +60,7 @@ export function ProposalGate({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="gate-title" className="text-[16px] font-semibold">
-            {places}곳에 서류 {targets.length}건을 발송합니다
+            {places}곳에 서류 {targets.length}건을 모의 발송합니다
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">선택한 방안: {routeLabel}</p>
         </div>
@@ -91,7 +91,7 @@ export function ProposalGate({
           onChange={(e) => setConfirmed(e.target.checked)}
           className="mt-0.5 size-[18px] shrink-0 accent-ink"
         />
-        <span>발송 대상과 서류 내용을 확인했습니다. 승인하면 위 {targets.length}건이 바로 발송됩니다.</span>
+        <span>발송 대상과 서류 내용을 확인했습니다. 승인하면 위 {targets.length}건이 모의 메일함에 기록됩니다. 실제 전송은 없습니다.</span>
       </label>
 
       {state?.error ? (
@@ -101,7 +101,7 @@ export function ProposalGate({
       ) : null}
 
       <button type="submit" disabled={!confirmed || pending} className={buttonClass("primary", "md", "w-full")}>
-        {pending ? "발송하는 중…" : "승인 후 발송"}
+        {pending ? "발송하는 중…" : "승인 후 모의 발송"}
       </button>
       <p className="-mt-1 text-[12.5px] text-muted">승인자는 {approver}님으로 기록됩니다. 발송은 시연용 모의 메일함으로 갑니다.</p>
     </form>

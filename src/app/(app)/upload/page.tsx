@@ -69,7 +69,7 @@ export default async function UploadPage({ searchParams }: PageProps<"/upload">)
           </section>
           <p className="flex items-start gap-2 rounded-md bg-sunken px-3.5 py-3 text-sm [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted">
             <InfoIcon />
-            외부 발송은 마지막 단계에서 담당자가 승인해야 이루어집니다. 올린 사진은 우리 회사 사용자만 볼 수 있습니다.
+            발송은 담당자 승인 후 시연용 모의 메일함에만 기록되며 실제로 외부에 전송되지 않습니다. 올린 사진은 우리 회사 사용자만 볼 수 있습니다.
           </p>
         </aside>
       </div>

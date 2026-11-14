@@ -282,7 +282,7 @@ export function MatchingWorkspace({
           )}
 
           <p className="border-t border-line pt-5 text-[13px] text-muted">
-            순회 수거 요청서와 묶음 참여 제안은 마지막 단계에서 담당자가 승인해야 발송됩니다. 기업 이름과 물량은 시연용 가상 데이터입니다.
+            순회 수거 요청서와 묶음 참여 제안은 승인 후 모의 메일함에만 기록되며 실제 발송되지 않습니다. 기업 이름과 물량은 시연용 가상 데이터입니다.
           </p>
         </div>
 

@@ -60,7 +60,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
         <StepHeader step="proposal" title="이행안과 승인" aside={disagree} />
         <EmptyState
           title="아직 이행안을 만들지 않았습니다."
-          description="시나리오별 손익과 탄소를 비교해 추천안 하나와 대안을 고르고, 이행 계획서·지원사업 신청 초안·순회 수거 요청서·매각 견적 요청서를 만듭니다. 외부 발송은 담당자가 승인해야만 이루어집니다. 앞 단계 결과가 없으면 함께 계산합니다."
+          description="시나리오별 손익과 탄소를 비교해 추천안 하나와 대안을 고르고, 이행 계획서·지원사업 신청 초안·순회 수거 요청서·매각 견적 요청서를 만듭니다. 승인하면 모의 메일함에 기록되며 실제 외부 발송은 없습니다. 앞 단계 결과가 없으면 함께 계산합니다."
           action={
             <div className="flex flex-wrap gap-2">
               <form action={goToStep.bind(null, session.id, "proposal")}>
@@ -178,7 +178,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ id: s
       <StepHeader
         step="proposal"
         title="이행안과 승인"
-        description="방안을 고르면 발송 대상과 서류가 바뀝니다. 외부 발송은 담당자가 승인해야만 이루어집니다."
+        description="방안을 고르면 발송 대상과 서류가 바뀝니다. 승인하면 모의 메일함에 기록되며 실제 외부 발송은 없습니다."
         aside={disagree}
       />
 
