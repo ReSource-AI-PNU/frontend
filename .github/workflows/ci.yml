@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 같은 PR에 새 커밋이 올라오면 이전 실행을 취소한다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: lint · 타입 검사 · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # 빌드가 Auth.js 설정을 읽으므로 넣는 검사용 값이다. 실제 비밀 값이 아니다.
+      AUTH_SECRET: ci-build-check-only
+      AUTH_TRUST_HOST: "true"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: lint
+        run: npm run lint
+
+      # next-env.d.ts와 라우트 타입(PageProps 등)은 git에 없다. 먼저 만들어야 tsc가 통과한다.
+      - name: 타입 검사
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
+      - name: 단위 테스트
+        run: npm run test:c-questions
+
+      - name: build
+        run: npm run build
