@@ -28,6 +28,10 @@ export default async function UploadPage({ searchParams }: PageProps<"/upload">)
   return (
     <div className="mx-auto grid w-full max-w-[1200px] gap-8 px-6 py-10 lg:px-8">
       <PageHeader title="공장 폐플라스틱 진단 시작" description="공정별로 나오는 폐플라스틱 흐름을 올리면, 에이전트 6개가 흐름마다 갈 곳을 정하고 이행 계획까지 만듭니다." />
+      <Link href="/c/new" className="group flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-strong px-5 py-4 hover:border-ink">
+        <span><span className="block text-[15px] font-semibold">PP 정보 직접 입력</span><span className="block text-[13px] text-ink-2">사진이나 문서 없이 PP 정보를 입력하고 필요한 질문을 확인합니다.</span></span>
+        <span className="text-[13px] font-semibold underline underline-offset-4">직접 입력 시작</span>
+      </Link>
       <Link
         href="/upload/walk"
         className="group flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-strong px-5 py-4 transition-colors hover:border-ink"

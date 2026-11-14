@@ -15,6 +15,7 @@ import { FLOW_STEPS, type Session, type SessionStatus } from "@/lib/session/type
 export const metadata: Metadata = { title: "진단 이력" };
 
 function lastStep(s: Session) {
+  if (s.kind === "c-manual") return "PP 입력·질문";
   if (s.status === "analyzing") return "분석 중";
   const f = FLOW_STEPS.find((x) => x.slug === s.step);
   return f ? `${f.no}. ${f.label}` : "—";
@@ -163,11 +164,11 @@ async function SessionListPageContent({ searchParams }: PageProps<"/session">) {
                         <SessionStatusBadge status={s.status} />
                       </td>
                       <th scope="row" className="max-w-[340px] px-4 py-3 text-left font-normal">
-                        <Link href={`/session/${s.id}`} className="font-semibold underline-offset-4 hover:underline">
+                        <Link href={s.kind === "c-manual" ? `/c/${s.id}` : `/session/${s.id}`} className="font-semibold underline-offset-4 hover:underline">
                           {s.title}
                         </Link>
                         <span className="block text-[12px] text-muted">
-                          흐름 <span className="tabular-nums">{s.streams?.length ?? 0}</span>개 · {streamSummary(s)}
+                          {s.kind === "c-manual" ? "PP 직접 입력 · C 질문" : <>흐름 <span className="tabular-nums">{s.streams?.length ?? 0}</span>개 · {streamSummary(s)}</>}
                         </span>
                       </th>
                       <td className="num px-4 py-3 text-ink-2">{formatDate(s.createdAt)}</td>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { ConfirmedChips } from "@/components/session/confirmed-chips";
 import { SessionShell } from "@/components/session/session-shell";
 import { SessionRail, type RailItem } from "@/components/session/session-rail";
@@ -54,6 +55,7 @@ async function consoleStatus(s: Session) {
 export default async function SessionLayout({ children, params }: { children: ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { session } = await getSessionForCurrentOrg(id);
+  if (session.kind === "c-manual") redirect(`/c/${session.id}`);
   const complex = findComplex(session.complexId);
   const events: RunEventView[] = (session.runLog ?? []).map((e) => ({
     ...e,

@@ -378,6 +378,7 @@ export type RunEvent = {
 };
 
 export type Session = {
+  kind?: "c-manual";
   id: string;
   orgId: string;
   ownerId: string;
