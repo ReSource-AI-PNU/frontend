@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 설치 시 복사되는 서드파티 번들
+    "public/vendor/**",
   ]),
 ]);
 

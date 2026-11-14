@@ -1,0 +1,167 @@
+[
+  {
+    "id": "noksan",
+    "name": "녹산국가산업단지",
+    "shortName": "녹산",
+    "region": "부산",
+    "type": "국가",
+    "center": [
+      128.8475,
+      35.0925
+    ],
+    "bbox": [
+      128.822,
+      35.077,
+      128.873,
+      35.1035
+    ],
+    "areaKm2": 6.97,
+    "source": "https://www.investkorea.org/ik-kr/bbs/i-2483/detail.do?ntt_sn=47",
+    "boundarySource": "https://www.openstreetmap.org/relation/9818308",
+    "note": "OSM relation 9818308(녹산국가산업단지)과 서쪽 인접 산업용지(way 415888472)를 덮도록 잡았다. 동쪽 128.873 이후는 신호일반산업단지라 제외한다."
+  },
+  {
+    "id": "sinho",
+    "name": "신호일반산업단지",
+    "shortName": "신호",
+    "region": "부산",
+    "type": "일반",
+    "center": [
+      128.8765,
+      35.0905
+    ],
+    "bbox": [
+      128.864,
+      35.0795,
+      128.889,
+      35.1015
+    ],
+    "areaKm2": 3.12,
+    "source": "https://www.busan.go.kr/biz/complex03",
+    "boundarySource": "https://www.openstreetmap.org/way/415934448",
+    "note": "OSM way 415934448(신호일반산업단지, 르노코리아 부산공장 포함)과 그 남쪽 '신호산단N로' 도로 구역(35.080~35.089)을 함께 덮는다. 남쪽 구역에 20층 안팎의 아파트 단지(약 80동, building=apartments)가 섞여 있어 화면에서 kind로 걸러낼 수 있다. 동쪽 신호동 아파트 단지(128.896~)는 제외했다."
+  },
+  {
+    "id": "hwajeon",
+    "name": "화전일반산업단지",
+    "shortName": "화전",
+    "region": "부산",
+    "type": "일반",
+    "center": [
+      128.8778,
+      35.1068
+    ],
+    "bbox": [
+      128.866,
+      35.1,
+      128.8895,
+      35.1135
+    ],
+    "areaKm2": 2.45,
+    "source": "https://www.busan.go.kr/biz/complex03",
+    "approximate": true,
+    "note": "OSM에 단지 경계가 없다. '화전산단N로'·'화전산업대로' 이름의 도로 분포(128.869~128.888, 35.095~35.113)로 추정했다. 신호산단과 겹치지 않도록 남쪽을 35.100에서 잘랐다. 동쪽 끝에 아파트 일부가 걸친다."
+  },
+  {
+    "id": "mieum",
+    "name": "미음일반산업단지(부산연구개발특구 미음지구)",
+    "shortName": "미음",
+    "region": "부산",
+    "type": "일반",
+    "center": [
+      128.8575,
+      35.1435
+    ],
+    "bbox": [
+      128.844,
+      35.121,
+      128.871,
+      35.166
+    ],
+    "areaKm2": 3.55,
+    "source": "https://www.busan.go.kr/biz/complex03",
+    "approximate": true,
+    "note": "OSM에 단지 이름이 붙은 경계가 없다. '미음산단N로' 이름의 도로 분포(128.845~128.868, 35.122~35.163), 이름 없는 산업용지 폴리곤(way 415888411 등), '기업은행 미음산단점' 위치로 추정했다."
+  },
+  {
+    "id": "jisa",
+    "name": "부산과학일반산업단지(지사과학산업단지)",
+    "shortName": "지사",
+    "region": "부산",
+    "type": "일반",
+    "center": [
+      128.823,
+      35.145
+    ],
+    "bbox": [
+      128.808,
+      35.133,
+      128.838,
+      35.157
+    ],
+    "areaKm2": 1.97,
+    "source": "https://www.busan.go.kr/biz/complex03",
+    "approximate": true,
+    "note": "OSM에 단지 이름이 붙은 경계가 없다. '과학산단N로' 이름의 도로 분포와 지사동 일대 이름 없는 산업용지 폴리곤 묶음으로 추정했다. 동쪽 끝에 아파트 단지 일부가 걸친다."
+  },
+  {
+    "id": "sasang",
+    "name": "사상공업지역",
+    "shortName": "사상",
+    "region": "부산",
+    "type": "일반",
+    "center": [
+      128.9845,
+      35.1475
+    ],
+    "bbox": [
+      128.967,
+      35.131,
+      129.002,
+      35.164
+    ],
+    "areaKm2": null,
+    "source": "https://www.openstreetmap.org/relation/9789572",
+    "note": "법정 산업단지가 아니라 1960년대에 지정된 준공업지역이다. type은 스키마 제약 때문에 '일반'으로 둔다. OSM relation 9789572(사상 공단) 경계 기준이며 주거·상업 건물이 섞여 있다."
+  },
+  {
+    "id": "changwon",
+    "name": "창원국가산업단지",
+    "shortName": "창원",
+    "region": "경남",
+    "type": "국가",
+    "center": [
+      128.6725,
+      35.208
+    ],
+    "bbox": [
+      128.621,
+      35.182,
+      128.724,
+      35.234
+    ],
+    "areaKm2": null,
+    "source": "https://www.openstreetmap.org/relation/9794781",
+    "note": "OSM relation 9794781(창원국가산업단지) 경계 기준이다. 공개 면적은 자료마다 기준이 달라(36.8㎢, 52.6㎢ 등) null로 둔다."
+  },
+  {
+    "id": "yangsan",
+    "name": "양산일반산업단지",
+    "shortName": "양산",
+    "region": "경남",
+    "type": "일반",
+    "center": [
+      129.0302,
+      35.3604
+    ],
+    "bbox": [
+      129.02,
+      35.346,
+      129.04,
+      35.375
+    ],
+    "areaKm2": null,
+    "source": "https://www.openstreetmap.org/way/669454004",
+    "note": "OSM way 669454004(양산일반산업단지) 경계 기준이다."
+  }
+]
