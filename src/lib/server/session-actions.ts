@@ -407,6 +407,8 @@ export async function goToStep(sessionId: string, to: FlowStep) {
 /** 지정한 단계까지 빠진 결과를 차례로 계산해 저장한다. 새로 계산한 단계는 실행 기록에 남긴다 */
 async function computeTo(sessionId: string, to: FlowStep) {
   const { session: initial, org } = await getSessionForCurrentOrg(sessionId);
+  // The feasibility screen uses an independent, unsaved backend preview.
+  if (to === "feasibility") redirect(`/session/${sessionId}/feasibility`);
   await ensureSeeds();
   const target = FLOW_STEPS.findIndex((s) => s.slug === to);
   let s: Session = { ...initial };
