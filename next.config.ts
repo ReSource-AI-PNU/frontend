@@ -9,14 +9,6 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "60mb" },
     proxyClientMaxBodySize: "60mb",
   },
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
 };
 
 export default nextConfig;
