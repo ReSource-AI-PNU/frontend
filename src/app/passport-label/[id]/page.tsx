@@ -23,7 +23,7 @@ async function LabelContent({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <div className="grid content-between">
           <div>
-            <p className="text-[7.5pt] text-muted">재생원료 여권 · QR로 출처 확인</p>
+            <p className="text-[7.5pt] text-muted">시연용 모의 여권 · 실제 증빙 불가</p>
             <p className="mt-[1mm] text-[13pt] leading-tight font-bold">{p.material}</p>
             <p className="text-[8.5pt] leading-snug">{p.detail}</p>
             <p className="mt-[1.5mm] inline-block border border-ink px-[1.5mm] text-[8.5pt] font-semibold">{CREDITABLE_LABEL[p.creditable].title}</p>

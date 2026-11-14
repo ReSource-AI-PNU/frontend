@@ -26,6 +26,7 @@ async function PassportContent({ params }: { params: Promise<{ id: string }> }) 
 
   return (
     <div className="mx-auto grid w-full max-w-[880px] gap-8 px-6 py-12 lg:px-8">
+      <p role="note" className="rounded-md border border-line bg-sunken px-4 py-3 text-sm font-semibold">시연용 모의 여권입니다. 실제 인증서나 재생원료 사용 실적 증빙으로 사용할 수 없습니다.</p>
       <header className="grid gap-4 border-b border-ink pb-6 sm:grid-cols-[minmax(0,1fr)_136px] sm:items-start">
         <div>
           <p className="text-label text-muted">재생원료 여권</p>
