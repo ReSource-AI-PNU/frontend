@@ -1,0 +1,219 @@
+[
+  {
+    "id": "jisa-001",
+    "name": "(주)다래지업",
+    "buildingOsmId": 704385921,
+    "location": [
+      128.835221,
+      35.148234
+    ],
+    "industry": "펄프, 종이 및 종이제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 파지",
+        "monthlyKg": 580,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 코팅 필름",
+        "monthlyKg": 440,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-002",
+    "name": "(주)꽃뫼바이오연료",
+    "buildingOsmId": 1092244675,
+    "location": [
+      128.835677,
+      35.153754
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 300,
+        "storage": "야외·노출"
+      }
+    ],
+    "demands": [
+      {
+        "item": "폐목재",
+        "detail": "목재 칩(연료용)",
+        "monthlyKg": 850
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-003",
+    "name": "해솔일렉트릭(주)",
+    "buildingOsmId": 415878551,
+    "location": [
+      128.817424,
+      35.150187
+    ],
+    "industry": "전기장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "구리 전선 스크랩",
+        "monthlyKg": 1730,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "EPS 완충재",
+        "monthlyKg": 370,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-004",
+    "name": "마루환경",
+    "buildingOsmId": 415878549,
+    "location": [
+      128.815487,
+      35.151692
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐플라스틱",
+      "포장재"
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-005",
+    "name": "나린물류",
+    "buildingOsmId": 415878572,
+    "location": [
+      128.826071,
+      35.141864
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 1320,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 50,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-006",
+    "name": "(주)하늬물류",
+    "buildingOsmId": 1092244673,
+    "location": [
+      128.835686,
+      35.153435
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 300,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 340,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-007",
+    "name": "(주)아름조선기자재",
+    "buildingOsmId": 415878566,
+    "location": [
+      128.829598,
+      35.144883
+    ],
+    "industry": "기타 운송장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "강판 절단 잔재",
+        "monthlyKg": 1020,
+        "storage": "실내"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-008",
+    "name": "도담제강",
+    "buildingOsmId": 605707605,
+    "location": [
+      128.829484,
+      35.149859
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 스크랩(용해 원료)",
+        "monthlyKg": 14550
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  },
+  {
+    "id": "jisa-009",
+    "name": "(주)누리봄팩",
+    "buildingOsmId": 415878540,
+    "location": [
+      128.829284,
+      35.151143
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 필름 스크랩",
+        "monthlyKg": 850,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  }
+]

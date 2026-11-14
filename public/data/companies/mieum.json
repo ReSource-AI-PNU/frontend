@@ -1,0 +1,305 @@
+[
+  {
+    "id": "mieum-001",
+    "name": "누리모터스부품(주)",
+    "buildingOsmId": 778178590,
+    "location": [
+      128.863639,
+      35.158307
+    ],
+    "industry": "자동차 및 트레일러 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "프레스 타발 잔재",
+        "monthlyKg": 920,
+        "storage": "실내"
+      },
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 범퍼 불량품",
+        "monthlyKg": 190,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 250,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-002",
+    "name": "다솜모터스부품",
+    "buildingOsmId": 778725565,
+    "location": [
+      128.858278,
+      35.148057
+    ],
+    "industry": "자동차 및 트레일러 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "프레스 타발 잔재",
+        "monthlyKg": 3480,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 범퍼 불량품",
+        "monthlyKg": 340,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 390,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-003",
+    "name": "한결그린(주)",
+    "buildingOsmId": 778178589,
+    "location": [
+      128.862864,
+      35.158046
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐목재",
+      "포장재"
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-004",
+    "name": "은결필름(주)",
+    "buildingOsmId": 778178576,
+    "location": [
+      128.857671,
+      35.160215
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 필름 스크랩",
+        "monthlyKg": 450,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-005",
+    "name": "새온스틸",
+    "buildingOsmId": 778425820,
+    "location": [
+      128.856046,
+      35.154773
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절단 잔재",
+        "monthlyKg": 3060,
+        "storage": "실내"
+      },
+      {
+        "item": "폐목재",
+        "detail": "목재 팔레트",
+        "monthlyKg": 680,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-006",
+    "name": "라온물류(주)",
+    "buildingOsmId": 778425828,
+    "location": [
+      128.858187,
+      35.155369
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 1070,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 180,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-007",
+    "name": "너울우드",
+    "buildingOsmId": 778178596,
+    "location": [
+      128.861738,
+      35.159137
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 410,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "포장재",
+        "detail": "PP 밴드",
+        "monthlyKg": 220,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-008",
+    "name": "예담팩",
+    "buildingOsmId": 415888451,
+    "location": [
+      128.84734,
+      35.12786
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 필름 스크랩",
+        "monthlyKg": 1200,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "포장재",
+        "detail": "PP 마대",
+        "monthlyKg": 310,
+        "storage": "실내"
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-009",
+    "name": "새길일렉트릭",
+    "buildingOsmId": 778178586,
+    "location": [
+      128.860069,
+      35.161572
+    ],
+    "industry": "전기장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "구리 전선 스크랩",
+        "monthlyKg": 830,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "EPS 완충재",
+        "monthlyKg": 90,
+        "storage": "실내"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-010",
+    "name": "길벗주강",
+    "buildingOsmId": 778425823,
+    "location": [
+      128.857078,
+      35.154693
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 스크랩(용해 원료)",
+        "monthlyKg": 13750
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-011",
+    "name": "(주)단비바이오연료",
+    "buildingOsmId": 778178563,
+    "location": [
+      128.855492,
+      35.160155
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "폐목재",
+        "detail": "목재 칩(연료용)",
+        "monthlyKg": 3730
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "mieum-012",
+    "name": "솔빛우드(주)",
+    "buildingOsmId": 778178579,
+    "location": [
+      128.857642,
+      35.16112
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 770,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  }
+]

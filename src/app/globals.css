@@ -1,26 +1,259 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* 디자인 토큰: ReSource-AI 저장소의 DESIGN.md 기준 (v2: 흰 배경·흑백 + 기능색) */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-sunken: #f4f4f5;
+  --color-line: #e8e8ea;
+  --color-line-strong: #d4d4d8;
+  --color-ink: #0a0a0a;
+  --color-ink-2: #3f3f46;
+  --color-muted: #66666e;
+  --color-on-ink: #ffffff;
+  --color-marker: #e6ff3d;
+  --color-marker-ink: #0a0a0a;
+  --color-gain: #0c7148;
+  --color-gain-bg: #ecf6ef;
+  --color-loss: #b5332a;
+  --color-loss-bg: #fbeceb;
+  --color-warn: #9a5b00;
+  --color-warn-bg: #fbf3e4;
+  --color-photo: #18181b;
+
+  /* 차트 전용 (dataviz 검증기 통과값). 글자에는 쓰지 않는다: 값·라벨은 ink 계열로 쓴다.
+     손익: 발산형, 항상 부호와 직접 라벨을 함께 쓴다 (라이트 CVD ΔE 7.6 → 보조 표기 필수).
+     품목: 범주형 고정 순서 폐플라스틱·금속 스크랩·폐목재·포장재 (라이트 대비 경고 → 라벨·표 필수). */
+  --color-chart-gain: #0c7148;
+  --color-chart-loss: #b5332a;
+  --color-chart-zero: #d4d4d8;
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-3: #1baf7a;
+  --color-chart-4: #eda100;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --text-display: 2.75rem;
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 750;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 1.3;
+  --text-h1--letter-spacing: -0.025em;
+  --text-h1--font-weight: 700;
+  --text-h2: 1.25rem;
+  --text-h2--line-height: 1.35;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 650;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 550;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
+
+  @keyframes rs-scan {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  @keyframes rs-wash {
+    0% {
+      background-color: transparent;
+    }
+    30% {
+      background-color: var(--color-gain-bg);
+    }
+    100% {
+      background-color: transparent;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --font-sans: var(--font-wanted), "Pretendard Variable", "Apple SD Gothic Neo", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0a0a0a;
+  --color-surface: #111111;
+  --color-sunken: #000000;
+  --color-line: #262626;
+  --color-line-strong: #3f3f46;
+  --color-ink: #fafafa;
+  --color-ink-2: #d4d4d8;
+  --color-muted: #a1a1aa;
+  --color-on-ink: #0a0a0a;
+  --color-gain: #43c98a;
+  --color-gain-bg: #12291e;
+  --color-loss: #ff7266;
+  --color-loss-bg: #2d1714;
+  --color-warn: #e0a23a;
+  --color-warn-bg: #2a2112;
+  --color-photo: #000000;
+  --color-chart-gain: #279763;
+  --color-chart-loss: #e5533f;
+  --color-chart-zero: #3f3f46;
+  --color-chart-1: #3987e5;
+  --color-chart-2: #d95926;
+  --color-chart-3: #199e70;
+  --color-chart-4: #c98500;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px var(--color-marker);
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: var(--color-marker);
+    color: var(--color-marker-ink);
+  }
+}
+
+/* 숫자 전용. 한글이 섞인 줄에는 쓰지 않는다 (DESIGN.md 서체 규칙) */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* 산업단지 3D 지도의 기업 핀. 역할은 색이 아니라 모양으로 구분한다: 배출 ●, 처리업체 ■, 수요처 ○ */
+.rs-pin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.rs-pin-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  transition: transform 150ms var(--ease-out);
+}
+.rs-pin[data-role="처리업체"] .rs-pin-dot {
+  border-radius: 2px;
+}
+.rs-pin[data-role="수요처"] .rs-pin-dot {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 2.5px var(--color-ink), 0 0 0 2px var(--color-surface);
+}
+.rs-pin-label {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  translate: -50% 0;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 600 12px/1.4 var(--font-sans);
+  box-shadow: 0 0 0 1px var(--color-line-strong), 0 6px 16px -8px rgb(0 0 0 / 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms var(--ease-out);
+}
+.rs-pin:hover .rs-pin-label,
+.rs-pin:focus-visible .rs-pin-label,
+.rs-pin[data-selected] .rs-pin-label {
+  opacity: 1;
+}
+.rs-pin[data-selected] {
+  z-index: 2;
+}
+.rs-pin[data-selected] .rs-pin-dot {
+  transform: scale(1.5);
+}
+/* 순회 순번: 묶음 그룹 핀 오른쪽 위의 먹색 숫자 */
+.rs-pin[data-order]::after {
+  content: attr(data-order);
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font: 700 10.5px/17px var(--font-mono);
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+.rs-pin[data-selected] .rs-pin-label {
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  box-shadow: none;
+}
+
+/* MapLibre 기본 컨트롤을 디자인 토큰에 맞춘다 */
+.maplibregl-ctrl-attrib {
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+.maplibregl-ctrl.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-ink-2);
+}
+[data-theme="dark"] .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+.maplibregl-canvas:focus-visible {
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }

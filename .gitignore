@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 모의 API 저장소 (백엔드 연동 전)
+.mock-db/
+
+# 설치 시 복사되는 MapLibre 워커
+/public/vendor/

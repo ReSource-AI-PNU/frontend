@@ -1,0 +1,719 @@
+[
+  {
+    "id": "noksan-001",
+    "name": "(주)한빛정밀 사출공장",
+    "buildingOsmId": 415867413,
+    "location": [
+      128.825965,
+      35.087134
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 압축품",
+        "monthlyKg": 800,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 120,
+        "storage": "실내"
+      }
+    ],
+    "employees": "50~99명",
+    "scenario": "hanbit-anchor",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-002",
+    "name": "(주)세움플라텍",
+    "buildingOsmId": 1178613316,
+    "location": [
+      128.825359,
+      35.086504
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 사출 스프루·불량품",
+        "monthlyKg": 520,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "scenario": "pp-bundle",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-003",
+    "name": "가온포장",
+    "buildingOsmId": 415867415,
+    "location": [
+      128.826967,
+      35.087124
+    ],
+    "industry": "펄프, 종이 및 종이제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 밴드·마대",
+        "monthlyKg": 450,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 파지",
+        "monthlyKg": 300,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "scenario": "pp-bundle",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-004",
+    "name": "(주)윤슬몰드",
+    "buildingOsmId": 1178613315,
+    "location": [
+      128.824978,
+      35.086486
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 시제품 사출물",
+        "monthlyKg": 380,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "금속 스크랩",
+        "detail": "금형강 절삭칩",
+        "monthlyKg": 900,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "5~9명",
+    "scenario": "pp-bundle",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-005",
+    "name": "(주)녹산리사이클",
+    "buildingOsmId": 713952929,
+    "location": [
+      128.872879,
+      35.102121
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐플라스틱",
+      "포장재"
+    ],
+    "employees": "30~49명",
+    "scenario": "recycler-match",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-006",
+    "name": "(주)동남환경",
+    "buildingOsmId": 415934460,
+    "location": [
+      128.860771,
+      35.086431
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "금속 스크랩",
+      "폐목재",
+      "포장재"
+    ],
+    "employees": "10~29명",
+    "scenario": "permit-mismatch",
+    "note": "폐플라스틱(PP) 처리 허가가 없다. PP 압축품을 맡기면 허가 불일치 경고가 떠야 한다.",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-007",
+    "name": "예담목재",
+    "buildingOsmId": 1037442592,
+    "location": [
+      128.833709,
+      35.078786
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 940,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "포장재",
+        "detail": "PP 밴드",
+        "monthlyKg": 400,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-008",
+    "name": "(주)새길자원",
+    "buildingOsmId": 777889353,
+    "location": [
+      128.860912,
+      35.088319
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐플라스틱",
+      "포장재"
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-009",
+    "name": "(주)길벗필름",
+    "buildingOsmId": 1037442591,
+    "location": [
+      128.833556,
+      35.07882
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 필름 스크랩",
+        "monthlyKg": 820,
+        "storage": "실내"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-010",
+    "name": "(주)단비화성",
+    "buildingOsmId": 415867407,
+    "location": [
+      128.826878,
+      35.08542
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 사출 불량품",
+        "monthlyKg": 1130,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 340,
+        "storage": "실내"
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-011",
+    "name": "솔빛금속(주)",
+    "buildingOsmId": 777889332,
+    "location": [
+      128.853827,
+      35.085943
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "알루미늄 칩",
+        "monthlyKg": 4690,
+        "storage": "실내"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-012",
+    "name": "다래스틸",
+    "buildingOsmId": 777889348,
+    "location": [
+      128.861392,
+      35.087942
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절단 잔재",
+        "monthlyKg": 1370,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "5~9명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-013",
+    "name": "꽃뫼정밀(주)",
+    "buildingOsmId": 1037442588,
+    "location": [
+      128.833485,
+      35.079308
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절삭칩",
+        "monthlyKg": 3300,
+        "storage": "실내"
+      },
+      {
+        "item": "폐목재",
+        "detail": "목재 팔레트",
+        "monthlyKg": 860,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "5~9명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-014",
+    "name": "해솔우드",
+    "buildingOsmId": 777889339,
+    "location": [
+      128.857256,
+      35.088232
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 1040,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-015",
+    "name": "(주)마루폴리머",
+    "buildingOsmId": 777889336,
+    "location": [
+      128.858001,
+      35.08664
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PP 사출 불량품",
+        "monthlyKg": 1020,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 필름 스크랩",
+        "monthlyKg": 410,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-016",
+    "name": "나린제강(주)",
+    "buildingOsmId": 708596501,
+    "location": [
+      128.870626,
+      35.092639
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 스크랩(용해 원료)",
+        "monthlyKg": 3030
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-017",
+    "name": "하늬로지스",
+    "buildingOsmId": 415867417,
+    "location": [
+      128.832049,
+      35.085654
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 900,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 330,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-018",
+    "name": "아름푸드(주)",
+    "buildingOsmId": 415867419,
+    "location": [
+      128.832004,
+      35.083749
+    ],
+    "industry": "식료품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 220,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 포장 필름",
+        "monthlyKg": 600,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-019",
+    "name": "참빛주강(주)",
+    "buildingOsmId": 708596500,
+    "location": [
+      128.870507,
+      35.093925
+    ],
+    "industry": "1차 금속 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 스크랩(용해 원료)",
+        "monthlyKg": 11660
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-020",
+    "name": "도담엔지니어링",
+    "buildingOsmId": 1037442587,
+    "location": [
+      128.831912,
+      35.079096
+    ],
+    "industry": "기타 기계 및 장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "스테인리스 스크랩",
+        "monthlyKg": 1100,
+        "storage": "실내"
+      },
+      {
+        "item": "폐목재",
+        "detail": "포장 목상자",
+        "monthlyKg": 590,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-021",
+    "name": "(주)누리봄엔지니어링",
+    "buildingOsmId": 1037442581,
+    "location": [
+      128.822276,
+      35.082626
+    ],
+    "industry": "기타 기계 및 장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "스테인리스 스크랩",
+        "monthlyKg": 2980,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "폐목재",
+        "detail": "포장 목상자",
+        "monthlyKg": 320,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 160,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-022",
+    "name": "미르알루텍(주)",
+    "buildingOsmId": 415867424,
+    "location": [
+      128.822516,
+      35.083745
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "알루미늄 칩",
+        "monthlyKg": 3750,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-023",
+    "name": "(주)모람로지스",
+    "buildingOsmId": 777889338,
+    "location": [
+      128.857361,
+      35.088515
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 630,
+        "storage": "야외·노출"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 370,
+        "storage": "실내"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-024",
+    "name": "(주)구름목재",
+    "buildingOsmId": 777889350,
+    "location": [
+      128.861769,
+      35.088555
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "자투리 목재·톱밥",
+        "monthlyKg": 1470,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-025",
+    "name": "(주)미소환경",
+    "buildingOsmId": 713088985,
+    "location": [
+      128.84673,
+      35.089595
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐목재",
+      "포장재"
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-026",
+    "name": "(주)여울메탈",
+    "buildingOsmId": 777889342,
+    "location": [
+      128.858153,
+      35.088259
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절삭칩",
+        "monthlyKg": 4120,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-027",
+    "name": "고운판지",
+    "buildingOsmId": 1037442594,
+    "location": [
+      128.833243,
+      35.078317
+    ],
+    "industry": "펄프, 종이 및 종이제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 310,
+        "storage": "야외·노출"
+      }
+    ],
+    "demands": [
+      {
+        "item": "포장재",
+        "detail": "골판지 파지(원료)",
+        "monthlyKg": 1500
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-028",
+    "name": "(주)희나엔지니어링",
+    "buildingOsmId": 1037442582,
+    "location": [
+      128.824874,
+      35.08273
+    ],
+    "industry": "기타 기계 및 장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "스테인리스 스크랩",
+        "monthlyKg": 1520,
+        "storage": "실내"
+      },
+      {
+        "item": "폐목재",
+        "detail": "포장 목상자",
+        "monthlyKg": 830,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-029",
+    "name": "늘봄알루텍",
+    "buildingOsmId": 777889349,
+    "location": [
+      128.862045,
+      35.088374
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "알루미늄 칩",
+        "monthlyKg": 1150,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "noksan-030",
+    "name": "(주)나래기계",
+    "buildingOsmId": 777889351,
+    "location": [
+      128.861679,
+      35.088417
+    ],
+    "industry": "기타 기계 및 장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "스테인리스 스크랩",
+        "monthlyKg": 3510,
+        "storage": "실내"
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  }
+]

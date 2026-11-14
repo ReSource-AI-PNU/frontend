@@ -1,0 +1,206 @@
+[
+  {
+    "id": "changwon-001",
+    "name": "새벽푸드",
+    "buildingOsmId": 475418248,
+    "location": [
+      128.68797,
+      35.203344
+    ],
+    "industry": "식료품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 110,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-002",
+    "name": "(주)다온로지스",
+    "buildingOsmId": 475418241,
+    "location": [
+      128.683378,
+      35.207088
+    ],
+    "industry": "창고 및 운송관련 서비스업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐목재",
+        "detail": "폐 목재 팔레트",
+        "monthlyKg": 1720,
+        "storage": "야외·지붕"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-003",
+    "name": "물결푸드",
+    "buildingOsmId": 1036848297,
+    "location": [
+      128.655245,
+      35.221412
+    ],
+    "industry": "식료품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "포장재",
+        "detail": "골판지 박스",
+        "monthlyKg": 300,
+        "storage": "실내"
+      },
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 포장 필름",
+        "monthlyKg": 600,
+        "storage": "실내"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-004",
+    "name": "(주)바름엔지니어링",
+    "buildingOsmId": 903280520,
+    "location": [
+      128.701807,
+      35.186504
+    ],
+    "industry": "기타 기계 및 장비 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "스테인리스 스크랩",
+        "monthlyKg": 310,
+        "storage": "야외·노출"
+      }
+    ],
+    "employees": "10~29명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-005",
+    "name": "참솔환경",
+    "buildingOsmId": 942208836,
+    "location": [
+      128.645319,
+      35.227302
+    ],
+    "industry": "폐기물 수집, 운반, 처리 및 원료 재생업",
+    "role": "처리업체",
+    "wasteStreams": [],
+    "permits": [
+      "폐목재",
+      "포장재"
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-006",
+    "name": "(주)이음팩",
+    "buildingOsmId": 952714756,
+    "location": [
+      128.670637,
+      35.213536
+    ],
+    "industry": "플라스틱 제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "폐플라스틱",
+        "detail": "PE 필름 스크랩",
+        "monthlyKg": 570,
+        "storage": "야외·지붕"
+      },
+      {
+        "item": "포장재",
+        "detail": "PP 마대",
+        "monthlyKg": 350,
+        "storage": "실내"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-007",
+    "name": "(주)하람판지",
+    "buildingOsmId": 1574332538,
+    "location": [
+      128.651856,
+      35.2237
+    ],
+    "industry": "펄프, 종이 및 종이제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "포장재",
+        "detail": "골판지 파지(원료)",
+        "monthlyKg": 1480
+      }
+    ],
+    "employees": "100~299명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-008",
+    "name": "(주)온누리메탈",
+    "buildingOsmId": 942208837,
+    "location": [
+      128.64617,
+      35.228293
+    ],
+    "industry": "금속 가공제품 제조업",
+    "role": "배출",
+    "wasteStreams": [
+      {
+        "item": "금속 스크랩",
+        "detail": "철 절삭칩",
+        "monthlyKg": 3060,
+        "storage": "실내"
+      },
+      {
+        "item": "포장재",
+        "detail": "스트레치 필름",
+        "monthlyKg": 320,
+        "storage": "실내"
+      }
+    ],
+    "employees": "30~49명",
+    "isDemo": true
+  },
+  {
+    "id": "changwon-009",
+    "name": "새솔펠릿",
+    "buildingOsmId": 952714794,
+    "location": [
+      128.667229,
+      35.20932
+    ],
+    "industry": "목재 및 나무제품 제조업",
+    "role": "수요처",
+    "wasteStreams": [],
+    "demands": [
+      {
+        "item": "폐목재",
+        "detail": "목재 칩(연료용)",
+        "monthlyKg": 840
+      }
+    ],
+    "employees": "50~99명",
+    "isDemo": true
+  }
+]
