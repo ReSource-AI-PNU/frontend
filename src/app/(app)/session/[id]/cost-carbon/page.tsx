@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DivergingBars } from "@/components/charts/diverging-bars";
@@ -34,6 +35,7 @@ const BASE_NOTE: Record<CarbonBase, string> = {
 };
 
 export default async function CostCarbonPage({ params, searchParams }: PageProps<"/session/[id]/cost-carbon">) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute params={params} step="cost-carbon" />;
   const { id } = await params;
   const sp = await searchParams;
   const base: CarbonBase = sp.base === "landfill" ? "landfill" : "virgin";

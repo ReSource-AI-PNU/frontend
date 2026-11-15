@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DisagreeDialog } from "@/components/session/disagree-dialog";
@@ -32,6 +33,7 @@ function stripStreamName(label: string, name: string) {
 const joinNames = (names: string[]) => names.join(", ");
 
 export default async function RegulationPage({ params }: { params: Promise<{ id: string }> }) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute params={params} step="regulation" />;
   const { id } = await params;
   const { session } = await getSessionForCurrentOrg(id);
   const result = session.regulation;

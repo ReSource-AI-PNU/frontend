@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LiveRefresh } from "@/components/live-refresh";
@@ -56,6 +57,7 @@ function partnerRow(s: Stream, d: StreamDecision, m: MatchingResult): PartnerRow
 }
 
 export default async function MatchingPage({ params }: { params: Promise<{ id: string }> }) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute params={params} step="matching" />;
   const { id } = await params;
   const { session } = await getSessionForCurrentOrg(id);
   const matching = session.matching;

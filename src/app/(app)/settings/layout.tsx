@@ -3,6 +3,7 @@ import { SettingsNav, SettingsNavList } from "@/components/settings/settings-nav
 import { PageHeader } from "@/components/ui/page-header";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
+  if (process.env.PLATFORM_API_URL) return children;
   return (
     <div className="mx-auto grid w-full max-w-[1200px] gap-8 px-6 py-10 lg:px-8">
       <PageHeader title="설정" description="회사 정보와 멤버, 내 계정과 데이터를 관리합니다." />

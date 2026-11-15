@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
@@ -246,6 +247,7 @@ async function NeighborPageContent({ searchParams }: { searchParams: Promise<Rec
 
 /** 클라이언트 이동이 바로 보이도록 페이지 안에 Suspense 경계를 둔다 (Next 16 instant navigation). */
 export default function NeighborPage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute view="neighbor" />;
   return (
     <Suspense fallback={<PageSkeleton />}>
       <NeighborPageContent searchParams={props.searchParams} />

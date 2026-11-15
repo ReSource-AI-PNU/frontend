@@ -66,7 +66,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login", error: "/login" },
   callbacks: {
-    authorized({ auth: session, request: { nextUrl } }) {
+    authorized({ auth: session, request: { nextUrl, headers } }) {
+      const localDemo = process.env.PLATFORM_API_URL && process.env.PLATFORM_DEMO === "true" && /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(headers.get("host")??"");
+      if(localDemo && /^\/(session(?:\/.*)?|upload|neighbor|vendor|settings(?:\/members)?)$/.test(nextUrl.pathname)) return true;
       const loggedIn = Boolean(session?.user);
       if (isProtected(nextUrl.pathname)) return loggedIn;
       if (loggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {

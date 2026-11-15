@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InfoIcon } from "@/components/icons";
@@ -21,6 +22,7 @@ import { STREAM_ROUTE_LABEL } from "@/lib/session/types";
 export const metadata: Metadata = { title: "경로 판정" };
 
 export default async function FeasibilityPage({ params, searchParams }: PageProps<"/session/[id]/feasibility">) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute params={params} step="feasibility" />;
   const { id } = await params;
   const sp = await searchParams;
   const { session } = await getSessionForCurrentOrg(id);

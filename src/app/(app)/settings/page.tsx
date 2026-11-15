@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import { DefinitionTable, formatDate, SettingsSection } from "@/components/settings/section";
 import { ButtonLink } from "@/components/ui/button";
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "설정 · 회사 정보" };
 const ROLE_LABEL = { 배출: "폐기물 배출", 처리업체: "수거·처리업체", 수요처: "재생원료 수요처" } as const;
 
 export default async function CompanySettingsPage() {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute view="profile" />;
   const org = await requireOrganization();
   const complex = findComplex(org.complexId);
   const totalKg = org.wasteStreams.reduce((sum, w) => sum + w.monthlyKg, 0);

@@ -52,6 +52,7 @@ async function consoleStatus(s: Session) {
 }
 
 export default async function SessionLayout({ children, params }: { children: ReactNode; params: Promise<{ id: string }> }) {
+  if (process.env.PLATFORM_API_URL) return children;
   const { id } = await params;
   const { session } = await getSessionForCurrentOrg(id);
   const complex = findComplex(session.complexId);

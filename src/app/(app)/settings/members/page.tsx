@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import { CheckIcon, InfoIcon } from "@/components/icons";
 import { InviteForm } from "@/components/settings/invite-form";
@@ -11,6 +12,7 @@ import { getCurrentUser } from "@/lib/server/session";
 export const metadata: Metadata = { title: "설정 · 멤버" };
 
 export default async function MembersSettingsPage() {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute view="members" />;
   const user = await getCurrentUser();
   const org = await requireOrganization();
   await ensureOwnerMember(org, user);

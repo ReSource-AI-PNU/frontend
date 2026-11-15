@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
@@ -371,6 +372,7 @@ async function VendorPageContent({ searchParams }: { searchParams: Promise<Recor
 
 /** 클라이언트 이동이 바로 보이도록 페이지 안에 Suspense 경계를 둔다 (Next 16 instant navigation). */
 export default function VendorPage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute view="vendor" />;
   return (
     <Suspense fallback={<PageSkeleton />}>
       <VendorPageContent searchParams={props.searchParams} />

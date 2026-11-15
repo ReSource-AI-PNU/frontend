@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
+  { href: "/track-d", label: "순회 수거" },
   { href: "/upload", label: "새 진단" },
   { href: "/session", label: "진단 이력" },
   { href: "/complex", label: "산업단지" },

@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LiveRefresh } from "@/components/live-refresh";
@@ -39,6 +40,7 @@ const KIND_SENT: Partial<Record<DocumentKind, string>> = { pickup: "순회 수�
 const sendsKind = (routeId: Route["id"], kind: DocumentKind) => (kind === "pickup" ? routeId === "A" : kind === "quote" ? routeId === "A" || routeId === "B" : false);
 
 export default async function ProposalPage({ params }: { params: Promise<{ id: string }> }) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute params={params} step="proposal" />;
   const { id } = await params;
   const { session, org } = await getSessionForCurrentOrg(id);
   const proposal = session.proposal;

@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InfoIcon } from "@/components/icons";
@@ -22,6 +23,7 @@ const ERRORS: Record<string, string> = {
 };
 
 export default async function UploadPage({ searchParams }: PageProps<"/upload">) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute view="upload" />;
   const { error } = await searchParams;
   const code = Array.isArray(error) ? error[0] : error;
 

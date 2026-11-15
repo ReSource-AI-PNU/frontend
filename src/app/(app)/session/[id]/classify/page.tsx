@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -15,6 +16,7 @@ import type { StreamOrigin } from "@/lib/session/types";
 export const metadata: Metadata = { title: "흐름 식별" };
 
 export default async function ClassifyPage({ params, searchParams }: PageProps<"/session/[id]/classify">) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute params={params} step="classify" />;
   const { id } = await params;
   const sp = await searchParams;
   const { session } = await getSessionForCurrentOrg(id);

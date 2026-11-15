@@ -1,3 +1,4 @@
+import { PlatformRoute } from "@/components/platform/route";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -193,6 +194,7 @@ async function SessionListPageContent({ searchParams }: PageProps<"/session">) {
 
 /** 클라이언트 이동이 바로 보이도록 페이지 안에 Suspense 경계를 둔다 (Next 16 instant navigation). */
 export default function SessionListPage(props: PageProps<"/session">) {
+  if (process.env.PLATFORM_API_URL) return <PlatformRoute view="sessions" />;
   return (
     <Suspense fallback={<PageSkeleton />}>
       <SessionListPageContent {...props} />
