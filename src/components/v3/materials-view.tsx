@@ -371,7 +371,10 @@ function MediaUpload({
         <div role="status" className="rounded-md bg-warn-bg px-3 py-2 text-[13px] text-warn">
           <p className="font-semibold">{result.message ?? "탐지 모델이 연결되지 않았습니다"}</p>
           <p className="mt-0.5">
-            올린 파일은 분석하지 않았고 등록된 근거도 없습니다. 탐지 결과를 만들어 보여 주지 않습니다.
+            탐지 모델이 연결되지 않아 이 파일은 분석하지 않았습니다. 이 파일로 새로 등록된 근거는 없습니다.
+            {stream.photo?.contaminationPct != null || estimate
+              ? " 위에 보이는 사진 추정값은 이전에 등록된 근거입니다."
+              : ""}
           </p>
         </div>
       ) : null}

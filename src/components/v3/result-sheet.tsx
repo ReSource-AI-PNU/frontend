@@ -1,8 +1,8 @@
 "use client";
 
-import { MoreDetails } from "@/components/ui/more-details";
+import { useId, useState } from "react";
 import { CHECK_KEY_LABEL, FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL, formatValue } from "@/lib/v3/format";
-import type { Check, DiagnosisView, EdgeStatus, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
+import type { Assignment, Check, CheckStatus, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
 import { useV3 } from "./context";
 import { StatusChip, type ChipTone } from "./status-chip";
@@ -12,11 +12,18 @@ const TONE: Record<TriStatus, ChipTone> = {
   conditional: "warn",
   needs_information: "neutral",
 };
-const CHECK_LABEL: Record<EdgeStatus, string> = { met: "충족", conditional: "조건부", unmet: "불충족" };
-const CHECK_TONE: Record<EdgeStatus, string> = {
+// 확인 항목의 라벨은 서버가 준 check.status를 그대로 옮긴다. 행 판정이나 항목 종류를 보고 바꿔 적지 않는다
+const CHECK_LABEL: Record<CheckStatus, string> = {
+  met: "충족",
+  conditional: "조건부",
+  unmet: "불충족",
+  needs_information: STATUS_LABEL.needs_information,
+};
+const CHECK_TONE: Record<CheckStatus, string> = {
   met: "text-ink",
   conditional: "text-warn",
   unmet: "text-loss",
+  needs_information: "text-warn",
 };
 
 const HAS_PLACEHOLDER = /\{\{/;
@@ -27,8 +34,8 @@ function CheckLine({ check, named = true }: { check: Check; named?: boolean }) {
   // 적재 검사처럼 문장에 자리표시자가 없는데 값이 딸려 오면 문장 뒤에 이름과 값을 적는다
   const extra = HAS_PLACEHOLDER.test(check.text) ? [] : claims;
   return (
-    <li className="grid grid-cols-[3.25rem_1fr] gap-x-2">
-      <span className={`font-semibold ${CHECK_TONE[check.status]}`}>{CHECK_LABEL[check.status]}</span>
+    <li className="grid grid-cols-[3.75rem_1fr] gap-x-2">
+      <span className={`font-semibold whitespace-nowrap ${CHECK_TONE[check.status]}`}>{CHECK_LABEL[check.status]}</span>
       <span className="min-w-0">
         {named ? <span className="text-muted">{CHECK_KEY_LABEL[check.key] ?? check.key} </span> : null}
         <ClaimText text={check.text} claims={claims} />
@@ -60,11 +67,10 @@ function CheckLine({ check, named = true }: { check: Check; named?: boolean }) {
 }
 
 /**
- * 배정 한 건의 확인 항목. 판정 칸이 길어지지 않게 건수만 먼저 적고 나머지는 접어 둔다.
- * 담당자가 움직여야 하는 것(불충족, 담당자 인계, 모르는 값)은 접지 않는다.
+ * 배정 한 건의 확인 항목을 나눈다. 담당자가 움직여야 하는 것(불충족, 담당자 인계, 모르는 값)은 접지 않고(pinned),
+ * 나머지는 묶음별로 접어 둔다.
  */
-function Checks({ checks }: { checks: Check[] }) {
-  if (checks.length === 0) return null;
+function splitChecks(checks: Check[]) {
   const pinned = checks.filter(
     (check) => check.status === "unmet" || check.key === "handoff" || check.key === "unresolved",
   );
@@ -77,32 +83,149 @@ function Checks({ checks }: { checks: Check[] }) {
     { title: "확인할 것", items: todo },
     { title: "충족", items: met },
   ].filter((group) => group.items.length > 0);
+  return { pinned, rest, conditions, todo, met, groups };
+}
+
+/**
+ * 배정 한 건(흐름 한 줄). 판정 칸에는 건수와 펼치기 단추만 두고, 펼친 확인 항목은 판정 칸이 아니라
+ * 그 행 바로 아래에 표 전체 폭으로 그린다(판정 칸에만 넣으면 왼쪽 칸이 길게 빈다).
+ */
+function AssignmentRows({
+  item,
+  source,
+  full,
+  vendorName,
+}: {
+  item: Assignment;
+  source: ViewStream | undefined;
+  full: boolean;
+  vendorName: (orgId: string | null) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const detailId = useId();
+  const { pinned, rest, conditions, todo, met, groups } = splitChecks(item.checks);
+  const expanded = open && rest.length > 0;
   return (
-    <div className="mt-2 text-[13px]">
-      {pinned.length > 0 ? (
-        <ul className="mb-1 space-y-1">
-          {pinned.map((check, index) => (
-            <CheckLine key={`${check.key}-${index}`} check={check} />
-          ))}
-        </ul>
-      ) : null}
-      {rest.length > 0 ? (
-        <>
-          <p className="text-ink-2">
-            조건 <span className="font-mono font-semibold">{conditions.length}</span>건 · 확인 필요{" "}
-            <span className="font-mono font-semibold">{todo.length}</span>건
-            {met.length > 0 ? (
-              <>
-                {" "}
-                · 충족 <span className="font-mono font-semibold">{met.length}</span>건
-              </>
-            ) : null}
+    <>
+      <tr className={`align-top ${expanded ? "" : "border-b border-line"}`}>
+        <td className="py-3 pr-3">
+          <p className="font-semibold">{source?.name ?? item.streamId}</p>
+          <p className="text-[13px] text-muted">
+            {[source?.material, source?.origin].filter(Boolean).join(" · ")}
+            {source?.grade.value ? ` · ${source.grade.value}등급 (${source.grade.label})` : " · 등급 확인 필요"}
           </p>
-          <MoreDetails label="펼치기" closeLabel="접기" className="-mt-1.5">
-            <div className="space-y-2 pb-1">
+        </td>
+        <td className="py-3 pr-3">
+          {item.vendorOrgId ? (
+            <p className="font-semibold">{item.vendorName ?? vendorName(item.vendorOrgId)}</p>
+          ) : item.checks.some((check) => check.key === "handoff") ? (
+            <StatusChip tone="warn">담당자 인계</StatusChip>
+          ) : (
+            <NeedsCheck />
+          )}
+          <p className="text-[13px] text-muted">{item.route ? (ROUTE_LABEL[item.route] ?? item.route) : "경로 미정"}</p>
+        </td>
+        <td className="py-3 pr-3 text-right whitespace-nowrap">
+          <ClaimValue claim={item.unitPrice} price />
+        </td>
+        {full ? (
+          <>
+            <td className="py-3 pr-3 text-right whitespace-nowrap">
+              <ClaimValue claim={item.monthlyNow} signed />
+              {item.currentAssumed ? <p className="text-[12px] font-semibold text-warn">현행은 가정값</p> : null}
+            </td>
+            <td className="py-3 pr-3 text-right whitespace-nowrap">
+              <ClaimValue claim={item.monthlyAfter} signed />
+            </td>
+            <td className="py-3 pr-3 text-right whitespace-nowrap">
+              <ClaimValue claim={item.difference} signed />
+            </td>
+            <td className="py-3 pr-3 text-right whitespace-nowrap">
+              <ClaimValue claim={item.carbon} />
+              {item.carbonValue ? (
+                <p className="text-[12px] text-muted">
+                  배출권 환산 <ClaimValue claim={item.carbonValue} />
+                </p>
+              ) : null}
+            </td>
+          </>
+        ) : null}
+        <td className="min-w-[16rem] py-3">
+          <StatusChip tone={TONE[item.status]}>{STATUS_LABEL[item.status]}</StatusChip>
+          {item.checks.length > 0 ? (
+            <div className="mt-2 text-[13px]">
+              {pinned.length > 0 ? (
+                <ul className="mb-1 space-y-1">
+                  {pinned.map((check, index) => (
+                    <CheckLine key={`${check.key}-${index}`} check={check} />
+                  ))}
+                </ul>
+              ) : null}
+              {rest.length > 0 ? (
+                <>
+                  <p className="text-ink-2">
+                    조건 <span className="font-mono font-semibold">{conditions.length}</span>건 · 확인 필요{" "}
+                    <span className="font-mono font-semibold">{todo.length}</span>건
+                    {met.length > 0 ? (
+                      <>
+                        {" "}
+                        · 충족 <span className="font-mono font-semibold">{met.length}</span>건
+                      </>
+                    ) : null}
+                  </p>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-controls={detailId}
+                    onClick={() => setOpen((value) => !value)}
+                    className="-mt-1.5 flex min-h-11 w-fit items-center gap-2 rounded-md text-[13.5px]"
+                  >
+                    <span className="font-semibold text-ink underline decoration-line-strong decoration-1 underline-offset-4 hover:decoration-ink">
+                      {open ? "접기" : "펼치기"}
+                    </span>
+                    <svg
+                      viewBox="0 0 16 16"
+                      width={14}
+                      height={14}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={`text-muted transition-transform duration-150 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                    >
+                      <path d="M4 6l4 4 4-4" />
+                    </svg>
+                  </button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {item.alternatives.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-[13px] text-muted">
+              {item.alternatives.map((alt, index) => (
+                <li key={`${alt.vendorOrgId}-${alt.route}-${index}`}>
+                  대안: {alt.vendorName ?? (alt.vendorOrgId ? vendorName(alt.vendorOrgId) : "")}
+                  {" · "}
+                  {ROUTE_LABEL[alt.route] ?? alt.route} <ClaimValue claim={alt.unitPrice} price /> → 월{" "}
+                  <ClaimValue claim={alt.monthlyAfter} signed /> {alt.note ? `(${alt.note})` : ""}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </td>
+      </tr>
+      {expanded ? (
+        <tr id={detailId} className="border-b border-line">
+          <td colSpan={full ? 8 : 4} className="pb-4">
+            <div className="space-y-3 rounded-md bg-sunken px-4 py-3 text-[13px]">
+              <p className="text-label text-muted">{source?.name ?? item.streamId} · 확인 항목</p>
               {groups.map((group) => (
                 <div key={group.title}>
-                  <p className="text-label text-muted">{group.title}</p>
+                  <p className="text-label text-muted">
+                    {group.title} <span className="font-mono">{group.items.length}</span>건
+                  </p>
                   <ul className="mt-0.5 space-y-1">
                     {group.items.map((check, index) => (
                       // 묶음 제목이 이미 "업체가 내건 조건"이면 줄마다 이름을 되풀이하지 않는다
@@ -112,10 +235,10 @@ function Checks({ checks }: { checks: Check[] }) {
                 </div>
               ))}
             </div>
-          </MoreDetails>
-        </>
+          </td>
+        </tr>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -211,75 +334,15 @@ export function ResultSheet({
             </tr>
           </thead>
           <tbody>
-            {result.assignments.map((item) => {
-              const source = stream(item.streamId);
-              return (
-                <tr key={item.streamId} className="border-b border-line align-top">
-                  <td className="py-3 pr-3">
-                    <p className="font-semibold">{source?.name ?? item.streamId}</p>
-                    <p className="text-[13px] text-muted">
-                      {[source?.material, source?.origin].filter(Boolean).join(" · ")}
-                      {source?.grade.value ? ` · ${source.grade.value}등급 (${source.grade.label})` : " · 등급 확인 필요"}
-                    </p>
-                  </td>
-                  <td className="py-3 pr-3">
-                    {item.vendorOrgId ? (
-                      <p className="font-semibold">{item.vendorName ?? vendorName(item.vendorOrgId)}</p>
-                    ) : item.checks.some((check) => check.key === "handoff") ? (
-                      <StatusChip tone="warn">담당자 인계</StatusChip>
-                    ) : (
-                      <NeedsCheck />
-                    )}
-                    <p className="text-[13px] text-muted">
-                      {item.route ? (ROUTE_LABEL[item.route] ?? item.route) : "경로 미정"}
-                    </p>
-                  </td>
-                  <td className="py-3 pr-3 text-right whitespace-nowrap">
-                    <ClaimValue claim={item.unitPrice} price />
-                  </td>
-                  {full ? (
-                    <>
-                  <td className="py-3 pr-3 text-right whitespace-nowrap">
-                    <ClaimValue claim={item.monthlyNow} signed />
-                    {item.currentAssumed ? (
-                      <p className="text-[12px] font-semibold text-warn">현행은 가정값</p>
-                    ) : null}
-                  </td>
-                  <td className="py-3 pr-3 text-right whitespace-nowrap">
-                    <ClaimValue claim={item.monthlyAfter} signed />
-                  </td>
-                  <td className="py-3 pr-3 text-right whitespace-nowrap">
-                    <ClaimValue claim={item.difference} signed />
-                  </td>
-                  <td className="py-3 pr-3 text-right whitespace-nowrap">
-                    <ClaimValue claim={item.carbon} />
-                    {item.carbonValue ? (
-                      <p className="text-[12px] text-muted">
-                        배출권 환산 <ClaimValue claim={item.carbonValue} />
-                      </p>
-                    ) : null}
-                  </td>
-                    </>
-                  ) : null}
-                  <td className="min-w-[16rem] py-3">
-                    <StatusChip tone={TONE[item.status]}>{STATUS_LABEL[item.status]}</StatusChip>
-                    <Checks checks={item.checks} />
-                    {item.alternatives.length > 0 ? (
-                      <ul className="mt-2 space-y-1 text-[13px] text-muted">
-                        {item.alternatives.map((alt, index) => (
-                          <li key={`${alt.vendorOrgId}-${alt.route}-${index}`}>
-                            대안: {alt.vendorName ?? (alt.vendorOrgId ? vendorName(alt.vendorOrgId) : "")}
-                            {" · "}
-                            {ROUTE_LABEL[alt.route] ?? alt.route} <ClaimValue claim={alt.unitPrice} price /> → 월{" "}
-                            <ClaimValue claim={alt.monthlyAfter} signed /> {alt.note ? `(${alt.note})` : ""}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
+            {result.assignments.map((item) => (
+              <AssignmentRows
+                key={item.streamId}
+                item={item}
+                source={stream(item.streamId)}
+                full={full}
+                vendorName={vendorName}
+              />
+            ))}
           </tbody>
         </table>
       </div>

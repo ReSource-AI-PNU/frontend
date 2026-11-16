@@ -411,8 +411,13 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
         <p className="mt-2">{gate.reason}</p>
         <dl className="mt-2 grid grid-cols-[11rem_1fr] gap-x-4 gap-y-1 text-[13px]">
           <dt className="text-muted">실제 등급 기록</dt>
-          <dd className="font-mono">
-            {gate.realLabelCount}건 (기준 {gate.minRealLabels}건 이상)
+          <dd>
+            {gate.realLabelCount === 0 ? (
+              "아직 없습니다"
+            ) : (
+              <span className="font-mono">{gate.realLabelCount}건</span>
+            )}{" "}
+            <span className="font-mono">(기준 {gate.minRealLabels}건 이상)</span>
           </dd>
           <dt className="text-muted">평가한 것</dt>
           <dd>

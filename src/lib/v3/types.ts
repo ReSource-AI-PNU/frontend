@@ -20,6 +20,7 @@ export type ClaimRole = z.infer<typeof s.claimRoleSchema>;
 
 export type TriStatus = z.infer<typeof s.triStatusSchema>;
 export type EdgeStatus = z.infer<typeof s.edgeStatusSchema>;
+export type CheckStatus = z.infer<typeof s.checkStatusSchema>;
 export type StageStatus = z.infer<typeof s.stageStatusSchema>;
 export type SessionStatus = z.infer<typeof s.sessionStatusSchema>;
 export type SessionPhase = z.infer<typeof s.sessionPhaseSchema>;

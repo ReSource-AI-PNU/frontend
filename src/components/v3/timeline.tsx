@@ -15,7 +15,26 @@ const THREAD_TONE: Record<ThreadStatus, ChipTone> = {
   handoff: "warn",
   confirmed: "done",
 };
+/** 탭의 상태 점. 색만으로 가르지 않도록 탭에는 상태 낱말도 함께 적는다 */
+const THREAD_DOT: Record<ThreadStatus, string> = {
+  not_opened: "border border-line-strong",
+  open: "border border-ink",
+  agreed: "bg-ink",
+  declined: "bg-loss",
+  handoff: "bg-warn",
+  confirmed: "bg-ink",
+};
 const NUM = ["①", "②", "③", "④", "⑤", "⑥"];
+
+/**
+ * 메시지의 "사유" 줄. 거절 메시지의 meta.reason에는 첫 흐름의 사유만 실려 오므로,
+ * 받지 않는 흐름(meta.excluded)이 여러 건이면 그 사유를 모두 적는다.
+ */
+function reasonLine(meta: NonNullable<ThreadMessage["meta"]>) {
+  if (!meta.reason) return null;
+  const reasons = [...new Set(meta.excluded.map((item) => item.reason).filter(Boolean))];
+  return reasons.length > 1 && reasons.includes(meta.reason) ? reasons.join(" / ") : meta.reason;
+}
 
 /**
  * 업체 측 에이전트가 실제로 무엇으로 답했는지와, 업체가 고른 모델 설정을 따로 보여 준다.
@@ -112,7 +131,8 @@ export function Timeline({
 
   return (
     <div className="flex min-h-0 flex-col">
-      <div role="tablist" aria-label="업체별 대화" className="flex gap-1 overflow-x-auto border-b border-line px-3">
+      {/* 업체마다 대화가 둘(연 것, 열지 않은 것)까지 있어 한 줄에 다 들어가지 않는다. 가로로 밀어 잘리지 않게 줄을 바꾼다 */}
+      <div role="tablist" aria-label="업체별 대화" className="flex flex-wrap gap-x-1 border-b border-line px-3">
         {threads.map((item) => {
           const active = item.id === thread.id;
           return (
@@ -122,10 +142,11 @@ export function Timeline({
               role="tab"
               aria-selected={active}
               onClick={() => setPicked(item.id)}
-              className={`shrink-0 px-3 py-3 text-sm whitespace-nowrap ${active ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--color-ink)]" : "text-muted hover:text-ink"}`}
+              className={`flex min-h-11 items-center gap-1.5 px-2.5 py-2 text-sm whitespace-nowrap ${active ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--color-ink)]" : "text-muted hover:text-ink"}`}
             >
+              <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${THREAD_DOT[item.status]}`} />
               {item.vendorName}
-              <span className="ml-1.5 text-[12px] text-muted">{THREAD_LABEL[item.status]}</span>
+              <span className="text-[12px] text-muted">{THREAD_LABEL[item.status]}</span>
             </button>
           );
         })}
@@ -251,7 +272,7 @@ export function Timeline({
                     {meta.reason ? (
                       <>
                         <dt className="text-muted">사유</dt>
-                        <dd>{meta.reason}</dd>
+                        <dd>{reasonLine(meta)}</dd>
                       </>
                     ) : null}
                   </dl>

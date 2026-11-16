@@ -53,6 +53,11 @@ const claimOrNull = claimSchema.nullable();
 export const orgRoleSchema = z.enum(["emitter", "vendor", "admin"]);
 export const triStatusSchema = z.enum(["calculated", "conditional", "needs_information"]);
 export const edgeStatusSchema = z.enum(["met", "conditional", "unmet"]);
+/**
+ * 결과 한 장 확인 항목의 판정. 계약 7장의 값은 met·conditional·unmet이다.
+ * 배정이 빠진 흐름의 사유 줄에 행 판정과 같은 needs_information이 오면 "확인 필요"로 그대로 적도록 받아 둔다.
+ */
+export const checkStatusSchema = z.enum(["met", "conditional", "unmet", "needs_information"]);
 export const stageStatusSchema = z.enum(["waiting", "running", "done", "needs_check"]);
 export const sessionStatusSchema = z.enum([
   "idle",
@@ -273,7 +278,7 @@ export const checkKeySchema = z.enum([
 
 export const checkSchema = obj({
   key: checkKeySchema,
-  status: edgeStatusSchema,
+  status: checkStatusSchema,
   text: z.string(),
   evidence: z.array(z.string()),
   /** 업체가 내건 조건과 적재 검사는 text의 자리표시자나 곁들인 값을 이 claims로 그린다 */
