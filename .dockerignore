@@ -1,0 +1,23 @@
+# 이미지 빌드에 보내지 않는 것 (미실행: Dockerfile과 함께 아직 docker로 빌드해 보지 않았다)
+.git
+.github
+node_modules
+.next
+out
+build
+coverage
+.mock-db
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+.DS_Store
+docs
+tests
+README.md
+Dockerfile
+.dockerignore
+# predev·prebuild가 다시 복사한다
+public/vendor
