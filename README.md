@@ -135,3 +135,5 @@ node --test tests/v3-view.test.ts   # v3 진단 뷰가 화면 타입(스키마)�
 ## 3D 지도
 
 MapLibre GL 6으로 배경 지도 타일 없이 건물 외곽선만 높이대로 세운다. MapLibre 6은 워커 경로를 런타임에 계산해 번들러가 찾지 못하므로, `predev`·`prebuild`에서 워커를 `public/vendor/`로 복사하고 `setWorkerUrl`로 지정한다.
+
+Next.js 16.4.4에 보안 권고가 있다. 올리기 전에 버전을 올릴지 정한다.
