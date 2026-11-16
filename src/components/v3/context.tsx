@@ -42,6 +42,14 @@ const ORG_KEY = "rsai-v3-org";
 const SESSION_KEY = "rsai-v3-session";
 const EVENT = "rsai-v3-store";
 
+/** GET /orgs의 order 순(시연 주인공이 맨 앞, 운영 조직이 맨 뒤). order가 없는 조직은 받은 순서대로 뒤에 둔다. */
+function byOrder(orgs: Org[]): Org[] {
+  return orgs
+    .map((org, index) => ({ org, index }))
+    .sort((a, b) => (a.org.order ?? Infinity) - (b.org.order ?? Infinity) || a.index - b.index)
+    .map((item) => item.org);
+}
+
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
   window.addEventListener(EVENT, callback);
@@ -82,12 +90,12 @@ export function V3Provider({ children }: { children: ReactNode }) {
       .health()
       .then(() => api.listOrgs())
       .then((orgs) => {
-        if (alive) setRemote({ mode: "live", orgs, fixture: null });
+        if (alive) setRemote({ mode: "live", orgs: byOrder(orgs), fixture: null });
       })
       .catch(async () => {
         // 연결하지 못했을 때만 예시 데이터를 불러온다
         const { FIXTURE } = await import("@/lib/v3/fixture");
-        if (alive) setRemote({ mode: "fixture", orgs: FIXTURE.orgs, fixture: FIXTURE });
+        if (alive) setRemote({ mode: "fixture", orgs: byOrder(FIXTURE.orgs), fixture: FIXTURE });
       });
     return () => {
       alive = false;
@@ -109,7 +117,8 @@ export function V3Provider({ children }: { children: ReactNode }) {
   const setOrgId = useCallback((id: string) => setStored(ORG_KEY, id), []);
   const setSessionId = useCallback((id: string | null) => setStored(SESSION_KEY, id), []);
   const openEvidence = useCallback((ids: string[], title?: string) => {
-    if (ids.length > 0) setPanel({ ids, title });
+    // 한 판단에 같은 근거가 여러 번 실려 올 수 있다. 한 번만 연다
+    if (ids.length > 0) setPanel({ ids: [...new Set(ids)], title });
   }, []);
 
   const value = useMemo<Ctx>(

@@ -7,12 +7,46 @@ import { z } from "zod";
 
 const obj = z.strictObject;
 
+/** claim이 무엇을 가리키는지(계약 7장 "사람이 읽는 이름"). 화면은 ID 끝말이 아니라 이것으로 값을 가린다. */
+export const claimRoleSchema = z.enum([
+  "unitPrice",
+  "treatmentFee",
+  "currentUnitCost",
+  "referencePrice",
+  "monthlyKg",
+  "totalKg",
+  "totalM3",
+  "monthlyRevenue",
+  "monthlyAfter",
+  "monthlyNow",
+  "difference",
+  "sensitivity",
+  "carbon",
+  "carbonValue",
+  "transport",
+  "extraCost",
+  "distance",
+  "trips",
+  "pickups",
+  "perPickup",
+  "capacity",
+  "threshold",
+  "contamination",
+  "moisture",
+  "priceDeviation",
+  "clause",
+]);
+
 export const claimSchema = obj({
   id: z.string(),
   kind: z.enum(["number", "clause"]),
   value: z.union([z.number(), z.string()]).nullable(),
   unit: z.string().nullable(),
   evidence: z.array(z.string()),
+  /** 사람이 읽는 이름. 이름을 정하지 못한 claim에는 없다 */
+  label: z.string().optional(),
+  /** 처리비(treatmentFee)는 값이 음수 그대로 오고 화면은 크기로 그린다 */
+  role: claimRoleSchema.optional(),
 });
 const claimOrNull = claimSchema.nullable();
 
@@ -55,9 +89,12 @@ export const messageTypeSchema = z.enum([
   "confirm",
 ]);
 
-/** 실제로 답을 쓴 구현. rule은 모델이 아니라 규칙 정책(모델 미연결)이다. */
+/**
+ * 실제로 답을 쓴 구현. rule은 모델이 아니라 규칙 정책(모델 미연결), code는 진행기(코드)가 쓴 것이다
+ * (담당자 인계 메시지처럼 모델도 정책도 거치지 않은 메시지).
+ */
 export const modelRefSchema = obj({
-  provider: z.enum(["foundry", "ollama", "rule"]),
+  provider: z.enum(["foundry", "ollama", "rule", "code"]),
   name: z.string(),
 });
 export const vendorModelSchema = obj({
@@ -84,8 +121,20 @@ export const validationSchema = obj({
   recheckedBy: z.string().optional(),
 });
 
+/** 업체가 배출 기업에 묻는 흐름 항목 일곱 가지와, 회사 측이 업체에 조건을 달라고 할 때의 terms */
+export const askFieldSchema = z.enum([
+  "material",
+  "origin",
+  "form",
+  "contaminationPct",
+  "moisturePct",
+  "lotSame",
+  "monthlyKg",
+  "terms",
+]);
+
 export const messageMetaSchema = obj({
-  asks: z.array(obj({ streamId: z.string(), field: z.string() })),
+  asks: z.array(obj({ streamId: z.string(), field: askFieldSchema })),
   excluded: z.array(obj({ streamId: z.string(), reason: z.string() })),
   reason: z.string().nullable(),
   terms: obj({
@@ -184,12 +233,36 @@ export const graphEdgeSchema = obj({
   kind: z.enum(["permit", "criterion", "assignment", "excluded", "regulation", "document"]),
 });
 
+/** 결과 한 장 배정의 확인 항목 종류(계약 7장). 화면 이름은 format.ts의 CHECK_KEY_LABEL */
+export const checkKeySchema = z.enum([
+  "contaminationPct",
+  "moisturePct",
+  "contamination_basis",
+  "moisture_basis",
+  "form",
+  "monthly_kg_basis",
+  "material_basis",
+  "mixture",
+  "permit",
+  "current_assumed",
+  "transport",
+  "carbon",
+  "vendor_condition",
+  "price_differs",
+  "unresolved",
+  "skipped",
+  "handoff",
+  "min_volume",
+  "loading",
+  "loading_volume",
+]);
+
 export const checkSchema = obj({
-  key: z.string(),
+  key: checkKeySchema,
   status: edgeStatusSchema,
   text: z.string(),
   evidence: z.array(z.string()),
-  /** 업체가 내건 조건이면 text의 자리표시자를 이 claims로 그린다 */
+  /** 업체가 내건 조건과 적재 검사는 text의 자리표시자나 곁들인 값을 이 claims로 그린다 */
   claims: z.array(claimSchema).optional(),
 });
 
@@ -241,7 +314,15 @@ export const resultSchema = obj({
     difference: claimOrNull,
     carbon: claimOrNull,
   }),
-  assumptions: z.array(z.string()),
+  /** 이 결과에 쓴 가정값. id는 근거 ID다. 값 하나로 적을 수 없는 가정(등급 기준표)은 value·unit이 null */
+  assumptions: z.array(
+    obj({
+      id: z.string(),
+      label: z.string(),
+      value: z.union([z.number(), z.string()]).nullable(),
+      unit: z.string().nullable(),
+    }),
+  ),
   sensitivity: z.array(
     obj({ label: z.string(), streamId: z.string().nullable().optional(), difference: claimOrNull }),
   ),
@@ -303,10 +384,75 @@ export const runEventSchema = obj({
     "question",
     "document",
     "stage",
+    "feedback",
   ]),
   threadId: z.string().nullable(),
   summary: z.string(),
+  /** hiddenEvidenceCount(정수)가 있으면 보는 조직이 열 수 없는 근거를 그만큼 뺀 것이다 */
   detail: z.record(z.string(), z.unknown()),
+});
+
+export const correctionFieldSchema = z.enum([
+  "box",
+  "material",
+  "origin",
+  "form",
+  "contaminant",
+  "grade",
+  "contaminationPct",
+  "moisturePct",
+]);
+
+/** 배출 기업 담당자가 고친 값(기록만 남는다. 흐름의 값은 바뀌지 않는다) */
+export const correctionSchema = obj({
+  type: z.literal("correction"),
+  id: z.string(),
+  sessionId: z.string(),
+  orgId: z.string(),
+  streamId: z.string(),
+  field: correctionFieldSchema,
+  before: z.union([z.string(), z.number()]).nullable(),
+  after: z.union([z.string(), z.number()]).nullable(),
+  note: z.string().nullable(),
+  seq: z.number(),
+  target: z.enum(["detector", "grade"]),
+  photoEvidence: z.array(z.string()),
+  recordedOn: z.string(),
+});
+
+/** 업체가 확정 뒤 기록한 실제 결과 */
+export const outcomeSchema = obj({
+  type: z.literal("outcome"),
+  id: z.string(),
+  sessionId: z.string(),
+  threadId: z.string(),
+  vendorOrgId: z.string(),
+  emitterOrgId: z.string(),
+  streamId: z.string(),
+  inspectedOn: z.string(),
+  actualGrade: z.string().nullable(),
+  actualUnitPriceKrwPerKg: z.number().nullable(),
+  actualKg: z.number().nullable(),
+  note: z.string().nullable(),
+  evidenceKind: z.enum(["human", "doc"]),
+  evidence: obj({
+    grade: z.string().nullable().optional(),
+    unitPrice: z.string().nullable().optional(),
+    kg: z.string().nullable().optional(),
+  }),
+  features: obj({
+    material: z.string().nullable(),
+    contaminationPct: z.number().nullable(),
+    moisturePct: z.number().nullable(),
+    basis: z.string().nullable(),
+    evidence: z.array(z.string()).optional(),
+  }),
+  criterionId: z.string().nullable(),
+  tablePrice: claimOrNull,
+  offeredPrice: claimOrNull,
+  /** 실제 단가에서 매입 기준표 단가를 뺀 값 */
+  deviation: claimOrNull,
+  recordedOn: z.string(),
 });
 
 export const diagnosisViewSchema = obj({
@@ -330,6 +476,20 @@ export const diagnosisViewSchema = obj({
   approvals: z.array(approvalSchema),
   documents: z.array(viewDocumentSchema),
   events: z.array(runEventSchema),
+  /** 이 진단에 쌓인 교정과 실제 결과. 교정은 배출 기업만, 실제 결과는 그 대화의 업체와 배출 기업만 본다 */
+  feedback: obj({ corrections: z.array(correctionSchema), outcomes: z.array(outcomeSchema) }),
+});
+
+/** GET /orgs. order가 작은 것부터 온다(시연 주인공이 맨 앞, 운영 조직이 맨 뒤) */
+export const orgSchema = obj({
+  id: z.string(),
+  name: z.string(),
+  role: orgRoleSchema,
+  region: z.string().nullable().optional(),
+  location: z.tuple([z.number(), z.number()]).nullable().optional(),
+  order: z.number().optional(),
+  synthetic: z.boolean().optional(),
+  note: z.string().optional(),
 });
 
 export const evidenceSchema = obj({

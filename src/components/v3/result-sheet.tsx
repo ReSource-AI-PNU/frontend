@@ -1,7 +1,8 @@
 "use client";
 
-import { FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL } from "@/lib/v3/format";
-import type { DiagnosisView, EdgeStatus, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
+import { MoreDetails } from "@/components/ui/more-details";
+import { CHECK_KEY_LABEL, FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL, formatValue } from "@/lib/v3/format";
+import type { Check, DiagnosisView, EdgeStatus, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
 import { useV3 } from "./context";
 import { StatusChip, type ChipTone } from "./status-chip";
@@ -17,6 +18,105 @@ const CHECK_TONE: Record<EdgeStatus, string> = {
   conditional: "text-warn",
   unmet: "text-loss",
 };
+
+const HAS_PLACEHOLDER = /\{\{/;
+
+function CheckLine({ check }: { check: Check }) {
+  const { openEvidence } = useV3();
+  const claims = check.claims ?? [];
+  // 적재 검사처럼 문장에 자리표시자가 없는데 값이 딸려 오면 문장 뒤에 이름과 값을 적는다
+  const extra = HAS_PLACEHOLDER.test(check.text) ? [] : claims;
+  return (
+    <li className="grid grid-cols-[3.25rem_1fr] gap-x-2">
+      <span className={`font-semibold ${CHECK_TONE[check.status]}`}>{CHECK_LABEL[check.status]}</span>
+      <span className="min-w-0">
+        <span className="text-muted">{CHECK_KEY_LABEL[check.key] ?? check.key}</span>{" "}
+        <ClaimText text={check.text} claims={claims} />
+        {extra.length > 0 ? (
+          <span className="text-ink-2">
+            {" "}
+            (
+            {extra.map((claim, index) => (
+              <span key={claim.id}>
+                {index > 0 ? " · " : ""}
+                {claim.label ?? claim.id} <ClaimValue claim={claim} />
+              </span>
+            ))}
+            )
+          </span>
+        ) : null}{" "}
+        {check.evidence.length > 0 ? (
+          <button
+            type="button"
+            className="underline decoration-dotted underline-offset-4"
+            onClick={() => openEvidence(check.evidence, `${CHECK_KEY_LABEL[check.key] ?? "확인 항목"}의 근거`)}
+          >
+            근거
+          </button>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * 배정 한 건의 확인 항목. 판정 칸이 길어지지 않게 건수만 먼저 적고 나머지는 접어 둔다.
+ * 담당자가 움직여야 하는 것(불충족, 담당자 인계, 모르는 값)은 접지 않는다.
+ */
+function Checks({ checks }: { checks: Check[] }) {
+  if (checks.length === 0) return null;
+  const pinned = checks.filter(
+    (check) => check.status === "unmet" || check.key === "handoff" || check.key === "unresolved",
+  );
+  const rest = checks.filter((check) => !pinned.includes(check));
+  const conditions = rest.filter((check) => check.key === "vendor_condition");
+  const todo = rest.filter((check) => check.key !== "vendor_condition" && check.status !== "met");
+  const met = rest.filter((check) => check.key !== "vendor_condition" && check.status === "met");
+  const groups = [
+    { title: "업체가 내건 조건", items: conditions },
+    { title: "확인할 것", items: todo },
+    { title: "충족", items: met },
+  ].filter((group) => group.items.length > 0);
+  return (
+    <div className="mt-2 text-[13px]">
+      {pinned.length > 0 ? (
+        <ul className="mb-1 space-y-1">
+          {pinned.map((check, index) => (
+            <CheckLine key={`${check.key}-${index}`} check={check} />
+          ))}
+        </ul>
+      ) : null}
+      {rest.length > 0 ? (
+        <>
+          <p className="text-ink-2">
+            조건 <span className="font-mono font-semibold">{conditions.length}</span>건 · 확인 필요{" "}
+            <span className="font-mono font-semibold">{todo.length}</span>건
+            {met.length > 0 ? (
+              <>
+                {" "}
+                · 충족 <span className="font-mono font-semibold">{met.length}</span>건
+              </>
+            ) : null}
+          </p>
+          <MoreDetails label="펼치기" closeLabel="접기" className="-mt-1.5">
+            <div className="space-y-2 pb-1">
+              {groups.map((group) => (
+                <div key={group.title}>
+                  <p className="text-label text-muted">{group.title}</p>
+                  <ul className="mt-0.5 space-y-1">
+                    {group.items.map((check, index) => (
+                      <CheckLine key={`${check.key}-${index}`} check={check} />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </MoreDetails>
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 /** 결과 한 장: 흐름별 배정 업체, 경로, 단가, 월 손익과 현행 대비, 탄소, 가정값, 대안, 민감도, 참고 시세 */
 export function ResultSheet({
@@ -124,6 +224,8 @@ export function ResultSheet({
                   <td className="py-3 pr-3">
                     {item.vendorOrgId ? (
                       <p className="font-semibold">{item.vendorName ?? vendorName(item.vendorOrgId)}</p>
+                    ) : item.checks.some((check) => check.key === "handoff") ? (
+                      <StatusChip tone="warn">담당자 인계</StatusChip>
                     ) : (
                       <NeedsCheck />
                     )}
@@ -160,27 +262,7 @@ export function ResultSheet({
                   ) : null}
                   <td className="min-w-[16rem] py-3">
                     <StatusChip tone={TONE[item.status]}>{STATUS_LABEL[item.status]}</StatusChip>
-                    {item.checks.length > 0 ? (
-                      <ul className="mt-2 space-y-1 text-[13px]">
-                        {item.checks.map((check, index) => (
-                          <li key={`${check.key}-${index}`}>
-                            <span className={`font-semibold ${CHECK_TONE[check.status]}`}>
-                              {CHECK_LABEL[check.status]}
-                            </span>{" "}
-                            <ClaimText text={check.text} claims={check.claims ?? []} />{" "}
-                            {check.evidence.length > 0 ? (
-                              <button
-                                type="button"
-                                className="underline decoration-dotted underline-offset-4"
-                                onClick={() => openEvidence(check.evidence, "이 확인 항목의 근거")}
-                              >
-                                근거
-                              </button>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
+                    <Checks checks={item.checks} />
                     {item.alternatives.length > 0 ? (
                       <ul className="mt-2 space-y-1 text-[13px] text-muted">
                         {item.alternatives.map((alt, index) => (
@@ -214,17 +296,26 @@ export function ResultSheet({
             <p className="mt-1 text-sm text-muted">이 결과에 쓴 가정값이 없습니다.</p>
           ) : (
             <ul className="mt-1 space-y-1 text-sm">
-              {result.assumptions.map((id) => (
-                <li key={id}>
-                  <button
-                    type="button"
-                    className="text-left font-mono text-[13px] break-all underline decoration-dotted underline-offset-4"
-                    onClick={() => openEvidence([id], "가정값")}
-                  >
-                    {id}
-                  </button>
-                </li>
-              ))}
+              {result.assumptions.map((item) => {
+                const value = formatValue(item.value, item.unit);
+                return (
+                  <li key={item.id} className="flex justify-between gap-4">
+                    <button
+                      type="button"
+                      title="근거 보기"
+                      className="min-w-0 text-left underline decoration-line-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+                      onClick={() => openEvidence([item.id], item.label)}
+                    >
+                      {item.label}
+                    </button>
+                    {value !== null ? (
+                      <span className="font-mono font-semibold whitespace-nowrap tabular-nums">{value}</span>
+                    ) : (
+                      <span className="text-[13px] whitespace-nowrap text-muted">표 (눌러서 보기)</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

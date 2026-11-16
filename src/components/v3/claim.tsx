@@ -17,25 +17,37 @@ export function NeedsCheck() {
 
 /**
  * 숫자나 조항 하나. 누르면 근거 패널이 열린다. 값이 없으면 "확인 필요".
- * 업체 단가는 부호 대신 "매입"(받는 돈)과 "처리비"(내는 돈)로 풀어 보여 준다.
+ * 업체 단가는 부호 대신 "매입"(받는 돈)과 "처리비"(내는 돈)로 풀어 보여 준다. 처리비는 값이 음수로 오지만 크기로 적는다.
+ * 단가인지는 claim의 role(unitPrice, treatmentFee)로 가린다.
  */
 export function ClaimValue({
   claim,
   signed = false,
   price,
+  inline = false,
   title,
   className = "",
 }: {
   claim: Claim | null | undefined;
   signed?: boolean;
-  /** 단가로 그릴지. 주지 않으면 claim ID와 단위로 가린다 */
+  /** 단가로 그릴지. 주지 않으면 claim의 role로 가린다 */
   price?: boolean;
+  /**
+   * 문장 안의 값인지. 백엔드 문장이 "매입 단가는 …", "처리비는 …"으로 이미 낱말을 쓰므로
+   * 단가는 낱말을 다시 붙이지 않고 크기만 적는다.
+   */
+  inline?: boolean;
   title?: string;
   className?: string;
 }) {
   const { openEvidence } = useV3();
   const asPrice = price ?? isUnitPriceClaim(claim);
-  const text = asPrice ? formatUnitPrice(claim) : formatClaim(claim, signed);
+  const text =
+    asPrice && inline && claim && typeof claim.value === "number"
+      ? formatClaim({ ...claim, value: Math.abs(claim.value) })
+      : asPrice
+        ? formatUnitPrice(claim)
+        : formatClaim(claim, signed);
   if (!claim || text === null) return <NeedsCheck />;
   const assumed = isAssumed(claim);
   const tone =
@@ -66,8 +78,8 @@ export function ClaimValue({
   return (
     <button
       type="button"
-      onClick={() => openEvidence(claim.evidence, title)}
-      title="근거 보기"
+      onClick={() => openEvidence(claim.evidence, title ?? claim.label)}
+      title={claim.label ? `${claim.label} · 근거 보기` : "근거 보기"}
       className={`inline cursor-pointer rounded-sm font-semibold underline decoration-line-strong decoration-dotted underline-offset-4 hover:bg-sunken hover:decoration-ink ${claim.kind === "number" ? "font-mono tabular-nums" : ""} ${tone} ${className}`}
     >
       {body}
@@ -91,7 +103,7 @@ export function ClaimText({ text, claims }: { text: string; claims: Claim[] }) {
     <span className="whitespace-pre-wrap">
       {parts.map((part) => (
         <Fragment key={part.key}>
-          {part.text !== undefined ? part.text : <ClaimValue claim={part.claim} />}
+          {part.text !== undefined ? part.text : <ClaimValue claim={part.claim} inline />}
         </Fragment>
       ))}
     </span>

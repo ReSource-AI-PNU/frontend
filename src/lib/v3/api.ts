@@ -1,6 +1,8 @@
 /** 계약 8장 API 클라이언트. 요청하는 조직은 X-Org-Id 헤더로 밝힌다(시연용). */
 import type {
   AdminStatus,
+  CorrectionInput,
+  CorrectionResult,
   CsvUploadResult,
   DiagnosisView,
   DocumentConfirmResult,
@@ -10,7 +12,11 @@ import type {
   EvidenceDetail,
   EvidenceHit,
   ExtractedField,
+  MediaUploadResult,
   Org,
+  OutcomeInput,
+  OutcomeResult,
+  RetrainExport,
   StreamRecord,
   VendorProfile,
 } from "./types";
@@ -127,6 +133,27 @@ export const api = {
       json({ orgId, documentName, fields }),
     ),
 
+  /**
+   * multipart(file, orgId, streamId). 탐지 모델이 연결되지 않았으면 200으로 detectorUnavailable: true가 오고
+   * 근거는 등록되지 않는다. 화면은 그 문장을 그대로 보여 주고 탐지 결과를 그리지 않는다.
+   */
+  uploadMedia: (orgId: string, streamId: string, file: File) => {
+    const form = new FormData();
+    form.set("file", file);
+    form.set("orgId", orgId);
+    form.set("streamId", streamId);
+    return request<MediaUploadResult>("/intake/media", orgId, { method: "POST", body: form });
+  },
+
+  /** 배출 기업 담당자가 고친 값을 기록한다. 기록만 남고 흐름의 값은 바뀌지 않는다. */
+  recordCorrection: (sessionId: string, orgId: string, body: CorrectionInput) =>
+    request<CorrectionResult>(`/sessions/${enc(sessionId)}/corrections`, orgId, json(body)),
+  /** 업체가 확정된 대화의 실제 결과(등급·단가·중량·검수일)를 기록한다. */
+  recordOutcome: (sessionId: string, orgId: string, body: OutcomeInput) =>
+    request<OutcomeResult>(`/sessions/${enc(sessionId)}/outcomes`, orgId, json(body)),
+
+  /** 아래 /admin/*은 관리자 조직(role이 admin)으로만 부른다. 다른 조직은 403 FORBIDDEN을 받는다. */
   adminStatus: (orgId: string) => request<AdminStatus>("/admin/status", orgId),
   adminEval: (orgId: string) => request<EvalResult>("/admin/eval", orgId, { method: "POST" }),
+  retrainExport: (orgId: string) => request<RetrainExport>("/admin/retrain/export", orgId),
 };

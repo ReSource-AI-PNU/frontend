@@ -5,8 +5,10 @@
  *   (backend) python3 -m app.v3.devserver --port 8000
  *   (frontend) node scripts/v3-capture-fixture.mjs [http://localhost:8000/api/v3]
  *
- * 시연 데이터를 처음 상태로 되돌린 뒤, 진단을 만들고 승인 전(awaiting_approval)까지 돌린다.
- * 담당자 질문에는 포장 필름 수분만 답하고 나머지는 "모름"으로 답한다.
+ * 시연 데이터를 처음 상태로 되돌린 뒤(관리자 조직으로 부른다), 진단을 만들고 승인 전(awaiting_approval)까지 돌린다.
+ * 담당자 질문에는 포장 필름 수분만 답하고 나머지는 "모름"으로 답한다. 여기까지가 화면의 예시 데이터다.
+ * 이어서 같은 진단에 사람 교정 한 건을 기록하고, 양쪽 승인으로 확정한 뒤 업체가 실제 결과 한 건을 기록해
+ * 확정 뒤 뷰(배출 기업, 업체)를 tests/fixtures/에 받는다. 스키마 검사(tests/v3-view.test.ts)가 이 세 뷰를 읽는다.
  * 근거는 뷰와 업체 프로필이 직접 가리키는 것과 그 계산 사슬의 바로 아래 단계까지만 담는다(법령 원문 등으로 파일이 커지지 않게).
  * 화면이 쓰는 값은 전부 이 서버가 실제로 낸 응답이다. 손으로 고치지 않는다.
  */
@@ -16,6 +18,10 @@ import { fileURLToPath } from "node:url";
 
 const base = (process.argv[2] ?? "http://localhost:8000/api/v3").replace(/\/$/, "");
 const EMITTER = "org_hanbit";
+const ADMIN = "org_admin";
+/** 확정 뒤 업체가 본 뷰를 받을 업체와, 그 업체가 기록하는 실제 결과(가상 값) */
+const OUTCOME_VENDOR = "org_namhae";
+const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "../tests/fixtures");
 const ANSWERS = { st_film: "2" }; // 나머지는 "unknown"
 const out = path.join(path.dirname(fileURLToPath(import.meta.url)), "../src/lib/v3/fixture-data");
 
@@ -35,8 +41,11 @@ function evidenceIds(value, found = new Set()) {
   if (Array.isArray(value)) value.forEach((item) => evidenceIds(item, found));
   else if (value && typeof value === "object") {
     for (const [key, item] of Object.entries(value)) {
-      if ((key === "evidence" || key === "reasonEvidence" || key === "assumptions") && Array.isArray(item)) {
+      if ((key === "evidence" || key === "reasonEvidence") && Array.isArray(item)) {
         item.forEach((id) => typeof id === "string" && found.add(id));
+      } else if (key === "assumptions" && Array.isArray(item)) {
+        // 가정값은 {id, label, value, unit}이고 id가 근거 ID다
+        item.forEach((entry) => typeof entry?.id === "string" && found.add(entry.id));
       } else evidenceIds(item, found);
     }
     if (value.type === "evidence" && typeof value.id === "string") found.add(value.id);
@@ -44,7 +53,7 @@ function evidenceIds(value, found = new Set()) {
   return found;
 }
 
-await post("/demo/reset", EMITTER);
+await post("/demo/reset", ADMIN);
 const orgs = await call("/orgs", null);
 let view = await post("/sessions", EMITTER, { emitterOrgId: EMITTER });
 const id = view.session.id;
@@ -98,3 +107,41 @@ await write("meta.json", {
   evidenceNotVisible: missing,
 });
 console.log(`view ${view.session.status}, 근거 ${Object.keys(evidence).length}건, 볼 수 없는 근거 ${missing.length}건 → ${out}`);
+
+// 여기부터는 테스트용 확정 뒤 뷰. 화면의 예시 데이터(위에서 쓴 승인 전 뷰)에는 들어가지 않는다.
+const film = view.streams.find((item) => item.id === "st_film");
+await post(`/sessions/${id}/corrections`, EMITTER, {
+  streamId: "st_film",
+  field: "form",
+  before: film?.form ?? null,
+  after: "압축",
+  note: "예시 데이터용 교정(가상)",
+});
+for (const approval of view.approvals) {
+  const thread = view.threads.find((item) => item.id === approval.threadId);
+  await post(`/sessions/${id}/approvals`, EMITTER, { threadId: approval.threadId });
+  await post(`/sessions/${id}/approvals`, thread.vendorOrgId, { threadId: approval.threadId });
+}
+const mine = view.approvals.find(
+  (approval) => view.threads.find((item) => item.id === approval.threadId)?.vendorOrgId === OUTCOME_VENDOR,
+);
+if (!mine) throw new Error(`${OUTCOME_VENDOR}와 합의한 대화가 없습니다`);
+const agreed = view.result.assignments.find((item) => item.threadId === mine.threadId);
+await post(`/sessions/${id}/outcomes`, OUTCOME_VENDOR, {
+  threadId: mine.threadId,
+  streamId: agreed.streamId,
+  actualGrade: "등외",
+  actualUnitPriceKrwPerKg: agreed.unitPrice.value,
+  actualKg: 240,
+  inspectedOn: view.session.today,
+  note: "예시 데이터용 실제 결과(가상)",
+});
+const confirmed = await call(`/sessions/${id}`, EMITTER);
+if (confirmed.session.status !== "confirmed") throw new Error(`확정 상태가 아닙니다: ${confirmed.session.status}`);
+const vendorView = await call(`/sessions/${id}`, OUTCOME_VENDOR);
+await mkdir(fixtures, { recursive: true });
+await writeFile(path.join(fixtures, "v3-view-confirmed.json"), `${JSON.stringify(confirmed)}\n`);
+await writeFile(path.join(fixtures, "v3-view-vendor-confirmed.json"), `${JSON.stringify(vendorView)}\n`);
+console.log(
+  `확정 뒤 뷰 2건(문서 ${confirmed.documents.length}건, 교정 ${confirmed.feedback.corrections.length}건, 실제 결과 ${confirmed.feedback.outcomes.length}건) → ${fixtures}`,
+);

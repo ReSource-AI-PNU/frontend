@@ -20,12 +20,12 @@ export function formatClaim(claim: Claim | null | undefined, signed = false): st
 }
 
 /**
- * 업체가 내는 단가인지. 단가는 배출 기업이 받으면 양수, 내면 음수라서 부호를 낱말로 풀어 보여 준다.
- * 계약에 claim의 뜻을 알리는 필드가 없어, 백엔드가 붙이는 ID 끝말(unitPrice)과 단위로 가린다.
- * 현행 처리 단가(currentUnitCost, 내는 돈을 양수로 적는다)와 참고 시세는 여기에 들지 않는다.
+ * 업체가 내는 단가인지. 백엔드가 claim에 붙이는 role로 가린다(계약 7장 "사람이 읽는 이름").
+ * unitPrice는 배출 기업이 받는 매입 단가, treatmentFee는 배출 기업이 내는 처리비다.
+ * 현행 처리 단가(currentUnitCost, 내는 돈을 양수로 적는다)와 참고 시세(referencePrice)는 여기에 들지 않는다.
  */
 export function isUnitPriceClaim(claim: Claim | null | undefined): boolean {
-  return Boolean(claim && claim.unit === "원/kg" && /unitprice$/i.test(claim.id));
+  return claim?.role === "unitPrice" || claim?.role === "treatmentFee";
 }
 
 /** 단가 부호 풀이: 양수는 "매입"(배출 기업이 받는다), 음수는 "처리비"(배출 기업이 낸다). */
@@ -33,9 +33,26 @@ export function priceSide(value: number): "매입" | "처리비" | "무상" {
   return value > 0 ? "매입" : value < 0 ? "처리비" : "무상";
 }
 
+/**
+ * 단가를 낱말과 크기로 적는다. 처리비(role treatmentFee)는 값이 음수 그대로 오므로 크기로 적는다("처리비 80 원/kg").
+ * role이 없는 단가(실제 결과의 기준표 단가 등)는 부호로 가린다.
+ */
 export function formatUnitPrice(claim: Claim | null | undefined): string | null {
   if (!claim || typeof claim.value !== "number") return formatClaim(claim);
-  return `${priceSide(claim.value)} ${withUnit(formatNumber(Math.abs(claim.value)), claim.unit)}`;
+  const side = claim.role === "treatmentFee" ? "처리비" : priceSide(claim.value);
+  return `${side} ${withUnit(formatNumber(Math.abs(claim.value)), claim.unit)}`;
+}
+
+/** 근거 없이 숫자만 있는 단가(입력값 되읽기)를 같은 방식으로 적는다. */
+export function formatSignedPrice(value: number, unit = "원/kg"): string {
+  return `${priceSide(value)} ${withUnit(formatNumber(Math.abs(value)), unit)}`;
+}
+
+/** 가정값처럼 근거 ID만 달린 값과 단위. 값 하나로 적을 수 없으면 null */
+export function formatValue(value: number | string | null | undefined, unit: string | null): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value;
+  return withUnit(formatNumber(value).replace("-", "−"), unit);
 }
 
 const dateTime = new Intl.DateTimeFormat("ko-KR", {
@@ -70,7 +87,8 @@ const PROVIDER_LABEL: Record<string, string> = { foundry: "Foundry", ollama: "Ol
  */
 export function modelLabel(model: { provider: string; name: string } | null | undefined): string {
   if (!model) return "확인 필요";
-  if (model.provider === "rule") return model.name;
+  // 규칙 정책과 진행기(코드)는 모델이 아니다. 백엔드가 준 이름만 쓴다
+  if (model.provider === "rule" || model.provider === "code") return model.name;
   return `${PROVIDER_LABEL[model.provider] ?? model.provider} ${model.name}`;
 }
 
@@ -127,3 +145,52 @@ export const FIELD_LABEL: Record<string, string> = {
   lotSame: "같은 로트 여부",
   terms: "받는 조건",
 };
+
+/** 교정할 수 있는 항목(POST /sessions/{id}/corrections의 field) */
+export const CORRECTION_FIELD_LABEL: Record<string, string> = {
+  box: "탐지 박스",
+  material: "재질",
+  origin: "출처",
+  form: "형태",
+  contaminant: "혼입물",
+  grade: "등급",
+  contaminationPct: "오염도",
+  moisturePct: "수분",
+};
+
+/** 결과 한 장 확인 항목(checks[].key)의 화면 이름 */
+export const CHECK_KEY_LABEL: Record<string, string> = {
+  contaminationPct: "오염도",
+  moisturePct: "수분",
+  contamination_basis: "오염도 출처",
+  moisture_basis: "수분 출처",
+  form: "형태",
+  monthly_kg_basis: "물량 출처",
+  material_basis: "재질 출처",
+  mixture: "혼입물",
+  permit: "허가 품목",
+  current_assumed: "현행 처리",
+  transport: "운송비",
+  carbon: "탄소",
+  vendor_condition: "업체 조건",
+  price_differs: "단가 차이",
+  unresolved: "모르는 값",
+  skipped: "건너뜀",
+  handoff: "담당자 인계",
+  min_volume: "최소 물량",
+  loading: "적재(무게·부피)",
+  loading_volume: "부피 적재",
+};
+
+/** 진단 상태. 합의 없이 끝났거나 합의한 대화가 모두 담당자에게 넘어가면 idle인데 phase가 done이다. */
+export function sessionLabel(status: string, phase: string, started: boolean): string {
+  if (status === "idle") return phase === "done" ? "합의 없이 끝남" : started ? "이어서 실행 대기" : "실행 전";
+  return (
+    {
+      running: "에이전트 대화 중",
+      awaiting_answers: "담당자 답변 대기",
+      awaiting_approval: "승인 대기",
+      confirmed: "확정",
+    }[status] ?? status
+  );
+}
