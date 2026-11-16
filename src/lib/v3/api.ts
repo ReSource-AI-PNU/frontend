@@ -1,8 +1,15 @@
 /** 계약 8장 API 클라이언트. 요청하는 조직은 X-Org-Id 헤더로 밝힌다(시연용). */
 import type {
+  AdminStatus,
+  CsvUploadResult,
   DiagnosisView,
-  Evidence,
+  DocumentConfirmResult,
+  DocumentKind,
+  DocumentUploadResult,
+  EvalResult,
   EvidenceDetail,
+  EvidenceHit,
+  ExtractedField,
   Org,
   StreamRecord,
   VendorProfile,
@@ -56,6 +63,8 @@ const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.strin
 const enc = encodeURIComponent;
 
 export const api = {
+  /** 서버가 살아 있는지. 화면은 이것으로 "백엔드 연결"과 "예시 데이터"를 가른다. */
+  health: () => request<{ ok: boolean }>("/health", null),
   listOrgs: () => request<Org[]>("/orgs", null),
   resetDemo: (orgId: string) => request<unknown>("/demo/reset", orgId, { method: "POST" }),
 
@@ -79,7 +88,8 @@ export const api = {
     request<DiagnosisView>(`/sessions/${enc(sessionId)}`, orgId),
   run: (sessionId: string, orgId: string) =>
     request<DiagnosisView>(`/sessions/${enc(sessionId)}/run`, orgId, { method: "POST" }),
-  answer: (sessionId: string, orgId: string, questionId: string, value: string) =>
+  /** value는 답(숫자·고른 값·글)이거나 "unknown"(모름)이다. */
+  answer: (sessionId: string, orgId: string, questionId: string, value: string | number) =>
     request<DiagnosisView>(
       `/sessions/${enc(sessionId)}/answers`,
       orgId,
@@ -91,25 +101,32 @@ export const api = {
   getEvidence: (id: string, orgId: string) =>
     request<EvidenceDetail>(`/evidence/${enc(id)}`, orgId),
   searchEvidence: (orgId: string, q: string, kind?: string) =>
-    request<Evidence[]>(`/evidence?q=${enc(q)}${kind ? `&kind=${enc(kind)}` : ""}`, orgId),
+    request<EvidenceHit[]>(`/evidence?q=${enc(q)}${kind ? `&kind=${enc(kind)}` : ""}`, orgId),
 
   csvTemplateUrl: () => `${API_BASE}/intake/csv/template`,
-  /** 본문 형식은 계약에 없다. multipart(file, orgId, streamId)로 보낸다. */
+  /** multipart(file, orgId). 흐름 이름이 같은 흐름에 측정값이 붙는다. */
   uploadCsv: (orgId: string, file: File) => {
     const form = new FormData();
     form.set("file", file);
     form.set("orgId", orgId);
-    return request<unknown>("/intake/csv", orgId, { method: "POST", body: form });
+    return request<CsvUploadResult>("/intake/csv", orgId, { method: "POST", body: form });
   },
-  uploadDocument: (orgId: string, file: File, documentKind: string, streamId?: string) => {
+  /** multipart(file, orgId, kind). 뽑은 값은 confirmDocument로 확인한 것만 근거가 된다. */
+  uploadDocument: (orgId: string, file: File, kind: DocumentKind) => {
     const form = new FormData();
     form.set("file", file);
     form.set("orgId", orgId);
-    form.set("kind", documentKind);
-    if (streamId) form.set("streamId", streamId);
-    return request<unknown>("/intake/documents", orgId, { method: "POST", body: form });
+    form.set("kind", kind);
+    return request<DocumentUploadResult>("/intake/documents", orgId, { method: "POST", body: form });
   },
+  /** 담당자가 확인한 추출값(confirmed: true)만 doc 근거로 등록된다. */
+  confirmDocument: (orgId: string, documentName: string, fields: ExtractedField[]) =>
+    request<DocumentConfirmResult>(
+      "/intake/documents/confirm",
+      orgId,
+      json({ orgId, documentName, fields }),
+    ),
 
-  adminStatus: (orgId: string) => request<unknown>("/admin/status", orgId),
-  adminEval: (orgId: string) => request<unknown>("/admin/eval", orgId, { method: "POST" }),
+  adminStatus: (orgId: string) => request<AdminStatus>("/admin/status", orgId),
+  adminEval: (orgId: string) => request<EvalResult>("/admin/eval", orgId, { method: "POST" }),
 };
