@@ -1,29 +1,65 @@
 "use client";
 
+import { useState } from "react";
 import type { EdgeStatus, GraphEdge, GraphNode } from "@/lib/v3/types";
 import { useV3 } from "./context";
 
 const COLUMNS: GraphNode["type"][] = ["stream", "criterion", "vendor", "evidence"];
 const COLUMN_LABEL = { stream: "흐름", criterion: "기준", vendor: "업체", evidence: "근거 문서" };
-const STROKE: Record<EdgeStatus, { color: string; dash?: string; label: string }> = {
+const STROKE: Record<EdgeStatus, { color: string; dash?: string; label: string; tone: string }> = {
   // 초록은 이익 숫자에만 쓴다. 충족은 먹색 실선, 조건부는 긴 점선, 불충족은 짧은 점선이다.
-  met: { color: "var(--color-ink)", label: "충족" },
-  conditional: { color: "var(--color-warn)", dash: "7 5", label: "조건부" },
-  unmet: { color: "var(--color-loss)", dash: "2 5", label: "불충족" },
+  met: { color: "var(--color-ink)", label: "충족", tone: "text-ink" },
+  conditional: { color: "var(--color-warn)", dash: "7 5", label: "조건부", tone: "text-warn" },
+  unmet: { color: "var(--color-loss)", dash: "2 5", label: "불충족", tone: "text-loss" },
 };
 
-const W = 720;
-const NODE_W = 132;
-const NODE_H = 38;
+const W = 860;
+const NODE_W = 156;
+const NODE_H = 44;
 const TOP = 34;
-const GAP = 16;
+const GAP = 14;
+const LINE = 12; // 한 줄에 넣는 글자 수
 
-/** 판단 그래프. 뷰가 갱신되면 노드와 엣지가 그대로 다시 그려진다. 색만으로 구분하지 않도록 선 모양과 범례를 함께 쓴다. */
-export function JudgementGraph({ nodes, edges }: { nodes: GraphNode[]; edges: GraphEdge[] }) {
+/** 노드 이름을 두 줄까지 나눠 적는다. 넘치면 말줄임표를 붙인다(전체 이름은 title로 남는다). */
+function lines(label: string): string[] {
+  if (label.length <= LINE) return [label];
+  const second = label.slice(LINE);
+  return [label.slice(0, LINE), second.length > LINE ? `${second.slice(0, LINE - 1)}…` : second];
+}
+
+/**
+ * 판단 그래프. 뷰가 갱신되면 노드와 엣지가 그대로 다시 그려진다.
+ * 색만으로 구분하지 않도록 선 모양과 범례를 함께 쓴다. 선이 많아 겹치므로 선의 설명은
+ * 노드를 골랐을 때만 그리고, 고른 노드와 이어진 판단을 아래에 목록으로 풀어 적는다.
+ */
+export function JudgementGraph({ nodes, edges: rawEdges }: { nodes: GraphNode[]; edges: GraphEdge[] }) {
   const { openEvidence } = useV3();
+  const [picked, setPicked] = useState<string | null>(null);
   if (nodes.length === 0) {
     return <p className="p-5 text-sm text-muted">아직 판단한 내용이 없습니다.</p>;
   }
+  // 같은 판단이 여러 번 실려 오면 한 번만 그린다
+  const seen = new Set<string>();
+  const edges = rawEdges.filter((edge) => {
+    const key = [edge.from, edge.to, edge.kind, edge.status, edge.label].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const focus = picked && byId.has(picked) ? picked : null;
+  const direct = focus ? edges.filter((edge) => edge.from === focus || edge.to === focus) : [];
+  // 고른 흐름이 거친 기준에서 업체로 가는 선까지 함께 보여 준다
+  const via = new Set(
+    direct
+      .map((edge) => (edge.from === focus ? edge.to : edge.from))
+      .filter((id) => byId.get(id)?.type === "criterion"),
+  );
+  const related = focus
+    ? edges.filter((edge) => direct.includes(edge) || (via.has(edge.from) && byId.get(edge.to)?.type === "vendor"))
+    : [];
+  const lit = new Set(related);
+
   const byColumn = COLUMNS.map((type) => nodes.filter((node) => node.type === type));
   const rows = Math.max(...byColumn.map((column) => column.length), 1);
   const height = TOP + rows * (NODE_H + GAP) + 8;
@@ -38,6 +74,7 @@ export function JudgementGraph({ nodes, edges }: { nodes: GraphNode[]; edges: Gr
       });
     });
   });
+  const name = (id: string) => byId.get(id)?.label ?? id;
 
   return (
     <div className="p-4">
@@ -65,41 +102,28 @@ export function JudgementGraph({ nodes, edges }: { nodes: GraphNode[]; edges: Gr
           const to = position.get(edge.to);
           if (!from || !to) return null;
           const style = STROKE[edge.status];
-          const x1 = from.x + NODE_W;
-          const y1 = from.y + NODE_H / 2;
-          const x2 = to.x;
-          const y2 = to.y + NODE_H / 2;
+          // 왼쪽 열에서 오른쪽 열로 그린다
+          const forward = from.x <= to.x;
+          const a = forward ? from : to;
+          const b = forward ? to : from;
+          const x1 = a.x + NODE_W;
+          const y1 = a.y + NODE_H / 2;
+          const x2 = b.x;
+          const y2 = b.y + NODE_H / 2;
           const mid = (x1 + x2) / 2;
+          const path = `M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`;
+          const on = lit.has(edge);
           return (
             <g
               key={`${edge.from}-${edge.to}-${index}`}
               className={edge.evidence.length > 0 ? "cursor-pointer" : ""}
+              opacity={focus && !on ? 0.1 : 1}
               onClick={() => openEvidence(edge.evidence, edge.label || style.label)}
             >
-              <path
-                d={`M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`}
-                fill="none"
-                stroke={style.color}
-                strokeWidth="2"
-                strokeDasharray={style.dash}
-              >
-                <title>{`${style.label}${edge.label ? `: ${edge.label}` : ""}`}</title>
+              <path d={path} fill="none" stroke={style.color} strokeWidth={on ? 2.5 : 1.5} strokeDasharray={style.dash}>
+                <title>{`${name(edge.from)} → ${name(edge.to)} · ${style.label}${edge.label ? `: ${edge.label}` : ""}`}</title>
               </path>
-              <path d={`M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`} fill="none" stroke="transparent" strokeWidth="14" />
-              {edge.label ? (
-                <text
-                  x={mid}
-                  y={(y1 + y2) / 2 - 5}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill="var(--color-ink-2)"
-                  stroke="var(--color-surface)"
-                  strokeWidth="3"
-                  paintOrder="stroke"
-                >
-                  {edge.label}
-                </text>
-              ) : null}
+              <path d={path} fill="none" stroke="transparent" strokeWidth="12" />
             </g>
           );
         })}
@@ -107,34 +131,43 @@ export function JudgementGraph({ nodes, edges }: { nodes: GraphNode[]; edges: Gr
           const at = position.get(node.id);
           if (!at) return null;
           const isEvidence = node.type === "evidence";
-          const label = node.label.length > 11 ? `${node.label.slice(0, 10)}…` : node.label;
+          const text = lines(node.label);
+          const dim = focus && focus !== node.id && !related.some((edge) => edge.from === node.id || edge.to === node.id);
+          const dark = node.type === "vendor";
           return (
             <g
               key={node.id}
-              className={isEvidence ? "cursor-pointer" : ""}
-              onClick={isEvidence ? () => openEvidence([node.id], node.label) : undefined}
+              className="cursor-pointer"
+              opacity={dim ? 0.25 : 1}
+              onClick={() =>
+                isEvidence ? openEvidence([node.id], node.label) : setPicked(focus === node.id ? null : node.id)
+              }
             >
+              <title>{node.label}</title>
               <rect
                 x={at.x}
                 y={at.y}
                 width={NODE_W}
                 height={NODE_H}
-                rx={node.type === "vendor" ? 0 : node.type === "stream" ? 19 : 6}
-                fill={node.type === "vendor" ? "var(--color-ink)" : "var(--color-surface)"}
+                rx={dark ? 0 : node.type === "stream" ? NODE_H / 2 : 6}
+                fill={dark ? "var(--color-ink)" : "var(--color-surface)"}
                 stroke={isEvidence ? "var(--color-line-strong)" : "var(--color-ink)"}
+                strokeWidth={focus === node.id ? 3 : 1}
                 strokeDasharray={isEvidence ? "3 3" : undefined}
               />
-              <text
-                x={at.x + NODE_W / 2}
-                y={at.y + NODE_H / 2 + 4}
-                textAnchor="middle"
-                fontSize="12"
-                fontWeight="600"
-                fill={node.type === "vendor" ? "var(--color-on-ink)" : "var(--color-ink)"}
-              >
-                <title>{node.label}</title>
-                {label}
-              </text>
+              {text.map((line, index) => (
+                <text
+                  key={index}
+                  x={at.x + NODE_W / 2}
+                  y={at.y + NODE_H / 2 + 4 + (index - (text.length - 1) / 2) * 14}
+                  textAnchor="middle"
+                  fontSize="11.5"
+                  fontWeight="600"
+                  fill={dark ? "var(--color-on-ink)" : "var(--color-ink)"}
+                >
+                  {line}
+                </text>
+              ))}
             </g>
           );
         })}
@@ -156,8 +189,48 @@ export function JudgementGraph({ nodes, edges }: { nodes: GraphNode[]; edges: Gr
             {STROKE[status].label}
           </li>
         ))}
-        <li className="text-muted">선이나 근거 문서를 누르면 근거가 열립니다.</li>
       </ul>
+      {focus ? (
+        <div className="mt-3 rounded-md border border-line p-3">
+          <p className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+            <span>
+              <span className="font-semibold">{name(focus)}</span>와(과) 이어진 판단 {related.length}건
+            </span>
+            <button type="button" className="font-semibold underline" onClick={() => setPicked(null)}>
+              전체 보기
+            </button>
+          </p>
+          <ul className="mt-2 divide-y divide-line text-[13px]">
+            {related.map((edge, index) => (
+              <li key={index} className="grid grid-cols-[3.5rem_1fr_auto] gap-x-2 py-1.5">
+                <span className={`font-semibold ${STROKE[edge.status].tone}`}>{STROKE[edge.status].label}</span>
+                <span className="min-w-0">
+                  <span className="text-muted">
+                    {name(edge.from)} → {name(edge.to)}
+                  </span>
+                  {edge.label ? <span className="block">{edge.label}</span> : null}
+                </span>
+                {edge.evidence.length > 0 ? (
+                  <button
+                    type="button"
+                    className="self-start underline decoration-dotted underline-offset-4"
+                    onClick={() => openEvidence(edge.evidence, edge.label || STROKE[edge.status].label)}
+                  >
+                    근거
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="mt-2 text-[13px] text-muted">
+          흐름·기준·업체를 누르면 그것과 이어진 판단만 남기고 설명을 보여 줍니다. 선이나 근거 문서를 누르면 근거가
+          열립니다.
+        </p>
+      )}
     </div>
   );
 }

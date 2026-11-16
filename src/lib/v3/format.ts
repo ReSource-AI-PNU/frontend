@@ -38,6 +38,26 @@ export function formatUnitPrice(claim: Claim | null | undefined): string | null 
   return `${priceSide(claim.value)} ${withUnit(formatNumber(Math.abs(claim.value)), claim.unit)}`;
 }
 
+const dateTime = new Intl.DateTimeFormat("ko-KR", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
+/** 서버가 준 시각(UTC)을 보는 사람의 시간대로 적는다. 읽지 못하면 받은 글자를 그대로 돌려준다. */
+export function formatDateTime(iso: string, part: "date" | "time" | "both" = "both"): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  const parts = Object.fromEntries(dateTime.formatToParts(at).map((item) => [item.type, item.value]));
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  const time = `${parts.hour}:${parts.minute}:${parts.second}`;
+  return part === "date" ? date : part === "time" ? time : `${date} ${time}`;
+}
+
 export function isAssumed(claim: Claim | null | undefined): boolean {
   return Boolean(claim?.evidence.some((id) => id.startsWith("assumption:")));
 }
@@ -104,4 +124,6 @@ export const FIELD_LABEL: Record<string, string> = {
   origin: "출처",
   form: "형태",
   material: "재질",
+  lotSame: "같은 로트 여부",
+  terms: "받는 조건",
 };

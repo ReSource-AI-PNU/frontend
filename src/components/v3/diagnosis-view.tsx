@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PHASE_LABEL } from "@/lib/v3/format";
+import { PHASE_LABEL, formatDateTime } from "@/lib/v3/format";
 import { JudgementGraph } from "./judgement-graph";
 import { Questions } from "./questions";
 import { ResultSheet } from "./result-sheet";
@@ -78,6 +79,9 @@ export function DiagnosisView() {
     "확인 필요";
   const isEmitter = view.viewer.role === "emitter";
   const openQuestions = view.questions.filter((item) => !item.answered).length;
+  const started = view.stages.some((item) => item.status !== "waiting");
+  const sessionLabel =
+    view.session.status === "idle" && started ? "이어서 실행 대기" : SESSION_LABEL[view.session.status];
   const events = stage
     ? view.events.filter((event) => (event.detail as { stage?: number }).stage === stage)
     : view.events;
@@ -89,7 +93,7 @@ export function DiagnosisView() {
           <h1 className="text-h1">진단·연결</h1>
           <p className="text-sm text-muted">
             {nameOf(view.session.emitterOrgId)} ·{" "}
-            <span className="font-semibold text-ink">{SESSION_LABEL[view.session.status]}</span> · 진행 단계{" "}
+            <span className="font-semibold text-ink">{sessionLabel}</span> · 진행 단계{" "}
             {PHASE_LABEL[view.session.phase] ?? view.session.phase} ·{" "}
             <span className="font-mono text-[12px]">
               {view.session.id} · 기준일 {view.session.today}
@@ -107,17 +111,17 @@ export function DiagnosisView() {
               새 진단 시작
             </Button>
           ) : null}
-          {isEmitter && view.session.status !== "confirmed" ? (
+          {view.session.status === "awaiting_approval" ? (
+            <Link href="/v3/approval" className={buttonClass("primary", "md")}>
+              승인 화면으로
+            </Link>
+          ) : isEmitter && view.session.status !== "confirmed" ? (
             <Button
               disabled={!d.canAct || d.busy || view.session.status === "running" || openQuestions > 0}
               onClick={d.run}
               title={openQuestions > 0 ? "담당자 질문에 먼저 답하세요" : undefined}
             >
-              {view.session.status === "running" || d.busy
-                ? "실행 중"
-                : view.session.status === "idle"
-                  ? "실행"
-                  : "이어서 실행"}
+              {view.session.status === "running" || d.busy ? "실행 중" : started ? "이어서 실행" : "실행"}
             </Button>
           ) : null}
         </div>
@@ -170,7 +174,7 @@ export function DiagnosisView() {
               <ol className="max-h-72 divide-y divide-line overflow-y-auto text-[13px]">
                 {events.map((event) => (
                   <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 px-5 py-2">
-                    <span className="font-mono text-muted">{event.at.slice(11, 19)}</span>
+                    <span className="font-mono text-muted">{formatDateTime(event.at, "time")}</span>
                     <span>
                       <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? event.actor}</span>{" "}
                       {event.summary}
@@ -185,18 +189,13 @@ export function DiagnosisView() {
 
       <section aria-label="결과 한 장">
         <h2 className="border-b border-line px-5 py-3 text-label text-muted">결과 한 장</h2>
-        {view.viewer.role === "vendor" && !view.result ? (
-          <p className="p-5 text-sm text-muted">
-            결과 한 장은 배출 기업에게만 보입니다. 업체는 자기 대화와 승인 화면에서 조건을 확인합니다.
-          </p>
-        ) : (
-          <ResultSheet
-            result={view.result}
-            streams={view.streams}
-            unresolved={view.unresolved}
-            vendorName={nameOf}
-          />
-        )}
+        <ResultSheet
+          result={view.result}
+          streams={view.streams}
+          unresolved={view.unresolved}
+          role={view.viewer.role}
+          vendorName={nameOf}
+        />
       </section>
     </div>
   );

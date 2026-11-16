@@ -2,6 +2,7 @@
  * 실제 백엔드(app.v3.devserver, 규칙 정책)가 낸 진단 뷰가 화면 타입의 정본(schema.ts)에 맞는지 본다.
  *  - src/lib/v3/fixture-data/view.json: 승인 전 상태(예시 데이터로도 쓴다). scripts/v3-capture-fixture.mjs로 다시 받는다.
  *  - tests/fixtures/v3-view-confirmed.json: 양쪽 승인 뒤 확정 상태
+ *  - tests/fixtures/v3-view-vendor-confirmed.json: 같은 진단을 처리 업체((주)남해열분해)가 본 뷰
  * V3_API_BASE를 주면 돌고 있는 서버의 근거 응답도 함께 검사한다.
  * 실행: node --test tests/v3-view.test.ts
  */
@@ -22,6 +23,7 @@ function problems(result: { success: boolean; error?: { issues: { path: Property
 for (const [name, file] of [
   ["승인 전", "../src/lib/v3/fixture-data/view.json"],
   ["확정 뒤", "./fixtures/v3-view-confirmed.json"],
+  ["확정 뒤, 업체가 본 뷰", "./fixtures/v3-view-vendor-confirmed.json"],
 ] as const) {
   test(`진단 뷰(${name})가 스키마에 맞는다`, () => {
     assert.deepEqual(problems(diagnosisViewSchema.safeParse(read(file))), []);
@@ -34,6 +36,14 @@ test("확정 뒤 뷰에는 요청서와 이행 계획서가 있고 모두 검증
   assert.ok(view.documents.some((item) => item.kind === "request"));
   assert.ok(view.documents.some((item) => item.kind === "plan"));
   assert.ok(view.documents.every((item) => item.validation.ok));
+});
+
+test("업체가 본 뷰에는 배출 기업의 현행 처리와 손익이 없다", () => {
+  const view = diagnosisViewSchema.parse(read("./fixtures/v3-view-vendor-confirmed.json"));
+  assert.equal(view.viewer.role, "vendor");
+  assert.ok(view.streams.every((item) => item.currentTreatment === null));
+  assert.ok((view.result?.assignments ?? []).every((item) => item.monthlyNow === null && item.difference === null));
+  assert.equal(view.questions.length, 0);
 });
 
 test("예시 데이터의 근거 레코드가 스키마에 맞는다", () => {

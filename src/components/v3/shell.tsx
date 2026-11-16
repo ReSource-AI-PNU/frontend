@@ -2,21 +2,22 @@
 
 import type { ReactNode } from "react";
 import { API_BASE } from "@/lib/v3/api";
-import { useV3Base } from "./context";
+import { useV3 } from "./context";
 
 const ROLE_LABEL = { emitter: "배출 기업", vendor: "처리 업체", admin: "관리자" } as const;
 
 /** v3 화면 공통 틀: 데이터 출처 표시, 관점 전환(시연용), 예시 데이터 띠. 화면 이동은 주 메뉴가 맡는다. */
 export function V3Shell({ children }: { children: ReactNode }) {
-  const { mode, fixture, reconnect, orgs, org, setOrgId } = useV3Base();
-  if (mode === "loading" || !org) {
-    return <p className="p-8 text-sm text-muted">백엔드({API_BASE})에 연결하는 중입니다.</p>;
-  }
+  const { mode, fixture, reconnect, orgs, org, setOrgId } = useV3();
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2 sm:px-6 lg:px-8">
         <p className="min-w-0 text-[13px] text-muted">
-          {mode === "live" ? (
+          {mode === "loading" ? (
+            <>
+              백엔드에 연결하는 중 <span className="font-mono text-[12px] break-all">{API_BASE}</span>
+            </>
+          ) : mode === "live" ? (
             <>
               <span className="font-semibold text-ink">백엔드 연결됨</span>{" "}
               <span className="font-mono text-[12px] break-all">{API_BASE}</span>
@@ -29,6 +30,7 @@ export function V3Shell({ children }: { children: ReactNode }) {
           관점 (시연용)
           <select
             value={org.id}
+            disabled={mode === "loading"}
             onChange={(event) => setOrgId(event.target.value)}
             className="min-h-[34px] rounded-md border border-line-strong bg-surface px-2 text-sm font-semibold text-ink"
           >
@@ -48,9 +50,9 @@ export function V3Shell({ children }: { children: ReactNode }) {
           </p>
           <p className="mt-1">
             백엔드 로컬 서버가 <span className="font-mono">{fixture.meta.capturedOn}</span>에 시연용 가상
-            데이터로 실제로 낸 진단(승인 전 상태)입니다. 회사·단가·물량은 모두 가상이고, 대화는 모델이
-            아니라 <span className="font-semibold">{fixture.meta.writers.join(", ")}</span>이(가) 썼습니다.
-            실행·답변·승인·업로드는 보내지 않습니다.{" "}
+            데이터로 실제로 낸 진단(승인 전 상태)입니다. 회사·단가·물량은 모두 가상이고, 대화는 모델이 쓴
+            것이 아니라 <span className="font-semibold">&ldquo;{fixture.meta.writers.join(", ")}&rdquo;</span>로
+            만든 결과입니다. 실행·답변·승인·업로드·저장은 보내지 않습니다.{" "}
             <button type="button" className="font-semibold underline underline-offset-4" onClick={reconnect}>
               다시 연결
             </button>

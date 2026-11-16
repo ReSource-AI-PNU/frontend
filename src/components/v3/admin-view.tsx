@@ -9,6 +9,24 @@ import type { AdminStatus, EvalResult } from "@/lib/v3/types";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
 
+const KIND_LABEL: Record<string, string> = {
+  law: "법령",
+  ref: "기준값",
+  doc: "문서",
+  measure: "측정값",
+  model: "모델 판정",
+  human: "사람 확인",
+  calc: "계산",
+  assumption: "가정값",
+};
+const SESSION_LABEL: Record<string, string> = {
+  idle: "실행 전",
+  running: "실행 중",
+  awaiting_answers: "담당자 답변 대기",
+  awaiting_approval: "승인 대기",
+  confirmed: "확정",
+};
+
 function Connected({ on, name }: { on: boolean; name: string }) {
   return (
     <span className={on ? "font-semibold text-ink" : "font-semibold text-warn"}>
@@ -47,7 +65,7 @@ function StatusBody({ status }: { status: AdminStatus }) {
         </Row>
         <Row label="볼 수 있는 근거">
           <span className="font-mono">{status.evidence.visible}</span>건 (
-          {kinds.map(([kind, count]) => `${kind} ${count}`).join(" · ")})
+          {kinds.map(([kind, count]) => `${KIND_LABEL[kind] ?? kind} ${count}`).join(" · ")})
         </Row>
         <Row label="근거가 없는 기준">
           {status.missingBasis.length === 0 ? (
@@ -119,7 +137,7 @@ function EvalBody({ result }: { result: EvalResult }) {
           <span className="font-mono">{result.rewritten}</span>
         </Row>
         <Row label="끝난 상태">
-          <span className="font-mono">{result.sessionStatus}</span> · 결과{" "}
+          {SESSION_LABEL[result.sessionStatus] ?? result.sessionStatus} · 결과{" "}
           {result.resultStatus ? STATUS_LABEL[result.resultStatus] : "확인 필요"}
         </Row>
       </dl>
@@ -208,7 +226,9 @@ export function AdminView() {
             <h2 className="text-h2">백엔드 연결</h2>
             <p className="mt-1 text-sm">
               <span className="font-mono text-[13px] break-all">{API_BASE}</span> ·{" "}
-              {!live ? (
+              {mode === "loading" ? (
+                "연결하는 중"
+              ) : !live ? (
                 <span className="font-semibold text-warn">연결 안 됨 (예시 데이터를 보여 주는 중)</span>
               ) : health.loading ? (
                 "확인 중"
@@ -243,7 +263,9 @@ export function AdminView() {
           계약에 없어 이 화면에서는 상태만 봅니다.
         </p>
         <div className="mt-3">
-          {!live ? (
+          {mode === "loading" ? (
+            <p className="text-sm text-muted">불러오는 중입니다.</p>
+          ) : !live ? (
             <p className="text-sm text-muted">백엔드에 연결되지 않아 상태를 읽을 수 없습니다. 예시 값은 만들지 않습니다.</p>
           ) : status.loading ? (
             <p className="text-sm text-muted">불러오는 중입니다.</p>

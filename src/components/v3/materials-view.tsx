@@ -495,7 +495,7 @@ function EmitterMaterials() {
     <div className="space-y-5">
       {streams.map((stream) => (
         <StreamCard
-          key={`${stream.id}:${stream.currentTreatment?.method ?? ""}`}
+          key={stream.id}
           stream={stream}
           canAct={live}
           onChanged={remote.reload}
@@ -742,7 +742,7 @@ function VendorMaterials() {
   if (!profile) return <p className="text-sm text-muted">등록된 업체 정보가 없습니다.</p>;
   return (
     <VendorForm
-      key={JSON.stringify(profile.guardrails) + profile.model.provider}
+      key={profile.orgId}
       profile={profile}
       canAct={live}
       onSave={async (next) => {

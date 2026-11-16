@@ -24,7 +24,17 @@ const KIND_TONE: Record<string, BadgeTone> = {
 function valueText(item: Evidence): string | null {
   if (item.value === null || item.value === undefined) return null;
   const value = typeof item.value === "number" ? formatNumber(item.value).replace("-", "−") : item.value;
-  return item.unit ? `${value} ${item.unit}` : String(value);
+  if (!item.unit) return String(value);
+  return item.unit === "%" ? `${value}%` : `${value} ${item.unit}`;
+}
+
+/** 주소의 %EB… 표기를 읽을 수 있는 글자로 바꾼다. */
+function readable(url: string): string {
+  try {
+    return decodeURI(url);
+  } catch {
+    return url;
+  }
 }
 
 function EvidenceCard({ item, compact = false }: { item: Evidence; compact?: boolean }) {
@@ -53,7 +63,7 @@ function EvidenceCard({ item, compact = false }: { item: Evidence; compact?: boo
           </blockquote>
         )
       ) : null}
-      {formula ? <p className="mt-2 text-sm text-ink-2">계산식: {formula}</p> : null}
+      {formula && formula !== item.excerpt ? <p className="mt-2 text-sm text-ink-2">계산식: {formula}</p> : null}
       {hiddenInputs ? (
         <p className="mt-2 text-[13px] text-muted">계산 입력 원본은 계산한 조직에게만 보입니다.</p>
       ) : null}
@@ -61,7 +71,7 @@ function EvidenceCard({ item, compact = false }: { item: Evidence; compact?: boo
         <dt className="text-muted">출처</dt>
         <dd>
           {item.source || "확인 필요"}
-          {url ? <span className="block font-mono text-[12px] break-all text-muted">{url}</span> : null}
+          {url ? <span className="block font-mono text-[12px] break-all text-muted">{readable(url)}</span> : null}
         </dd>
         {tool ? (
           <>
@@ -145,6 +155,10 @@ export function EvidencePanel({
           return { id, detail, error: detail ? null : "예시 데이터에 담지 않은 근거입니다." };
         });
 
+  // 첫 근거의 계산 사슬에 이미 나온 근거는 아래에 다시 그리지 않는다
+  const inChain = new Set(items?.[0]?.detail?.chain.map((link) => link.id) ?? []);
+  const shown = items?.filter((item, index) => index === 0 || !inChain.has(item.id)) ?? null;
+
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <button
@@ -180,9 +194,9 @@ export function EvidencePanel({
             </p>
           ) : null}
           {items === null ? <p className="text-sm text-muted">근거를 불러오는 중입니다.</p> : null}
-          {items?.map((item, index) => (
+          {shown?.map((item, index) => (
             <section key={item.id} className="space-y-3">
-              {ids.length > 1 ? (
+              {shown.length > 1 ? (
                 <p className="text-label text-muted">
                   {index === 0 ? "값의 출처" : "보조 근거"}
                 </p>

@@ -26,7 +26,7 @@ function VendorModelNote({ model, hasMessages }: { model: VendorModel; hasMessag
   return (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
       <span
-        className={`rounded-full border px-2.5 py-0.5 font-semibold ${isRule ? "border-warn bg-warn-bg text-warn" : "border-line-strong"}`}
+        className={`rounded-full border px-2.5 py-0.5 font-mono font-semibold ${isRule ? "border-warn bg-warn-bg text-warn" : "border-line-strong"}`}
       >
         {hasMessages ? "업체 측 답변" : "업체 측 에이전트"}: {modelLabel(model)}
       </span>

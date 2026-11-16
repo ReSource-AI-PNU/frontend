@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { THREAD_LABEL, modelLabel } from "@/lib/v3/format";
+import { THREAD_LABEL, formatDateTime, modelLabel } from "@/lib/v3/format";
 import { ClaimText, ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
@@ -95,7 +95,9 @@ export function ApprovalView() {
               </p>
             ) : null}
             <div className="mt-3 text-sm">
-              <p className="text-label text-muted">승인할 흐름</p>
+              <p className="text-label text-muted">
+                {approval.emitter && approval.vendor ? "확정한 흐름" : "승인할 흐름"}
+              </p>
               {approval.streamIds.length === 0 ? (
                 <p className="mt-1 text-muted">이 합의에 배정된 흐름이 없습니다.</p>
               ) : rows.length > 0 ? (
@@ -106,9 +108,11 @@ export function ApprovalView() {
                       <span>
                         단가 <ClaimValue claim={item.unitPrice} price />
                       </span>
-                      <span>
-                        월 <ClaimValue claim={item.monthlyAfter} signed />
-                      </span>
+                      {role === "vendor" ? null : (
+                        <span>
+                          월 <ClaimValue claim={item.monthlyAfter} signed />
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -166,7 +170,7 @@ export function ApprovalView() {
               <article key={document.id} className="rounded-lg border border-line p-5">
                 <p className="text-label text-muted">
                   {DOC_LABEL[document.kind]} · {document.streamIds.map(streamName).join(", ")} ·{" "}
-                  <span className="font-mono">{document.createdAt.slice(0, 10)}</span>
+                  <span className="font-mono">{formatDateTime(document.createdAt)}</span>
                 </p>
                 <h3 className="text-h2">{document.title}</h3>
                 {!document.validation.ok ? (

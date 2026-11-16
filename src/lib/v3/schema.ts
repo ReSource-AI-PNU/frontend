@@ -247,8 +247,9 @@ export const resultSchema = obj({
   ),
   /** 가격조사 참고 시세. 손익 계산에는 쓰지 않는다 */
   referencePrices: z.array(referencePriceSchema),
-  carbonInObjective: z.boolean(),
-  evidence: z.array(z.string()),
+  /** 아래 둘은 배출 기업이 보는 뷰에만 온다 */
+  carbonInObjective: z.boolean().optional(),
+  evidence: z.array(z.string()).optional(),
 });
 
 export const questionSchema = obj({

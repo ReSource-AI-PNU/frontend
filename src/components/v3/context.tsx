@@ -25,8 +25,8 @@ type Ctx = {
   /** 백엔드에 다시 연결해 본다 */
   reconnect: () => void;
   orgs: Org[];
-  /** 지금 보는 관점. 조직 목록을 받기 전에는 null이다 */
-  org: Org | null;
+  /** 지금 보는 관점. 조직 목록을 받기 전(mode가 loading)에는 id가 빈 자리표시 조직이다 */
+  org: Org;
   setOrgId: (id: string) => void;
   sessionId: string | null;
   setSessionId: (id: string | null) => void;
@@ -34,6 +34,9 @@ type Ctx = {
 };
 
 const V3Context = createContext<Ctx | null>(null);
+
+/** 조직 목록을 받기 전에 쓰는 자리표시. 이 상태에서는 어떤 화면도 서버를 부르지 않는다. */
+const PENDING_ORG: Org = { id: "", name: "", role: "emitter" };
 
 const ORG_KEY = "rsai-v3-org";
 const SESSION_KEY = "rsai-v3-session";
@@ -97,7 +100,7 @@ export function V3Provider({ children }: { children: ReactNode }) {
     // 예시 데이터는 받아 둔 관점부터 보여 준다
     orgs.find((item) => item.id === remote.fixture?.meta.emitterOrgId) ??
     orgs[0] ??
-    null;
+    PENDING_ORG;
 
   const reconnect = useCallback(() => {
     setRemote({ mode: "loading", orgs: [], fixture: null });
@@ -127,7 +130,7 @@ export function V3Provider({ children }: { children: ReactNode }) {
   return (
     <V3Context.Provider value={value}>
       {children}
-      {panel && org ? (
+      {panel && org.id ? (
         <EvidencePanel
           key={panel.ids.join("|")}
           ids={panel.ids}
@@ -142,15 +145,8 @@ export function V3Provider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useV3Base(): Ctx {
+export function useV3(): Ctx {
   const ctx = useContext(V3Context);
   if (!ctx) throw new Error("V3Provider 안에서만 쓸 수 있습니다");
   return ctx;
-}
-
-/** 조직 목록을 받은 뒤(V3Shell 안쪽)의 화면이 쓴다. 관점(org)이 반드시 있다. */
-export function useV3(): Ctx & { org: Org } {
-  const ctx = useV3Base();
-  if (!ctx.org) throw new Error("관점을 정하기 전에는 쓸 수 없습니다");
-  return ctx as Ctx & { org: Org };
 }

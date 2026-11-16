@@ -1,7 +1,7 @@
 "use client";
 
 import { FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL } from "@/lib/v3/format";
-import type { DiagnosisView, EdgeStatus, Result, TriStatus, ViewStream } from "@/lib/v3/types";
+import type { DiagnosisView, EdgeStatus, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
 import { useV3 } from "./context";
 import { StatusChip, type ChipTone } from "./status-chip";
@@ -23,11 +23,14 @@ export function ResultSheet({
   result,
   streams,
   unresolved,
+  role,
   vendorName,
 }: {
   result: Result | null;
   streams: ViewStream[];
   unresolved: DiagnosisView["unresolved"];
+  /** 업체에게는 배출 기업의 현행 대비 손익이 오지 않는다. 없는 값을 "확인 필요"로 보이지 않게 칸을 뺀다 */
+  role: OrgRole;
   vendorName: (orgId: string | null) => string;
 }) {
   const { openEvidence } = useV3();
@@ -39,9 +42,16 @@ export function ResultSheet({
     );
   }
   const stream = (id: string) => streams.find((item) => item.id === id);
+  const full = role !== "vendor";
   return (
     <div className="space-y-5 p-5">
-      <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+      {full ? null : (
+        <p className="text-sm text-muted">
+          이 업체에 배정된 흐름과 조건만 보입니다. 배출 기업의 현행 처리와 현행 대비 손익, 다른 업체의 조건은
+          업체에게 보이지 않습니다.
+        </p>
+      )}
+      <div className={full ? "flex flex-wrap items-end gap-x-8 gap-y-3" : "hidden"}>
         <div>
           <p className="text-label text-muted">현행 대비 월 손익</p>
           <p className="text-display">
@@ -88,10 +98,14 @@ export function ResultSheet({
               <th className="py-2 pr-3 font-semibold">흐름</th>
               <th className="py-2 pr-3 font-semibold">배정 업체 · 경로</th>
               <th className="py-2 pr-3 text-right font-semibold">단가</th>
-              <th className="py-2 pr-3 text-right font-semibold">현행 월 손익</th>
-              <th className="py-2 pr-3 text-right font-semibold">배정 후</th>
-              <th className="py-2 pr-3 text-right font-semibold">현행 대비</th>
-              <th className="py-2 pr-3 text-right font-semibold">탄소</th>
+              {full ? (
+                <>
+                  <th className="py-2 pr-3 text-right font-semibold">현행 월 손익</th>
+                  <th className="py-2 pr-3 text-right font-semibold">배정 후</th>
+                  <th className="py-2 pr-3 text-right font-semibold">현행 대비</th>
+                  <th className="py-2 pr-3 text-right font-semibold">탄소</th>
+                </>
+              ) : null}
               <th className="py-2 font-semibold">판정</th>
             </tr>
           </thead>
@@ -120,6 +134,8 @@ export function ResultSheet({
                   <td className="py-3 pr-3 text-right whitespace-nowrap">
                     <ClaimValue claim={item.unitPrice} price />
                   </td>
+                  {full ? (
+                    <>
                   <td className="py-3 pr-3 text-right whitespace-nowrap">
                     <ClaimValue claim={item.monthlyNow} signed />
                     {item.currentAssumed ? (
@@ -140,6 +156,8 @@ export function ResultSheet({
                       </p>
                     ) : null}
                   </td>
+                    </>
+                  ) : null}
                   <td className="min-w-[16rem] py-3">
                     <StatusChip tone={TONE[item.status]}>{STATUS_LABEL[item.status]}</StatusChip>
                     {item.checks.length > 0 ? (
@@ -188,6 +206,7 @@ export function ResultSheet({
         내는 돈이 −입니다.
       </p>
 
+      {full ? (
       <div className="grid gap-5 md:grid-cols-2">
         <section>
           <h3 className="text-label text-muted">가정값</h3>
@@ -227,6 +246,7 @@ export function ResultSheet({
           )}
         </section>
       </div>
+      ) : null}
 
       {result.referencePrices.length > 0 ? (
         <section>
