@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:c-questions": "node --test tests/c-questions.test.ts tests/c-evidence.test.ts"
+    "test:c-questions": "node --test tests/c-questions.test.ts tests/c-evidence.test.ts tests/c-resource-spec.test.ts"
   },
   "dependencies": {
     "maplibre-gl": "^6.17.0",

@@ -6,6 +6,7 @@ import { getSessionForCurrentOrg } from "../sessions";
 import { createStore } from "./store";
 import { createCService } from "./core";
 import { createEvidenceComparison } from "./evidence";
+import { createResourceSpecGenerator } from "./resource-spec";
 
 const store = createStore(path.join(process.cwd(), ".mock-db"));
 async function backend(operation: string, body: Record<string, unknown>) {
@@ -18,6 +19,7 @@ async function backend(operation: string, body: Record<string, unknown>) {
 }
 const service = createCService(store, backend);
 const compareEvidence = createEvidenceComparison(getSessionForCurrentOrg, service, API_BASE_URL);
+const generateResourceSpec = createResourceSpecGenerator(getSessionForCurrentOrg, service, API_BASE_URL);
 
 // Every entry point checks session ownership; the backend never receives browser state as authority.
 export async function getCQuestionState(sessionId: string) {
@@ -25,6 +27,9 @@ export async function getCQuestionState(sessionId: string) {
 }
 export async function compareCEvidence(sessionId: string) {
   return compareEvidence(sessionId);
+}
+export async function generateCResourceSpec(sessionId: string) {
+  return generateResourceSpec(sessionId);
 }
 export async function initializeCQuestionState(sessionId: string, command: unknown, initialInput: unknown) {
   await getSessionForCurrentOrg(sessionId); return service.initialize(sessionId, command, initialInput);
