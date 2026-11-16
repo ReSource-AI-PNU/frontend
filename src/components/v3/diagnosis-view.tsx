@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PHASE_LABEL } from "@/lib/v3/format";
 import { JudgementGraph } from "./judgement-graph";
 import { Questions } from "./questions";
 import { ResultSheet } from "./result-sheet";
 import { StageBar } from "./stage-bar";
+import { StreamTable } from "./stream-table";
 import { Timeline } from "./timeline";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
@@ -28,7 +30,7 @@ const ACTOR_LABEL: Record<string, string> = {
 };
 
 export function DiagnosisView() {
-  const { orgs } = useV3();
+  const { orgs, mode, fixture } = useV3();
   const d = useDiagnosis();
   const [stage, setStage] = useState<number | null>(null);
   const { view, org } = d;
@@ -49,14 +51,16 @@ export function DiagnosisView() {
           </p>
         ) : null}
         <EmptyState
-          title="진행 중인 진단이 없습니다"
+          title={mode === "fixture" ? "이 관점의 예시 데이터가 없습니다" : "진행 중인 진단이 없습니다"}
           description={
-            org.role === "emitter"
-              ? "자료를 올린 뒤 진단을 시작하면, 회사 측 에이전트가 맞는 업체의 에이전트와 근거를 확인하며 대화합니다."
-              : "배출 기업이 진단을 시작하면 이 화면에 대화가 나타납니다. 진단은 배출 기업 관점에서 시작합니다."
+            mode === "fixture"
+              ? `예시 데이터는 ${orgs.find((item) => item.id === fixture?.meta.emitterOrgId)?.name ?? "배출 기업 한 곳"}의 관점 하나만 담고 있습니다. 관점을 그쪽으로 바꾸거나, 백엔드를 띄우고 다시 연결하세요.`
+              : org.role === "emitter"
+                ? "자료를 올린 뒤 진단을 시작하면, 회사 측 에이전트가 맞는 업체의 에이전트와 근거를 확인하며 대화합니다."
+                : "배출 기업이 진단을 시작하면 이 화면에 대화가 나타납니다. 진단은 배출 기업 관점에서 시작합니다."
           }
           action={
-            org.role === "emitter" ? (
+            mode === "live" && org.role === "emitter" ? (
               <Button disabled={d.busy} onClick={d.start}>
                 진단 시작
               </Button>
@@ -73,6 +77,7 @@ export function DiagnosisView() {
     orgId ??
     "확인 필요";
   const isEmitter = view.viewer.role === "emitter";
+  const openQuestions = view.questions.filter((item) => !item.answered).length;
   const events = stage
     ? view.events.filter((event) => (event.detail as { stage?: number }).stage === stage)
     : view.events;
@@ -84,19 +89,38 @@ export function DiagnosisView() {
           <h1 className="text-h1">진단·연결</h1>
           <p className="text-sm text-muted">
             {nameOf(view.session.emitterOrgId)} ·{" "}
-            <span className="font-semibold text-ink">{SESSION_LABEL[view.session.status]}</span> ·{" "}
-            <span className="font-mono text-[12px]">{view.session.id}</span>
+            <span className="font-semibold text-ink">{SESSION_LABEL[view.session.status]}</span> · 진행 단계{" "}
+            {PHASE_LABEL[view.session.phase] ?? view.session.phase} ·{" "}
+            <span className="font-mono text-[12px]">
+              {view.session.id} · 기준일 {view.session.today}
+            </span>
           </p>
         </div>
-        {isEmitter ? (
-          <Button
-            className="ml-auto"
-            disabled={!d.canAct || d.busy || view.session.status === "running" || view.session.status === "confirmed"}
-            onClick={d.run}
-          >
-            {view.session.status === "running" || d.busy ? "실행 중" : "실행"}
-          </Button>
-        ) : null}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {d.canAct ? (
+            <Button variant="ghost" size="sm" disabled={d.busy} onClick={d.reload}>
+              다시 읽기
+            </Button>
+          ) : null}
+          {isEmitter && d.canAct && view.session.status === "confirmed" ? (
+            <Button variant="secondary" disabled={d.busy} onClick={d.start}>
+              새 진단 시작
+            </Button>
+          ) : null}
+          {isEmitter && view.session.status !== "confirmed" ? (
+            <Button
+              disabled={!d.canAct || d.busy || view.session.status === "running" || openQuestions > 0}
+              onClick={d.run}
+              title={openQuestions > 0 ? "담당자 질문에 먼저 답하세요" : undefined}
+            >
+              {view.session.status === "running" || d.busy
+                ? "실행 중"
+                : view.session.status === "idle"
+                  ? "실행"
+                  : "이어서 실행"}
+            </Button>
+          ) : null}
+        </div>
       </header>
       {d.error ? (
         <p role="alert" className="border-b border-line bg-loss-bg px-4 py-2.5 text-sm text-loss sm:px-6 lg:px-8">
@@ -109,16 +133,25 @@ export function DiagnosisView() {
         <Questions
           questions={view.questions}
           streams={view.streams}
-          disabled={!d.canAct || d.busy}
+          canAct={d.canAct}
+          busy={d.busy}
           onAnswer={d.answer}
         />
       ) : null}
+
+      <section aria-label="흐름" className="border-b border-line">
+        <h2 className="border-b border-line px-5 py-3 text-label text-muted">
+          흐름 {view.streams.length}개 · ① 식별·분류
+        </h2>
+        <StreamTable streams={view.streams} unresolved={view.unresolved} />
+      </section>
 
       <div className="grid flex-1 border-b border-ink lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <section aria-label="대화 타임라인" className="min-w-0 border-b border-line lg:border-r lg:border-b-0">
           <h2 className="border-b border-line px-5 py-3 text-label text-muted">대화 타임라인</h2>
           <Timeline
             threads={view.threads}
+            streams={view.streams}
             emitterOrgId={view.session.emitterOrgId}
             emitterName={nameOf(view.session.emitterOrgId)}
             stage={stage}
@@ -157,7 +190,12 @@ export function DiagnosisView() {
             결과 한 장은 배출 기업에게만 보입니다. 업체는 자기 대화와 승인 화면에서 조건을 확인합니다.
           </p>
         ) : (
-          <ResultSheet result={view.result} streams={view.streams} vendorName={nameOf} />
+          <ResultSheet
+            result={view.result}
+            streams={view.streams}
+            unresolved={view.unresolved}
+            vendorName={nameOf}
+          />
         )}
       </section>
     </div>

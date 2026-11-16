@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/v3/api";
-import { fixtureView } from "@/lib/v3/fixture";
 import type { DiagnosisView } from "@/lib/v3/types";
 import { useV3 } from "./context";
 
@@ -14,14 +13,15 @@ function messageOf(error: unknown): string {
 
 /** 진단 뷰를 읽고 실행·답변·승인을 보낸다. 예시 데이터 모드에서는 어떤 호출도 보내지 않는다. */
 export function useDiagnosis() {
-  const { mode, org, sessionId, setSessionId } = useV3();
+  const { mode, fixture, org, sessionId, setSessionId } = useV3();
   const key = `${mode}:${org.id}:${sessionId ?? ""}`;
   const [loaded, setLoaded] = useState<Loaded>({ key: "", view: null, error: null });
   const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const live = mode === "live";
   const current = loaded.key === key ? loaded : null;
-  const view = live ? (current?.view ?? null) : mode === "fixture" ? fixtureView(org.id) : null;
+  const view = live ? (current?.view ?? null) : (fixture?.view(org.id) ?? null);
   const running = live && view?.session.status === "running";
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function useDiagnosis() {
       alive = false;
       if (timer) window.clearInterval(timer);
     };
-  }, [live, sessionId, org.id, key, running]);
+  }, [live, sessionId, org.id, key, running, tick]);
 
   const act = useCallback(
     async (call: () => Promise<DiagnosisView>) => {
@@ -73,7 +73,8 @@ export function useDiagnosis() {
     canAct: live,
     start: () => act(() => api.createSession(org.id)),
     run: () => (sessionId ? act(() => api.run(sessionId, org.id)) : Promise.resolve()),
-    answer: (questionId: string, value: string) =>
+    reload: () => setTick((before) => before + 1),
+    answer: (questionId: string, value: string | number) =>
       sessionId ? act(() => api.answer(sessionId, org.id, questionId, value)) : Promise.resolve(),
     approve: (threadId: string) =>
       sessionId ? act(() => api.approve(sessionId, org.id, threadId)) : Promise.resolve(),

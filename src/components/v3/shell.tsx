@@ -1,42 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { API_BASE } from "@/lib/v3/api";
-import { useV3 } from "./context";
+import { useV3Base } from "./context";
 
 const ROLE_LABEL = { emitter: "배출 기업", vendor: "처리 업체", admin: "관리자" } as const;
-const TABS = [
-  { href: "/v3", label: "진단·연결" },
-  { href: "/v3/materials", label: "자료 올리기" },
-  { href: "/v3/approval", label: "승인" },
-  { href: "/v3/admin", label: "관리자" },
-];
 
-/** v3 화면 공통 틀: 화면 탭, 관점 전환(시연용), 예시 데이터 띠 */
+/** v3 화면 공통 틀: 데이터 출처 표시, 관점 전환(시연용), 예시 데이터 띠. 화면 이동은 주 메뉴가 맡는다. */
 export function V3Shell({ children }: { children: ReactNode }) {
-  const { mode, orgs, org, setOrgId } = useV3();
-  const pathname = usePathname();
+  const { mode, fixture, reconnect, orgs, org, setOrgId } = useV3Base();
+  if (mode === "loading" || !org) {
+    return <p className="p-8 text-sm text-muted">백엔드({API_BASE})에 연결하는 중입니다.</p>;
+  }
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 sm:px-6 lg:px-8">
-        <nav aria-label="화면" className="flex gap-1 overflow-x-auto">
-          {TABS.map((tab) => {
-            const active = pathname === tab.href;
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                aria-current={active ? "page" : undefined}
-                className={`px-3 py-3 text-sm whitespace-nowrap ${active ? "font-semibold text-ink shadow-[inset_0_-2px_0_var(--color-ink)]" : "text-muted hover:text-ink"}`}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <label className="ml-auto flex items-center gap-2 py-2 text-[13px] text-muted">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2 sm:px-6 lg:px-8">
+        <p className="min-w-0 text-[13px] text-muted">
+          {mode === "live" ? (
+            <>
+              <span className="font-semibold text-ink">백엔드 연결됨</span>{" "}
+              <span className="font-mono text-[12px] break-all">{API_BASE}</span>
+            </>
+          ) : (
+            <span className="font-semibold text-warn">백엔드 연결 안 됨 · 예시 데이터</span>
+          )}
+        </p>
+        <label className="ml-auto flex items-center gap-2 text-[13px] text-muted">
           관점 (시연용)
           <select
             value={org.id}
@@ -51,11 +40,27 @@ export function V3Shell({ children }: { children: ReactNode }) {
           </select>
         </label>
       </div>
-      {mode === "fixture" ? (
-        <div role="status" className="border-b border-warn bg-warn-bg px-4 py-2.5 text-sm font-semibold text-warn sm:px-6 lg:px-8">
-          예시 데이터 · 백엔드({API_BASE})에 연결하지 못해 가상 예시를 보여 줍니다. 실제 에이전트
-          대화나 계산 결과가 아니며, 실행·답변·승인·업로드는 보내지 않습니다.
+      {mode === "fixture" && fixture ? (
+        <div role="status" className="border-b border-warn bg-warn-bg px-4 py-2.5 text-sm text-warn sm:px-6 lg:px-8">
+          <p className="font-semibold">
+            예시 데이터 · 백엔드(<span className="font-mono text-[13px]">{API_BASE}</span>)에 연결하지 못해, 저장해 둔
+            결과를 보여 줍니다.
+          </p>
+          <p className="mt-1">
+            백엔드 로컬 서버가 <span className="font-mono">{fixture.meta.capturedOn}</span>에 시연용 가상
+            데이터로 실제로 낸 진단(승인 전 상태)입니다. 회사·단가·물량은 모두 가상이고, 대화는 모델이
+            아니라 <span className="font-semibold">{fixture.meta.writers.join(", ")}</span>이(가) 썼습니다.
+            실행·답변·승인·업로드는 보내지 않습니다.{" "}
+            <button type="button" className="font-semibold underline underline-offset-4" onClick={reconnect}>
+              다시 연결
+            </button>
+          </p>
         </div>
+      ) : null}
+      {org.synthetic && mode === "live" ? (
+        <p className="border-b border-line bg-sunken px-4 py-1.5 text-[13px] text-ink-2 sm:px-6 lg:px-8">
+          {org.note ?? "시연용 가상 데이터"}
+        </p>
       ) : null}
       {children}
     </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { ROUTE_LABEL, STATUS_LABEL } from "@/lib/v3/format";
-import type { EdgeStatus, Result, TriStatus, ViewStream } from "@/lib/v3/types";
-import { ClaimValue, NeedsCheck } from "./claim";
+import { FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL } from "@/lib/v3/format";
+import type { DiagnosisView, EdgeStatus, Result, TriStatus, ViewStream } from "@/lib/v3/types";
+import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
 import { useV3 } from "./context";
 import { StatusChip, type ChipTone } from "./status-chip";
 
@@ -18,14 +18,16 @@ const CHECK_TONE: Record<EdgeStatus, string> = {
   unmet: "text-loss",
 };
 
-/** 결과 한 장: 흐름별 배정 업체, 경로, 단가, 월 손익과 현행 대비, 탄소, 가정값, 대안, 민감도 */
+/** 결과 한 장: 흐름별 배정 업체, 경로, 단가, 월 손익과 현행 대비, 탄소, 가정값, 대안, 민감도, 참고 시세 */
 export function ResultSheet({
   result,
   streams,
+  unresolved,
   vendorName,
 }: {
   result: Result | null;
   streams: ViewStream[];
+  unresolved: DiagnosisView["unresolved"];
   vendorName: (orgId: string | null) => string;
 }) {
   const { openEvidence } = useV3();
@@ -55,16 +57,32 @@ export function ResultSheet({
           <dd className="text-right">
             <ClaimValue claim={result.totals.monthlyAfter} signed />
           </dd>
-          <dt className="text-muted">탄소</dt>
+          <dt className="text-muted">탄소 합계</dt>
           <dd className="text-right">
             <ClaimValue claim={result.totals.carbon} />
           </dd>
         </dl>
-        <StatusChip tone={TONE[result.status]}>{STATUS_LABEL[result.status]}</StatusChip>
+        <div className="space-y-1">
+          <StatusChip tone={TONE[result.status]}>{STATUS_LABEL[result.status]}</StatusChip>
+          <p className="text-[12px] text-muted">
+            {result.carbonInObjective
+              ? "배정을 고를 때 탄소도 가중치로 넣었습니다."
+              : "배정은 월 순비용만으로 골랐습니다. 탄소는 참고 값입니다."}
+          </p>
+        </div>
       </div>
 
+      {unresolved.length > 0 ? (
+        <p className="rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
+          <span className="font-semibold">확인 필요로 남은 값</span> · 질문 한도를 다 쓰고도 모르는 값입니다:{" "}
+          {unresolved
+            .map((item) => `${stream(item.streamId)?.name ?? item.streamId} ${FIELD_LABEL[item.field] ?? item.field}`)
+            .join(", ")}
+        </p>
+      ) : null}
+
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] border-collapse text-sm">
+        <table className="w-full min-w-[860px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-ink text-left text-label text-muted">
               <th className="py-2 pr-3 font-semibold">흐름</th>
@@ -80,21 +98,18 @@ export function ResultSheet({
           <tbody>
             {result.assignments.map((item) => {
               const source = stream(item.streamId);
-              const price = item.unitPrice?.value;
               return (
                 <tr key={item.streamId} className="border-b border-line align-top">
                   <td className="py-3 pr-3">
                     <p className="font-semibold">{source?.name ?? item.streamId}</p>
                     <p className="text-[13px] text-muted">
-                      {source?.material}
-                      {source?.origin ? ` · ${source.origin}` : ""}
-                      {source?.grade ? ` · ${source.grade.value}등급` : ""}
-                      {source?.grade?.basis === "photo_estimate" ? " (사진 추정)" : ""}
+                      {[source?.material, source?.origin].filter(Boolean).join(" · ")}
+                      {source?.grade.value ? ` · ${source.grade.value}등급 (${source.grade.label})` : " · 등급 확인 필요"}
                     </p>
                   </td>
                   <td className="py-3 pr-3">
                     {item.vendorOrgId ? (
-                      <p className="font-semibold">{vendorName(item.vendorOrgId)}</p>
+                      <p className="font-semibold">{item.vendorName ?? vendorName(item.vendorOrgId)}</p>
                     ) : (
                       <NeedsCheck />
                     )}
@@ -102,39 +117,44 @@ export function ResultSheet({
                       {item.route ? (ROUTE_LABEL[item.route] ?? item.route) : "경로 미정"}
                     </p>
                   </td>
-                  <td className="py-3 pr-3 text-right">
-                    <ClaimValue claim={item.unitPrice} />
-                    {typeof price === "number" ? (
-                      <p className="text-[12px] text-muted">{price >= 0 ? "매입" : "처리비"}</p>
+                  <td className="py-3 pr-3 text-right whitespace-nowrap">
+                    <ClaimValue claim={item.unitPrice} price />
+                  </td>
+                  <td className="py-3 pr-3 text-right whitespace-nowrap">
+                    <ClaimValue claim={item.monthlyNow} signed />
+                    {item.currentAssumed ? (
+                      <p className="text-[12px] font-semibold text-warn">현행은 가정값</p>
                     ) : null}
                   </td>
-                  <td className="py-3 pr-3 text-right">
-                    <ClaimValue claim={item.monthlyNow} signed />
-                  </td>
-                  <td className="py-3 pr-3 text-right">
+                  <td className="py-3 pr-3 text-right whitespace-nowrap">
                     <ClaimValue claim={item.monthlyAfter} signed />
                   </td>
-                  <td className="py-3 pr-3 text-right">
+                  <td className="py-3 pr-3 text-right whitespace-nowrap">
                     <ClaimValue claim={item.difference} signed />
                   </td>
-                  <td className="py-3 pr-3 text-right">
+                  <td className="py-3 pr-3 text-right whitespace-nowrap">
                     <ClaimValue claim={item.carbon} />
+                    {item.carbonValue ? (
+                      <p className="text-[12px] text-muted">
+                        배출권 환산 <ClaimValue claim={item.carbonValue} />
+                      </p>
+                    ) : null}
                   </td>
-                  <td className="py-3">
+                  <td className="min-w-[16rem] py-3">
                     <StatusChip tone={TONE[item.status]}>{STATUS_LABEL[item.status]}</StatusChip>
                     {item.checks.length > 0 ? (
                       <ul className="mt-2 space-y-1 text-[13px]">
-                        {item.checks.map((check) => (
-                          <li key={check.key}>
+                        {item.checks.map((check, index) => (
+                          <li key={`${check.key}-${index}`}>
                             <span className={`font-semibold ${CHECK_TONE[check.status]}`}>
                               {CHECK_LABEL[check.status]}
                             </span>{" "}
-                            {check.text}{" "}
+                            <ClaimText text={check.text} claims={check.claims ?? []} />{" "}
                             {check.evidence.length > 0 ? (
                               <button
                                 type="button"
                                 className="underline decoration-dotted underline-offset-4"
-                                onClick={() => openEvidence(check.evidence, check.text)}
+                                onClick={() => openEvidence(check.evidence, "이 확인 항목의 근거")}
                               >
                                 근거
                               </button>
@@ -146,10 +166,11 @@ export function ResultSheet({
                     {item.alternatives.length > 0 ? (
                       <ul className="mt-2 space-y-1 text-[13px] text-muted">
                         {item.alternatives.map((alt, index) => (
-                          <li key={`${alt.route}-${index}`}>
-                            대안: {alt.vendorOrgId ? `${vendorName(alt.vendorOrgId)} · ` : ""}
-                            {ROUTE_LABEL[alt.route] ?? alt.route}{" "}
-                            <ClaimValue claim={alt.monthlyAfter} signed /> {alt.note}
+                          <li key={`${alt.vendorOrgId}-${alt.route}-${index}`}>
+                            대안: {alt.vendorName ?? (alt.vendorOrgId ? vendorName(alt.vendorOrgId) : "")}
+                            {" · "}
+                            {ROUTE_LABEL[alt.route] ?? alt.route} <ClaimValue claim={alt.unitPrice} price /> → 월{" "}
+                            <ClaimValue claim={alt.monthlyAfter} signed /> {alt.note ? `(${alt.note})` : ""}
                           </li>
                         ))}
                       </ul>
@@ -161,6 +182,11 @@ export function ResultSheet({
           </tbody>
         </table>
       </div>
+      <p className="text-[13px] text-muted">
+        단가는 배출 기업 기준입니다. <span className="font-semibold text-ink-2">매입</span>은 업체에서 받는 돈,{" "}
+        <span className="font-semibold text-ink-2">처리비</span>는 업체에 내는 돈입니다. 월 손익은 받는 돈이 +,
+        내는 돈이 −입니다.
+      </p>
 
       <div className="grid gap-5 md:grid-cols-2">
         <section>
@@ -173,7 +199,7 @@ export function ResultSheet({
                 <li key={id}>
                   <button
                     type="button"
-                    className="text-left font-mono text-[13px] underline decoration-dotted underline-offset-4"
+                    className="text-left font-mono text-[13px] break-all underline decoration-dotted underline-offset-4"
                     onClick={() => openEvidence([id], "가정값")}
                   >
                     {id}
@@ -189,16 +215,35 @@ export function ResultSheet({
             <p className="mt-1 text-sm text-muted">계산한 민감도가 없습니다.</p>
           ) : (
             <ul className="mt-1 space-y-1 text-sm">
-              {result.sensitivity.map((item) => (
-                <li key={item.label} className="flex justify-between gap-4">
+              {result.sensitivity.map((item, index) => (
+                <li key={`${item.label}-${index}`} className="flex justify-between gap-4">
                   <span>{item.label}</span>
-                  <ClaimValue claim={item.difference} signed />
+                  <span className="whitespace-nowrap">
+                    현행 대비 <ClaimValue claim={item.difference} signed />
+                  </span>
                 </li>
               ))}
             </ul>
           )}
         </section>
       </div>
+
+      {result.referencePrices.length > 0 ? (
+        <section>
+          <h3 className="text-label text-muted">참고 시세 (손익 계산에 쓰지 않음)</h3>
+          <ul className="mt-1 space-y-1 text-sm">
+            {result.referencePrices.map((item) => (
+              <li key={item.key} className="flex flex-wrap justify-between gap-x-4">
+                <span>
+                  {item.label} <span className="font-mono text-[12px] text-muted">기준일 {item.asOf}</span>
+                </span>
+                <ClaimValue claim={item.price} price={false} />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[13px] text-muted">{result.referencePrices[0].note}</p>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { formatClaim, isAssumed } from "@/lib/v3/format";
+import { formatClaim, formatUnitPrice, isAssumed, isUnitPriceClaim } from "@/lib/v3/format";
 import type { Claim } from "@/lib/v3/types";
 import { useV3 } from "./context";
 
@@ -15,24 +15,31 @@ export function NeedsCheck() {
   );
 }
 
-/** 숫자나 조항 하나. 누르면 근거 패널이 열린다. 값이 없으면 "확인 필요". */
+/**
+ * 숫자나 조항 하나. 누르면 근거 패널이 열린다. 값이 없으면 "확인 필요".
+ * 업체 단가는 부호 대신 "매입"(받는 돈)과 "처리비"(내는 돈)로 풀어 보여 준다.
+ */
 export function ClaimValue({
   claim,
   signed = false,
+  price,
   title,
   className = "",
 }: {
   claim: Claim | null | undefined;
   signed?: boolean;
+  /** 단가로 그릴지. 주지 않으면 claim ID와 단위로 가린다 */
+  price?: boolean;
   title?: string;
   className?: string;
 }) {
   const { openEvidence } = useV3();
-  const text = formatClaim(claim, signed);
+  const asPrice = price ?? isUnitPriceClaim(claim);
+  const text = asPrice ? formatUnitPrice(claim) : formatClaim(claim, signed);
   if (!claim || text === null) return <NeedsCheck />;
   const assumed = isAssumed(claim);
   const tone =
-    signed && typeof claim.value === "number"
+    signed && !asPrice && typeof claim.value === "number"
       ? claim.value > 0
         ? "text-gain"
         : claim.value < 0
