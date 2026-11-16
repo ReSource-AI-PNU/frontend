@@ -145,6 +145,7 @@ export function V3Provider({ children }: { children: ReactNode }) {
           ids={panel.ids}
           title={panel.title}
           orgId={org.id}
+          orgName={(id) => orgs.find((item) => item.id === id)?.name ?? id}
           mode={remote.mode}
           fixture={remote.fixture}
           onClose={() => setPanel(null)}

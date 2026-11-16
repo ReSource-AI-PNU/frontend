@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { COLUMN_X, NODE_H, NODE_W, WIDTH, dedupeEdges, layoutGraph } from "@/lib/v3/graph-layout";
+import { EDGE_KIND_LABEL } from "@/lib/v3/format";
 import type { EdgeStatus, GraphEdge, GraphNode } from "@/lib/v3/types";
 import { useV3 } from "./context";
 
@@ -322,6 +323,7 @@ export function JudgementGraph({ nodes, edges: rawEdges }: { nodes: GraphNode[];
                 <span className="min-w-0">
                   <span className="text-muted">
                     {name(edge.from)} → {name(edge.to)}
+                    {EDGE_KIND_LABEL[edge.kind] ? ` · ${EDGE_KIND_LABEL[edge.kind]}` : ""}
                   </span>
                   {edge.label ? <span className="block">{edge.label}</span> : null}
                 </span>

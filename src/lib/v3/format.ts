@@ -194,3 +194,106 @@ export function sessionLabel(status: string, phase: string, started: boolean): s
     }[status] ?? status
   );
 }
+
+/**
+ * 초안 거부 코드의 풀이(계약 8장 "초안 거부 코드"). 메시지의 validation.rejections[]와 실행 기록의
+ * detail.rejections[]·detail.codes에는 코드와 코드별 일반 문장만 온다(거부된 초안의 숫자·조항은 오지 않는다).
+ * 화면은 코드로 풀이를 고르고, 표에 없는 코드는 서버가 준 일반 문장을 쓴다.
+ */
+export const REJECTION_LABEL: Record<string, string> = {
+  NUMBER_OUTSIDE_PLACEHOLDER: "근거에 묶이지 않은 숫자를 본문에 직접 적었습니다",
+  UNKNOWN_PLACEHOLDER: "본문이 가리키는 값이 메시지에 실려 있지 않았습니다",
+  UNUSED_CLAIM: "실어 놓고 본문에 쓰지 않은 값이 있었습니다",
+  CLAIM_WITHOUT_EVIDENCE: "근거가 없는 값이 있었습니다",
+  EVIDENCE_NOT_FOUND: "근거 저장소에 없는 근거를 썼습니다",
+  EVIDENCE_FORBIDDEN: "보내는 조직이 볼 수 없는 근거를 썼습니다",
+  EVIDENCE_EXPIRED: "유효 기한이 지난 근거를 썼습니다",
+  VALUE_MISMATCH: "메시지의 값이 근거의 값과 달랐습니다",
+  UNIT_MISMATCH: "값의 단위를 근거의 단위로 바꿀 수 없었습니다",
+  QUOTE_MISMATCH: "조항 인용이 원문과 글자 그대로 같지 않았습니다",
+  UNKNOWN_CLAIM_REF: "쓸 수 있는 값 목록에 없는 값을 가리켰습니다",
+  TYPE_NOT_ALLOWED: "지금 보낼 수 없는 종류의 메시지였습니다",
+  APPROVAL_REQUIRED: "양쪽 담당자 승인 전에 확정을 보내려 했습니다",
+  THREAD_RULE: "대화 규칙에 맞지 않는 메시지였습니다",
+  UNKNOWN_STREAM: "이 대화에 없는 흐름을 적었습니다",
+  PERMIT_MISMATCH: "허가 품목이 맞지 않는 흐름에 조건을 내려 했습니다",
+  UNBACKED_TERM:
+    "숫자 없이 조건을 뜻하는 낱말(무상, 반값, 주말, 매일, 전량 등)을 그에 해당하는 조건 항목이나 값 없이 썼습니다",
+  TOO_MANY_TOOL_ROUNDS: "판단 도구를 정해진 횟수보다 많이 부르려 했습니다",
+  INVALID_OUTPUT: "응답 형식이 맞지 않았습니다",
+  MODEL_ERROR: "모델 호출에 실패했습니다",
+  REJECTED: "초안이 검사를 통과하지 못했습니다",
+};
+
+/** 거부 코드 하나의 풀이. 가드레일과 다른 배출 기업 관련 코드는 앞머리로 묶어 푼다. */
+export function rejectionLabel(code: string, fallback?: string | null): string {
+  if (REJECTION_LABEL[code]) return REJECTION_LABEL[code];
+  if (code.startsWith("GUARDRAIL_TERMS")) return "조건을 내는 메시지의 조건 항목이 없거나 값과 맞지 않았습니다";
+  if (code.startsWith("GUARDRAIL_")) return "업체 가드레일 밖의 조건이었습니다";
+  if (code.startsWith("OTHER_EMITTER")) return "다른 배출 기업의 정보를 드러내는 내용이었습니다";
+  return fallback || REJECTION_LABEL.REJECTED;
+}
+
+/**
+ * 승인을 막는 사유 코드의 풀이(계약 8장 "승인을 막는 사유 코드"). approvals[].blockedCodes에 온다.
+ * 세 코드 밖의 값은 근거 검증기의 거부 코드이고 "지금 다시 검증했더니 통과하지 못한다"는 뜻이다.
+ */
+export const BLOCK_CODE_LABEL: Record<string, string> = {
+  EVIDENCE_CHANGED: "대화에서 인용한 근거가 합의 뒤에 바뀌었거나 사라졌습니다",
+  STREAM_CHANGED: "합의한 뒤에 배정된 흐름의 자료(재질, 물량, 측정값 등)가 바뀌었습니다",
+  VENDOR_TERMS_CHANGED: "합의한 뒤에 업체가 매입 기준표·허가 품목·가드레일을 바꿔 합의 조건에 영향을 줍니다",
+  VALUE_MISMATCH: "메시지의 값이 지금 근거의 값과 다릅니다",
+  EVIDENCE_EXPIRED: "인용한 근거의 유효 기한이 지났습니다",
+  EVIDENCE_FORBIDDEN: "인용한 근거의 열람 권한이 닫혔습니다",
+  EVIDENCE_NOT_FOUND: "인용한 근거가 근거 저장소에 없습니다",
+  UNIT_MISMATCH: "메시지의 단위를 지금 근거의 단위로 바꿀 수 없습니다",
+  QUOTE_MISMATCH: "조항 인용이 지금 원문과 같지 않습니다",
+};
+
+export function blockCodeLabel(code: string): string {
+  return BLOCK_CODE_LABEL[code] ?? rejectionLabel(code, "근거를 다시 확인했더니 통과하지 못했습니다");
+}
+
+export type BlockNotice = {
+  /** rerun: 다시 실행하면 같은 대화를 새 조건으로 이어 간다. rediagnose: 새 진단이 필요하다 */
+  action: "rerun" | "rediagnose";
+  headline: string;
+};
+
+/**
+ * 막힌 승인에 무엇을 해야 하는지. blockedReason 문장이 아니라 blockedCodes로 정한다.
+ *  - VENDOR_TERMS_CHANGED만 걸렸으면 POST /sessions/{id}/run을 다시 부르면 같은 대화에서 재협상한다.
+ *  - STREAM_CHANGED가 함께 걸린 대화는 다시 열리지 않는다. 자료가 바뀐 것이므로 진단을 새로 한다.
+ *  - EVIDENCE_CHANGED와 검증기 코드만 있으면 진단을 새로 한다.
+ */
+export function blockNotice(codes: string[]): BlockNotice | null {
+  if (codes.length === 0) return null;
+  const has = (code: string) => codes.includes(code);
+  if (has("VENDOR_TERMS_CHANGED") && !has("STREAM_CHANGED")) {
+    return { action: "rerun", headline: "업체가 조건을 바꿨습니다. 다시 실행하면 새 조건으로 이어 갑니다" };
+  }
+  if (has("STREAM_CHANGED") || has("EVIDENCE_CHANGED")) {
+    return { action: "rediagnose", headline: "자료가 바뀌었습니다. 새 진단이 필요합니다" };
+  }
+  return { action: "rediagnose", headline: "근거를 다시 확인했더니 통과하지 못했습니다. 새 진단이 필요합니다" };
+}
+
+/** 판단 그래프 엣지의 종류(graph.edges[].kind) */
+export const EDGE_KIND_LABEL: Record<string, string> = {
+  permit: "허가 품목",
+  criterion: "매입 기준",
+  assignment: "최적안 배정",
+  excluded: "뺀 흐름",
+  regulation: "규정",
+  document: "근거 문서",
+};
+
+/** 판단 도구를 누가 불렀는지(events[].detail.calledBy). 모르는 값이면 null */
+export function calledByLabel(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+  if (value === "code") return "코드가 부름";
+  if (value === "orchestrator") return "진행기가 부름";
+  if (value === "model:rule") return "규칙 정책이 부름";
+  if (value.startsWith("model:")) return `모델이 부름(${PROVIDER_LABEL[value.slice(6)] ?? value.slice(6)})`;
+  return null;
+}

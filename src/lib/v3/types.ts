@@ -289,6 +289,8 @@ export type RetrainExport = {
 /** GET /admin/status. 관리자 조직(org_admin)만 부를 수 있다 */
 export type AdminStatus = {
   today: string;
+  /** 요청한 조직을 정하는 방법. header는 X-Org-Id를 그대로 믿는 시연 전용 모드다(계약 8장 "요청한 조직") */
+  auth?: { mode: "header" | "token"; demoOnly: boolean };
   evidence: { visible: number; byKind: Record<string, number> };
   laws: { count: number; latestAsOf: string | null };
   references: { id: string; label: string; asOf: string }[];

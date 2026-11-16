@@ -37,7 +37,25 @@ function readable(url: string): string {
   }
 }
 
-function EvidenceCard({ item, compact = false }: { item: Evidence; compact?: boolean }) {
+/**
+ * 근거 응답의 access에는 보는 조직과 소유 조직만 실린다(전체 공개는 "*").
+ * 그 밖에 누가 볼 수 있는지는 서버가 알려 주지 않으므로 화면도 적지 않는다.
+ */
+function accessText(access: string[], orgName: (id: string) => string): string {
+  if (access.includes("*")) return "모든 조직";
+  if (access.length === 0) return "확인 필요";
+  return access.map(orgName).join(", ");
+}
+
+function EvidenceCard({
+  item,
+  compact = false,
+  orgName,
+}: {
+  item: Evidence;
+  compact?: boolean;
+  orgName: (id: string) => string;
+}) {
   const value = valueText(item);
   const formula = typeof item.meta.formula === "string" ? item.meta.formula : null;
   const tool = typeof item.meta.tool === "string" ? item.meta.tool : null;
@@ -91,6 +109,12 @@ function EvidenceCard({ item, compact = false }: { item: Evidence; compact?: boo
         <dd className="font-mono">v{item.version}</dd>
         {compact ? null : (
           <>
+            <dt className="text-muted">열람 범위</dt>
+            <dd>{accessText(item.access, orgName)}</dd>
+          </>
+        )}
+        {compact ? null : (
+          <>
             <dt className="text-muted">근거 ID</dt>
             <dd className="font-mono text-[12px] break-all text-muted">{item.id}</dd>
           </>
@@ -104,6 +128,7 @@ export function EvidencePanel({
   ids,
   title,
   orgId,
+  orgName,
   mode,
   fixture,
   onClose,
@@ -111,6 +136,8 @@ export function EvidencePanel({
   ids: string[];
   title?: string;
   orgId: string;
+  /** 조직 ID를 이름으로. 모르는 조직이면 ID를 그대로 돌려준다 */
+  orgName: (id: string) => string;
   mode: DataMode;
   fixture: Fixture | null;
   onClose: () => void;
@@ -203,7 +230,7 @@ export function EvidencePanel({
               ) : null}
               {item.detail ? (
                 <>
-                  <EvidenceCard item={item.detail.evidence} />
+                  <EvidenceCard item={item.detail.evidence} orgName={orgName} />
                   {item.detail.chain.length > 0 ? (
                     <div className="space-y-2 border-l border-line-strong pl-4">
                       <p className="text-label text-muted">
@@ -211,7 +238,7 @@ export function EvidencePanel({
                       </p>
                       {item.detail.chain.map((link) => (
                         <div key={link.id} style={{ marginLeft: `${Math.max((link.depth ?? 1) - 1, 0) * 12}px` }}>
-                          <EvidenceCard item={link} compact />
+                          <EvidenceCard item={link} compact orgName={orgName} />
                         </div>
                       ))}
                     </div>

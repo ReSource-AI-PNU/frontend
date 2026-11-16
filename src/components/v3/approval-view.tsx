@@ -4,8 +4,16 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/v3/api";
-import { THREAD_LABEL, formatDateTime, formatNumber, formatSignedPrice, modelLabel } from "@/lib/v3/format";
+import {
+  THREAD_LABEL,
+  formatDateTime,
+  formatNumber,
+  formatSignedPrice,
+  modelLabel,
+  rejectionLabel,
+} from "@/lib/v3/format";
 import type { Assignment, Outcome, OutcomeInput } from "@/lib/v3/types";
+import { BlockedNotice } from "./blocked-notice";
 import { ClaimText, ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
@@ -19,23 +27,6 @@ function Side({ label, done }: { label: string; done: boolean }) {
       {label} {done ? "✓ 승인함" : "승인 전"}
     </span>
   );
-}
-
-/** 승인을 막은 근거 확인 코드의 풀이. 모르는 코드는 코드 그대로 보여 준다 */
-const BLOCK_CODE_LABEL: Record<string, string> = {
-  EVIDENCE_CHANGED: "메시지가 인용한 근거가 대화 뒤에 바뀌었습니다",
-  VALUE_MISMATCH: "메시지의 값이 지금 근거의 값과 다릅니다",
-};
-
-/**
- * 막힌 사유("…: th_5_m1: VALUE_MISMATCH, th_5_m1: EVIDENCE_CHANGED")에서 메시지 번호와 코드를 뽑는다.
- * 그 꼴이 아니면 빈 목록을 돌려주고 화면은 받은 문장을 그대로 쓴다.
- */
-function blockedItems(reason: string): { seq: number; code: string }[] {
-  return [...reason.matchAll(/\bth_[A-Za-z0-9]+_m(\d+): ([A-Z_]+)/g)].map((match) => ({
-    seq: Number(match[1]),
-    code: match[2],
-  }));
 }
 
 const GRADES = ["A", "B", "C", "등외"];
@@ -423,26 +414,15 @@ export function ApprovalView() {
                 </p>
               </details>
             ) : null}
-            {blocked && reason ? (
-              <div role="alert" className="mt-3 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
-                {blockedItems(reason).length > 0 ? (
-                  <>
-                    <p className="font-semibold">근거 확인에 실패한 항목이 있어 승인할 수 없습니다.</p>
-                    <ul className="mt-1 space-y-0.5">
-                      {blockedItems(reason).map((item, index) => (
-                        <li key={index}>
-                          {item.seq}번째 메시지 · {BLOCK_CODE_LABEL[item.code] ?? "근거 확인 실패"}{" "}
-                          <span className="font-mono text-[12px]">{item.code}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-1 text-[13px]">
-                      근거가 다시 맞으면 승인이 풀립니다. 자료를 일부러 고친 것이라면 고친 값으로 새 진단을 시작하세요.
-                    </p>
-                  </>
-                ) : (
-                  <p className="font-semibold">승인할 수 없습니다: {reason}</p>
-                )}
+            {blocked ? (
+              <div className="mt-3">
+                <BlockedNotice
+                  codes={approval.blockedCodes}
+                  reason={reason}
+                  canRerun={role === "emitter" && d.canAct}
+                  busy={d.busy || view.session.status === "running"}
+                  onRerun={d.run}
+                />
               </div>
             ) : null}
             {failed.length > 0 ? (
@@ -452,7 +432,8 @@ export function ApprovalView() {
                     ✕ {message.seq}번째 메시지 근거 확인 실패
                     {(message.validation.rejections ?? []).map((rejection, index) => (
                       <span key={index} className="block pl-4 text-ink-2">
-                        <span className="font-mono">{rejection.code}</span> {rejection.message}
+                        <span className="font-mono">{rejection.code}</span>{" "}
+                        {rejectionLabel(rejection.code, rejection.message)}
                       </span>
                     ))}
                   </li>

@@ -61,6 +61,18 @@ function StatusBody({ status }: { status: AdminStatus }) {
         <Row label="기준일">
           <span className="font-mono">{status.today}</span>
         </Row>
+        {status.auth ? (
+          <Row label="인증 모드">
+            {status.auth.mode === "header" ? (
+              <span className="font-semibold text-warn">
+                X-Org-Id 헤더를 그대로 믿음{status.auth.demoOnly ? " (시연 전용)" : ""}
+              </span>
+            ) : (
+              <span className="font-semibold">조직별 서비스 토큰(Authorization: Bearer)</span>
+            )}{" "}
+            <span className="font-mono text-[12px] text-muted">{status.auth.mode}</span>
+          </Row>
+        ) : null}
         <Row label="회사 측 에이전트">
           <span className={status.models.company.provider === "rule" ? "font-semibold text-warn" : "font-semibold"}>
             {modelLabel(status.models.company)}
@@ -606,6 +618,12 @@ export function AdminView() {
           기준값과 법령 색인 상태, 외부 서비스 연결, 사례 시험, 재학습 데이터와 배포 게이트를 봅니다.
         </p>
       </header>
+
+      {live && isAdmin && status.data?.auth?.mode === "header" ? (
+        <div role="alert" className="rounded-md border border-warn bg-warn-bg px-4 py-3 text-sm font-semibold text-warn">
+          시연용 인증(X-Org-Id 신뢰). 공개 주소에 그대로 두면 조직 경계가 지켜지지 않습니다
+        </div>
+      ) : null}
 
       <section className="rounded-lg border border-line p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">

@@ -6,6 +6,8 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/v3/api";
 import { PHASE_LABEL, THREAD_LABEL, formatDateTime, sessionLabel as labelOf } from "@/lib/v3/format";
+import { BlockedNotice } from "./blocked-notice";
+import { EventDetail } from "./event-detail";
 import { JudgementGraph } from "./judgement-graph";
 import { Questions } from "./questions";
 import { ResultSheet } from "./result-sheet";
@@ -77,6 +79,9 @@ export function DiagnosisView() {
   // 합의 없이 끝났거나, 합의한 대화가 모두 담당자에게 넘어가 승인할 대화가 남지 않은 진단
   const ended = view.session.status === "idle" && view.session.phase === "done";
   const closed = view.threads.filter((item) => item.status === "handoff" || item.status === "declined");
+  const streamName = (id: string) => view.streams.find((item) => item.id === id)?.name ?? id;
+  // 합의한 뒤에 자료나 업체 조건이 바뀌어 막힌 승인. 뷰를 읽기만 해도 걸릴 수 있어 이 화면에도 띄운다
+  const blockedApprovals = view.approvals.filter((item) => item.blocked);
   const events = stage
     ? view.events.filter((event) => (event.detail as { stage?: number }).stage === stage)
     : view.events;
@@ -147,6 +152,21 @@ export function DiagnosisView() {
           </ul>
         </div>
       ) : null}
+      {blockedApprovals.length > 0 ? (
+        <div className="space-y-2 border-b border-line px-4 py-3 sm:px-6 lg:px-8">
+          {blockedApprovals.map((approval) => (
+            <BlockedNotice
+              key={approval.threadId}
+              codes={approval.blockedCodes}
+              reason={approval.blockedReason}
+              canRerun={isEmitter && d.canAct}
+              busy={d.busy || view.session.status === "running"}
+              onRerun={d.run}
+              vendorName={view.threads.find((item) => item.id === approval.threadId)?.vendorName}
+            />
+          ))}
+        </div>
+      ) : null}
       <StageBar stages={view.stages} selected={stage} onSelect={setStage} />
       {isEmitter ? (
         <Questions
@@ -200,18 +220,13 @@ export function DiagnosisView() {
             ) : (
               <ol className="max-h-72 divide-y divide-line overflow-y-auto text-[13px]">
                 {events.map((event) => {
-                  const hidden = event.detail.hiddenEvidenceCount;
                   return (
                     <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 px-5 py-2">
                       <span className="font-mono text-muted">{formatDateTime(event.at, "time")}</span>
                       <span>
                         <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? event.actor}</span>{" "}
                         {event.summary}
-                        {typeof hidden === "number" && hidden > 0 ? (
-                          <span className="block text-[12px] text-muted">
-                            상대 조직의 근거 <span className="font-mono">{hidden}</span>건은 보이지 않습니다
-                          </span>
-                        ) : null}
+                        <EventDetail event={event} streamName={streamName} />
                       </span>
                     </li>
                   );

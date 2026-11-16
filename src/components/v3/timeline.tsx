@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FIELD_LABEL, MESSAGE_LABEL, THREAD_LABEL, modelLabel } from "@/lib/v3/format";
+import { FIELD_LABEL, MESSAGE_LABEL, THREAD_LABEL, modelLabel, rejectionLabel } from "@/lib/v3/format";
 import type { Thread, ThreadMessage, ThreadStatus, VendorModel, ViewStream } from "@/lib/v3/types";
 import { ClaimText } from "./claim";
 import { useV3 } from "./context";
@@ -44,22 +44,38 @@ function ValidationNote({ message }: { message: ThreadMessage }) {
   const { validation } = message;
   const attempts = validation.attempts ?? 1;
   const rejections = validation.rejections ?? [];
+  // 코드가 쓴 메시지는 정해 둔 문장이고 숫자와 claim이 없다. 모델의 초안이 아니므로 "다시 쓴 횟수"가 아니라 거부된 초안 수를 적는다
+  const byCode = message.model?.provider === "code";
   return (
     <div className="mt-2 text-[12px]">
       <span className={`font-semibold ${validation.ok ? "text-ink" : "text-loss"}`}>
         {validation.ok ? "✓ 근거 확인 통과" : "✕ 근거 확인 실패"}
       </span>
-      {attempts > 1 ? <span className="text-muted"> · 다시 쓴 횟수 {attempts - 1}회</span> : null}
+      {byCode ? (
+        <span className="text-muted"> · 정해 둔 문장이라 숫자와 인용이 없습니다</span>
+      ) : attempts > 1 ? (
+        <span className="text-muted"> · 다시 쓴 횟수 {attempts - 1}회</span>
+      ) : null}
       {validation.recheckedBy ? <span className="text-muted"> · 받은 쪽에서 다시 검증</span> : null}
       {message.model ? <span className="text-muted"> · 작성: {modelLabel(message.model)}</span> : null}
       {rejections.length > 0 ? (
-        <ul className="mt-1 space-y-0.5 text-muted">
-          {rejections.map((rejection, index) => (
-            <li key={`${rejection.code}-${index}`}>
-              <span className="font-mono">{rejection.code}</span> {rejection.message}
-            </li>
-          ))}
-        </ul>
+        <div className="mt-1 text-muted">
+          <p>
+            {byCode ? "이 메시지 앞에 거부된 초안" : "거부된 초안"} · 거부 기록에는 코드와 일반 설명만 남습니다(거부된 값은
+            싣지 않습니다)
+          </p>
+          <ul className="mt-0.5 space-y-0.5">
+            {rejections.map((rejection, index) => (
+              <li key={`${rejection.code}-${index}`}>
+                {typeof rejection.attempt === "number" ? (
+                  <span className="font-mono">{rejection.attempt}번째 초안 </span>
+                ) : null}
+                <span className="font-mono text-ink-2">{rejection.code}</span>{" "}
+                {rejectionLabel(rejection.code, rejection.message)}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );
@@ -185,6 +201,14 @@ export function Timeline({
                   <span className="rounded-sm border border-line-strong px-1.5 font-semibold">
                     {MESSAGE_LABEL[message.type] ?? message.type}
                   </span>
+                  {message.model?.provider === "code" ? (
+                    <span
+                      className="rounded-sm border border-warn bg-warn-bg px-1.5 font-mono text-[12px] font-semibold text-warn"
+                      title="모델이 아니라 코드가 정해 둔 문장으로 쓴 메시지입니다"
+                    >
+                      {modelLabel(message.model)}
+                    </span>
+                  ) : null}
                   <span className="font-mono text-muted">{NUM[message.stage - 1] ?? message.stage}</span>
                   {message.streamIds.length > 0 ? (
                     <span className="text-[12px] text-muted">{names(message.streamIds)}</span>
@@ -213,7 +237,7 @@ export function Timeline({
                     ) : null}
                     {meta.excluded.length > 0 ? (
                       <>
-                        <dt className="text-muted">받지 않는 흐름</dt>
+                        <dt className="text-muted">{message.model?.provider === "code" ? "뺀 흐름" : "받지 않는 흐름"}</dt>
                         <dd>
                           {meta.excluded.map((item) => (
                             <span key={item.streamId} className="block">

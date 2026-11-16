@@ -90,8 +90,10 @@ export const messageTypeSchema = z.enum([
 ]);
 
 /**
- * 실제로 답을 쓴 구현. rule은 모델이 아니라 규칙 정책(모델 미연결), code는 진행기(코드)가 쓴 것이다
- * (담당자 인계 메시지처럼 모델도 정책도 거치지 않은 메시지).
+ * 실제로 답을 쓴 구현(계약 7장 "메시지를 쓴 구현"). rule은 모델이 아니라 규칙 정책(모델 미연결)이다.
+ * code는 진행기(코드)가 정해 둔 문장으로 쓴 메시지이고 숫자와 claim이 없다: 담당자 인계(handoff), 허가 품목이 맞는
+ * 흐름이 남지 않은 거절(decline), 일부 흐름만 뺀 answer·question(meta.excluded), 합의 뒤 조건 변경으로 다시 여는 counter.
+ * vendorModel에는 code가 오지 않는다(메시지에만 붙는다).
  */
 export const modelRefSchema = obj({
   provider: z.enum(["foundry", "ollama", "rule", "code"]),
@@ -107,11 +109,18 @@ export const vendorModelSchema = obj({
   used: z.boolean().optional(),
 });
 
+/**
+ * 거부 기록. 코드와 코드별 일반 문장만 온다(계약 4장 "거부 기록에는 값이 없다"): claimId는 null, detail은 빈 객체다.
+ * 거부된 초안의 숫자·조항·가드레일 수치는 실리지 않는다. 코드 목록은 계약 8장 "초안 거부 코드"이고
+ * 화면 풀이는 format.ts의 rejectionLabel이다(UNBACKED_TERM 포함).
+ */
 export const rejectionSchema = obj({
   code: z.string(),
   message: z.string(),
   claimId: z.string().nullable().optional(),
   detail: z.record(z.string(), z.unknown()).optional(),
+  /** 몇 번째 초안이 거부됐는지 */
+  attempt: z.number().optional(),
 });
 export const validationSchema = obj({
   ok: z.boolean(),
@@ -219,6 +228,11 @@ export const viewStreamSchema = obj({
   }).nullable(),
 });
 
+/**
+ * 업체가 보는 뷰의 그래프에는 자기 매입 기준 노드(type criterion)와 흐름을 그 기준과 대조한 엣지(kind criterion),
+ * 최적안 배정 엣지(kind assignment)가 온다. 규정 엣지(regulation)와 다른 업체의 기준은 오지 않는다.
+ * excluded 엣지의 evidence에는 허가 품목 때문에 뺀 경우 허가증 근거가 실린다.
+ */
 export const graphNodeSchema = obj({
   id: z.string(),
   type: z.enum(["stream", "criterion", "vendor", "evidence"]),
@@ -352,7 +366,15 @@ export const approvalSchema = obj({
   emitter: z.boolean(),
   vendor: z.boolean(),
   blocked: z.boolean(),
+  /** 한국어 문장. 화면은 이 문장을 뜯어 읽지 않고 blockedCodes를 본다 */
   blockedReason: z.string().nullable(),
+  /**
+   * 막힌 사유 코드(계약 8장 "승인을 막는 사유 코드"). 막히지 않았으면 빈 배열이다.
+   * EVIDENCE_CHANGED, STREAM_CHANGED, VENDOR_TERMS_CHANGED와 근거 검증기의 거부 코드가 온다.
+   * 모르는 코드가 와도 화면이 깨지지 않도록 글자 그대로 받는다(풀이는 format.ts의 blockCodeLabel).
+   */
+  blockedCodes: z.array(z.string()),
+  /** 허가 품목이 일부만 맞지 않으면(409 PERMIT_MISMATCH) 그 흐름이 빠져 줄어든다 */
   streamIds: z.array(z.string()),
 });
 
@@ -388,7 +410,15 @@ export const runEventSchema = obj({
   ]),
   threadId: z.string().nullable(),
   summary: z.string(),
-  /** hiddenEvidenceCount(정수)가 있으면 보는 조직이 열 수 없는 근거를 그만큼 뺀 것이다 */
+  /**
+   * 종류마다 항목이 다르다. 화면이 읽는 것(use: event-detail.tsx):
+   *  - hiddenEvidenceCount(정수): 보는 조직이 열 수 없는 근거를 그만큼 뺐다
+   *  - codes(문자열 배열)·rejections[{code, message}]: 검증 거부 코드
+   *  - excludedStreamIds(흐름 ID 배열): 허가 품목이 맞지 않아 이 대화에서 뺀 흐름
+   *  - reopenedSeq(정수): 합의 뒤 업체 조건이 바뀌어 이 번호의 메시지로 대화를 다시 열었다
+   *  - reportedBy("vendor"): 업체 측 에이전트가 답과 함께 보낸 기록
+   *  - calledBy("code" | "orchestrator" | "model:<provider>"): 판단 도구를 누가 불렀는지
+   */
   detail: z.record(z.string(), z.unknown()),
 });
 
@@ -503,6 +533,7 @@ export const evidenceSchema = obj({
   source: z.string(),
   asOf: z.string(),
   validUntil: z.string().nullable(),
+  /** 응답에는 보는 조직과 소유 조직만 실린다(전체 공개는 "*"). 다른 조직이 볼 수 있는지는 알려 주지 않는다 */
   access: z.array(z.string()),
   version: z.number(),
   meta: z.record(z.string(), z.unknown()),
