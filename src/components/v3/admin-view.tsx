@@ -2,10 +2,18 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { api, API_BASE } from "@/lib/v3/api";
-import { MESSAGE_LABEL, STATUS_LABEL, THREAD_LABEL, modelLabel } from "@/lib/v3/format";
-import type { AdminStatus, EvalResult } from "@/lib/v3/types";
+import { MoreDetails } from "@/components/ui/more-details";
+import {
+  CORRECTION_FIELD_LABEL,
+  MESSAGE_LABEL,
+  STATUS_LABEL,
+  THREAD_LABEL,
+  formatNumber,
+  modelLabel,
+} from "@/lib/v3/format";
+import type { AdminStatus, EvalResult, RetrainExport, RetrainTable } from "@/lib/v3/types";
+import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
 
@@ -20,7 +28,7 @@ const KIND_LABEL: Record<string, string> = {
   assumption: "가정값",
 };
 const SESSION_LABEL: Record<string, string> = {
-  idle: "실행 전",
+  idle: "합의 없이 끝남",
   running: "실행 중",
   awaiting_answers: "담당자 답변 대기",
   awaiting_approval: "승인 대기",
@@ -82,9 +90,18 @@ function StatusBody({ status }: { status: AdminStatus }) {
             <Connected on={status.promptShields.configured} name="Prompt Shields" />
             <Connected on={status.documentIntelligence.configured} name="Document Intelligence" />
             <Connected on={status.gradeEndpoint.configured} name="등급 모델 엔드포인트" />
+            <Connected on={Boolean(status.detector?.configured)} name="탐지 모델(Azure ML)" />
             <Connected on={status.distance.provider} name="도로 거리(Azure Maps)" />
           </span>
         </Row>
+        {status.detector?.configured ? null : (
+          <Row label="탐지 모델">
+            <span className="text-warn">
+              연결되지 않았습니다. 자료 올리기의 사진·영상은 분석하지 않고 &ldquo;탐지 모델이 연결되지 않았습니다&rdquo;로
+              답합니다.
+            </span>
+          </Row>
+        )}
         <Row label="실행 구성">
           <span className="font-mono text-[13px]">
             {status.vendorGateway} · {status.store}
@@ -116,11 +133,119 @@ function StatusBody({ status }: { status: AdminStatus }) {
   );
 }
 
+const rate = (value: number | null | undefined) => (value == null ? "확인 필요" : `${(value * 100).toFixed(1)}%`);
+
+/** 사례 세트(50건)의 결과: 판정 일치율, 검증기 통과율, 금지 위반, 사례별 표 */
+function CaseSet({ cases }: { cases: NonNullable<EvalResult["cases"]> }) {
+  const { summary, results } = cases;
+  const bad = results.filter(
+    (item) => !item.verdictMatch || item.forbiddenViolations.length > 0 || item.error || item.open,
+  );
+  return (
+    <div className="space-y-3">
+      <h3 className="text-label text-muted">사례 세트 {summary.caseCount}건</h3>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        <div>
+          <dt className="text-[13px] text-muted">판정 일치율</dt>
+          <dd className="font-mono text-xl font-semibold tabular-nums">{rate(summary.verdictMatchRate)}</dd>
+          <dd className="font-mono text-[13px] text-muted">
+            {summary.verdictMatched}/{summary.caseCount}건
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[13px] text-muted">근거 검증기 통과율</dt>
+          <dd className="font-mono text-xl font-semibold tabular-nums">{rate(summary.validatorPassRate)}</dd>
+          <dd className="font-mono text-[13px] text-muted">
+            {summary.validatorPassed}/{summary.validatorChecked}건
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[13px] text-muted">금지 위반</dt>
+          <dd
+            className={`font-mono text-xl font-semibold tabular-nums ${summary.forbiddenViolationCount > 0 ? "text-loss" : ""}`}
+          >
+            {summary.forbiddenViolationCount}건
+          </dd>
+          <dd className="text-[13px] text-muted">가드레일·허가 품목·승인 전 확정·조직 경계 등</dd>
+        </div>
+        <div>
+          <dt className="text-[13px] text-muted">설계 판단이 남은 사례</dt>
+          <dd className="font-mono text-xl font-semibold tabular-nums">{summary.openCount}건</dd>
+          <dd className="text-[13px] text-muted">
+            다시 쓴 횟수 {summary.rewritten ?? 0} · 담당자 인계 {summary.handedOff ?? 0}
+          </dd>
+        </div>
+      </dl>
+      <p className="text-[13px] text-muted">
+        사례의 수치는 모두 가상이고 검토 상태는{" "}
+        {Object.entries(summary.reviewCounts)
+          .map(([name, count]) => `${name} ${count}건`)
+          .join(", ")}
+        입니다(전문가 검토 전). 대화를 쓴 구현:{" "}
+        <span className={cases.model.provider === "rule" ? "font-semibold text-warn" : "font-semibold"}>
+          {modelLabel(cases.model)}
+        </span>
+        .
+      </p>
+      {bad.length > 0 ? (
+        <p className="rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">
+          기대와 다르거나 오류가 난 사례 {bad.length}건: {bad.map((item) => item.id).join(", ")}
+        </p>
+      ) : null}
+      <MoreDetails label="사례별 표 보기" closeLabel="사례별 표 접기" hint={`${results.length}건`}>
+        <div className="max-h-[28rem] overflow-auto">
+          <table className="w-full min-w-[640px] text-[13px]">
+            <thead className="sticky top-0 bg-surface">
+              <tr className="border-b border-ink text-left text-muted">
+                <th className="py-1 pr-3">사례</th>
+                <th className="py-1 pr-3">내용</th>
+                <th className="py-1 pr-3">검토 상태</th>
+                <th className="py-1 pr-3">판정</th>
+                <th className="py-1 pr-3 text-right">검증기 통과</th>
+                <th className="py-1 text-right">금지 위반</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((item) => (
+                <tr key={item.id} className="border-b border-line align-top">
+                  <td className="py-1.5 pr-3 font-mono font-semibold">{item.id}</td>
+                  <td className="py-1.5 pr-3">
+                    {item.title}
+                    {item.error ? <span className="block text-loss">오류: {item.error}</span> : null}
+                    {item.open ? (
+                      <span className="block text-warn">설계 판단 필요{item.openNote ? `: ${item.openNote}` : ""}</span>
+                    ) : null}
+                  </td>
+                  <td className="py-1.5 pr-3 text-muted">{item.review}</td>
+                  <td className={`py-1.5 pr-3 font-semibold ${item.verdictMatch ? "" : "text-loss"}`}>
+                    {item.verdictMatch ? "✓ 일치" : `✕ 불일치 ${item.mismatches.length}건`}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right font-mono">
+                    {item.validator.passed}/{item.validator.checked}
+                  </td>
+                  <td
+                    className={`py-1.5 text-right font-mono ${item.forbiddenViolations.length > 0 ? "font-semibold text-loss" : ""}`}
+                  >
+                    {item.forbiddenViolations.length}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </MoreDetails>
+    </div>
+  );
+}
+
 function EvalBody({ result }: { result: EvalResult }) {
   const { orgs } = useV3();
-  const rate = result.validatorPassRate;
+  const passRate = result.validatorPassRate;
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-5 text-sm">
+      {result.cases ? <CaseSet cases={result.cases} /> : null}
+      <div className="space-y-3">
+      <h3 className="text-label text-muted">시연 시나리오 한 건</h3>
       <p className="text-ink-2">{result.scenario}</p>
       <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-1.5">
         <Row label="대화를 쓴 구현">
@@ -133,7 +258,7 @@ function EvalBody({ result }: { result: EvalResult }) {
           <span className="font-mono font-semibold">
             {result.passed}/{result.checked}
           </span>
-          {rate != null ? <span className="font-mono"> ({(rate * 100).toFixed(1)}%)</span> : null} · 다시 쓴 횟수{" "}
+          {passRate != null ? <span className="font-mono"> ({rate(passRate)})</span> : null} · 다시 쓴 횟수{" "}
           <span className="font-mono">{result.rewritten}</span>
         </Row>
         <Row label="끝난 상태">
@@ -172,15 +297,264 @@ function EvalBody({ result }: { result: EvalResult }) {
           ))}
         </tbody>
       </table>
+      </div>
+    </div>
+  );
+}
+
+function download(name: string, data: unknown) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * 재학습 표: 쌓인 실제 등급 라벨과 교정, 배포 게이트 판정, 실제 단가와 기준표의 차이, 모델 버전.
+ * 서버가 준 건수와 판정만 적는다. 쌓인 것이 없으면 빈 상태 그대로 보여 준다.
+ */
+function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: string; today: string }) {
+  const { orgs } = useV3();
+  const [exported, setExported] = useState<{ busy: boolean; data: RetrainExport | null; error: string | null }>({
+    busy: false,
+    data: null,
+    error: null,
+  });
+  const { gate } = retrain;
+  const empty = retrain.gradeLabels.count === 0 && retrain.outcomes.count === 0 && retrain.corrections.count === 0;
+  const byField = Object.entries(retrain.corrections.byField);
+  const orgName = (id: string) => orgs.find((item) => item.id === id)?.name ?? id;
+  const runExport = async () => {
+    setExported({ busy: true, data: null, error: null });
+    try {
+      const data = await api.retrainExport(orgId);
+      download(`retrain-export-${today}.json`, data);
+      setExported({ busy: false, data, error: null });
+    } catch (error) {
+      setExported({
+        busy: false,
+        data: null,
+        error: error instanceof Error ? error.message : "내보내지 못했습니다.",
+      });
+    }
+  };
+  return (
+    <div className="space-y-5 text-sm">
+      {empty ? (
+        <p className="rounded-md border border-dashed border-line-strong px-4 py-3 text-muted">
+          아직 쌓인 재학습 데이터가 없습니다. 진단 화면의 사람 교정과, 업체가 확정 뒤 기록한 실제 결과가 쌓이면 아래
+          표에 나옵니다.
+        </p>
+      ) : null}
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="border-b border-ink text-left text-muted">
+            <th className="py-1 pr-3">쌓인 데이터</th>
+            <th className="py-1 pr-3 text-right">건수</th>
+            <th className="py-1">내용</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="border-b border-line align-top">
+            <td className="py-1.5 pr-3 font-semibold">실제 결과 기록</td>
+            <td className="py-1.5 pr-3 text-right font-mono">{retrain.outcomes.count}</td>
+            <td className="py-1.5 text-muted">업체가 확정 뒤 기록한 실제 등급·단가·중량</td>
+          </tr>
+          <tr className="border-b border-line align-top">
+            <td className="py-1.5 pr-3 font-semibold">실제 등급 라벨</td>
+            <td className="py-1.5 pr-3 text-right font-mono">{retrain.gradeLabels.count}</td>
+            <td className="py-1.5">
+              학습에 쓸 수 있는 행 <span className="font-mono font-semibold">{retrain.gradeLabels.usable}</span> · 값이
+              빠진 행 <span className="font-mono font-semibold">{retrain.gradeLabels.incomplete}</span>
+              <span className="block text-muted">{retrain.gradeLabels.note}</span>
+            </td>
+          </tr>
+          <tr className="align-top">
+            <td className="py-1.5 pr-3 font-semibold">사람 교정</td>
+            <td className="py-1.5 pr-3 text-right font-mono">{retrain.corrections.count}</td>
+            <td className="py-1.5">
+              탐지 모델 재학습 후보{" "}
+              <span className="font-mono font-semibold">{retrain.corrections.detectorCandidates}</span>
+              {byField.length > 0 ? (
+                <span className="block text-muted">
+                  {byField.map(([name, count]) => `${CORRECTION_FIELD_LABEL[name] ?? name} ${count}`).join(" · ")}
+                </span>
+              ) : null}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="rounded-md border border-ink p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-label text-muted">배포 게이트</h3>
+          <span
+            className={`inline-flex h-[26px] items-center rounded-full px-2.5 text-[13px] font-semibold ${gate.allowed ? "bg-ink text-on-ink" : "bg-warn-bg text-warn"}`}
+          >
+            {gate.allowed ? "배포 가능" : "배포 보류"}
+          </span>
+        </div>
+        <p className="mt-2">{gate.reason}</p>
+        <dl className="mt-2 grid grid-cols-[11rem_1fr] gap-x-4 gap-y-1 text-[13px]">
+          <dt className="text-muted">실제 등급 기록</dt>
+          <dd className="font-mono">
+            {gate.realLabelCount}건 (기준 {gate.minRealLabels}건 이상)
+          </dd>
+          <dt className="text-muted">평가한 것</dt>
+          <dd>
+            {gate.evaluated ? (
+              <>
+                {gate.evaluated.model} · {gate.evaluated.label} <span className="font-mono">{gate.evaluated.n}</span>건
+                · 정확도{" "}
+                <span className="font-mono font-semibold">
+                  {gate.evaluated.accuracy == null ? "확인 필요" : rate(gate.evaluated.accuracy)}
+                </span>{" "}
+                <span className="text-muted">(기준 {rate(gate.minAccuracy)} 이상)</span>
+              </>
+            ) : (
+              <span className="text-warn">평가한 것이 없습니다 · 확인 필요</span>
+            )}
+          </dd>
+        </dl>
+      </div>
+
+      <div>
+        <h3 className="text-label text-muted">실제 단가와 매입 기준표의 차이 ({retrain.calibration.count}건)</h3>
+        <p className="mt-1 text-[13px] text-muted">
+          {retrain.calibration.note} {retrain.calibration.autoApply ? "" : "기준값은 자동으로 바뀌지 않습니다."}
+        </p>
+        {retrain.calibration.groups.length === 0 ? (
+          <p className="mt-1 text-muted">기록된 실제 단가가 없습니다.</p>
+        ) : (
+          <table className="mt-2 w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-ink text-left text-muted">
+                <th className="py-1 pr-3">흐름 · 업체 · 기준</th>
+                <th className="py-1 pr-3">검수일</th>
+                <th className="py-1 pr-3 text-right">기준표 단가</th>
+                <th className="py-1 pr-3 text-right">실제 단가</th>
+                <th className="py-1 text-right">차이</th>
+              </tr>
+            </thead>
+            <tbody>
+              {retrain.calibration.groups.flatMap((group) =>
+                group.items.map((item, index) => (
+                  <tr key={`${group.streamId}-${group.vendorOrgId}-${index}`} className="border-b border-line">
+                    <td className="py-1.5 pr-3">
+                      <span className="font-mono">{group.streamId}</span> · {orgName(group.vendorOrgId)}
+                      {group.criterionId ? <span className="font-mono text-muted"> · {group.criterionId}</span> : null}
+                    </td>
+                    <td className="py-1.5 pr-3 font-mono">{item.inspectedOn}</td>
+                    <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                      <ClaimValue claim={item.tablePrice} price />
+                    </td>
+                    <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                      <ClaimValue claim={item.actualPrice} price />
+                    </td>
+                    <td className="py-1.5 text-right whitespace-nowrap">
+                      <ClaimValue claim={item.difference} signed />
+                    </td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-label text-muted">모델 버전 ({retrain.modelVersions.length}건)</h3>
+        {retrain.modelVersions.length === 0 ? (
+          <p className="mt-1 text-muted">
+            등록된 재학습 실행이 없습니다. Azure ML 재학습 작업이 결과를 등록하면 여기에 나옵니다. 점수를 만들어 채우지
+            않습니다.
+          </p>
+        ) : (
+          <table className="mt-2 w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-ink text-left text-muted">
+                <th className="py-1 pr-3">모델 · 버전</th>
+                <th className="py-1 pr-3">학습일</th>
+                <th className="py-1 pr-3">학습 데이터</th>
+                <th className="py-1 pr-3">지표</th>
+                <th className="py-1 pr-3">게이트</th>
+                <th className="py-1">배포</th>
+              </tr>
+            </thead>
+            <tbody>
+              {retrain.modelVersions.map((item, index) => (
+                <tr key={`${item.model}-${item.version}-${index}`} className="border-b border-line align-top">
+                  <td className="py-1.5 pr-3">
+                    <span className="font-semibold">{item.model}</span>{" "}
+                    <span className="font-mono">{item.version}</span>
+                    {item.runId ? <span className="block font-mono text-[12px] text-muted">{item.runId}</span> : null}
+                  </td>
+                  <td className="py-1.5 pr-3 font-mono">{item.trainedOn ?? "확인 필요"}</td>
+                  <td className="py-1.5 pr-3">
+                    {item.dataBasis ?? "확인 필요"}
+                    <span className="block font-mono text-[12px] text-muted">
+                      실제 {item.realLabelCount ?? "?"} · 합성 {item.syntheticCount ?? "?"}
+                    </span>
+                  </td>
+                  <td className="py-1.5 pr-3 font-mono text-[12px]">
+                    {Object.entries(item.metrics ?? {}).length === 0
+                      ? "-"
+                      : Object.entries(item.metrics ?? {})
+                          .map(([name, value]) => `${name} ${typeof value === "number" ? formatNumber(value) : String(value)}`)
+                          .join(" · ")}
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    {item.gate ? (
+                      <>
+                        <span className={`font-semibold ${item.gate.allowed ? "" : "text-warn"}`}>
+                          {item.gate.allowed ? "통과" : "보류"}
+                        </span>
+                        <span className="block text-muted">{item.gate.reason}</span>
+                      </>
+                    ) : (
+                      "확인 필요"
+                    )}
+                  </td>
+                  <td className="py-1.5">{item.deployed ? "배포됨" : "배포 안 함"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+        <Button size="sm" variant="secondary" disabled={exported.busy} onClick={runExport}>
+          {exported.busy ? "내보내는 중" : "재학습 데이터 내보내기"}
+        </Button>
+        <span className="text-[13px] text-muted">
+          {exported.error ? (
+            <span className="text-loss">{exported.error}</span>
+          ) : exported.data ? (
+            <>
+              JSON 파일로 받았습니다: 등급 학습 행{" "}
+              <span className="font-mono font-semibold text-ink">{exported.data.gradeLabels.length}</span> · 탐지 교정{" "}
+              <span className="font-mono font-semibold text-ink">{exported.data.detectionCorrections.length}</span>
+            </>
+          ) : (
+            "실제 등급 학습 행과 탐지 교정을 JSON 파일로 받습니다(GET /admin/retrain/export). 여러 조직의 기록이 들어 있습니다."
+          )}
+        </span>
+      </div>
     </div>
   );
 }
 
 export function AdminView() {
-  const { mode, org, setSessionId, reconnect } = useV3();
+  const { mode, org, orgs, setOrgId, setSessionId, reconnect } = useV3();
   const live = mode === "live";
+  // 관리자 주소(/admin/*)는 운영 조직만 부른다. 다른 관점에서는 부르지 않고 관점을 바꾸라고 안내한다
+  const isAdmin = org.role === "admin";
+  const adminOrg = orgs.find((item) => item.role === "admin");
   const health = useRemote("health", live, () => api.health());
-  const status = useRemote(`admin:${org.id}`, live, () => api.adminStatus(org.id));
+  const status = useRemote(`admin:${org.id}`, live && isAdmin, () => api.adminStatus(org.id));
   const [evalState, setEvalState] = useState<{ busy: boolean; result: EvalResult | null; error: string | null }>({
     busy: false,
     result: null,
@@ -207,17 +581,30 @@ export function AdminView() {
       await api.resetDemo(org.id);
       setSessionId(null);
       status.reload();
-      setReset({ busy: false, note: "시연 데이터를 처음 상태로 되돌렸습니다. 진행하던 진단은 지워졌습니다." });
+      setReset({ busy: false, note: "시연 데이터를 처음 상태로 되돌렸습니다. 진행하던 진단과 쌓인 교정·실제 결과는 지워졌습니다." });
     } catch (error) {
       setReset({ busy: false, note: error instanceof Error ? error.message : "되돌리지 못했습니다." });
     }
   };
 
+  const unavailable =
+    mode === "loading" ? (
+      <p className="text-sm text-muted">불러오는 중입니다.</p>
+    ) : !live ? (
+      <p className="text-sm text-muted">백엔드에 연결되지 않아 상태를 읽을 수 없습니다. 예시 값은 만들지 않습니다.</p>
+    ) : status.loading ? (
+      <p className="text-sm text-muted">불러오는 중입니다.</p>
+    ) : status.error ? (
+      <p className="rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">{status.error}</p>
+    ) : null;
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <header>
         <h1 className="text-h1">관리자</h1>
-        <p className="mt-1 text-sm text-muted">기준값과 법령 색인 상태, 사례 시험, 재학습 결과를 봅니다.</p>
+        <p className="mt-1 text-sm text-muted">
+          기준값과 법령 색인 상태, 외부 서비스 연결, 사례 시험, 재학습 데이터와 배포 게이트를 봅니다.
+        </p>
       </header>
 
       <section className="rounded-lg border border-line p-5">
@@ -243,71 +630,89 @@ export function AdminView() {
             <Button size="sm" variant="secondary" onClick={live ? health.reload : reconnect}>
               {live ? "다시 확인" : "다시 연결"}
             </Button>
-            <Button size="sm" variant="secondary" disabled={!live || reset.busy} onClick={resetDemo}>
-              시연 데이터 처음 상태로
-            </Button>
+            {isAdmin ? (
+              <Button size="sm" variant="secondary" disabled={!live || reset.busy} onClick={resetDemo}>
+                시연 데이터 처음 상태로
+              </Button>
+            ) : null}
           </div>
         </div>
         {reset.note ? <p className="mt-2 text-[13px] text-ink-2">{reset.note}</p> : null}
       </section>
 
-      <section className="rounded-lg border border-line p-5">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-h2">기준값·법령 색인 상태</h2>
-          <Button size="sm" variant="secondary" disabled={!live} onClick={status.reload}>
-            다시 읽기
-          </Button>
-        </div>
-        <p className="mt-1 text-[13px] text-muted">
-          지금 고른 관점({org.name})이 볼 수 있는 근거를 기준으로 셉니다. 색인을 다시 만드는 주소는 v3 API
-          계약에 없어 이 화면에서는 상태만 봅니다.
-        </p>
-        <div className="mt-3">
-          {mode === "loading" ? (
-            <p className="text-sm text-muted">불러오는 중입니다.</p>
-          ) : !live ? (
-            <p className="text-sm text-muted">백엔드에 연결되지 않아 상태를 읽을 수 없습니다. 예시 값은 만들지 않습니다.</p>
-          ) : status.loading ? (
-            <p className="text-sm text-muted">불러오는 중입니다.</p>
-          ) : status.error ? (
-            <p className="rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">{status.error}</p>
-          ) : status.data ? (
-            <StatusBody status={status.data} />
-          ) : null}
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-line p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-h2">사례 시험</h2>
-            <p className="mt-1 text-sm text-muted">
-              시연 시나리오를 따로 만든 저장소에서 처음부터 끝까지 돌리고, 나간 메시지와 문서를 다시 검증해
-              근거 검증기 통과율을 냅니다. 진행 중인 진단은 바뀌지 않습니다.
-            </p>
+      {live && !isAdmin ? (
+        <section role="status" className="rounded-lg border border-ink p-5">
+          <h2 className="text-h2">관리자 관점으로 바꾸세요</h2>
+          <p className="mt-1 text-sm text-ink-2">
+            지금 관점은 <span className="font-semibold">{org.name}</span>입니다. 관리자 화면의 상태·사례 시험·재학습
+            데이터에는 여러 조직의 기록이 섞여 있어 운영 조직만 볼 수 있습니다. 이 관점에서는 관리자 주소를 부르지
+            않았습니다.
+          </p>
+          <div className="mt-4">
+            {adminOrg ? (
+              <Button onClick={() => setOrgId(adminOrg.id)}>관리자 관점으로 바꾸기 ({adminOrg.name})</Button>
+            ) : (
+              <p className="text-sm text-warn">조직 목록에 관리자 조직이 없습니다. 백엔드의 시연 데이터를 확인하세요.</p>
+            )}
           </div>
-          <Button size="sm" variant="secondary" disabled={!live || evalState.busy} onClick={runEval}>
-            {evalState.busy ? "실행 중" : "사례 시험 실행"}
-          </Button>
-        </div>
-        <div className="mt-3">
-          {evalState.error ? (
-            <p className="rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">{evalState.error}</p>
-          ) : evalState.result ? (
-            <EvalBody result={evalState.result} />
-          ) : (
-            <p className="text-sm text-muted">아직 실행한 결과가 없습니다.</p>
-          )}
-        </div>
-      </section>
+        </section>
+      ) : (
+        <>
+          <section className="rounded-lg border border-line p-5">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-h2">기준값·법령 색인 상태</h2>
+              <Button size="sm" variant="secondary" disabled={!live} onClick={status.reload}>
+                다시 읽기
+              </Button>
+            </div>
+            <p className="mt-1 text-[13px] text-muted">
+              운영 조직이 볼 수 있는 근거(법령·기준값·가정값)를 셉니다. 조직별 문서와 측정값은 그 조직과 대화 상대만
+              보므로 여기에 세지 않습니다. 색인을 다시 만드는 주소는 v3 API 계약에 없어 이 화면에서는 상태만 봅니다.
+            </p>
+            <div className="mt-3">{unavailable ?? (status.data ? <StatusBody status={status.data} /> : null)}</div>
+          </section>
 
-      <section>
-        <h2 className="mb-3 text-h2">재학습 결과</h2>
-        <EmptyState
-          title="재학습 기록이 없습니다"
-          description="사람이 고친 박스·재질·출처와, 업체가 확정 뒤 기록한 실제 등급·단가가 쌓이면 재학습 결과(모델 비교와 배포 게이트)가 이 표에 나옵니다. v3 API 계약에 고친 값·실제 결과를 보내는 주소와 재학습 결과를 읽는 주소가 아직 없어 지금은 보여 줄 데이터가 없습니다."
-        />
-      </section>
+          <section className="rounded-lg border border-line p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-h2">사례 시험</h2>
+                <p className="mt-1 text-sm text-muted">
+                  평가 사례 세트와 시연 시나리오를 따로 만든 저장소에서 처음부터 끝까지 돌리고, 판정 일치율과 근거
+                  검증기 통과율을 냅니다. 진행 중인 진단은 바뀌지 않습니다.
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" disabled={!live || evalState.busy} onClick={runEval}>
+                {evalState.busy ? "실행 중" : "사례 시험 실행"}
+              </Button>
+            </div>
+            <div className="mt-3">
+              {evalState.error ? (
+                <p className="rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">{evalState.error}</p>
+              ) : evalState.result ? (
+                <EvalBody result={evalState.result} />
+              ) : (
+                <p className="text-sm text-muted">아직 실행한 결과가 없습니다.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-line p-5">
+            <h2 className="text-h2">재학습</h2>
+            <p className="mt-1 text-[13px] text-muted">
+              사람이 고친 값과 업체가 기록한 실제 결과가 재학습 데이터로 쌓입니다. 아래 숫자는 서버가 센 건수와
+              판정이고, 재학습한 모델의 점수는 등록된 실행에서만 나옵니다.
+            </p>
+            <div className="mt-3">
+              {unavailable ??
+                (status.data?.retrain ? (
+                  <RetrainBody retrain={status.data.retrain} orgId={org.id} today={status.data.today} />
+                ) : (
+                  <p className="text-sm text-muted">이 서버는 재학습 표를 주지 않았습니다.</p>
+                ))}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PHASE_LABEL, formatDateTime } from "@/lib/v3/format";
+import { api } from "@/lib/v3/api";
+import { PHASE_LABEL, THREAD_LABEL, formatDateTime, sessionLabel as labelOf } from "@/lib/v3/format";
 import { JudgementGraph } from "./judgement-graph";
 import { Questions } from "./questions";
 import { ResultSheet } from "./result-sheet";
@@ -13,14 +14,6 @@ import { StreamTable } from "./stream-table";
 import { Timeline } from "./timeline";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
-
-const SESSION_LABEL = {
-  idle: "실행 전",
-  running: "에이전트 대화 중",
-  awaiting_answers: "담당자 답변 대기",
-  awaiting_approval: "승인 대기",
-  confirmed: "확정",
-} as const;
 
 const ACTOR_LABEL: Record<string, string> = {
   company_agent: "회사 측 에이전트",
@@ -80,8 +73,10 @@ export function DiagnosisView() {
   const isEmitter = view.viewer.role === "emitter";
   const openQuestions = view.questions.filter((item) => !item.answered).length;
   const started = view.stages.some((item) => item.status !== "waiting");
-  const sessionLabel =
-    view.session.status === "idle" && started ? "이어서 실행 대기" : SESSION_LABEL[view.session.status];
+  const sessionLabel = labelOf(view.session.status, view.session.phase, started);
+  // 합의 없이 끝났거나, 합의한 대화가 모두 담당자에게 넘어가 승인할 대화가 남지 않은 진단
+  const ended = view.session.status === "idle" && view.session.phase === "done";
+  const closed = view.threads.filter((item) => item.status === "handoff" || item.status === "declined");
   const events = stage
     ? view.events.filter((event) => (event.detail as { stage?: number }).stage === stage)
     : view.events;
@@ -106,7 +101,7 @@ export function DiagnosisView() {
               다시 읽기
             </Button>
           ) : null}
-          {isEmitter && d.canAct && view.session.status === "confirmed" ? (
+          {isEmitter && d.canAct && (view.session.status === "confirmed" || ended) ? (
             <Button variant="secondary" disabled={d.busy} onClick={d.start}>
               새 진단 시작
             </Button>
@@ -115,7 +110,7 @@ export function DiagnosisView() {
             <Link href="/v3/approval" className={buttonClass("primary", "md")}>
               승인 화면으로
             </Link>
-          ) : isEmitter && view.session.status !== "confirmed" ? (
+          ) : isEmitter && view.session.status !== "confirmed" && !ended ? (
             <Button
               disabled={!d.canAct || d.busy || view.session.status === "running" || openQuestions > 0}
               onClick={d.run}
@@ -132,6 +127,26 @@ export function DiagnosisView() {
         </p>
       ) : null}
 
+      {ended || closed.length > 0 ? (
+        <div role="status" className="border-b border-line bg-warn-bg px-4 py-2.5 text-sm text-warn sm:px-6 lg:px-8">
+          {ended ? (
+            <p className="font-semibold">
+              승인할 합의가 남지 않아 진단이 끝났습니다. 아래 대화의 사유를 확인한 뒤 담당자가 직접 처리하거나 자료를
+              고쳐 새 진단을 시작하세요.
+            </p>
+          ) : null}
+          <ul className={ended ? "mt-1 space-y-0.5" : "space-y-0.5"}>
+            {closed.map((item) => (
+              <li key={item.id}>
+                <span className="font-semibold">
+                  {item.vendorName} · {THREAD_LABEL[item.status]}
+                </span>
+                {item.statusReason ? ` · ${item.statusReason}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <StageBar stages={view.stages} selected={stage} onSelect={setStage} />
       {isEmitter ? (
         <Questions
@@ -147,7 +162,19 @@ export function DiagnosisView() {
         <h2 className="border-b border-line px-5 py-3 text-label text-muted">
           흐름 {view.streams.length}개 · ① 식별·분류
         </h2>
-        <StreamTable streams={view.streams} unresolved={view.unresolved} />
+        <StreamTable
+          streams={view.streams}
+          unresolved={view.unresolved}
+          corrections={view.feedback.corrections}
+          onCorrect={
+            isEmitter && d.canAct
+              ? async (body) => {
+                  await api.recordCorrection(view.session.id, org.id, body);
+                  d.reload();
+                }
+              : undefined
+          }
+        />
       </section>
 
       <div className="grid flex-1 border-b border-ink lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -172,15 +199,23 @@ export function DiagnosisView() {
               <p className="px-5 pb-4 text-sm text-muted">남은 실행 기록이 없습니다.</p>
             ) : (
               <ol className="max-h-72 divide-y divide-line overflow-y-auto text-[13px]">
-                {events.map((event) => (
-                  <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 px-5 py-2">
-                    <span className="font-mono text-muted">{formatDateTime(event.at, "time")}</span>
-                    <span>
-                      <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? event.actor}</span>{" "}
-                      {event.summary}
-                    </span>
-                  </li>
-                ))}
+                {events.map((event) => {
+                  const hidden = event.detail.hiddenEvidenceCount;
+                  return (
+                    <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 px-5 py-2">
+                      <span className="font-mono text-muted">{formatDateTime(event.at, "time")}</span>
+                      <span>
+                        <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? event.actor}</span>{" "}
+                        {event.summary}
+                        {typeof hidden === "number" && hidden > 0 ? (
+                          <span className="block text-[12px] text-muted">
+                            상대 조직의 근거 <span className="font-mono">{hidden}</span>건은 보이지 않습니다
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </details>

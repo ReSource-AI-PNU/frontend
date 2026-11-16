@@ -9,9 +9,11 @@ import type {
   DocumentKind,
   DocumentUploadResult,
   ExtractedField,
+  MediaUploadResult,
   StreamRecord,
   VendorProfile,
 } from "@/lib/v3/types";
+import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
 
@@ -291,6 +293,182 @@ function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAc
   );
 }
 
+const pct = (value: number | null | undefined) => (value == null ? "확인 필요" : `${formatNumber(value * 100)}%`);
+
+/**
+ * 사진·영상 올리기(POST /intake/media). 탐지 모델이 연결되지 않았으면 서버가 준 문장을 그대로 보여 주고
+ * 탐지 결과를 그리지 않는다. 연결돼 있으면 재질 추정과 이물 비율이 모델 판정 근거로 등록된다.
+ */
+function MediaUpload({
+  stream,
+  canAct,
+  onChanged,
+}: {
+  stream: StreamRecord;
+  canAct: boolean;
+  onChanged: () => void;
+}) {
+  const { org, openEvidence } = useV3();
+  const media = useUpload<MediaUploadResult>(canAct);
+  const result = media.state.result;
+  const estimate = stream.photo?.materialEstimate;
+  return (
+    <div className="space-y-2 text-sm">
+      <p className="text-muted">
+        사진이나 영상을 올리면 탐지 모델이 재질 추정과 이물 비율을 내고, 그 값이 모델 판정 근거로 등록됩니다.
+        사진으로는 수지 종류(PP·PE·ABS)를 가르지 못하므로 흐름의 재질은 바꾸지 않습니다.
+      </p>
+      <input
+        type="file"
+        accept="image/*,video/*"
+        disabled={!canAct || media.state.busy}
+        aria-label={`${stream.name} 사진·영상`}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            void media.send(async () => {
+              const uploaded = await api.uploadMedia(org.id, stream.id, file);
+              if (!uploaded.detectorUnavailable && uploaded.evidence.length > 0) onChanged();
+              return uploaded;
+            });
+          }
+        }}
+        className="text-sm"
+      />
+      <p className="text-[13px]">
+        {stream.photo?.contaminationPct != null ? (
+          <>
+            등록된 사진 추정 오염 비율:{" "}
+            <button
+              type="button"
+              disabled={stream.photo.evidence.length === 0}
+              className="font-mono font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"
+              onClick={() => openEvidence(stream.photo?.evidence ?? [], `${stream.name} 사진 추정 오염 비율`)}
+            >
+              {stream.photo.contaminationPct}%
+            </button>
+          </>
+        ) : (
+          <span className="text-muted">등록된 사진 추정값이 없습니다.</span>
+        )}
+        {estimate ? (
+          <>
+            {" · "}재질 추정:{" "}
+            <button
+              type="button"
+              disabled={estimate.evidence.length === 0}
+              className="font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"
+              onClick={() => openEvidence(estimate.evidence, `${stream.name} 재질 추정`)}
+            >
+              {estimate.label}
+            </button>{" "}
+            <span className="text-muted">(신뢰도 {pct(estimate.confidence)})</span>
+          </>
+        ) : null}
+      </p>
+      <UploadStatus state={media.state} />
+      {result?.detectorUnavailable ? (
+        <div role="status" className="rounded-md bg-warn-bg px-3 py-2 text-[13px] text-warn">
+          <p className="font-semibold">{result.message ?? "탐지 모델이 연결되지 않았습니다"}</p>
+          <p className="mt-0.5">
+            올린 파일은 분석하지 않았고 등록된 근거도 없습니다. 탐지 결과를 만들어 보여 주지 않습니다.
+          </p>
+        </div>
+      ) : null}
+      {result && !result.detectorUnavailable ? (
+        <div className="space-y-2 rounded-md border border-line p-3 text-[13px]">
+          <p>
+            <span className="font-mono">{result.filename ?? "올린 파일"}</span>
+            {result.model ? (
+              <>
+                {" · "}탐지 모델 <span className="font-mono">{`${result.model.name} ${result.model.version}`}</span>
+              </>
+            ) : null}
+            {result.mode ? ` · ${result.mode === "video" ? "영상" : "사진"}` : ""}
+            {result.framesAnalyzed != null ? ` · 분석한 장면 ${result.framesAnalyzed}` : ""}
+            {result.mode === "video" && result.tracksTotal != null ? ` · 추적한 물체 ${result.tracksTotal}` : ""}
+          </p>
+          <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1">
+            <dt className="text-muted">재질 추정</dt>
+            <dd>
+              {result.material ? (
+                <>
+                  <button
+                    type="button"
+                    className="font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"
+                    onClick={() => openEvidence(result.material?.evidence ?? [], "재질 추정")}
+                  >
+                    {result.material.label}
+                  </button>{" "}
+                  <span className="text-muted">
+                    신뢰도 {pct(result.material.confidence)}
+                    {result.material.wasteItem ? ` · 폐기물 품목 ${result.material.wasteItem}` : ""}
+                  </span>
+                </>
+              ) : (
+                <span className="text-warn">탐지된 것이 없습니다 · 확인 필요</span>
+              )}
+            </dd>
+            <dt className="text-muted">이물 비율</dt>
+            <dd>
+              {result.contamination ? (
+                <>
+                  <ClaimValue claim={result.contamination.claim} title="사진 추정 오염 비율" />
+                  {result.contamination.reliable ? null : (
+                    <span className="ml-2 font-semibold text-warn">신뢰도 낮음</span>
+                  )}
+                  {result.contamination.note ? (
+                    <span className="block text-muted">{result.contamination.note}</span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-warn">상태 모델이 돌지 않아 값이 없습니다 · 확인 필요</span>
+              )}
+            </dd>
+          </dl>
+          {result.detections && result.detections.length > 0 ? (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-ink text-left text-muted">
+                  <th className="py-1 pr-3">탐지한 것</th>
+                  <th className="py-1 pr-3">종류</th>
+                  <th className="py-1 pr-3 text-right">신뢰도</th>
+                  <th className="py-1 text-right">면적 비율</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.detections.map((item) => (
+                  <tr key={item.id} className="border-b border-line last:border-b-0">
+                    <td className="py-1 pr-3">
+                      <span aria-hidden="true" className="mr-1.5 inline-block size-2 rounded-full bg-marker ring-1 ring-ink" />
+                      {item.label}
+                    </td>
+                    <td className="py-1 pr-3">{item.kind === "contaminant" ? "이물" : "대상"}</td>
+                    <td className="py-1 pr-3 text-right font-mono">{pct(item.confidence)}</td>
+                    <td className="py-1 text-right font-mono">{pct(item.ratio)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          {result.note ? <p className="text-muted">{result.note}</p> : null}
+          {result.evidence.length > 0 ? (
+            <button
+              type="button"
+              className="font-semibold underline decoration-dotted underline-offset-4"
+              onClick={() => openEvidence(result.evidence, "등록된 모델 판정 근거")}
+            >
+              등록된 모델 판정 근거 {result.evidence.length}건
+            </button>
+          ) : (
+            <p className="text-muted">등록된 근거가 없습니다.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const STREAM_TABS = ["사진·영상", "CSV", "문서"] as const;
 
 function StreamCard({
@@ -372,19 +550,7 @@ function StreamCard({
         ))}
       </div>
       <div className="px-5 py-4">
-        {tab === "사진·영상" ? (
-          <p className="text-sm text-muted">
-            사진·영상 업로드는 v3 API 계약에 아직 경로가 없어 이 화면에서 보낼 수 없습니다. 탐지
-            모델 결과가 등록되면 흐름의 재질과 사진 추정 오염 비율이 여기에 나옵니다.{" "}
-            {stream.photo?.contaminationPct != null ? (
-              <span className="text-ink">
-                등록된 사진 추정 오염 비율: <span className="font-mono">{stream.photo.contaminationPct}%</span>
-              </span>
-            ) : (
-              "등록된 사진 추정값이 없습니다."
-            )}
-          </p>
-        ) : null}
+        {tab === "사진·영상" ? <MediaUpload stream={stream} canAct={canAct} onChanged={onChanged} /> : null}
         {tab === "CSV" ? (
           <div className="space-y-2 text-sm">
             <p className="text-muted">

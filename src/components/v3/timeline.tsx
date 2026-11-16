@@ -141,7 +141,12 @@ export function Timeline({
       </div>
 
       {thread.statusReason ? (
-        <div className="border-b border-line bg-sunken px-5 py-3 text-sm">
+        <div
+          className={`border-b border-line px-5 py-3 text-sm ${thread.status === "declined" ? "bg-loss-bg text-loss" : thread.status === "handoff" ? "bg-warn-bg text-warn" : "bg-sunken"}`}
+        >
+          {thread.status === "declined" || thread.status === "handoff" ? (
+            <span className="font-semibold">{THREAD_LABEL[thread.status]} 사유 · </span>
+          ) : null}
           {thread.statusReason}{" "}
           {thread.reasonEvidence.length > 0 ? (
             <button
@@ -209,7 +214,14 @@ export function Timeline({
                     {meta.excluded.length > 0 ? (
                       <>
                         <dt className="text-muted">받지 않는 흐름</dt>
-                        <dd>{meta.excluded.map((item) => streamName(item.streamId)).join(", ")}</dd>
+                        <dd>
+                          {meta.excluded.map((item) => (
+                            <span key={item.streamId} className="block">
+                              {streamName(item.streamId)}
+                              {item.reason ? <span className="text-muted"> · {item.reason}</span> : null}
+                            </span>
+                          ))}
+                        </dd>
                       </>
                     ) : null}
                     {meta.reason ? (
