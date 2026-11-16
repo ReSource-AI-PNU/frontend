@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { answerCQuestion, compareCEvidence, displayCQuestions, getCQuestionState, initializeCQuestionState, selectCQuestions } from "@/lib/server/c-questions/actions";
+import { answerCQuestion, compareCEvidence, displayCQuestions, generateCResourceSpec, getCQuestionState, initializeCQuestionState, selectCQuestions } from "@/lib/server/c-questions/actions";
 import type { RecordView } from "@/lib/server/c-questions/core";
 import type { EvidenceComparison } from "@/lib/server/c-questions/evidence";
 
@@ -106,7 +106,11 @@ export function CQuestions({sessionId}:{sessionId:string}) {
   const [comparison,setComparison] = useState<EvidenceComparison | null>(null);
   const [comparisonError,setComparisonError] = useState(false);
   const [comparing,setComparing] = useState(false);
+  const [resourceSpec,setResourceSpec] = useState<string | null>(null);
+  const [resourceSpecError,setResourceSpecError] = useState(false);
+  const [generatingSpec,setGeneratingSpec] = useState(false);
   const comparisonInFlight = useRef(false);
+  const specInFlight = useRef(false);
   const inFlight = useRef(false);
   const key = `c-ui:${sessionId}`;
   const apply = useCallback((next:RecordView) => setView(current => !current || next.version >= current.version ? next : current),[]);
@@ -158,6 +162,16 @@ export function CQuestions({sessionId}:{sessionId:string}) {
     } catch { setComparisonError(true); }
     finally { comparisonInFlight.current = false; setComparing(false); }
   };
+  const generateSpec = async () => {
+    if (specInFlight.current) return;
+    specInFlight.current = true; setGeneratingSpec(true); setResourceSpecError(false); setResourceSpec(null);
+    try {
+      const result = await generateCResourceSpec(sessionId);
+      if (!result.ok) throw new Error("Resource spec unavailable");
+      setResourceSpec(result.data.markdown);
+    } catch { setResourceSpecError(true); }
+    finally { specInFlight.current = false; setGeneratingSpec(false); }
+  };
   const batches = (view?.state.batches ?? []) as Batch[];
   const status = view?.evaluation.status as string | undefined;
   const unconfirmed = (view?.evaluation.unconfirmed ?? []) as string[];
@@ -190,6 +204,14 @@ export function CQuestions({sessionId}:{sessionId:string}) {
             </section>}
             {comparisonError && <p role="alert" className="text-sm text-loss">비교 결과를 불러오지 못했습니다. 다시 시도해 주세요.</p>}
           </div>}
+          <div className="mt-4 grid min-w-0 justify-items-start gap-2">
+            <button className={buttonClass} disabled={generatingSpec} onClick={()=>void generateSpec()}>{generatingSpec ? "초안 생성 중…" : resourceSpecError ? "초안 생성 다시 시도" : "자원 명세 초안 생성"}</button>
+            {resourceSpecError && <p role="alert" className="text-sm text-loss">자원 명세 초안을 생성하지 못했습니다. 다시 시도해 주세요.</p>}
+            {resourceSpec !== null && <section className="w-full min-w-0 rounded-md border border-line bg-surface p-4" aria-labelledby="resource-spec-title">
+              <h4 id="resource-spec-title" className="font-semibold">자원 명세 초안</h4>
+              <pre className="mt-2 whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{resourceSpec}</pre>
+            </section>}
+          </div>
         </div>}
       </section>}
     </>}
