@@ -14,6 +14,8 @@ declare module "next-auth" {
 export const PROTECTED_PREFIXES = [
   "/upload", "/session", "/complex", "/dashboard", "/onboarding", "/c",
   "/knowledge", "/vendor", "/neighbor", "/admin", "/settings",
+  // v3 화면도 로그인한 사람만 본다(로그인 전에는 페이지를 그리지 않고 로그인으로 보낸다)
+  "/v3",
 ];
 
 export const entraConfigured = Boolean(
