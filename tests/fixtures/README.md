@@ -8,7 +8,10 @@
 | `v3-view-confirmed.json` | 양쪽 승인 뒤 확정. 사람 교정 한 건, 업체의 실제 결과 한 건 포함 | 위와 같은 스크립트 |
 | `v3-view-vendor-confirmed.json` | 같은 진단을 (주)남해열분해가 본 뷰 | 위와 같은 스크립트 |
 | `v3-view-declined.json` | 자동 거절: (주)미소환경의 자동 거절 조건에 "PP"를 더하고 돌린 진단 | `node scripts/v3-capture-states.mjs` |
-| `v3-view-blocked.json` | 승인 막힘: 합의 뒤 같은 측정일의 측정값을 다른 값으로 다시 올리고 승인을 시도 | 위와 같은 스크립트 |
+| `v3-view-blocked.json` | 승인 막힘: 합의 뒤 같은 측정일의 측정값을 다른 값으로 다시 올리고 승인을 시도(`blockedCodes`에 `EVIDENCE_CHANGED`, `STREAM_CHANGED`) | 위와 같은 스크립트 |
+| `v3-view-terms-changed.json` | 업체 조건 변경으로 승인 막힘: 합의 뒤 (주)새길자원이 PP A등급 매입 단가를 내려 `blockedCodes`가 `VENDOR_TERMS_CHANGED` | 위와 같은 스크립트 |
+| `v3-view-renegotiated.json` | 위 진단을 다시 실행해 같은 대화에서 재합의(코드가 쓴 `counter`, 실행 기록의 `reopenedSeq`) | 위와 같은 스크립트 |
+| `v3-view-vendor-renegotiated.json` | 재합의한 진단을 (주)새길자원이 본 뷰(판단 그래프에 자기 매입 기준 노드) | 위와 같은 스크립트 |
 | `v3-view-handoff.json` | 담당자 인계: 배출 기업이 지시문이 든 문서를 올려 대화가 모두 넘어가고 진단이 `idle`·`done`으로 끝남 | 아래 |
 
 ## 담당자 인계 뷰
