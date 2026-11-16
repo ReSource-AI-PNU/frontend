@@ -423,7 +423,7 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
       <div>
         <h3 className="text-label text-muted">실제 단가와 매입 기준표의 차이 ({retrain.calibration.count}건)</h3>
         <p className="mt-1 text-[13px] text-muted">
-          {retrain.calibration.note} {retrain.calibration.autoApply ? "" : "기준값은 자동으로 바뀌지 않습니다."}
+          {retrain.calibration.note}
         </p>
         {retrain.calibration.groups.length === 0 ? (
           <p className="mt-1 text-muted">기록된 실제 단가가 없습니다.</p>

@@ -18,6 +18,8 @@ export function useDiagnosis() {
   const [loaded, setLoaded] = useState<Loaded>({ key: "", view: null, error: null });
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
+  // 실행·답변·승인이 거절됐을 때의 사유. 뷰를 다시 읽어도 다음 행동 전까지 남긴다
+  const [actionError, setActionError] = useState<{ key: string; message: string } | null>(null);
 
   const live = mode === "live";
   const current = loaded.key === key ? loaded : null;
@@ -49,12 +51,15 @@ export function useDiagnosis() {
     async (call: () => Promise<DiagnosisView>) => {
       if (!live) return;
       setBusy(true);
+      setActionError(null);
       try {
         const next = await call();
         if (next.session.id !== sessionId) setSessionId(next.session.id);
         setLoaded({ key: `${mode}:${org.id}:${next.session.id}`, view: next, error: null });
       } catch (error) {
-        setLoaded((before) => ({ ...before, key, error: messageOf(error) }));
+        setActionError({ key, message: messageOf(error) });
+        // 거절된 행동이 서버 상태를 바꿨을 수 있다(승인 막힘 등). 뷰를 다시 읽어 그 상태를 보여 준다
+        setTick((before) => before + 1);
       } finally {
         setBusy(false);
       }
@@ -67,7 +72,7 @@ export function useDiagnosis() {
     org,
     view,
     sessionId,
-    error: live ? (current?.error ?? null) : null,
+    error: live ? ((actionError?.key === key ? actionError.message : null) ?? current?.error ?? null) : null,
     busy,
     loading: mode === "loading" || (live && Boolean(sessionId) && current === null),
     canAct: live,

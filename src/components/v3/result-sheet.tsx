@@ -21,7 +21,7 @@ const CHECK_TONE: Record<EdgeStatus, string> = {
 
 const HAS_PLACEHOLDER = /\{\{/;
 
-function CheckLine({ check }: { check: Check }) {
+function CheckLine({ check, named = true }: { check: Check; named?: boolean }) {
   const { openEvidence } = useV3();
   const claims = check.claims ?? [];
   // 적재 검사처럼 문장에 자리표시자가 없는데 값이 딸려 오면 문장 뒤에 이름과 값을 적는다
@@ -30,7 +30,7 @@ function CheckLine({ check }: { check: Check }) {
     <li className="grid grid-cols-[3.25rem_1fr] gap-x-2">
       <span className={`font-semibold ${CHECK_TONE[check.status]}`}>{CHECK_LABEL[check.status]}</span>
       <span className="min-w-0">
-        <span className="text-muted">{CHECK_KEY_LABEL[check.key] ?? check.key}</span>{" "}
+        {named ? <span className="text-muted">{CHECK_KEY_LABEL[check.key] ?? check.key} </span> : null}
         <ClaimText text={check.text} claims={claims} />
         {extra.length > 0 ? (
           <span className="text-ink-2">
@@ -105,7 +105,8 @@ function Checks({ checks }: { checks: Check[] }) {
                   <p className="text-label text-muted">{group.title}</p>
                   <ul className="mt-0.5 space-y-1">
                     {group.items.map((check, index) => (
-                      <CheckLine key={`${check.key}-${index}`} check={check} />
+                      // 묶음 제목이 이미 "업체가 내건 조건"이면 줄마다 이름을 되풀이하지 않는다
+                      <CheckLine key={`${check.key}-${index}`} check={check} named={check.key !== "vendor_condition"} />
                     ))}
                   </ul>
                 </div>
