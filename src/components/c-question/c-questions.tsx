@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { answerCQuestion, displayCQuestions, getCQuestionState, initializeCQuestionState, selectCQuestions } from "@/lib/server/c-questions/actions";
+import { answerCQuestion, compareCEvidence, displayCQuestions, getCQuestionState, initializeCQuestionState, selectCQuestions } from "@/lib/server/c-questions/actions";
 import type { RecordView } from "@/lib/server/c-questions/core";
+import type { EvidenceComparison } from "@/lib/server/c-questions/evidence";
 
 type FieldName = "material" | "materialBasis" | "form" | "contamination" | "separation" | "process" | "sorting" | "color" | "tradeStage" | "region" | "quantity";
 type Draft = { mode: "unanswered" | "value" | "unknown"; value: string; description: string; amount: string; unit: string; period: string; basis: "measured" | "estimated" | "unknown" };
@@ -24,6 +25,38 @@ const blank = (): Draft => ({mode:"unanswered",value:"",description:"",amount:""
 const inputClass = "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-ink";
 const buttonClass = "rounded-md bg-ink px-4 py-2 font-semibold text-on-ink disabled:opacity-50";
 const secondary = "rounded-md border border-line-strong px-4 py-2 font-semibold disabled:opacity-50";
+
+function safeSourceUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch { return null; }
+}
+
+function ComparisonDetails({comparisons}: {comparisons: EvidenceComparison["comparisons"]}) {
+  if (!comparisons.length) return null;
+  const labels = {match: "일치", different: "차이 있음", unconfirmed: "미확인"} as const;
+  return <div className="mt-4 grid gap-3">
+    {comparisons.map(({evidence, ...findings}) => {
+      const items = [["재질", findings.material], ["형태", findings.form], ["지역", findings.region], ["품질", findings.quality], ["거래 단계", findings.tradeStage]] as const;
+      const sources = [["조사 기준", evidence.criteria], ["가격표", evidence.priceTable], ["일반 기준", evidence.generalCriteria], ["세부 기준", evidence.detailedCriteria], ["FAQ", evidence.faq]] as const;
+      return <details key={evidence.id} className="rounded-md border border-line p-4">
+        <summary className="cursor-pointer font-semibold">{evidence.form} · 기준월 {evidence.referenceMonth}</summary>
+        <dl className="mt-4 grid gap-3 text-sm">{items.map(([label, finding]) => <div key={label}>
+          <dt className="font-semibold">{label} {labels[finding.status]}</dt><dd className="mt-1">{finding.reason}</dd>
+        </div>)}</dl>
+        <div className="mt-4 text-sm"><h5 className="font-semibold">출처</h5><ul className="mt-2 grid gap-2">
+          {sources.map(([label, source]) => {
+            const url = safeSourceUrl(source.url);
+            return <li key={label}><span className="font-semibold">{label}: </span>{source.document} · PDF {source.pdfPage}쪽 · 인쇄 {source.printedPage}쪽
+              {url && <> · <a className="underline" href={url} target="_blank" rel="noopener noreferrer">원문 보기<span className="sr-only"> (새 창)</span></a></>}
+            </li>;
+          })}
+        </ul></div>
+      </details>;
+    })}
+  </div>;
+}
 
 function fieldValue(name: FieldName, draft: Draft, revision?: number): Record<string, unknown> {
   const extra = revision === undefined ? {} : {revision};
@@ -70,6 +103,10 @@ export function CQuestions({sessionId}:{sessionId:string}) {
   const [review,setReview] = useState(false);
   const [drafts,setDrafts] = useState<Drafts>({material:{...blank(),mode:"value",value:"PP"}});
   const [answers,setAnswers] = useState<Drafts>({});
+  const [comparison,setComparison] = useState<EvidenceComparison | null>(null);
+  const [comparisonError,setComparisonError] = useState(false);
+  const [comparing,setComparing] = useState(false);
+  const comparisonInFlight = useRef(false);
   const inFlight = useRef(false);
   const key = `c-ui:${sessionId}`;
   const apply = useCallback((next:RecordView) => setView(current => !current || next.version >= current.version ? next : current),[]);
@@ -111,12 +148,22 @@ export function CQuestions({sessionId}:{sessionId:string}) {
   const command = (version:number) => ({expectedVersion:version,requestId:crypto.randomUUID()});
   const start = () => { try { const input:Record<string,unknown>={}; for(const f of fields) { const d=drafts[f.name] ?? blank(); if(d.mode !== "unanswered") input[f.name]=fieldValue(f.name,d); } void execute({op:"initialize",command:command(0),input}); } catch(e) {setError(e instanceof Error ? e.message : "입력을 확인해 주세요.");} };
   const answer = (batch:Batch,q:Question,skip:boolean) => { if (!view) return; try { const name=idToName[q.selection.id]; if(!name) throw new Error("지원하지 않는 질문입니다."); const d=answers[q.selection.id] ?? blank(); if(!skip && d.mode === "unanswered") throw new Error("답을 입력하거나 모름을 선택해 주세요."); const cmd:Record<string,unknown>={...command(view.version),batchId:batch.id,questionId:q.selection.id,skip}; if(!skip) cmd.answer=fieldValue(name,d,q.revision); void execute({op:"answer",command:cmd}); } catch(e) {setError(e instanceof Error ? e.message : "답변을 확인해 주세요.");} };
+  const compare = async () => {
+    if (comparisonInFlight.current) return;
+    comparisonInFlight.current = true; setComparing(true); setComparisonError(false); setComparison(null);
+    try {
+      const result = await compareCEvidence(sessionId);
+      if (!result.ok) throw new Error("Comparison unavailable");
+      setComparison(result.data);
+    } catch { setComparisonError(true); }
+    finally { comparisonInFlight.current = false; setComparing(false); }
+  };
   const batches = (view?.state.batches ?? []) as Batch[];
   const status = view?.evaluation.status as string | undefined;
   const unconfirmed = (view?.evaluation.unconfirmed ?? []) as string[];
   return <div className="mx-auto grid w-full max-w-4xl gap-6 px-5 py-10 sm:px-8">
     <header><p className="text-sm font-semibold text-muted">C 질문 · {sessionId}</p><h1 className="mt-2 text-h1 font-bold">PP 정보 직접 입력</h1><p className="mt-2 text-sm text-ink-2">사진·문서 없이 입력합니다. 확정 후 입력을 수정하는 기능은 아직 제공되지 않습니다.</p></header>
-    <p className="rounded-md bg-sunken p-4 text-sm">질문 종료는 사실 검증이나 자원화 적합성 확정이 아닙니다. 근거 비교와 후속 조사는 아직 제공되지 않습니다.</p>
+    <p className="rounded-md bg-sunken p-4 text-sm">질문 종료는 사실 검증이나 자원화 적합성 확정이 아닙니다.</p>
     {error && <div role="alert" className="rounded-md border border-loss p-4 text-sm text-loss">{error}</div>}
     {notice && <p role="status" className="text-sm text-gain">{notice}</p>}
     {pending && !busy && <div className="grid gap-2 rounded-md border border-line-strong p-4"><p>이전 요청의 결과가 불확실합니다. 같은 요청을 재시도하면 확정 여부를 복구합니다.</p><button className={secondary} disabled={busy} onClick={()=>void execute(pending)}>같은 요청 재시도</button></div>}
@@ -131,7 +178,19 @@ export function CQuestions({sessionId}:{sessionId:string}) {
         {batches.map((batch,index)=><section key={batch.id} className="grid gap-3"><h3 className="font-semibold">질문 묶음 {index+1}</h3>{batch.questions.map(q=><article key={q.selection.id} className="grid gap-3 rounded-md border border-line p-4"><div><p className="font-semibold">{q.selection.text}</p><p className="mt-1 text-sm text-muted">{q.selection.why}</p></div>{q.outcome === "pending" ? <><fieldset disabled={busy || !!pending} aria-label={q.selection.text}><FieldEditor name={idToName[q.selection.id]} selection={q.selection} draft={answers[q.selection.id] ?? blank()} onChange={d=>saveDraft(q.selection.id,d,true)}/></fieldset><div className="flex flex-wrap gap-2"><button className={buttonClass} disabled={busy || !!pending} onClick={()=>answer(batch,q,false)}>답변 저장</button><button className={secondary} disabled={busy || !!pending} onClick={()=>answer(batch,q,true)}>건너뛰기</button></div></> : <p className="text-sm text-muted">{q.outcome === "skipped" ? "건너뜀" : view.state[idToName[q.selection.id]]?.status === "unknown" ? "답변: 모름" : "답변 완료"}</p>}</article>)}</section>)}
         {status === "questions" && !view.pendingSelection && <button className={buttonClass} disabled={busy || !!pending} onClick={()=>void execute({op:"select",command:command(view.version)})}>{batches.length ? "다음 질문 생성" : "질문 생성"}</button>}
         {status === "awaiting_answers" && <p className="text-sm">현재 묶음의 모든 질문에 답하거나 건너뛴 뒤 다음 묶음으로 진행합니다.</p>}
-        {["complete","limit_reached","unsupported"].includes(status ?? "") && <div className="rounded-md bg-sunken p-4"><h3 className="font-semibold">{status === "complete" ? "질문 완료" : status === "limit_reached" ? "두 묶음 한도 도달" : "PP 지원 범위 밖"}</h3><p className="mt-2 text-sm">{status === "unsupported" ? "현재 질문은 PP를 대상으로 합니다." : "남은 미확인 항목은 추가 확인이 필요합니다."}</p><p className="mt-2 text-sm">미확인 항목: {unconfirmed.length ? unconfirmed.map(labelFor).join(", ") : "없음"}</p></div>}
+        {["complete","limit_reached","unsupported"].includes(status ?? "") && <div className="rounded-md bg-sunken p-4"><h3 className="font-semibold">{status === "complete" ? "질문 완료" : status === "limit_reached" ? "두 묶음 한도 도달" : "PP 지원 범위 밖"}</h3><p className="mt-2 text-sm">{status === "unsupported" ? "현재 질문은 PP를 대상으로 합니다." : "남은 미확인 항목은 추가 확인이 필요합니다."}</p><p className="mt-2 text-sm">미확인 항목: {unconfirmed.length ? unconfirmed.map(labelFor).join(", ") : "없음"}</p>
+          {(status === "complete" || status === "limit_reached") && <div className="mt-4 grid justify-items-start gap-2">
+            <button className={buttonClass} disabled={comparing} onClick={()=>void compare()}>{comparing ? "비교 중…" : comparisonError ? "다시 시도" : "공식 자료와 비교"}</button>
+            {comparison && <section aria-labelledby="comparison-title" className="w-full rounded-md border border-line bg-surface p-4">
+              <h4 id="comparison-title" className="font-semibold">공식 자료 비교</h4>
+              <p role="status" className="mt-2 text-sm">{comparison.status === "compared" ? "입력 정보와 공식 자료의 조건을 비교했습니다." : comparison.status === "insufficient_information" ? "정보가 부족해 확인하지 못한 항목이 있습니다." : "현재 지원하는 PP 비교 범위 밖입니다."}</p>
+              {comparison.limitations.length > 0 && <div className="mt-4 text-sm"><h5 className="font-semibold">비교 시 유의사항</h5><ul className="mt-2 list-disc space-y-1 pl-5">{comparison.limitations.map((item,index)=><li key={index}>{item}</li>)}</ul></div>}
+              {comparison.followUp.length > 0 && <div className="mt-4 text-sm"><h5 className="font-semibold">추가로 확인할 사항</h5><ul className="mt-2 list-disc space-y-1 pl-5">{comparison.followUp.map((item,index)=><li key={index}>{item}</li>)}</ul></div>}
+              <ComparisonDetails comparisons={comparison.comparisons}/>
+            </section>}
+            {comparisonError && <p role="alert" className="text-sm text-loss">비교 결과를 불러오지 못했습니다. 다시 시도해 주세요.</p>}
+          </div>}
+        </div>}
       </section>}
     </>}
     {busy && <p role="status">요청을 처리하고 있습니다…</p>}
