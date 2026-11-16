@@ -699,6 +699,12 @@ function VendorForm({
   const [provider, setProvider] = useState(profile.model.provider);
   const [modelName, setModelName] = useState(profile.model.name);
   const [note, setNote] = useState<string | null>(null);
+  // 매입 기준표의 단가(기준 ID → 입력한 글자). 배출 기업 기준이라 양수는 매입, 음수는 처리비다
+  const [prices, setPrices] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      profile.criteria.map((row) => [row.id, row.unitPriceKrwPerKg != null ? String(row.unitPriceKrwPerKg) : ""]),
+    ),
+  );
   const list = (text: string) =>
     text
       .split(",")
@@ -710,13 +716,17 @@ function VendorForm({
     const floorValue = num(floor);
     const pickupValue = num(pickups);
     const ceilingValue = num(ceiling);
-    if ([floorValue, pickupValue, ceilingValue].some((value) => value !== null && !Number.isFinite(value))) {
+    const priceValues = profile.criteria.map((row) => num(prices[row.id] ?? ""));
+    if (
+      [floorValue, pickupValue, ceilingValue, ...priceValues].some((value) => value !== null && !Number.isFinite(value))
+    ) {
       setNote("숫자 칸에는 숫자만 입력하세요.");
       return;
     }
     try {
       await onSave({
         ...profile,
+        criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
         guardrails: {
           ...profile.guardrails,
           floorPriceKrwPerKg: floorValue,
@@ -801,7 +811,22 @@ function VendorForm({
                     <td className="py-2 pr-3 text-right">{row.maxContaminationPct != null ? `${row.maxContaminationPct}%` : "-"}</td>
                     <td className="py-2 pr-3 text-right">{row.maxMoisturePct != null ? `${row.maxMoisturePct}%` : "-"}</td>
                     <td className="py-2 pr-3 text-right">
-                      {row.unitPriceKrwPerKg != null ? (
+                      {canAct ? (
+                        <span className="inline-flex items-center justify-end gap-2">
+                          <span className="font-sans text-[13px] text-muted">
+                            {Number.isFinite(num(prices[row.id] ?? "")) && num(prices[row.id] ?? "") !== null
+                              ? priceSide(num(prices[row.id] ?? "") as number)
+                              : "확인 필요"}
+                          </span>
+                          <input
+                            aria-label={`${row.material} ${row.grade}등급${row.form ? ` ${row.form}` : ""} 단가 (원/kg)`}
+                            value={prices[row.id] ?? ""}
+                            onChange={(event) => setPrices({ ...prices, [row.id]: event.target.value })}
+                            inputMode="decimal"
+                            className={`${input} w-24 text-right font-mono`}
+                          />
+                        </span>
+                      ) : row.unitPriceKrwPerKg != null ? (
                         <>
                           <span className="font-sans">{priceSide(row.unitPriceKrwPerKg)}</span>{" "}
                           {formatNumber(Math.abs(row.unitPriceKrwPerKg))}
@@ -818,6 +843,18 @@ function VendorForm({
                 ))}
               </tbody>
             </table>
+            {canAct ? (
+              <div className="mt-3 flex flex-wrap items-center gap-3 font-sans">
+                <Button size="sm" variant="secondary" onClick={save}>
+                  매입 기준표 저장
+                </Button>
+                <span className="text-[13px] text-muted">
+                  단가는 배출 기업 기준입니다(음수는 처리비). 합의한 뒤에 합의 조건에 쓰인 단가를 고치면 그 대화의 승인이
+                  지워지고, 배출 기업이 다시 실행해 새 조건으로 다시 합의해야 합니다.
+                </span>
+                {note ? <span className="text-[13px] font-semibold">{note}</span> : null}
+              </div>
+            ) : null}
           </div>
         )}
       </section>
