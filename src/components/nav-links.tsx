@@ -3,24 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// 설계안 v3 화면. v2 화면(산업단지·이웃 기업, 현장 지식, 학습 콘솔, 걸으며 진단 등)은
+// 주소와 코드는 그대로 두고 주 메뉴에서만 뺐다.
 const NAV_ITEMS = [
-  { href: "/upload", label: "새 진단" },
-  { href: "/session", label: "진단 이력" },
-  { href: "/complex", label: "산업단지" },
-  { href: "/knowledge", label: "현장 지식" },
-  { href: "/dashboard", label: "대시보드" },
+  { href: "/v3", label: "진단·연결", exact: true },
+  { href: "/v3/materials", label: "자료 올리기", exact: false },
+  { href: "/v3/approval", label: "승인", exact: false },
+  { href: "/v3/admin", label: "관리자", exact: false },
 ] as const;
 
-function isActive(pathname: string | null, href: string) {
+function isActive(pathname: string | null, href: string, exact: boolean) {
   if (!pathname) return false;
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === href || (!exact && pathname.startsWith(`${href}/`));
 }
 
 export function NavList({ pathname }: { pathname: string | null }) {
   return (
     <ul className="flex items-center gap-1">
       {NAV_ITEMS.map((item) => {
-        const active = isActive(pathname, item.href);
+        const active = isActive(pathname, item.href, item.exact);
         return (
           <li key={item.href}>
             <Link
