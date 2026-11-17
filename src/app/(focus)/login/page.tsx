@@ -7,14 +7,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = { title: "로그인" };
 
+const pick = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
 async function Forms({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const sp = await searchParams;
-  const pick = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   return (
     <AuthForms
       mode="login"
       callbackUrl={pick(sp.callbackUrl)}
       error={pick(sp.error)}
+      errorCode={pick(sp.code)}
       entraConfigured={entraConfigured}
       devLoginEnabled={devLoginEnabled}
     />
