@@ -37,7 +37,7 @@ function HeaderFrame({ children }: { children: React.ReactNode }) {
 export function AppHeader() {
   return (
     <HeaderFrame>
-      <BrandLink href="/upload" />
+      <BrandLink href="/v3" />
       <nav aria-label="주 메뉴" className="mr-auto overflow-x-auto">
         <Suspense fallback={<NavList pathname={null} />}>
           <NavLinks />

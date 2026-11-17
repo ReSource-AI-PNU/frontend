@@ -20,7 +20,7 @@ function safeRedirect(value: FormDataEntryValue | null, fallback: string) {
 
 export async function signInWithMicrosoft(formData: FormData) {
   const mode = formData.get("mode");
-  const fallback = mode === "signup" ? "/onboarding" : "/upload";
+  const fallback = mode === "signup" ? "/onboarding" : "/v3";
   await signIn(
     "microsoft-entra-id",
     { redirectTo: safeRedirect(formData.get("callbackUrl"), fallback) },
@@ -32,7 +32,7 @@ export type DevSignInState = { error?: string } | undefined;
 
 export async function signInWithDevAccount(_prev: DevSignInState, formData: FormData): Promise<DevSignInState> {
   const mode = formData.get("mode");
-  const fallback = mode === "signup" ? "/onboarding" : "/upload";
+  const fallback = mode === "signup" ? "/onboarding" : "/v3";
   try {
     await signIn("dev", {
       name: formData.get("name"),
