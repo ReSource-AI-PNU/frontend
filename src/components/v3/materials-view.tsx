@@ -519,6 +519,128 @@ function Shelf({ title, status, children }: { title: string; status: string; chi
   );
 }
 
+const text = (value: number | null | undefined) => (value == null ? "" : String(value));
+
+/** 빈 칸은 null, 숫자가 아니면 NaN */
+function parse(value: string) {
+  return value.trim() === "" ? null : Number(value.replace(/,/g, ""));
+}
+
+function NumberField({
+  label,
+  unit,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  unit: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+      {label}
+      <span className="flex items-center gap-2">
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          inputMode="decimal"
+          placeholder="숫자"
+          className={`${field} w-28 tabular-nums`}
+          disabled={disabled}
+        />
+        <span className="text-sm font-normal text-ink-2">{unit}</span>
+      </span>
+    </label>
+  );
+}
+
+/** 순비용에 넣는 값: 전처리에 드는 사람 손과, 공정에 다시 넣을 때의 값. 업체에는 보내지 않는다. */
+function CostInputs({
+  stream,
+  canAct,
+  onSave,
+}: {
+  stream: StreamRecord;
+  canAct: boolean;
+  onSave: (stream: StreamRecord) => Promise<void>;
+}) {
+  const [hours, setHours] = useState(text(stream.pretreatHoursPerMonth));
+  const [rate, setRate] = useState(text(stream.laborCostKrwPerHour));
+  const [virgin, setVirgin] = useState(text(stream.reuse?.virginPriceKrwPerKg));
+  const [reusable, setReusable] = useState(text(stream.reuse?.reusableKgPerMonth));
+  const [regrind, setRegrind] = useState(text(stream.reuse?.regrindCostKrwPerKg));
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const save = async () => {
+    const values = { hours: parse(hours), rate: parse(rate), virgin: parse(virgin), reusable: parse(reusable), regrind: parse(regrind) };
+    if (Object.values(values).some((value) => value !== null && !Number.isFinite(value))) {
+      setNote({ ok: false, text: "숫자로 입력해 주세요." });
+      return;
+    }
+    if ((values.virgin === null) !== (values.reusable === null)) {
+      setNote({ ok: false, text: "다시 넣을 때의 값은 신재 구입 단가와 다시 넣을 수 있는 양을 함께 적어 주세요." });
+      return;
+    }
+    try {
+      await onSave({
+        ...stream,
+        pretreatHoursPerMonth: values.hours,
+        laborCostKrwPerHour: values.hours === null ? null : values.rate,
+        reuse:
+          values.virgin !== null && values.reusable !== null
+            ? { virginPriceKrwPerKg: values.virgin, reusableKgPerMonth: values.reusable, regrindCostKrwPerKg: values.regrind }
+            : null,
+      });
+      setNote({ ok: true, text: "저장했습니다. 다음에 찾을 때부터 계산에 넣습니다." });
+    } catch (error) {
+      setNote({ ok: false, text: error instanceof Error ? error.message : "저장하지 못했습니다." });
+    }
+  };
+
+  return (
+    <form
+      className="space-y-5 text-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void save();
+      }}
+    >
+      <p className="text-ink-2">
+        업체에 보낼 때 드는 사람 손과, 공정에 다시 넣을 때 아끼는 돈을 계산에 넣습니다. 이 값은 업체에 보내지 않습니다.
+      </p>
+      <fieldset className="space-y-2.5">
+        <legend className="text-[13px] font-medium">내보내기 전에 손이 가는 시간</legend>
+        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+          <NumberField label="한 달 작업 시간" unit="시간" value={hours} onChange={setHours} disabled={!canAct} />
+          <NumberField label="시간당 인건비" unit="원" value={rate} onChange={setRate} disabled={!canAct} />
+        </div>
+        <p className="text-[13px] text-muted">분리, 분쇄, 포장에 드는 시간입니다. 인건비를 비우면 2026년 최저임금으로 계산하고 ‘가정’이라고 표시합니다.</p>
+      </fieldset>
+      <fieldset className="space-y-2.5">
+        <legend className="text-[13px] font-medium">공정에 다시 넣는다면</legend>
+        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+          <NumberField label="신재 구입 단가" unit="원/kg" value={virgin} onChange={setVirgin} disabled={!canAct} />
+          <NumberField label="한 달에 다시 넣을 수 있는 양" unit="kg" value={reusable} onChange={setReusable} disabled={!canAct} />
+          <NumberField label="분쇄 비용" unit="원/kg" value={regrind} onChange={setRegrind} disabled={!canAct} />
+        </div>
+        <p className="text-[13px] text-muted">
+          공정에서 나온 한 가지 재질이고 섞인 것이 없으며 측정한 오염도가 낮을 때만 다시 넣는 길을 함께 견줍니다. 실제로 넣어도 되는지는
+          품질 담당자가 정합니다.
+        </p>
+      </fieldset>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={!canAct}>
+          저장
+        </Button>
+        {note ? <p role="status" className={`text-[13px] ${note.ok ? "text-muted" : "text-loss"}`}>{note.text}</p> : null}
+      </div>
+    </form>
+  );
+}
+
 function StreamCard({
   stream,
   canAct,
@@ -667,6 +789,19 @@ function StreamCard({
             <UploadStatus state={csv.state} />
             {csv.state.result ? <CsvResult result={csv.state.result} /> : null}
           </div>
+        </Shelf>
+        <Shelf
+          title="비용"
+          status={
+            [
+              stream.pretreatHoursPerMonth != null ? `손이 가는 시간 한 달 ${formatNumber(stream.pretreatHoursPerMonth)}시간` : null,
+              stream.reuse ? `다시 넣을 수 있는 양 한 달 ${formatNumber(stream.reuse.reusableKgPerMonth)} kg` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "운반 전 작업 시간, 공정에 다시 넣을 때의 값"
+          }
+        >
+          <CostInputs stream={stream} canAct={canAct} onSave={onSave} />
         </Shelf>
         <Shelf title="문서" status="원자재 명세, MSDS, 위탁 계약서">
           <div className="space-y-3 text-sm">

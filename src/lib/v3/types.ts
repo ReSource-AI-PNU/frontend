@@ -85,6 +85,15 @@ export type StreamRecord = {
     unitCostKrwPerKg: number | null;
     evidence: string[];
   } | null;
+  /** 순비용 계산에 넣는 배출 기업만의 값. 업체에는 가지 않는다 */
+  pretreatHoursPerMonth?: number | null;
+  laborCostKrwPerHour?: number | null;
+  reuse?: {
+    virginPriceKrwPerKg: number;
+    reusableKgPerMonth: number;
+    regrindCostKrwPerKg?: number | null;
+    evidence?: string[];
+  } | null;
   synthetic?: boolean;
 };
 
