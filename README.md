@@ -85,7 +85,7 @@ docker run -p 3000:3000 -e AUTH_SECRET=... -e AUTH_URL=https://<프런트 주소
 npm run lint
 npx next typegen && npx tsc --noEmit
 npm run test:c-questions
-node --test tests/v3-view.test.ts tests/backend-plan.test.ts tests/auth-account.test.ts tests/v3-errors.test.ts
+for t in tests/*.test.ts; do node --test "$t"; done
 CI=true npm run build
 BACKEND_DIR=../backend npm run test:e2e   # 브라우저로 끝까지: 찾기 → 결과 → 양쪽 승인 → 서류, 통로 묶기, 체험하기
 ```
@@ -93,6 +93,11 @@ BACKEND_DIR=../backend npm run test:e2e   # 브라우저로 끝까지: 찾기 �
 - `tests/backend-plan.test.ts`: 통로의 회사 묶기(세션 회사만, 주소의 다른 회사 403), 체험하기 읽기 전용, bff 머리글, 사용자 문구.
 - `tests/auth-account.test.ts`: 로그인 응답과 소속 읽기, 활성 회사 고르기, 돌아갈 주소, 실패 문구, 초대 링크.
 - `tests/v3-errors.test.ts`: 오류 문구에 코드·환경 변수·서비스 이름이 섞이지 않는지.
+- `tests/labels.test.ts`: 근거 패널과 실행 기록에 판단 도구 ID(judge_route 등)가 아닌 이름이 나오는지.
+- `tests/trust.test.ts`: AI 신뢰도의 쉬운 지표 이름과 설명, 평가 용어가 없는지, 지난 실행 숫자를 빼는지, 작은 표본 표시.
+- `tests/live-stream.test.ts`: 실시간 진행 읽기와 지금 단계에 맞춘 한 줄, 끝난 뒤 대화 상태.
+- `tests/escape-stack.test.ts`, `tests/claim-text.test.ts`, `tests/intake.test.ts`, `tests/preview.test.ts`: Esc는 맨 위 패널만,
+  숫자 값과 붙은 글자 묶기, 확인 전 추출값·직접 적은 측정값·질문 머리말, 소개 화면 미리보기가 체험하기 결과와 같은지.
 - E2E(`e2e/find.spec.ts`, Playwright)는 백엔드 로컬 서버(header 모드, 가상 시연 데이터)와 이 프런트를 띄워 돈다. 처음 한 번 `npx playwright install chromium`이 필요하다. 이미 떠 있는 서버로 돌리려면 `E2E_BASE_URL`과 `E2E_API`를 준다. 백엔드를 FastAPI bff 모드로 띄우고 프런트를 `V3_AUTH=bff`로 띄웠으면 `E2E_ACCOUNTS=1`을 준다: 이메일 가입·체험하기 검사만 돌고, 개발용 로그인 검사는 건너뛴다.
 - CI(`.github/workflows/ci.yml`)의 E2E 작업은 저장소 비밀 `BACKEND_READ_TOKEN`이 있을 때만 돈다.
 

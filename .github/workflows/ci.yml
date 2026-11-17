@@ -45,7 +45,7 @@ jobs:
       - name: 단위 테스트
         run: |
           npm run test:c-questions
-          node --test tests/v3-view.test.ts tests/backend-plan.test.ts tests/auth-account.test.ts tests/v3-errors.test.ts
+          for t in tests/*.test.ts; do node --test "$t"; done
 
       - name: build
         run: npm run build
