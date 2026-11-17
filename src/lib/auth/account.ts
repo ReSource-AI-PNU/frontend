@@ -131,7 +131,14 @@ export function inviteTokenFrom(value: unknown): string | null {
   const raw = text(value);
   if (!raw) return null;
   const match = raw.match(/\/invite\/([^/?#\s]+)/);
-  const token = match ? decodeURIComponent(match[1]) : raw;
+  let token = raw;
+  if (match) {
+    try {
+      token = decodeURIComponent(match[1]);
+    } catch {
+      return null;
+    }
+  }
   return /^[A-Za-z0-9_-]{6,200}$/.test(token) ? token : null;
 }
 

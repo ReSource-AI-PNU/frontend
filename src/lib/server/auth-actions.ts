@@ -72,16 +72,6 @@ export async function signUpWithPassword(_prev: AuthFormState, formData: FormDat
   }
 }
 
-export async function signInWithMicrosoft(formData: FormData) {
-  const mode = formData.get("mode");
-  const fallback = mode === "signup" ? "/onboarding" : "/app";
-  await signIn(
-    "microsoft-entra-id",
-    { redirectTo: safeRedirect(formData.get("callbackUrl"), fallback) },
-    mode === "signup" ? { prompt: "create" } : undefined,
-  );
-}
-
 /** 로컬 개발·E2E용(auth.ts의 devLoginEnabled). 운영(bff)에서는 provider가 없어 실패한다. */
 export async function signInWithDevAccount(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   try {

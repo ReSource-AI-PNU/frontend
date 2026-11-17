@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { devLoginEnabled, entraConfigured } from "@/auth";
+import { auth, devLoginEnabled } from "@/auth";
 import { AuthForms } from "@/components/auth/auth-forms";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { safeRedirect } from "@/lib/auth/account";
 
 export const metadata: Metadata = { title: "로그인" };
 
@@ -11,13 +13,18 @@ const pick = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 async function Forms({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const sp = await searchParams;
+  // 이미 로그인했으면 돌아갈 곳(없으면 찾기 화면)으로 보낸다
+  const session = await auth();
+  if (session?.user?.id) {
+    const target = safeRedirect(pick(sp.callbackUrl), "/app");
+    redirect(/^\/(login|signup)(\/|\?|$)/.test(target) ? "/app" : target);
+  }
   return (
     <AuthForms
       mode="login"
       callbackUrl={pick(sp.callbackUrl)}
       error={pick(sp.error)}
       errorCode={pick(sp.code)}
-      entraConfigured={entraConfigured}
       devLoginEnabled={devLoginEnabled}
     />
   );

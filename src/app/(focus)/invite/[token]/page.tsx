@@ -11,8 +11,9 @@ export const metadata: Metadata = { title: "회사 초대" };
 
 /** 초대 링크로 들어온 곳. 로그인했으면 수락 단추, 아니면 로그인·가입을 거쳐 이 화면으로 돌아오게 한다. */
 async function Invite({ params }: { params: PageProps<"/invite/[token]">["params"] }) {
+  // Next.js가 이미 한 번 풀어 준 값이다. 다시 풀지 않는다
   const { token: raw } = await params;
-  const token = inviteTokenFrom(decodeURIComponent(raw));
+  const token = inviteTokenFrom(raw);
   if (!token) {
     return (
       <p role="alert" className="rounded-md bg-loss-bg px-3.5 py-3 text-sm text-ink">

@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { useActionState, useId, useState } from "react";
 import { LOGIN_MESSAGE, type LoginFailure } from "@/lib/auth/account";
-import {
-  signInWithDevAccount,
-  signInWithMicrosoft,
-  signInWithPassword,
-  signUpWithPassword,
-} from "@/lib/server/auth-actions";
+import { signInWithDevAccount, signInWithPassword, signUpWithPassword } from "@/lib/server/auth-actions";
 import { ArrowRightIcon } from "../icons";
 import { buttonClass } from "../ui/button";
 
@@ -27,17 +22,6 @@ function errorFromUrl(error?: string, code?: string): string | null {
   return ERROR_TEXT[error] ?? "로그인하지 못했습니다. 다시 시도해 주세요.";
 }
 
-function MicrosoftLogo() {
-  return (
-    <svg viewBox="0 0 21 21" width={18} height={18} aria-hidden="true">
-      <rect x="1" y="1" width="9" height="9" fill="#F25022" />
-      <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
-      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
-    </svg>
-  );
-}
-
 const inputClass =
   "h-11 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3.5 text-[15px] text-ink placeholder:text-muted focus:border-ink focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-marker)_70%,transparent)] focus:outline-none";
 
@@ -54,16 +38,6 @@ function Field({
       </label>
       <input id={id} className={inputClass} {...props} />
       {hint ? <p className="text-[13px] text-muted">{hint}</p> : null}
-    </div>
-  );
-}
-
-function Divider({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 text-[12px] text-muted">
-      <span className="h-px flex-1 bg-line" />
-      {children}
-      <span className="h-px flex-1 bg-line" />
     </div>
   );
 }
@@ -114,14 +88,12 @@ export function AuthForms({
   callbackUrl,
   error,
   errorCode,
-  entraConfigured,
   devLoginEnabled,
 }: {
   mode: Mode;
   callbackUrl?: string;
   error?: string;
   errorCode?: string;
-  entraConfigured: boolean;
   devLoginEnabled: boolean;
 }) {
   const [state, action, pending] = useActionState(mode === "signup" ? signUpWithPassword : signInWithPassword, undefined);
@@ -217,20 +189,6 @@ export function AuthForms({
           {pending ? `${verb}하는 중` : mode === "signup" ? "가입하기" : "로그인"}
         </button>
       </form>
-
-      {entraConfigured ? (
-        <>
-          <Divider>또는</Divider>
-          <form action={signInWithMicrosoft}>
-            <input type="hidden" name="mode" value={mode} />
-            {callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null}
-            <button type="submit" disabled={mode === "signup" && !agreed} className={buttonClass("secondary", "md", "w-full")}>
-              <MicrosoftLogo />
-              Microsoft 계정으로 {verb}
-            </button>
-          </form>
-        </>
-      ) : null}
 
       <p className="text-sm text-muted">
         {mode === "login" ? (

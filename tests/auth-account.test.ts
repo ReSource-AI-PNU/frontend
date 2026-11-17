@@ -16,6 +16,7 @@ import {
   safeRedirect,
   signupMessage,
 } from "../src/lib/auth/account.ts";
+import { hasSessionCookie, isProtected } from "../src/lib/auth/routes.ts";
 
 test("로그인 응답에서 사용자와 소속을 읽고, 모양이 틀린 소속은 버린다", () => {
   const account = parseAccount({
@@ -81,4 +82,20 @@ test("초대 링크를 만들고, 붙여 넣은 링크나 코드에서 토큰을
   assert.equal(inviteTokenFrom("  tok_ABC-123 "), "tok_ABC-123");
   assert.equal(inviteTokenFrom("<script>"), null);
   assert.equal(inviteTokenFrom(""), null);
+  // 잘못 인코딩된 링크도 오류 없이 "올바르지 않음"으로 답한다
+  assert.equal(inviteTokenFrom("https://resource.example/invite/%E0%A4%A"), null);
+  assert.equal(inviteTokenFrom("%"), null);
+});
+
+test("미들웨어는 세션 쿠키가 있는지만 보고, 보호 경로만 거른다", () => {
+  assert.equal(hasSessionCookie(["authjs.session-token"]), true);
+  assert.equal(hasSessionCookie(["__Secure-authjs.session-token.0", "other"]), true);
+  assert.equal(hasSessionCookie(["authjs.csrf-token", "authjs.callback-url"]), false);
+  assert.equal(isProtected("/app"), true);
+  assert.equal(isProtected("/app/approval"), true);
+  assert.equal(isProtected("/settings/members"), true);
+  assert.equal(isProtected("/onboarding"), true);
+  assert.equal(isProtected("/demo"), false);
+  assert.equal(isProtected("/invite/abc"), false);
+  assert.equal(isProtected("/apple-icon.png"), false);
 });

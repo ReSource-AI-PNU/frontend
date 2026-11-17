@@ -1,13 +1,11 @@
 import NextAuth, { CredentialsSignin, type DefaultSession } from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
-import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { z } from "zod";
 import {
   loginFailure,
   parseAccount,
   pickActiveOrg,
-  safeRedirect,
   type LoginFailure,
   type Membership,
 } from "@/lib/auth/account";
@@ -33,16 +31,6 @@ declare module "@auth/core/jwt" {
     activeOrgId?: string | null;
   }
 }
-
-/** 로그인해야 들어갈 수 있는 경로. proxy.ts가 낙관적으로 먼저 거른다. 초대(/invite)와 체험하기(/demo)는 열려 있다. */
-export const PROTECTED_PREFIXES = ["/onboarding", "/settings", "/app"];
-
-/** Microsoft 로그인은 세 값을 모두 넣었을 때만 켠다. 꺼져 있으면 버튼도 그리지 않는다. */
-export const entraConfigured = Boolean(
-  process.env.AUTH_MICROSOFT_ENTRA_ID_ID &&
-    process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
-    process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-);
 
 /**
  * 로컬 개발·E2E용 로그인(이름과 이메일만, 비밀번호 없음). AUTH_DEV_LOGIN=true이고 백엔드가 bff 모드가 아닐 때만 켠다.
@@ -94,6 +82,10 @@ async function freshAccount(userId: string | undefined): Promise<{ name?: string
   }
 }
 
+/**
+ * 로그인 수단은 이메일·비밀번호 하나다. 외부 로그인(Microsoft 등)은 백엔드 계정과 이어 주는 길이 없어 두지 않는다
+ * (어댑터 없이 붙이면 로그인할 때마다 백엔드가 모르는 사용자 ID가 생긴다).
+ */
 const providers: Provider[] = [
   Credentials({
     id: "credentials",
@@ -116,17 +108,6 @@ const providers: Provider[] = [
   }),
 ];
 
-if (entraConfigured) {
-  // Entra External ID: issuer = https://<subdomain>.ciamlogin.com/<tenant-id>/v2.0
-  providers.push(
-    MicrosoftEntraID({
-      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
-      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
-      issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-    }),
-  );
-}
-
 if (devLoginEnabled) {
   providers.push(
     Credentials({
@@ -143,23 +124,11 @@ if (devLoginEnabled) {
   );
 }
 
-function isProtected(pathname: string) {
-  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   providers,
   session: { strategy: "jwt" },
   pages: { signIn: "/login", error: "/login" },
   callbacks: {
-    authorized({ auth: session, request: { nextUrl } }) {
-      const loggedIn = Boolean(session?.user);
-      if (isProtected(nextUrl.pathname)) return loggedIn;
-      if (loggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
-        return Response.redirect(new URL(safeRedirect(nextUrl.searchParams.get("callbackUrl"), "/app"), nextUrl));
-      }
-      return true;
-    },
     async jwt({ token, user, trigger, session }) {
       if (user?.id) {
         token.sub = user.id;
