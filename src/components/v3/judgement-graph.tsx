@@ -7,7 +7,7 @@ import type { EdgeStatus, GraphEdge, GraphNode } from "@/lib/v3/types";
 import { useV3 } from "./context";
 
 const COLUMNS: GraphNode["type"][] = ["stream", "criterion", "vendor", "evidence"];
-const COLUMN_LABEL = { stream: "흐름", criterion: "기준", vendor: "업체", evidence: "근거 문서" };
+const COLUMN_LABEL = { stream: "폐기물", criterion: "기준", vendor: "업체", evidence: "근거 문서" };
 /**
  * 상태는 선 모양으로 가른다(색은 거든다). 충족은 실선, 조건부는 점선, 불충족은 가는 점선에 ✕ 표시.
  * 초록은 이익 숫자에만 쓰므로 충족은 먹색이다.
@@ -136,7 +136,7 @@ export function JudgementGraph({ nodes, edges: rawEdges }: { nodes: GraphNode[];
       <svg
         viewBox={`0 0 ${WIDTH} ${height}`}
         role="img"
-        aria-label="흐름, 기준, 업체, 근거 문서 사이의 판단 그래프"
+        aria-label="폐기물, 기준, 업체, 근거 문서 사이의 판단 그래프"
         className="h-auto w-full"
       >
         {COLUMNS.map((type) => (
@@ -344,7 +344,7 @@ export function JudgementGraph({ nodes, edges: rawEdges }: { nodes: GraphNode[];
         </div>
       ) : (
         <p className="mt-2 text-[13px] text-muted">
-          흐름·기준·업체를 누르면 그것과 이어진 판단만 남기고 설명과 근거 문서를 보여 줍니다. 기준을 거친 흐름의
+          폐기물·기준·업체를 누르면 그것과 이어진 판단만 남기고 설명과 근거 문서를 보여 줍니다. 기준을 거친 폐기물의
           &ldquo;허가 품목 일치&rdquo;는 선으로 그리지 않고 그 목록에 적습니다. 선이나 근거 문서를 누르면 근거가 열립니다.
         </p>
       )}

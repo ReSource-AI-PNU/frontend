@@ -45,7 +45,7 @@ export function EventDetail({ event, streamName }: { event: RunEvent; streamName
         </span>
       ))}
       {excluded.length > 0 ? (
-        <span className="block text-ink-2">뺀 흐름: {excluded.map(streamName).join(", ")}</span>
+        <span className="block text-ink-2">뺀 폐기물: {excluded.map(streamName).join(", ")}</span>
       ) : null}
       {typeof reopened === "number" ? (
         <span className="block text-ink-2">

@@ -159,7 +159,7 @@ export function StreamTable({
   const { openEvidence } = useV3();
   const [editing, setEditing] = useState<string | null>(null);
   if (streams.length === 0) {
-    return <p className="p-5 text-sm text-muted">이 관점에서 볼 수 있는 흐름이 없습니다.</p>;
+    return <p className="p-5 text-sm text-muted">이 관점에서 볼 수 있는 폐기물이 없습니다.</p>;
   }
   const showCurrent = streams.some((stream) => stream.currentTreatment);
   return (
@@ -167,7 +167,7 @@ export function StreamTable({
       <table className="w-full min-w-[760px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-line-strong text-left text-label text-muted">
-            <th className="py-2 pr-3 font-semibold">흐름</th>
+            <th className="py-2 pr-3 font-semibold">폐기물</th>
             <th className="py-2 pr-3 text-right font-semibold">월 발생량</th>
             <th className="py-2 pr-3 text-right font-semibold">오염도</th>
             <th className="py-2 pr-3 text-right font-semibold">수분</th>

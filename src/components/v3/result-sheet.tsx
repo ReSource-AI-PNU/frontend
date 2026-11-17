@@ -37,7 +37,7 @@ function CheckLine({ check, named = true }: { check: Check; named?: boolean }) {
     <li className="grid grid-cols-[3.75rem_1fr] gap-x-2">
       <span className={`font-semibold whitespace-nowrap ${CHECK_TONE[check.status]}`}>{CHECK_LABEL[check.status]}</span>
       <span className="min-w-0">
-        {named ? <span className="text-muted">{CHECK_KEY_LABEL[check.key] ?? check.key} </span> : null}
+        {named ? <span className="text-muted">{CHECK_KEY_LABEL[check.key] ?? "확인 항목"} </span> : null}
         <ClaimText text={check.text} claims={claims} />
         {extra.length > 0 ? (
           <span className="text-ink-2">
@@ -261,7 +261,7 @@ export function ResultSheet({
   if (!result) {
     return (
       <p className="p-5 text-sm text-muted">
-        아직 결과가 없습니다. AI 대화가 끝나면 흐름별 배정과 월 손익이 여기에 나옵니다.
+        아직 결과가 없습니다. AI 대화가 끝나면 폐기물별 배정과 월 손익이 여기에 나옵니다.
       </p>
     );
   }
@@ -271,7 +271,7 @@ export function ResultSheet({
     <div className="space-y-5 p-5">
       {full ? null : (
         <p className="text-sm text-muted">
-          이 업체에 배정된 흐름과 조건만 보입니다. 배출 기업의 현행 처리와 현행 대비 손익, 다른 업체의 조건은
+          이 업체에 배정된 폐기물과 조건만 보입니다. 배출 기업의 현행 처리와 현행 대비 손익, 다른 업체의 조건은
           업체에게 보이지 않습니다.
         </p>
       )}
@@ -319,7 +319,7 @@ export function ResultSheet({
         <table className="w-full min-w-[860px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-line-strong text-left text-label text-muted">
-              <th className="py-2 pr-3 font-semibold">흐름</th>
+              <th className="py-2 pr-3 font-semibold">폐기물</th>
               <th className="py-2 pr-3 font-semibold">배정 업체 · 경로</th>
               <th className="py-2 pr-3 text-right font-semibold">단가</th>
               {full ? (

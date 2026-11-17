@@ -193,7 +193,7 @@ function Row({
                   {todo.map((check, index) => (
                     <li key={`${check.key}-${index}`}>
                       <p className="font-medium">
-                        {CHECK_KEY_LABEL[check.key] ?? check.key}
+                        {CHECK_KEY_LABEL[check.key] ?? "확인 항목"}
                         {check.status !== "conditional" ? (
                           <span className="ml-2 text-[12px] font-normal text-warn">{CHECK_WORD[check.status]}</span>
                         ) : null}
@@ -204,7 +204,7 @@ function Row({
                           <button
                             type="button"
                             className="text-[13px] text-muted underline underline-offset-4 hover:text-ink"
-                            onClick={() => openEvidence(check.evidence, CHECK_KEY_LABEL[check.key] ?? check.key)}
+                            onClick={() => openEvidence(check.evidence, CHECK_KEY_LABEL[check.key] ?? "확인 항목")}
                           >
                             근거
                           </button>
@@ -223,7 +223,7 @@ function Row({
                       .filter((item) => item.status === "met")
                       .map((check, index) => (
                         <li key={`${check.key}-${index}`}>
-                          <span className="font-medium text-ink">{CHECK_KEY_LABEL[check.key] ?? check.key}</span>{" "}
+                          <span className="font-medium text-ink">{CHECK_KEY_LABEL[check.key] ?? "확인 항목"}</span>{" "}
                           <ClaimText text={check.text} claims={check.claims ?? []} />
                         </li>
                       ))}

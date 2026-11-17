@@ -451,7 +451,7 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
           <table className="mt-2 w-full text-[13px]">
             <thead>
               <tr className="border-b border-line-strong text-left text-muted">
-                <th className="py-1 pr-3">흐름 · 업체 · 기준</th>
+                <th className="py-1 pr-3">폐기물 · 업체 · 기준</th>
                 <th className="py-1 pr-3">검수일</th>
                 <th className="py-1 pr-3 text-right">기준표 단가</th>
                 <th className="py-1 pr-3 text-right">실제 단가</th>
