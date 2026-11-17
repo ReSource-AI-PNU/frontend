@@ -1,8 +1,11 @@
 /**
- * 계약 8장 API 클라이언트. 요청하는 조직은 X-Org-Id 헤더로 밝힌다.
- * NEXT_PUBLIC_API_BASE가 /api/v3(프런트 서버의 통로, src/app/api/v3)면 로그인한 사용자만 부를 수 있고
- * 조직 토큰은 서버가 붙인다. 백엔드 주소를 직접 적으면 X-Org-Id만 가는 시연용 연결이다.
+ * 계약 8장 API 클라이언트.
+ * 운영에서는 NEXT_PUBLIC_API_BASE=/api/v3(프런트 서버의 통로, src/app/api/v3)이고, 회사는 세션의 활성 회사로 서버가 정한다.
+ * 체험하기(/demo 아래 화면)는 /api/v3-demo 통로를 부르고 GET만 지나간다.
+ * 백엔드 주소를 직접 적으면(로컬 개발) X-Org-Id 머리글로 회사를 밝힌다.
+ * 오류 문구는 사용자 말로 바꿔 던지고(src/lib/v3/errors.ts), 원인은 ApiError.code에 남긴다.
  */
+import { UNAVAILABLE, userMessage } from "./errors";
 import type {
   AdminStatus,
   CorrectionInput,
@@ -30,7 +33,20 @@ export const API_BASE = (
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api/v3"
 ).replace(/\/$/, "");
 
-/** 서버가 오류 응답을 돌려준 경우 */
+/** 프런트 서버의 통로를 거치는지(상대 주소). 아니면 브라우저가 백엔드를 바로 부르는 로컬 개발이다. */
+const VIA_PROXY = API_BASE.startsWith("/");
+
+/** 체험하기 화면(/demo 아래)인지. 주소로만 정하므로 화면과 통로가 어긋나지 않는다. */
+export function inDemo(): boolean {
+  return typeof window !== "undefined" && /^\/demo(\/|$)/.test(window.location.pathname);
+}
+
+/** 지금 화면이 부를 주소. 체험하기는 읽기 전용 통로(/api/v3-demo)를 쓴다. */
+export function apiBase(): string {
+  return inDemo() && VIA_PROXY ? "/api/v3-demo" : API_BASE;
+}
+
+/** 서버가 오류 응답을 돌려준 경우. message는 화면에 그대로 보여도 되는 문장이다. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -41,30 +57,32 @@ export class ApiError extends Error {
   }
 }
 
-/** 서버에 닿지 못한 경우(꺼져 있음, 주소 틀림, CORS) */
+/** 서버에 닿지 못한 경우(꺼져 있음, 주소 틀림, 네트워크) */
 export class ApiUnreachable extends Error {}
 
 async function request<T>(path: string, orgId: string | null, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (orgId) headers.set("X-Org-Id", orgId);
+  // 통로를 거치면 서버가 세션으로 회사를 정한다. 바로 부를 때만 머리글로 밝힌다
+  if (orgId && !VIA_PROXY) headers.set("X-Org-Id", orgId);
+  if (inDemo()) headers.set("X-Demo-View", "1");
   if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store" });
+    response = await fetch(`${apiBase()}${path}`, { ...init, headers, cache: "no-store" });
   } catch {
-    throw new ApiUnreachable(`${API_BASE}에 연결하지 못했습니다.`);
+    throw new ApiUnreachable(UNAVAILABLE);
   }
   if (!response.ok) {
     let code = String(response.status);
-    let message = `요청이 실패했습니다 (${response.status}).`;
+    let serverMessage: string | null = null;
     try {
       const body = (await response.json()) as { error?: { code?: string; message?: string } };
       if (body.error?.code) code = body.error.code;
-      if (body.error?.message) message = body.error.message;
+      if (body.error?.message) serverMessage = body.error.message;
     } catch {
-      // 본문이 JSON이 아니면 기본 문구를 쓴다
+      // 본문이 JSON이 아니면 상태 코드로만 문구를 고른다
     }
-    throw new ApiError(response.status, code, message);
+    throw new ApiError(response.status, code, userMessage(response.status, code, serverMessage));
   }
   const type = response.headers.get("content-type") ?? "";
   return (type.includes("json") ? await response.json() : await response.text()) as T;
@@ -74,7 +92,7 @@ const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.strin
 const enc = encodeURIComponent;
 
 export const api = {
-  /** 서버가 살아 있는지. 화면은 이것으로 "백엔드 연결"과 "예시 데이터"를 가른다. */
+  /** 서버가 살아 있는지 */
   health: () => request<{ ok: boolean }>("/health", null),
   listOrgs: () => request<Org[]>("/orgs", null),
   resetDemo: (orgId: string) => request<unknown>("/demo/reset", orgId, { method: "POST" }),
@@ -116,7 +134,7 @@ export const api = {
   searchEvidence: (orgId: string, q: string, kind?: string) =>
     request<EvidenceHit[]>(`/evidence?q=${enc(q)}${kind ? `&kind=${enc(kind)}` : ""}`, orgId),
 
-  csvTemplateUrl: () => `${API_BASE}/intake/csv/template`,
+  csvTemplateUrl: () => `${apiBase()}/intake/csv/template`,
   /** multipart(file, orgId). 흐름 이름이 같은 흐름에 측정값이 붙는다. */
   uploadCsv: (orgId: string, file: File) => {
     const form = new FormData();
