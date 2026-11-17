@@ -51,8 +51,11 @@ export default defineConfig({
           // CI에서는 배포 이미지와 같은 방식(standalone의 server.js)으로 띄운다. 빌드와 정적 파일 복사는 CI 단계가 한다.
           command: process.env.CI ? "node .next/standalone/server.js" : "npm run dev",
           url: `${baseURL}/login`,
+          // 브라우저는 프런트의 통로(/api/v3)를 부르고, 통로가 세션의 회사로 백엔드(header 모드)를 부른다
           env: {
-            NEXT_PUBLIC_API_BASE: "http://localhost:8000/api/v3",
+            NEXT_PUBLIC_API_BASE: "/api/v3",
+            V3_BACKEND_URL: process.env.E2E_API ?? "http://localhost:8000/api/v3",
+            V3_AUTH: "header",
             AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-check-only-not-a-real-secret-0123456789",
             AUTH_TRUST_HOST: "true",
             AUTH_DEV_LOGIN: "true",

@@ -45,7 +45,7 @@ jobs:
       - name: 단위 테스트
         run: |
           npm run test:c-questions
-          node --test tests/v3-view.test.ts
+          node --test tests/v3-view.test.ts tests/backend-plan.test.ts tests/auth-account.test.ts tests/v3-errors.test.ts
 
       - name: build
         run: npm run build
@@ -60,7 +60,10 @@ jobs:
       AUTH_TRUST_HOST: "true"
       AUTH_DEV_LOGIN: "true"
       AUTH_URL: http://localhost:3000
-      NEXT_PUBLIC_API_BASE: http://localhost:8000/api/v3
+      # 브라우저는 프런트의 통로를 부르고, 통로가 백엔드 로컬 서버(header 모드)를 부른다
+      NEXT_PUBLIC_API_BASE: /api/v3
+      V3_BACKEND_URL: http://localhost:8000/api/v3
+      V3_AUTH: header
       BACKEND_DIR: ${{ github.workspace }}/backend
     steps:
       - uses: actions/checkout@v7
