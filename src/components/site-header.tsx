@@ -1,34 +1,13 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { BrandLink, BrandMark } from "./brand";
-import { NavLinks, NavList } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 import { ButtonLink } from "./ui/button";
-import { UserMenu } from "./user-menu";
 
 function HeaderFrame({ children }: { children: React.ReactNode }) {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur">
       <div className="flex h-15 items-center gap-4 px-4 sm:gap-8 sm:px-6 lg:px-8">{children}</div>
     </header>
-  );
-}
-
-/** 로그인 후 앱 화면 */
-export function AppHeader() {
-  return (
-    <HeaderFrame>
-      <BrandLink href="/app" />
-      <nav aria-label="주 메뉴" className="mr-auto overflow-x-auto">
-        <Suspense fallback={<NavList pathname={null} />}>
-          <NavLinks />
-        </Suspense>
-      </nav>
-      <ThemeToggle />
-      <Suspense fallback={<span className="size-9 rounded-full bg-sunken" aria-hidden="true" />}>
-        <UserMenu />
-      </Suspense>
-    </HeaderFrame>
   );
 }
 

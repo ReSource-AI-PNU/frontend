@@ -11,7 +11,7 @@ const TABS = [
 
 export function SettingsNavList({ pathname }: { pathname: string | null }) {
   return (
-    <ul className="flex gap-1 overflow-x-auto border-b border-line lg:flex-col lg:gap-0.5 lg:overflow-visible lg:border-b-0">
+    <ul className="flex gap-1 overflow-x-auto border-b border-line">
       {TABS.map((tab) => {
         const active = pathname === tab.href;
         return (
@@ -19,7 +19,7 @@ export function SettingsNavList({ pathname }: { pathname: string | null }) {
             <Link
               href={tab.href}
               aria-current={active ? "page" : undefined}
-              className="relative flex min-h-11 items-center px-3 text-sm whitespace-nowrap text-muted transition-colors hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink max-lg:aria-[current=page]:after:absolute max-lg:aria-[current=page]:after:inset-x-3 max-lg:aria-[current=page]:after:-bottom-px max-lg:aria-[current=page]:after:h-0.5 max-lg:aria-[current=page]:after:bg-ink max-lg:aria-[current=page]:after:content-[''] lg:rounded-md lg:hover:bg-sunken lg:aria-[current=page]:bg-surface lg:aria-[current=page]:shadow-[inset_3px_0_0_var(--color-ink)]"
+              className="relative flex min-h-11 items-center px-3 text-sm whitespace-nowrap text-ink-2 transition-colors hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink aria-[current=page]:after:absolute aria-[current=page]:after:inset-x-3 aria-[current=page]:after:-bottom-px aria-[current=page]:after:h-0.5 aria-[current=page]:after:bg-ink aria-[current=page]:after:content-['']"
             >
               {tab.label}
             </Link>

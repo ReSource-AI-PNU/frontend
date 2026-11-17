@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
     return [
       { source: "/v3", destination: "/app", permanent: false },
       { source: "/v3/:path*", destination: "/app/:path*", permanent: false },
+      // 옛 화면(업로드, 세션, 대시보드, 업체함 등)은 없앴다. 예전 주소는 찾기 화면으로 보낸다.
+      ...["upload", "session", "dashboard", "vendor", "complex", "knowledge", "neighbor", "c", "admin"].flatMap((old) => [
+        { source: `/${old}`, destination: "/app", permanent: false },
+        { source: `/${old}/:path*`, destination: "/app", permanent: false },
+      ]),
     ];
   },
   experimental: {
