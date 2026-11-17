@@ -55,7 +55,7 @@ export type TrustPending = { title: string; why: string };
 export type TrustView = {
   date: string;
   stale: boolean;
-  /** "AI 판 2026-11-18" 또는 "모델 연결 전 기본 규칙 · 2026-11-18" */
+  /** "AI 판 2026-11-18" 또는 "모델 연결 전 기본 규칙" */
   aiVersion: string;
   isModel: boolean;
   /** "시험셋 test-v1" */
@@ -371,7 +371,8 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
   return {
     date,
     stale: isStale(date, num(run.staleAfterDays) ?? 30, today),
-    aiVersion: isModel ? `AI 판 ${when}` : `모델 연결 전 기본 규칙 · ${when}`,
+    // 모델을 연결하지 않은 판은 평가일과 같은 날짜를 되풀이하지 않는다
+    aiVersion: isModel ? `AI 판 ${when}` : when === date ? "모델 연결 전 기본 규칙" : `모델 연결 전 기본 규칙 · ${when}`,
     isModel,
     split,
     repeats: num(run.repeats),

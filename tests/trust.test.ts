@@ -20,7 +20,7 @@ test("primary 실행(시험셋)을 고르고 머리에 평가일·판·규모를
   assert.equal(view.stale, false);
   assert.equal(view.isModel, false);
   // 모델을 연결하지 않은 실행은 AI 판처럼 보이지 않고, 개발자 말(규칙 정책)을 쓰지 않는다
-  assert.equal(view.aiVersion, "모델 연결 전 기본 규칙 · 2026-11-18");
+  assert.equal(view.aiVersion, "모델 연결 전 기본 규칙");
   assert.ok(view.pending.some((item) => item.title === "실제 AI 모델로 돌린 결과"));
 });
 

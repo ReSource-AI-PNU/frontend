@@ -540,8 +540,18 @@ export function presentThreads(viewThreads: ViewThreadLike[], live: LiveState | 
 
 type StageLike = { stage: number; key: string; label: string; status: "waiting" | "running" | "done" | "needs_check" };
 
-/** 단계 목록: 스트림으로 받은 단계 상태가 있으면 그것을, 없으면 baseline(실행 전) 또는 뷰의 것을 쓴다. 이름은 뷰의 것 */
+/**
+ * 단계 목록: 스트림으로 받은 단계 상태가 있으면 그것을, 없으면 baseline(실행 전) 또는 뷰의 것을 쓴다. 이름은 뷰의 것.
+ * 실행 중에 도는 단계가 없다고 오면(백엔드는 단계를 마칠 때 상태를 고친다) 마지막 활동의 단계를 도는 중으로 보인다.
+ */
 export function presentStages<T extends StageLike>(viewStages: T[], live: LiveState | null, baseline: T[] | null): T[] {
+  const shown = stagesFrom(viewStages, live, baseline);
+  const current = live && !live.done ? live.stage : null;
+  if (current === null || shown.some((item) => item.status === "running")) return shown;
+  return shown.map((item) => (item.stage === current && item.status === "waiting" ? { ...item, status: "running" as T["status"] } : item));
+}
+
+function stagesFrom<T extends StageLike>(viewStages: T[], live: LiveState | null, baseline: T[] | null): T[] {
   const from = live?.stages;
   const base = baseline && baseline.length > 0 ? baseline : viewStages;
   if (!from) return base;

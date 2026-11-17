@@ -382,12 +382,13 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const live = stream.state;
   const holding = stream.holding;
   const replaying = stream.active && stream.target?.mode === "replay";
-  // 이 화면이 실행을 시작하면(또는 다시 보기를 누르면) 대화 패널을 연다. 렌더 중에 앞 렌더의 값과 견주어 고친다
-  const startedHere = stream.target && stream.target.mode !== "attach" ? stream.target.id : null;
-  const [talkOpen, setTalkOpen] = useState(() => Boolean(startedHere && stream.active));
-  const [openedFor, setOpenedFor] = useState<number | null>(startedHere);
-  if (startedHere !== null && startedHere !== openedFor && stream.active) {
-    setOpenedFor(startedHere);
+  // 이 화면이 시작한 실행(또는 다시 보기)에서 두 AI의 대화가 처음 열리면 대화 패널을 연다(식별·질문만 하는 실행은 열지 않는다).
+  // 렌더 중에 앞 렌더의 값과 견주어 고친다
+  const talking = stream.active && stream.target?.mode !== "attach" && (live?.order.length ?? 0) > 0 ? stream.target!.id : null;
+  const [talkOpen, setTalkOpen] = useState(() => talking !== null);
+  const [openedFor, setOpenedFor] = useState<number | null>(talking);
+  if (talking !== null && talking !== openedFor) {
+    setOpenedFor(talking);
     setTalkOpen(true);
   }
   const [threadId, setThreadId] = useState<string | null>(null);

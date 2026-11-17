@@ -424,4 +424,8 @@ test("실행 중 보여 주기: 실행 전 메시지만 두고 스트림으로 �
   const running = reduceLive(initialLive(), { type: "status", seq: 1, status: "running", phase: null, stages: [{ stage: 1, key: null, label: null, status: "done" }, { stage: 2, key: null, label: null, status: "running" }] });
   const shown = presentStages(viewStages, running, null);
   assert.deepEqual(shown.map((item) => [item.label, item.status]), [["이름1", "done"], ["이름2", "running"]]);
+  // 도는 단계가 없다고 와도 마지막 활동의 단계를 도는 중으로 보인다
+  let quiet = reduceLive(initialLive(), { type: "status", seq: 1, status: "running", phase: null, stages: [{ stage: 1, key: null, label: null, status: "waiting" }, { stage: 2, key: null, label: null, status: "waiting" }] });
+  quiet = reduceLive(quiet, toLiveEvent({ event: "activity", id: "2", retry: null, data: JSON.stringify({ seq: 2, stage: 1, actor: "tool", kind: "tool", text: "판단 도구" }) })!);
+  assert.deepEqual(presentStages(viewStages, quiet, null).map((item) => item.status), ["running", "waiting"]);
 });
