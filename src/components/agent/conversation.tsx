@@ -12,7 +12,8 @@ import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
 import { THREAD_LABEL } from "@/lib/v3/format";
-import { presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
+import { AI_NAME } from "@/lib/v3/labels";
+import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
 import type { DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
 import { AgentTalk } from "./agent-talk";
 import { Dots } from "./dots";
@@ -413,7 +414,12 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const followId = live
     ? (Object.values(live.threads).sort((a, b) => b.touched - a.touched)[0]?.id ?? null)
     : null;
-  const liveLine = stream.active ? (live?.feed[live.feed.length - 1]?.text ?? null) : null;
+  const lastFeed = stream.active ? (live?.feed[live.feed.length - 1] ?? null) : null;
+  const liveLine = lastFeed ? feedText(lastFeed) || null : null;
+  // 맨 위 한 줄과 대화 단추는 지금 단계와 마지막 활동으로 정한다(식별·분류 중에는 업체에 묻는다고 쓰지 않는다)
+  const runningStage = stages.find((item) => item.status === "running")?.stage ?? (stream.active ? (live?.stage ?? null) : null);
+  const talkingNow = stream.active && isTalking(live);
+  const title = liveTitle({ stage: runningStage, live: stream.active ? live : null, replaying });
 
   // 질문 묶음은 오는 대로 보인다. 이 화면이 시작한 실행 중에는 이번에 받은 묶음만
   const questions = useMemo(() => {
@@ -480,7 +486,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
         <Progress
           stages={stages}
           running={working}
-          title={replaying ? "지난 찾기를 처음부터 다시 보여 드립니다." : "업체에 조건을 물어보고 있습니다."}
+          title={title}
           line={liveLine}
           action={
             replaying ? (
@@ -495,7 +501,9 @@ export function Conversation({ d }: { d: Diagnosis }) {
 
         {readOnly && d.canReplay && !working ? (
           <div>
-            <p className="text-[15px] text-ink-2">공장 쪽 AI와 업체 쪽 AI가 근거를 확인하며 주고받은 과정을 처음부터 볼 수 있습니다.</p>
+            <p className="text-[15px] text-ink-2">
+              {AI_NAME.company}와 {AI_NAME.vendor}가 근거를 확인하며 주고받은 과정을 처음부터 볼 수 있습니다.
+            </p>
             <Button variant="secondary" className="mt-3" onClick={replay}>
               두 AI의 대화 다시 보기
             </Button>
@@ -635,6 +643,9 @@ export function Conversation({ d }: { d: Diagnosis }) {
         onThreadChange={setThreadId}
         followId={followId}
         working={working}
+        talking={talkingNow}
+        title={title}
+        sessionStatus={holding ? "running" : status}
         liveLine={liveLine}
         freshIds={freshIds}
         replay={{ can: d.canReplay, active: replaying, start: replay, skip: stream.skip }}

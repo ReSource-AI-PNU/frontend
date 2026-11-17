@@ -8,8 +8,11 @@ import test from "node:test";
 import {
   SseParser,
   evidenceOf,
+  feedText,
   initialLive,
   isHistory,
+  isTalking,
+  liveTitle,
   mergeThreads,
   paceMs,
   presentStages,
@@ -18,6 +21,7 @@ import {
   replayFromView,
   retryDelay,
   rewriteText,
+  threadLabel,
   toLiveEvent,
   typingText,
   withinVendorRange,
@@ -428,4 +432,80 @@ test("실행 중 보여 주기: 실행 전 메시지만 두고 스트림으로 �
   let quiet = reduceLive(initialLive(), { type: "status", seq: 1, status: "running", phase: null, stages: [{ stage: 1, key: null, label: null, status: "waiting" }, { stage: 2, key: null, label: null, status: "waiting" }] });
   quiet = reduceLive(quiet, toLiveEvent({ event: "activity", id: "2", retry: null, data: JSON.stringify({ seq: 2, stage: 1, actor: "tool", kind: "tool", text: "판단 도구" }) })!);
   assert.deepEqual(presentStages(viewStages, quiet, null).map((item) => item.status), ["running", "waiting"]);
+});
+
+/* ── 지금 하는 일과 대화 상태(QA: 식별 중에 "업체에 묻는 중", 끝난 뒤에도 "조건을 묻는 중") ── */
+
+function feed(...chunks: string[]): LiveState {
+  const parser = new SseParser();
+  let state = initialLive();
+  for (const raw of parser.push(chunks.join(""))) {
+    const event = toLiveEvent(raw);
+    if (event) state = reduceLive(state, event);
+  }
+  return state;
+}
+
+const tool = (seq: number, stage: number, text: string) =>
+  sse("activity", { seq, stage, actor: "tool", kind: "tool", text, tool: "identify_stream" }, seq);
+
+test("맨 위 한 줄: 식별·분류 중에는 업체에 묻는다고 쓰지 않고, 대화가 열리면 그때 쓴다", () => {
+  const identifying = feed(tool(1, 1, "판단 도구 · 폐기물 식별·등급: 확인 필요"));
+  assert.equal(isTalking(identifying), false);
+  assert.equal(liveTitle({ stage: 1, live: identifying }), "폐기물을 살펴보고 있습니다.");
+  assert.equal(feedText(identifying.feed[0]), "폐기물 식별·등급: 확인 필요");
+  assert.equal(feedText({ kind: "tool", text: "판단 도구 · judge_route: 조건부" }), "경로 판단: 조건부");
+
+  const asking = feed(
+    tool(1, 1, "판단 도구 · 폐기물 식별·등급: 확인 필요"),
+    sse("activity", { seq: 2, stage: 1, actor: "system", kind: "question", text: "담당자에게 물을 것이 3개 있습니다." }, 2),
+  );
+  assert.equal(liveTitle({ stage: 1, live: asking }), "담당자 답을 기다리고 있습니다.");
+
+  const talking = feed(tool(1, 3, "판단 도구 · 조항 찾기: 확인됨"), act(2, "drafting"));
+  assert.equal(isTalking(talking), true);
+  assert.equal(liveTitle({ stage: 4, live: talking }), "업체에 조건을 물어보고 있습니다.");
+  // 대화 안의 판단 도구 줄만 오면 대화 중이 아니다
+  const toolInThread = feed(act(1, "tool", { actor: "tool", kind: "tool", author: null }));
+  assert.equal(isTalking(toolInThread), false);
+  assert.equal(liveTitle({ stage: 5, live: toolInThread }), "비용과 탄소를 견주고 있습니다.");
+  assert.equal(liveTitle({ stage: null, live: null, replaying: true }), "지난 찾기를 처음부터 다시 보여 드립니다.");
+  assert.equal(liveTitle({ stage: null, live: initialLive() }), "받아 줄 곳을 찾기 시작했습니다.");
+  // 끝난 스트림은 대화 중이 아니다
+  const ended = reduceLive(talking, { type: "done", status: "awaiting_approval", lastSeq: 2 });
+  assert.equal(isTalking(ended), false);
+});
+
+test("대화 상태: 끝날 때 온 대화별 마지막 상태를 쓰고, 뷰가 정한 상태가 먼저다", () => {
+  const live = feed(
+    act(1, "sent", { message: MESSAGE }),
+    sse("activity", { seq: 2, actor: "system", kind: "status", threadId: "th_1", threadStatus: "agreed", text: "(주)새길자원과 조건이 맞았습니다." }, 2),
+    sse("activity", { seq: 3, actor: "system", kind: "status", threadId: "th_2", vendorName: "(주)미소환경", status: "declined", text: "거절" }, 3),
+    sse("activity", { seq: 4, actor: "system", kind: "status", threadId: "th_3", vendorName: "(주)남해열분해", threadStatus: "bogus", text: "?" }, 4),
+  );
+  assert.equal(live.threads.th_1.finalStatus, "agreed");
+  assert.equal(live.threads.th_2.finalStatus, "declined");
+  assert.equal(live.threads.th_3.finalStatus, null, "모르는 상태는 받지 않는다");
+  const view = [
+    { id: "th_1", vendorOrgId: "org_vendor", vendorName: "(주)새길자원", status: "open" as const, statusReason: null, reasonEvidence: [], streamIds: ["st_1"], turns: 1, messages: [] },
+    { id: "th_2", vendorOrgId: "org_miso", vendorName: "(주)미소환경", status: "confirmed" as const, statusReason: null, reasonEvidence: [], streamIds: ["st_1"], turns: 1, messages: [] },
+  ];
+  const merged = mergeThreads(view, live);
+  assert.equal(merged.find((item) => item.id === "th_1")?.status, "agreed", "뷰가 아직 open이면 마지막 상태");
+  assert.equal(merged.find((item) => item.id === "th_2")?.status, "confirmed", "뷰가 정한 상태가 먼저");
+  // 실행 중 가리기(baseline)에서도 마지막 상태가 보인다
+  const shown = presentThreads(view, live, new Set());
+  assert.equal(shown.find((item) => item.id === "th_1")?.status, "agreed");
+});
+
+test("탭 낱말: 실행이 끝났는데 open이면 '조건을 묻는 중'이 아니다", () => {
+  const open = { status: "open" as const, typing: null };
+  assert.equal(threadLabel(open, { working: true, sessionStatus: "running" }), "조건을 묻는 중");
+  assert.equal(threadLabel(open, { working: false, sessionStatus: "awaiting_approval" }), "합의 없이 멈춤");
+  assert.equal(threadLabel(open, { working: false, sessionStatus: "awaiting_answers" }), "담당자 답을 기다리는 중");
+  assert.equal(threadLabel({ status: "agreed", typing: null }, { working: false, sessionStatus: "awaiting_approval" }), "조건이 맞음");
+  assert.equal(
+    threadLabel({ status: "open", typing: { side: "vendor", label: "업체 측 AI", phase: "validating", reason: null } }, { working: true, sessionStatus: "running" }),
+    "근거 확인 중",
+  );
 });

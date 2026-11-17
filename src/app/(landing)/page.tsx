@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandLink } from "@/components/brand";
 import { DemoPreview } from "@/components/landing/demo-preview";
 import { ButtonLink } from "@/components/ui/button";
+import { AI_NAME } from "@/lib/v3/labels";
 import { PHOTOS, type Photo } from "@/lib/photos";
 
 /** 문제 정의 v2 4장의 근거. 출처가 있는 숫자만 싣는다. */
@@ -34,7 +35,7 @@ const STEPS = [
   },
   {
     title: "AI가 업체에 대신 물어봅니다",
-    body: "허가 품목이 맞는 업체를 골라 조건을 묻고, 업체 쪽 AI가 매입 기준에 비춰 답합니다. 모르는 값은 담당자에게 되묻습니다.",
+    body: `허가 품목이 맞는 업체를 골라 조건을 묻고, ${AI_NAME.vendor}가 매입 기준에 비춰 답합니다. 모르는 값은 담당자에게 되묻습니다.`,
   },
   {
     title: "표를 보고 승인합니다",
@@ -74,7 +75,7 @@ const DIFFERENTIATORS: { title: string; body: string; link: { href: string; labe
   },
   {
     title: "공장과 업체를 각각 대변하는 두 AI의 실시간 협상",
-    body: "공장 쪽 AI는 올라온 자료로 묻고, 업체 쪽 AI는 업체가 정한 단가와 조건 범위 안에서만 답합니다. 두 AI가 주고받는 말이 오는 대로 보이고, 확정은 양쪽 담당자가 합니다.",
+    body: `${AI_NAME.company}는 올라온 자료로 묻고, ${AI_NAME.vendor}는 업체가 정한 단가와 조건 범위 안에서만 답합니다. 두 AI가 주고받는 말이 오는 대로 보이고, 확정은 양쪽 담당자가 합니다.`,
     link: { href: "/demo", label: "체험하기에서 두 AI의 대화 보기" },
   },
   {
@@ -188,7 +189,7 @@ export default function LandingPage() {
           <h2 className={`${h2} max-w-[14ch]`}>양이 적고 섞여 있으면, 확인하는 값이 물건값보다 큽니다</h2>
           <p className="max-w-[34rem] text-[17px] leading-relaxed text-ink-2 lg:pt-2">
             처리 업체도 사정은 같습니다. 재질과 오염 정도를 가서 봐야 알 수 있으니, 양이 적으면 묻지도 받지도 않습니다. Re:Source
-            AI는 이 확인을 사람 대신 두 AI가 주고받게 합니다. 공장 쪽 AI는 올라온 자료로 묻고, 업체 쪽 AI는 매입 기준으로 답합니다.
+            AI는 이 확인을 사람 대신 두 AI가 주고받게 합니다. {AI_NAME.company}는 올라온 자료로 묻고, {AI_NAME.vendor}는 매입 기준으로 답합니다.
           </p>
         </div>
       </section>

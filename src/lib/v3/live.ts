@@ -10,7 +10,10 @@
  *   done      실행이 끝났고 기록을 다 보냈다
  *   error     서버가 스트림을 닫았다(code, message)
  * 화면에는 text, reasons(사용자 말로 쓴 거부 분류)만 쓰고 내부 거부 코드(codes, 운영 조직에만 온다)는 쓰지 않는다.
+ * 실행이 끝날 때 대화마다 마지막 상태(threadStatus: agreed·declined·handoff·open…)를 담은 activity가 오면 그 대화의
+ * 상태로 쓴다(뷰를 다시 읽기 전에도 탭이 "조건을 묻는 중"에 머물지 않게).
  */
+import { AI_NAME, plainIds } from "./labels.ts";
 import type { Question, ThreadMessage, ThreadStatus } from "./types";
 
 /* ── SSE 읽기 ─────────────────────────────────────────────────────── */
@@ -115,6 +118,8 @@ export type LiveActivity = {
   /** sent 메시지에서 근거를 확인한 숫자·조항 수 */
   evidenceCount: number | null;
   attempt: number | null;
+  /** 이 대화의 마지막 상태(실행이 끝날 때 대화마다 온다). 없으면 null */
+  threadStatus: ThreadStatus | null;
 };
 export type LiveStage = { stage: number; key: string | null; label: string | null; status: string };
 export type LiveStatus = { type: "status"; seq: number | null; status: string | null; phase: string | null; stages: LiveStage[] | null };
@@ -129,7 +134,14 @@ const str = (value: unknown): string | null => (typeof value === "string" && val
 const num = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) ? value : null);
 
 const SIDE_OF_ACTOR: Record<string, LiveSide> = { company_agent: "company", vendor_agent: "vendor" };
-const AUTHOR_LABEL: Record<LiveSide, string> = { company: "회사 측 AI", vendor: "업체 측 AI" };
+const AUTHOR_LABEL: Record<LiveSide, string> = AI_NAME;
+const THREAD_STATUSES = new Set<string>(["not_opened", "open", "agreed", "declined", "handoff", "confirmed"]);
+
+/** 대화의 마지막 상태. threadStatus를 먼저 보고, 대화에 붙은 status 줄이면 status도 받는다. 모르는 값은 null */
+function threadStatusOf(data: Json, kind: string, threadId: string | null): ThreadStatus | null {
+  const given = str(data.threadStatus) ?? (kind === "status" && threadId ? str(data.status) : null);
+  return given && THREAD_STATUSES.has(given) ? (given as ThreadStatus) : null;
+}
 
 /** 작성자 표시. 백엔드는 {side, kind, label}을 주고, 계약 초안은 글자("회사 측 AI")만 준다. 둘 다 받는다 */
 function authorOf(raw: unknown, actor: string): LiveAuthor | null {
@@ -194,6 +206,7 @@ export function toLiveEvent(raw: RawSse): LiveEvent | null {
   switch (raw.event) {
     case "activity": {
       const actor = str(data.actor) ?? "system";
+      const kind = str(data.kind) ?? "status";
       const reasons = Array.isArray(data.reasons)
         ? data.reasons.filter((item): item is string => typeof item === "string" && item !== "")
         : str(data.reason)
@@ -205,7 +218,7 @@ export function toLiveEvent(raw: RawSse): LiveEvent | null {
         at: str(data.at),
         stage: num(data.stage),
         actor,
-        kind: str(data.kind) ?? "status",
+        kind,
         threadId: str(data.threadId),
         vendorOrgId: str(data.vendorOrgId),
         vendorName: str(data.vendorName),
@@ -215,6 +228,7 @@ export function toLiveEvent(raw: RawSse): LiveEvent | null {
         reasons,
         evidenceCount: num(data.evidenceCount),
         attempt: num(data.attempt),
+        threadStatus: threadStatusOf(data, kind, str(data.threadId)),
       };
     }
     case "status":
@@ -247,6 +261,8 @@ export type LiveThread = {
   /** 이 대화의 마지막 한 줄(예: "업체 측 AI가 제안을 보냈습니다.") */
   lastText: string | null;
   handoff: boolean;
+  /** 실행이 끝날 때 받은 이 대화의 마지막 상태 */
+  finalStatus: ThreadStatus | null;
   /** 마지막으로 바뀐 순서(목록 정렬) */
   touched: number;
 };
@@ -309,6 +325,74 @@ export function typingText(typing: Typing): string {
   return rewriteText(typing.reason);
 }
 
+/* ── 지금 하는 일을 한 줄로 ──────────────────────────────────────── */
+
+/** 대회 6단계마다 화면 위에 적는 지금 하는 일 */
+export const STAGE_TITLE: Record<number, string> = {
+  1: "폐기물을 살펴보고 있습니다.",
+  2: "받아 줄 수 있는 길을 따져 보고 있습니다.",
+  3: "지켜야 할 규정을 확인하고 있습니다.",
+  4: "받을 수 있는 업체를 찾고 있습니다.",
+  5: "비용과 탄소를 견주고 있습니다.",
+  6: "가장 나은 조합을 고르고 있습니다.",
+};
+
+/** 두 AI가 대화하는 중인지: 마지막 활동이 대화에 붙어 있거나 어느 대화에서 AI가 쓰는 중이다 */
+export function isTalking(live: LiveState | null): boolean {
+  if (!live || live.done) return false;
+  if (Object.values(live.threads).some((thread) => thread.typing)) return true;
+  const last = live.feed[live.feed.length - 1];
+  return Boolean(last?.threadId) && last?.kind !== "tool";
+}
+
+/** 담당자 답을 기다리는지: 마지막 활동이 질문이거나 진단 상태가 답변 대기다 */
+export function isWaitingAnswers(live: LiveState | null): boolean {
+  if (!live || live.done) return false;
+  return live.status === "awaiting_answers" || live.feed[live.feed.length - 1]?.kind === "question";
+}
+
+/**
+ * 진행 화면 맨 위 한 줄. 지금 단계와 마지막 활동으로 정한다: 식별·분류 중에는 업체에 묻는다고 쓰지 않는다.
+ * stage는 지금 도는 단계(없으면 null)다.
+ */
+export function liveTitle(input: { stage: number | null; live: LiveState | null; replaying?: boolean }): string {
+  if (input.replaying) return "지난 찾기를 처음부터 다시 보여 드립니다.";
+  if (isWaitingAnswers(input.live)) return "담당자 답을 기다리고 있습니다.";
+  if (isTalking(input.live)) return "업체에 조건을 물어보고 있습니다.";
+  return (input.stage !== null ? STAGE_TITLE[input.stage] : null) ?? "받아 줄 곳을 찾기 시작했습니다.";
+}
+
+/** 진행 기록 한 줄을 화면 말로. 판단 도구 줄의 머리("판단 도구 · ")를 떼고 내부 ID를 이름으로 바꾼다 */
+export function feedText(line: Pick<FeedLine, "kind" | "text">): string {
+  const text = plainIds(line.text, "판단 도구");
+  return line.kind === "tool" ? text.replace(/^판단 도구\s*·\s*/, "") : text;
+}
+
+const TYPING_SHORT = { drafting: "작성 중", validating: "근거 확인 중", rewriting: "다시 쓰는 중" } as const;
+
+const THREAD_WORD: Record<string, string> = {
+  not_opened: "아직 묻지 않음",
+  open: "조건을 묻는 중",
+  agreed: "조건이 맞음",
+  declined: "거절",
+  handoff: "담당자가 이어받음",
+  confirmed: "확정",
+};
+
+/**
+ * 대화 탭과 목록의 상태 낱말. 쓰는 중이면 그 단계, 아니면 대화 상태. 실행이 끝났는데 아직 "open"인 대화는
+ * 묻는 중이 아니므로 담당자 답을 기다리는지(질문 대기) 합의 없이 멈췄는지로 적는다.
+ */
+export function threadLabel(
+  thread: { status: ThreadStatus; typing: Typing | null },
+  context: { working: boolean; sessionStatus: string | null },
+): string {
+  if (thread.typing) return TYPING_SHORT[thread.typing.phase];
+  if (thread.status !== "open") return THREAD_WORD[thread.status] ?? "";
+  if (context.working) return THREAD_WORD.open;
+  return context.sessionStatus === "awaiting_answers" ? "담당자 답을 기다리는 중" : "합의 없이 멈춤";
+}
+
 function sideOf(event: LiveActivity): LiveSide | null {
   return event.author?.side ?? SIDE_OF_ACTOR[event.actor] ?? null;
 }
@@ -331,6 +415,7 @@ function withThread(state: LiveState, event: LiveActivity): { threads: Record<st
         rejections: 0,
         lastText: null,
         handoff: false,
+        finalStatus: null,
         touched: 0,
       };
   const order = before ? state.order : [...state.order, event.threadId];
@@ -375,7 +460,12 @@ export function reduceLive(state: LiveState, event: LiveEvent): LiveState {
   const label = event.author?.label ?? (side ? AUTHOR_LABEL[side] : "AI");
   // 대화 한 줄 요약에는 판단 도구 줄을 쓰지 않는다(두 AI가 한 일만)
   const summary = event.kind !== "tool" && event.text ? event.text : found.thread.lastText;
-  let thread: LiveThread = { ...found.thread, touched: lastSeq, lastText: summary };
+  let thread: LiveThread = {
+    ...found.thread,
+    touched: lastSeq,
+    lastText: summary,
+    finalStatus: event.threadStatus ?? found.thread.finalStatus,
+  };
   switch (event.kind) {
     case "drafting":
       if (side) thread = { ...thread, typing: { side, label, phase: "drafting", reason: null } };
@@ -483,6 +573,14 @@ type ViewThreadLike = {
 };
 
 /**
+ * 대화 상태: 뷰가 정한 상태(합의·거절 등)가 먼저다. 뷰가 아직 "open"이면 스트림이 알려 준 마지막 상태, 담당자 인계 순으로 쓴다.
+ */
+function mergedStatus(view: ThreadStatus, extra: LiveThread | undefined): ThreadStatus {
+  if (view !== "open" || !extra) return view;
+  return extra.finalStatus ?? (extra.handoff ? "handoff" : view);
+}
+
+/**
  * 뷰의 대화와 스트림으로 받은 것을 합친다. 메시지는 ID로 한 번만 넣고 seq 순으로 둔다.
  * 뷰에 아직 없는 대화(실행 중에 막 연 대화)는 스트림의 업체 이름으로 만든다.
  */
@@ -493,7 +591,7 @@ export function mergeThreads(viewThreads: ViewThreadLike[], live: LiveState | nu
     for (const message of extra?.messages ?? []) messages = addMessage(messages, message);
     return {
       ...thread,
-      status: extra?.handoff && thread.status === "open" ? "handoff" : thread.status,
+      status: mergedStatus(thread.status, extra),
       messages,
       typing: extra?.typing ?? null,
       rejections: extra?.rejections ?? 0,
@@ -508,7 +606,7 @@ export function mergeThreads(viewThreads: ViewThreadLike[], live: LiveState | nu
       id,
       vendorOrgId: extra.vendorOrgId ?? "",
       vendorName: extra.vendorName ?? "업체",
-      status: extra.handoff ? "handoff" : "open",
+      status: extra.finalStatus ?? (extra.handoff ? "handoff" : "open"),
       statusReason: null,
       reasonEvidence: [],
       streamIds: [],
@@ -534,7 +632,13 @@ export function presentThreads(viewThreads: ViewThreadLike[], live: LiveState | 
     .map((thread) => {
       const extra = live?.threads[thread.id];
       if (!extra) return thread;
-      return { ...thread, status: extra.handoff ? "handoff" : "open", statusReason: null, reasonEvidence: [], turns: thread.messages.length };
+      return {
+        ...thread,
+        status: extra.finalStatus ?? (extra.handoff ? "handoff" : "open"),
+        statusReason: null,
+        reasonEvidence: [],
+        turns: thread.messages.length,
+      };
     });
 }
 
@@ -671,6 +775,7 @@ export function replayFromView(view: ReplayView): LiveEvent[] {
     const label = message.author?.label ?? AUTHOR_LABEL[side];
     const base = {
       type: "activity" as const,
+      threadStatus: null,
       at: null,
       stage: message.stage,
       threadId: thread.id,

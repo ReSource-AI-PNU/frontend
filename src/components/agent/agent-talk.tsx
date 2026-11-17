@@ -6,15 +6,15 @@ import { ClaimText } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { EventDetail } from "@/components/v3/event-detail";
 import { josa } from "@/lib/josa";
-import { evidenceOf, typingText, withinVendorRange, type TalkThread, type Typing } from "@/lib/v3/live";
-import { MESSAGE_LABEL, THREAD_LABEL, formatDateTime } from "@/lib/v3/format";
-import { eventSummary } from "@/lib/v3/labels";
+import { evidenceOf, threadLabel, typingText, withinVendorRange, type TalkThread, type Typing } from "@/lib/v3/live";
+import { MESSAGE_LABEL, formatDateTime } from "@/lib/v3/format";
+import { AI_NAME, eventSummary } from "@/lib/v3/labels";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
 import { Dots } from "./dots";
 
 const ACTOR_LABEL: Record<string, string> = {
-  company_agent: "회사 측 AI",
-  vendor_agent: "업체 측 AI",
+  company_agent: AI_NAME.company,
+  vendor_agent: AI_NAME.vendor,
   validator: "근거 검증기",
   tool: "판단 도구",
   system: "시스템",
@@ -37,7 +37,7 @@ function Bubble({ message, mine, name, fresh }: { message: ThreadMessage; mine: 
     <li className={`flex ${mine ? "justify-start" : "justify-end"} ${fresh ? "[animation:rs-rise_320ms_var(--ease-out)_both]" : ""}`}>
       <div className="max-w-[92%]">
         <p className={`mb-1 flex flex-wrap items-center gap-x-2 text-[12px] text-muted ${mine ? "" : "justify-end"}`}>
-          <span className="font-medium text-ink-2">{message.author?.label ?? (mine ? "회사 측 AI" : "업체 측 AI")}</span>
+          <span className="font-medium text-ink-2">{message.author?.label ?? (mine ? AI_NAME.company : AI_NAME.vendor)}</span>
           <span>{name}</span>
           <span>{MESSAGE_LABEL[message.type] ?? message.type}</span>
         </p>
@@ -91,27 +91,27 @@ function TypingBubble({ typing, left }: { typing: Typing; left: boolean }) {
   );
 }
 
+/** 두 AI의 이름. 백엔드 작성자 표시(author.label, vendorAuthor.label)가 있으면 그 낱말을 쓴다 */
+function sideNames(thread: TalkThread, vendorAuthor?: { label: string } | null): { company: string; vendor: string } {
+  const agent = (side: "company" | "vendor") =>
+    thread.messages.find((message) => message.author?.side === side && message.author.kind === "agent")?.author?.label;
+  return { company: agent("company") ?? AI_NAME.company, vendor: agent("vendor") ?? vendorAuthor?.label ?? AI_NAME.vendor };
+}
+
 /** 대화마다 두 AI가 누구를 대변하는지 */
-function Sides({ emitterName, vendorName }: { emitterName: string; vendorName: string }) {
+function Sides({ emitterName, vendorName, names }: { emitterName: string; vendorName: string; names: { company: string; vendor: string } }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-3 border-y border-line py-2.5 text-[12px] leading-snug">
       <p>
-        <span className="block font-medium text-ink">회사 측 AI</span>
+        <span className="block font-medium text-ink">{names.company}</span>
         <span className="block text-muted">{josa(emitterName, "을/를")} 대변합니다</span>
       </p>
       <p className="text-right">
-        <span className="block font-medium text-ink">업체 측 AI</span>
+        <span className="block font-medium text-ink">{names.vendor}</span>
         <span className="block text-muted">{josa(vendorName, "을/를")} 대변합니다</span>
       </p>
     </div>
   );
-}
-
-const TYPING_SHORT = { drafting: "작성 중", validating: "근거 확인 중", rewriting: "다시 쓰는 중" } as const;
-
-function tabStatus(thread: TalkThread): string {
-  if (thread.typing) return TYPING_SHORT[thread.typing.phase];
-  return THREAD_LABEL[thread.status] ?? "";
 }
 
 /**
@@ -129,6 +129,9 @@ export function AgentTalk({
   onThreadChange,
   followId,
   working,
+  talking,
+  title,
+  sessionStatus,
   liveLine,
   freshIds,
   replay,
@@ -145,6 +148,12 @@ export function AgentTalk({
   followId: string | null;
   /** AI가 일하는 중(실행 또는 다시 보기) */
   working: boolean;
+  /** 지금 두 AI가 대화하는 중(마지막 활동이 대화에 붙어 있음) */
+  talking: boolean;
+  /** 진행 화면 맨 위 한 줄(지금 단계에 맞춘 말). 진행 기록이 아직 없을 때 패널에도 쓴다 */
+  title: string;
+  /** 진단 상태. 실행이 끝났는데 열려 있는 대화를 무엇으로 적을지 정한다 */
+  sessionStatus: string | null;
   /** 지금 일어나는 일 한 줄 */
   liveLine: string | null;
   /** 스트림으로 막 받은 메시지(들어올 때 살짝 떠오른다) */
@@ -178,21 +187,26 @@ export function AgentTalk({
   }, [open, working, thread?.id, thread?.messages.length, typingKey]);
 
   if (total === 0 && !open && !working) return null;
+  // 대화가 아직 하나도 열리지 않았으면 단추를 두지 않는다(식별·분류 중에는 볼 대화가 없다)
+  const showButton = opened.length > 0 || !working;
+  const tabLabel = (item: TalkThread) => threadLabel(item, { working, sessionStatus });
 
   return (
     <>
-      <div className="pointer-events-none sticky bottom-0 z-10 flex justify-center bg-gradient-to-t from-bg from-40% to-transparent px-5 pt-8 pb-5">
-        <button
-          type="button"
-          onClick={() => onOpenChange(true)}
-          aria-expanded={open}
-          className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-full border border-line-strong bg-surface pr-4 pl-3.5 text-sm font-medium shadow-[0_6px_20px_-10px_rgb(0_0_0/0.3)] transition-colors hover:border-ink"
-        >
-          <TalkIcon className="text-muted" />
-          {working ? "AI끼리 대화하는 중" : "AI끼리 나눈 대화 보기"}
-          {working ? <Dots label="대화하는 중" /> : total > 0 ? <span className="text-muted tabular-nums">{total}</span> : null}
-        </button>
-      </div>
+      {showButton ? (
+        <div className="pointer-events-none sticky bottom-0 z-10 flex justify-center bg-gradient-to-t from-bg from-40% to-transparent px-5 pt-8 pb-5">
+          <button
+            type="button"
+            onClick={() => onOpenChange(true)}
+            aria-expanded={open}
+            className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-full border border-line-strong bg-surface pr-4 pl-3.5 text-sm font-medium shadow-[0_6px_20px_-10px_rgb(0_0_0/0.3)] transition-colors hover:border-ink"
+          >
+            <TalkIcon className="text-muted" />
+            {talking ? "AI끼리 대화하는 중" : "AI끼리 나눈 대화 보기"}
+            {talking ? <Dots label="대화하는 중" /> : total > 0 ? <span className="text-muted tabular-nums">{total}</span> : null}
+          </button>
+        </div>
+      ) : null}
 
       {open ? (
         <div className="fixed inset-0 z-30">
@@ -226,7 +240,7 @@ export function AgentTalk({
                   <>
                     <Dots label="진행 중" />
                     <span className="min-w-0 flex-1 truncate text-ink-2" aria-live="polite">
-                      {liveLine ?? (replay.active ? "지난 대화를 다시 보여 드립니다." : "업체에 조건을 물어보고 있습니다.")}
+                      {liveLine ?? (replay.active ? "지난 대화를 다시 보여 드립니다." : title)}
                     </span>
                     {replay.active ? (
                       <button type="button" onClick={replay.skip} className="min-h-9 shrink-0 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
@@ -256,7 +270,7 @@ export function AgentTalk({
                       className={`-mb-px flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 text-sm whitespace-nowrap ${active ? "border-ink font-medium text-ink" : "border-transparent text-muted hover:text-ink"}`}
                     >
                       {item.vendorName}
-                      <span className="text-[12px] font-normal text-muted">{tabStatus(item)}</span>
+                      <span className="text-[12px] font-normal text-muted">{tabLabel(item)}</span>
                     </button>
                   );
                 })}
@@ -270,7 +284,11 @@ export function AgentTalk({
                     <p className="text-[13px] text-muted">
                       {thread.streamIds.map(streamName).join(", ") || "다룬 폐기물"} · {thread.messages.length}번 주고받음
                     </p>
-                    <Sides emitterName={emitterName} vendorName={thread.vendorName} />
+                    <Sides
+                      emitterName={emitterName}
+                      vendorName={thread.vendorName}
+                      names={sideNames(thread, view.threads.find((item) => item.id === thread.id)?.vendorAuthor)}
+                    />
                     {thread.statusReason ? <StatusReason thread={thread} /> : null}
                     <ol className="mt-5 space-y-5">
                       {thread.messages.map((message) => {
@@ -292,7 +310,7 @@ export function AgentTalk({
                 ) : working ? (
                   <p className="flex items-center gap-2.5 text-sm text-ink-2">
                     <Dots label="준비 중" />
-                    받을 수 있는 업체를 고르고 있습니다. 대화가 열리면 여기에 나타납니다.
+                    {title} 업체와 대화가 열리면 여기에 나타납니다.
                   </p>
                 ) : (
                   <p className="text-sm text-muted">아직 주고받은 메시지가 없습니다.</p>

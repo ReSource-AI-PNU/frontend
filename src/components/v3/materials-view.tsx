@@ -6,6 +6,7 @@ import { ChevronDownIcon } from "@/components/icons";
 import { Button, buttonClass } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/v3/api";
 import { formatNumber, priceSide } from "@/lib/v3/format";
+import { AI_NAME } from "@/lib/v3/labels";
 import type {
   CsvUploadResult,
   DocumentKind,
@@ -1047,7 +1048,7 @@ function VendorForm({
 
       <section className="py-8">
         <h2 className={sectionTitle}>AI가 지킬 범위</h2>
-        <p className="mt-1 text-sm text-muted">업체 쪽 AI는 여기서 정한 범위 밖의 조건을 내놓지 않습니다. 확정은 담당자가 합니다.</p>
+        <p className="mt-1 text-sm text-muted">{AI_NAME.vendor}는 여기서 정한 범위 밖의 조건을 내놓지 않습니다. 확정은 담당자가 합니다.</p>
         <div className="mt-4 grid gap-x-4 gap-y-4 sm:grid-cols-2">
           <label className={fieldLabel}>
             가장 낮게 부를 단가 (kg당 원, 처리비는 −)
