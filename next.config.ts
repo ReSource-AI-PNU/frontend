@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   // 업로드(사진 여러 장 + 30초 영상)를 서버 액션으로 받는다. 운영에서는 Azure Blob SAS 직접 업로드로 바꾼다.
+  // 화면 주소를 /v3에서 /app으로 옮겼다. 예전 주소로 들어와도 같은 화면으로 보낸다.
+  async redirects() {
+    return [
+      { source: "/v3", destination: "/app", permanent: false },
+      { source: "/v3/:path*", destination: "/app/:path*", permanent: false },
+    ];
+  },
   experimental: {
     serverActions: { bodySizeLimit: "60mb" },
     proxyClientMaxBodySize: "60mb",

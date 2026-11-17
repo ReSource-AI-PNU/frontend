@@ -5,11 +5,11 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "md" | "sm";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md border font-semibold tracking-[-0.01em] transition-colors duration-150 ease-out active:translate-y-px disabled:cursor-not-allowed disabled:border-transparent disabled:bg-sunken disabled:text-muted [&_svg]:size-4 [&_svg]:shrink-0";
+  "inline-flex items-center justify-center gap-2 rounded-lg border font-semibold tracking-[-0.01em] transition-colors duration-150 ease-out active:translate-y-px disabled:cursor-not-allowed disabled:border-transparent disabled:bg-sunken disabled:text-muted [&_svg]:size-4 [&_svg]:shrink-0";
 
 const variants: Record<Variant, string> = {
-  // 한 화면에 primary는 하나만 둔다 (DESIGN.md 색 규칙 4)
-  primary: "border-transparent bg-ink text-on-ink hover:bg-ink-2",
+  // 한 화면에 primary는 하나만 둔다
+  primary: "border-transparent bg-brand text-on-brand hover:bg-brand-strong",
   secondary: "border-line-strong bg-surface text-ink hover:border-ink",
   ghost: "border-transparent bg-transparent text-ink hover:bg-sunken",
 };

@@ -70,7 +70,7 @@ export function ClaimValue({
   );
   if (claim.evidence.length === 0) {
     return (
-      <span className={`font-mono tabular-nums ${className}`}>
+      <span className={`tabular-nums ${className}`}>
         {body} <NeedsCheck />
       </span>
     );
@@ -80,7 +80,7 @@ export function ClaimValue({
       type="button"
       onClick={() => openEvidence(claim.evidence, title ?? claim.label)}
       title={claim.label ? `${claim.label} · 근거 보기` : "근거 보기"}
-      className={`inline cursor-pointer rounded-sm font-semibold underline decoration-line-strong decoration-dotted underline-offset-4 hover:bg-sunken hover:decoration-ink ${claim.kind === "number" ? "font-mono tabular-nums" : ""} ${tone} ${className}`}
+      className={`inline cursor-pointer rounded-sm font-semibold underline decoration-line-strong decoration-dotted underline-offset-4 hover:bg-sunken hover:decoration-ink ${claim.kind === "number" ? "tabular-nums" : ""} ${tone} ${className}`}
     >
       {body}
     </button>

@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
  */
 export function MockNote() {
   const pathname = usePathname();
-  if (pathname === "/v3" || pathname.startsWith("/v3/")) return null;
+  if (pathname === "/app" || pathname.startsWith("/app/")) return null;
   return (
     <div role="note" className="border-b border-line bg-sunken px-4 py-3 text-sm font-semibold text-ink">
       시연 환경: 식별·규정·매칭·협상·학습과 실행 기록은 모의 결과이며 외부 발송은 모의 메일함에만 기록됩니다. 경제 미리보기는 가상 데이터로 계산합니다.

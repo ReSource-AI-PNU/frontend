@@ -14,8 +14,8 @@ declare module "next-auth" {
 export const PROTECTED_PREFIXES = [
   "/upload", "/session", "/complex", "/dashboard", "/onboarding", "/c",
   "/knowledge", "/vendor", "/neighbor", "/admin", "/settings",
-  // v3 화면도 로그인한 사람만 본다(로그인 전에는 페이지를 그리지 않고 로그인으로 보낸다)
-  "/v3",
+  // 에이전트 화면도 로그인한 사람만 본다(로그인 전에는 페이지를 그리지 않고 로그인으로 보낸다)
+  "/app", "/v3",
 ];
 
 export const entraConfigured = Boolean(
@@ -72,7 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const loggedIn = Boolean(session?.user);
       if (isProtected(nextUrl.pathname)) return loggedIn;
       if (loggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
-        return Response.redirect(new URL("/v3", nextUrl));
+        return Response.redirect(new URL("/app", nextUrl));
       }
       return true;
     },

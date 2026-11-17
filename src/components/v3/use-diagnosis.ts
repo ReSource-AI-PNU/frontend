@@ -77,10 +77,35 @@ export function useDiagnosis() {
     loading: mode === "loading" || (live && Boolean(sessionId) && current === null),
     canAct: live,
     start: () => act(() => api.createSession(org.id)),
+    /** 진단을 만들고 곧바로 에이전트를 돌린다 */
+    find: () =>
+      act(async () => {
+        const created = await api.createSession(org.id);
+        return api.run(created.session.id, org.id);
+      }),
     run: () => (sessionId ? act(() => api.run(sessionId, org.id)) : Promise.resolve()),
     reload: () => setTick((before) => before + 1),
     answer: (questionId: string, value: string | number) =>
       sessionId ? act(() => api.answer(sessionId, org.id, questionId, value)) : Promise.resolve(),
+    /** 답을 보내고, 남은 질문이 없으면 묻지 않고 이어서 돌린다 */
+    answerAndContinue: (questionId: string, value: string | number) =>
+      sessionId
+        ? act(async () => {
+            const next = await api.answer(sessionId, org.id, questionId, value);
+            const open = next.questions.some((item) => !item.answered);
+            const waiting = next.session.status === "idle" && next.session.phase !== "done";
+            return !open && waiting ? api.run(sessionId, org.id) : next;
+          })
+        : Promise.resolve(),
+    /** 여러 대화를 차례로 승인한다. 중간에 막히면 거기서 멈추고 사유를 보여 준다 */
+    approveAll: (threadIds: string[]) =>
+      sessionId && threadIds.length > 0
+        ? act(async () => {
+            let next = await api.approve(sessionId, org.id, threadIds[0]);
+            for (const threadId of threadIds.slice(1)) next = await api.approve(sessionId, org.id, threadId);
+            return next;
+          })
+        : Promise.resolve(),
     approve: (threadId: string) =>
       sessionId ? act(() => api.approve(sessionId, org.id, threadId)) : Promise.resolve(),
     forget: () => setSessionId(null),

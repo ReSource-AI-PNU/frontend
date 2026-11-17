@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s · Re:Source AI",
   },
   description:
-    "폐기물 사진 한 장으로 품목·오염도를 판정하고, 산업단지 묶음 수거와 처리 방식별 비용·탄소를 비교해 견적 요청서까지 만드는 에이전트.",
+    "공장에서 나오는 폐플라스틱을 등록하면, 에이전트가 처리 업체의 에이전트와 근거를 확인하며 조건을 맞춰 받아 줄 곳을 찾습니다.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

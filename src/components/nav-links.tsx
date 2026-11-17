@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 // 설계안 v3 화면. v2 화면(산업단지·이웃 기업, 현장 지식, 학습 콘솔, 걸으며 진단 등)은
 // 주소와 코드는 그대로 두고 주 메뉴에서만 뺐다.
 const NAV_ITEMS = [
-  { href: "/v3", label: "진단·연결", exact: true },
-  { href: "/v3/materials", label: "자료 올리기", exact: false },
-  { href: "/v3/approval", label: "승인", exact: false },
-  { href: "/v3/admin", label: "관리자", exact: false },
+  { href: "/app", label: "찾기", exact: true },
+  { href: "/app/materials", label: "자료", exact: false },
+  { href: "/app/approval", label: "승인·서류", exact: false },
+  { href: "/app/admin", label: "관리자", exact: false },
 ] as const;
 
 function isActive(pathname: string | null, href: string, exact: boolean) {
