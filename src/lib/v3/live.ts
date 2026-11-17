@@ -14,6 +14,7 @@
  * waiting, text는 그 문장)가 오면 그 대화의 표시로 쓴다(뷰를 다시 읽기 전에도 탭이 "조건을 묻는 중"에 머물지 않게).
  * 진단 뷰의 threads[].outcome·outcomeText와 같은 값이다.
  */
+import { josa } from "../josa.ts";
 import { AI_NAME, plainIds } from "./labels.ts";
 import type { Question, ThreadMessage, ThreadOutcome, ThreadStatus } from "./types";
 
@@ -304,12 +305,6 @@ export function initialLive(): LiveState {
   };
 }
 
-/** 받침이 있는지(마지막 한글 기준). 한글이 없으면 false */
-function hasBatchim(word: string): boolean {
-  const last = [...word].reverse().find((ch) => ch >= "가" && ch <= "힣");
-  return last ? (last.charCodeAt(0) - 0xac00) % 28 !== 0 : false;
-}
-
 /**
  * 다시 쓰는 중 문구. 사유가 명사로 끝나면 "근거에 없는 숫자가 있어 다시 쓰는 중",
  * 서술("…맞지 않음", "…오류")로 끝나면 "다시 쓰는 중 · 사유"로 쓴다.
@@ -317,7 +312,7 @@ function hasBatchim(word: string): boolean {
 export function rewriteText(reason: string | null): string {
   if (!reason) return "다시 쓰는 중";
   if (/(음|함|류|패|됨)$/.test(reason)) return `다시 쓰는 중 · ${reason}`;
-  return `${reason}${hasBatchim(reason) ? "이" : "가"} 있어 다시 쓰는 중`;
+  return `${josa(reason, "이/가")} 있어 다시 쓰는 중`;
 }
 
 /** 말풍선 자리에 보일 지금 상태: 작성 중 → 근거 확인 중 → (거부되면) …있어 다시 쓰는 중 */
@@ -753,10 +748,6 @@ export function reasonOfCode(code: string): string {
   return REASON_OF_CODE[code] ?? "검사를 통과하지 못함";
 }
 
-function withJosa(word: string, pair: "이/가" | "을/를" | "와/과"): string {
-  const [batchim, plain] = pair.split("/");
-  return `${word}${hasBatchim(word) ? batchim : plain}`;
-}
 
 const TYPE_WORD: Record<string, string> = {
   inquiry: "문의",
@@ -824,10 +815,10 @@ export function replayFromView(view: ReplayView): LiveEvent[] {
     const actor = side === "company" ? "company_agent" : "vendor_agent";
     if (!opened.has(thread.id)) {
       opened.add(thread.id);
-      out.push({ ...base, seq: next(), actor: "system", kind: "status", author: null, text: `${withJosa(thread.vendorName, "와/과")} 대화를 엽니다.` });
+      out.push({ ...base, seq: next(), actor: "system", kind: "status", author: null, text: `${josa(thread.vendorName, "와/과")} 대화를 엽니다.` });
     }
     if (!system) {
-      out.push({ ...base, seq: next(), actor, kind: "drafting", text: `${withJosa(label, "이/가")} ${side === "company" ? "메시지를" : "답을"} 쓰고 있습니다.` });
+      out.push({ ...base, seq: next(), actor, kind: "drafting", text: `${josa(label, "이/가")} ${side === "company" ? "메시지를" : "답을"} 쓰고 있습니다.` });
       const attempts = Math.max(1, message.validation.attempts ?? 1);
       const rejections = message.validation.rejections ?? [];
       for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -837,17 +828,17 @@ export function replayFromView(view: ReplayView): LiveEvent[] {
         const reasons = [...new Set((codes.length > 0 ? codes : rejections.map((item) => item.code)).map(reasonOfCode))];
         const shown = reasons.length > 0 ? reasons : ["검사를 통과하지 못함"];
         out.push({ ...base, seq: next(), actor: "validator", kind: "rejected", reasons: shown, text: `근거 확인에서 돌려보냈습니다: ${shown.join(", ")}.`, attempt });
-        out.push({ ...base, seq: next(), actor, kind: "rewriting", text: `${withJosa(label, "이/가")} 거부 사유를 고쳐 다시 쓰고 있습니다.`, attempt: attempt + 1 });
+        out.push({ ...base, seq: next(), actor, kind: "rewriting", text: `${josa(label, "이/가")} 거부 사유를 고쳐 다시 쓰고 있습니다.`, attempt: attempt + 1 });
       }
     }
     const handoff = message.type === "handoff";
-    const what = withJosa(TYPE_WORD[message.type] ?? "메시지", "을/를");
+    const what = josa(TYPE_WORD[message.type] ?? "메시지", "을/를");
     out.push({
       ...base,
       seq: next(),
       actor,
       kind: handoff ? "handoff" : "sent",
-      text: handoff ? `${side === "company" ? "회사" : "업체"} 측 담당자에게 넘겼습니다.` : `${withJosa(label, "이/가")} ${what} 보냈습니다.`,
+      text: handoff ? `${side === "company" ? "회사" : "업체"} 측 담당자에게 넘겼습니다.` : `${josa(label, "이/가")} ${what} 보냈습니다.`,
       message,
       evidenceCount: handoff ? null : message.claims.length,
     });
