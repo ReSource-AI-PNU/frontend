@@ -91,3 +91,20 @@ test("막힌 합의: 승인한 적이 있을 때만 '앞서 한 승인은 지워
   assert.equal(clearedApprovals({ ...approval, approvalsCleared: false }, confirmed.events), false, "백엔드가 알려 주면 그것을 쓴다");
   assert.equal(clearedApprovals({ ...approval, clearedApprovals: { emitter: true, vendor: false } }, []), true);
 });
+
+test("질문 머리말의 숫자는 묶음의 질문 수와 같다", async () => {
+  const { currentBundle, questionIntro } = await import("../src/lib/v3/format.ts");
+  const q = (id: string, batch: number, answered = false) => ({ id, batch, answered });
+  const first = [q("a", 1), q("b", 1), q("c", 1)];
+  assert.deepEqual(currentBundle(first).map((item) => item.id), ["a", "b", "c"]);
+  assert.equal(questionIntro(currentBundle(first)), "찾기 전에 3가지만 여쭤볼게요.");
+  const partly = [q("a", 1, true), q("b", 1), q("c", 1)];
+  assert.equal(questionIntro(currentBundle(partly)), "여쭤본 3가지 가운데 2가지가 남았습니다.");
+  const second = [q("a", 1, true), q("b", 2), q("c", 2)];
+  assert.deepEqual(currentBundle(second).map((item) => item.id), ["b", "c"]);
+  assert.equal(questionIntro(currentBundle(second)), "2가지를 더 여쭤볼게요.");
+  assert.deepEqual(currentBundle([q("a", 1, true)]), []);
+  // 묶음 번호가 없으면 답하지 않은 질문 전부를 한 묶음으로 본다(0가지로 쓰지 않는다)
+  const loose = [{ id: "x", answered: false }, { id: "y", answered: false }];
+  assert.equal(questionIntro(currentBundle(loose)), "찾기 전에 2가지만 여쭤볼게요.");
+});

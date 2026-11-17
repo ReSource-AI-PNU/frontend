@@ -11,7 +11,7 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
-import { THREAD_LABEL, clearedApprovals } from "@/lib/v3/format";
+import { THREAD_LABEL, clearedApprovals, currentBundle, questionIntro } from "@/lib/v3/format";
 import { AI_NAME } from "@/lib/v3/labels";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
 import type { DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
@@ -166,13 +166,13 @@ function Questions({
   onAnswer: (questionId: string, value: string | number) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const open = questions.filter((item) => !item.answered);
-  if (open.length === 0) return null;
-  const batch = Math.min(...open.map((item) => item.batch));
-  const current = open.filter((item) => item.batch === batch);
+  // 묶음 하나(답한 것 포함)를 기준으로 머리말을 쓰고, 그 가운데 답하지 않은 질문만 그린다
+  const bundle = currentBundle(questions);
+  const current = bundle.filter((item) => !item.answered);
+  if (current.length === 0) return null;
   return (
     <div>
-      <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">찾기 전에 {current.length}가지만 여쭤볼게요.</h2>
+      <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">{questionIntro(bundle)}</h2>
       <p className="mt-1.5 text-[15px] text-ink-2">모르면 ‘모름’을 누르세요. 다시 묻지 않고 그대로 진행합니다.</p>
       <ul className="mt-6 space-y-6">
         {current.map((question) => {

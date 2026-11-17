@@ -144,6 +144,28 @@ export const THREAD_LABEL: Record<string, string> = {
   confirmed: "확정",
 };
 
+/** 지금 보여 줄 질문 묶음: 답하지 않은 질문이 남은 가장 앞 묶음(batch)의 질문 전부. batch가 없으면 답하지 않은 질문 전부 */
+export function currentBundle<T extends { answered: boolean; batch?: number | null }>(questions: T[]): T[] {
+  const open = questions.filter((item) => !item.answered);
+  if (open.length === 0) return [];
+  const batches = open.map((item) => item.batch).filter((batch): batch is number => typeof batch === "number" && Number.isFinite(batch));
+  if (batches.length === 0) return open;
+  const batch = Math.min(...batches);
+  return questions.filter((item) => item.batch === batch);
+}
+
+/**
+ * 질문 묶음의 머리말. 숫자는 그 묶음의 질문 수와 남은 수에 맞춘다(화면에 그리는 질문 수와 같다).
+ * 첫 묶음은 "찾기 전에 n가지만", 두 번째 묶음은 "n가지를 더", 일부 답했으면 "n가지 가운데 m가지가 남았습니다".
+ */
+export function questionIntro(bundle: { answered: boolean; batch?: number | null }[]): string {
+  const total = bundle.length;
+  const open = bundle.filter((item) => !item.answered).length;
+  const first = (bundle[0]?.batch ?? 1) <= 1;
+  if (open === total) return first ? `찾기 전에 ${total}가지만 여쭤볼게요.` : `${total}가지를 더 여쭤볼게요.`;
+  return `여쭤본 ${total}가지 가운데 ${open}가지가 남았습니다.`;
+}
+
 /** 담당자 질문과 "모르는 값"에 나오는 항목 이름 */
 export const FIELD_LABEL: Record<string, string> = {
   moisturePct: "수분",
