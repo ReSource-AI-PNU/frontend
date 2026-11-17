@@ -21,6 +21,7 @@ import type {
   OutcomeInput,
   OutcomeResult,
   RetrainExport,
+  SessionSummary,
   StreamRecord,
   VendorProfile,
 } from "./types";
@@ -92,6 +93,8 @@ export const api = {
       body: JSON.stringify(profile),
     }),
 
+  /** 내가 당사자인 찾기 목록. 다른 기기에서 들어와도 이어 볼 수 있게 한다. */
+  listSessions: (orgId: string) => request<SessionSummary[]>("/sessions", orgId),
   createSession: (emitterOrgId: string) =>
     request<DiagnosisView>("/sessions", emitterOrgId, json({ emitterOrgId })),
   getView: (sessionId: string, orgId: string) =>

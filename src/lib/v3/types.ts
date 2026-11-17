@@ -52,6 +52,17 @@ export type ViewDocument = z.infer<typeof s.viewDocumentSchema>;
 export type RunEvent = z.infer<typeof s.runEventSchema>;
 export type DiagnosisView = z.infer<typeof s.diagnosisViewSchema>;
 
+/** GET /sessions: 내가 당사자인 찾기의 목록(최근 것이 앞) */
+export type SessionSummary = {
+  id: string;
+  emitterOrgId: string;
+  emitterName: string;
+  status: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  as: "emitter" | "vendor" | "admin";
+};
+
 /** 계약 6장 도메인 레코드 (GET/PUT /orgs/{id}/streams) */
 export type StreamRecord = {
   id: string;

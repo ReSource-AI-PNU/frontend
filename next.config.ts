@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   // Docker 이미지용 출력(.next/standalone). `next dev`와 `next start`에는 영향이 없다.
   output: "standalone",
+  // 같은 폴더에서 개발 서버를 하나 더 띄울 때만 쓴다(예: E2E). 주지 않으면 .next다.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   cacheComponents: true,
   partialPrefetching: true,
   // 업로드(사진 여러 장 + 30초 영상)를 서버 액션으로 받는다. 운영에서는 Azure Blob SAS 직접 업로드로 바꾼다.

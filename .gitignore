@@ -46,3 +46,9 @@ next-env.d.ts
 
 # 설치 시 복사되는 MapLibre 워커
 /public/vendor/
+/.next-*/
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/

@@ -104,7 +104,18 @@ function StreamForm({ onSave, onCancel, busy }: { onSave: (draft: Draft) => void
  * 첫 화면. 등록한 폐기물을 보여 주고, 없으면 바로 추가하게 한 뒤 "받아 줄 곳 찾기" 하나만 누르게 한다.
  * 사진·측정값·문서는 자료 화면에서 더 올릴 수 있다.
  */
-export function Start({ busy, error, onFind }: { busy: boolean; error: string | null; onFind: () => void }) {
+export function Start({
+  busy,
+  error,
+  onFind,
+  onResume,
+}: {
+  busy: boolean;
+  error: string | null;
+  onFind: () => void;
+  /** 서버에 남아 있는 지난 찾기를 다시 연다 */
+  onResume?: () => void;
+}) {
   const { mode, fixture, org } = useV3();
   const live = mode === "live";
   const remote = useRemote(`streams:${org.id}`, live, () => api.listStreams(org.id));
@@ -206,6 +217,15 @@ export function Start({ busy, error, onFind }: { busy: boolean; error: string | 
             <Button disabled={!canFind} onClick={onFind} className="!min-h-12 w-full !text-[16px] sm:w-auto sm:!px-7">
               {busy ? "업체에 물어보는 중" : "받아 줄 곳 찾기"}
             </Button>
+            {onResume ? (
+              <button
+                type="button"
+                onClick={onResume}
+                className="mt-3 block text-sm text-ink-2 underline underline-offset-4 hover:text-ink sm:mt-0 sm:ml-5 sm:inline"
+              >
+                지난번에 찾은 결과 보기
+              </button>
+            ) : null}
           </div>
         ) : null}
 

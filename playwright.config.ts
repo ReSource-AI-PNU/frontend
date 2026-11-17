@@ -48,7 +48,8 @@ export default defineConfig({
           timeout: 60_000,
         },
         {
-          command: process.env.CI ? "npm run start" : "npm run dev",
+          // CI에서는 배포 이미지와 같은 방식(standalone의 server.js)으로 띄운다. 빌드와 정적 파일 복사는 CI 단계가 한다.
+          command: process.env.CI ? "node .next/standalone/server.js" : "npm run dev",
           url: `${baseURL}/login`,
           env: {
             NEXT_PUBLIC_API_BASE: "http://localhost:8000/api/v3",
@@ -56,6 +57,8 @@ export default defineConfig({
             AUTH_TRUST_HOST: "true",
             AUTH_DEV_LOGIN: "true",
             AUTH_URL: baseURL,
+            PORT: new URL(baseURL).port || "3000",
+            HOSTNAME: "localhost",
           },
           reuseExistingServer: !process.env.CI,
           timeout: 180_000,

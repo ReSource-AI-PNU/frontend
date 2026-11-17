@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { useV3 } from "@/components/v3/context";
+import { useRemote } from "@/components/v3/use-remote";
+import { api } from "@/lib/v3/api";
 import { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { Conversation, Dots } from "./conversation";
 import { Start } from "./start";
@@ -19,7 +21,7 @@ function Centered({ title, children }: { title: string; children: React.ReactNod
 
 /** 에이전트 화면의 첫 화면. 보는 회사의 역할과 진단 유무에 따라 한 가지만 보여 준다. */
 export function AgentHome() {
-  const { orgs, mode, fixture } = useV3();
+  const { orgs, mode, fixture, setSessionId } = useV3();
   const d = useDiagnosis();
   const stale = Boolean(d.sessionId) && !d.view && !d.loading && Boolean(d.error);
   const { forget } = d;
@@ -30,7 +32,17 @@ export function AgentHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stale, d.org.role]);
 
-  if (d.loading) {
+  // 이 기기에 적어 둔 찾기가 없거나 이 회사가 볼 수 없는 것이면, 서버에 남은 내 찾기 목록에서 최근 것을 찾는다
+  const lookUp = mode === "live" && !d.loading && !d.view;
+  const recent = useRemote(`sessions:${d.org.id}:${d.sessionId ?? ""}`, lookUp, () => api.listSessions(d.org.id));
+  const latest = lookUp ? (recent.data?.find((item) => item.id !== d.sessionId) ?? null) : null;
+  // 업체와 운영자는 받은 문의를 바로 연다. 배출 기업은 새로 찾을 수도 있으므로 고르게 한다
+  useEffect(() => {
+    if (latest && d.org.role !== "emitter") setSessionId(latest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latest?.id, d.org.role]);
+
+  if (d.loading || (latest && d.org.role !== "emitter")) {
     return (
       <div className="flex flex-1 items-center justify-center px-5 py-16">
         <Dots label="불러오는 중" />
@@ -84,5 +96,12 @@ export function AgentHome() {
     );
   }
 
-  return <Start busy={d.busy} error={d.sessionId ? null : d.error} onFind={d.find} />;
+  return (
+    <Start
+      busy={d.busy}
+      error={d.sessionId ? null : d.error}
+      onFind={d.find}
+      onResume={latest ? () => setSessionId(latest.id) : undefined}
+    />
+  );
 }

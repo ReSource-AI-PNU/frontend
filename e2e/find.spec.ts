@@ -80,7 +80,9 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
 
   // 숫자를 누르면 근거가 열린다
   await sprue.getByRole("button", { name: /매입 kg당/ }).click();
-  await expect(page.getByRole("dialog").or(page.getByRole("complementary", { name: /근거/ })).first()).toBeVisible();
+  const evidence = page.getByRole("dialog", { name: "근거" });
+  await expect(evidence).toBeVisible();
+  await expect(evidence.getByRole("heading", { name: "매입 단가" })).toBeVisible();
 });
 
 test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 계획서가 만들어진다", async ({ page }) => {
@@ -93,7 +95,7 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 
 
   for (const vendor of ["org_saegil", "org_namhae", "org_miso"]) {
     await pickOrg(page, vendor);
-    await page.goto("/app/approvals");
+    await page.getByRole("link", { name: "승인·서류" }).click();
     await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
     const approve = page.getByRole("button", { name: "승인", exact: true });
     await expect(approve.first()).toBeVisible();
@@ -104,7 +106,6 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 
   }
 
   await pickOrg(page, "org_hanbit");
-  await page.goto("/app/approvals");
   const documents = page.locator("section").filter({ has: page.getByRole("heading", { name: "요청서와 이행 계획서" }) });
   await expect(documents.getByRole("article").first()).toBeVisible();
   await expect(documents.getByText("근거 확인됨").first()).toBeVisible();
@@ -133,6 +134,12 @@ test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 
 
   // 화면에서도 업체로 바꾸면 한 달 차이와 현행 처리비가 나오지 않는다
   await pickOrg(page, "org_saegil");
-  await page.goto("/app");
+  await expect(page.getByText(/에서 폐기물 \d+가지를 문의했습니다/)).toBeVisible();
   await expect(page.getByText("지금은 한 달에")).toHaveCount(0);
+  await expect(page.getByText("남해열분해")).toHaveCount(0);
+
+  // 다른 기기에서 들어온 업체 담당자도(이 기기에 적어 둔 찾기 번호가 없어도) 받은 문의가 바로 열린다
+  await page.evaluate(() => window.localStorage.removeItem("rsai-v3-session"));
+  await page.reload();
+  await expect(page.getByText(/에서 폐기물 \d+가지를 문의했습니다/)).toBeVisible();
 });
