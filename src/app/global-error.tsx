@@ -12,7 +12,7 @@ const CSS = `
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Pretendard Variable","Apple SD Gothic Neo",system-ui,sans-serif;line-height:1.6;word-break:keep-all;-webkit-font-smoothing:antialiased}
 .rs-ge-head{display:flex;align-items:center;gap:10px;height:60px;padding:0 24px;border-bottom:1px solid var(--line);font-weight:700;letter-spacing:-0.02em}
-.rs-ge-mark{display:grid;place-items:center;width:26px;height:26px;border-radius:6px;background:var(--ink);color:var(--onink);font:600 12px ui-monospace,monospace}
+.rs-ge-mark{width:26px;height:26px;flex:none}
 .rs-ge-main{max-width:640px;margin:0 auto;padding:80px 24px}
 .rs-ge-label{margin:0;color:var(--loss);font-size:13px;font-weight:600}
 .rs-ge-main h1{margin:8px 0 12px;font-size:24px;line-height:1.3;letter-spacing:-0.025em}
@@ -37,9 +37,11 @@ export default function GlobalError({ error, retry }: { error: unknown; retry: (
         <title>오류가 생겼습니다 · Re:Source AI</title>
         <style>{CSS}</style>
         <header className="rs-ge-head">
-          <span className="rs-ge-mark" aria-hidden="true">
-            R:
-          </span>
+          <svg className="rs-ge-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M25.7 18.42A10 10 0 1 1 13.58 6.3" fill="none" stroke="currentColor" strokeWidth="5.2" strokeLinecap="round" />
+            <circle cx="20.23" cy="6.94" r="2.6" fill="#f2600c" />
+            <circle cx="25.06" cy="11.77" r="2.6" fill="#f2600c" />
+          </svg>
           Re:Source AI
         </header>
         <main className="rs-ge-main" role="alert">

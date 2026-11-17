@@ -2,7 +2,8 @@
 
 /* 디자인 토큰 (2026-11 화면 개편 2차)
    흰 바탕, 무채색 회색, 먹색 글자와 먹색 버튼. 색은 뜻이 있을 때만 쓴다:
-   녹색은 표지와 받는 돈, 빨강은 내는 돈과 오류, 호박색은 확인이 필요한 곳의 글자에만. 장식용 선과 무늬는 두지 않는다. */
+   녹색은 받는 돈, 빨강은 내는 돈과 오류, 호박색은 확인이 필요한 곳의 글자에만. 신호 주황(signal)은 표지의 두 점에만 쓴다.
+   장식용 선과 무늬는 두지 않는다. */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -26,6 +27,7 @@
   --color-brand-strong: #0f4f38;
   --color-brand-bg: #eaf3ee;
   --color-on-brand: #ffffff;
+  --color-signal: #f2600c;
   --color-lane: #f5c400;
   --color-marker: #d7ecdf;
   --color-marker-ink: #0b2b1e;
@@ -164,6 +166,7 @@
   --color-ink-2: #d1d1d6;
   --color-muted: #9a9aa3;
   --color-on-ink: #111113;
+  --color-signal: #ff7a2e;
   --color-brand: #3fb485;
   --color-brand-strong: #5cc79c;
   --color-brand-bg: #12261d;
