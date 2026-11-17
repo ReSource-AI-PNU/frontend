@@ -101,11 +101,11 @@ export const messageTypeSchema = z.enum([
  * vendorModel에는 code가 오지 않는다(메시지에만 붙는다).
  */
 export const modelRefSchema = obj({
-  provider: z.enum(["foundry", "ollama", "rule", "code"]),
+  provider: z.enum(["foundry", "ollama", "anthropic", "rule", "code"]),
   name: z.string(),
 });
 export const vendorModelSchema = obj({
-  provider: z.enum(["foundry", "ollama", "rule"]),
+  provider: z.enum(["foundry", "ollama", "anthropic", "rule"]),
   name: z.string(),
   /** 업체가 고른 설정. 실제로 쓴 구현(provider, name)과 다를 수 있다. */
   configured: obj({ provider: z.enum(["foundry", "ollama"]), name: z.string() })

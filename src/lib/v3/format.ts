@@ -79,7 +79,11 @@ export function isAssumed(claim: Claim | null | undefined): boolean {
   return Boolean(claim?.evidence.some((id) => id.startsWith("assumption:")));
 }
 
-const PROVIDER_LABEL: Record<string, string> = { foundry: "Foundry", ollama: "Ollama" };
+const PROVIDER_LABEL: Record<string, string> = {
+  foundry: "Foundry",
+  ollama: "Ollama",
+  anthropic: "Anthropic",
+};
 
 /**
  * 실제로 답을 쓴 구현의 이름. 규칙 정책이면 백엔드가 준 이름("규칙 정책(모델 미연결)")을 그대로 쓴다.
