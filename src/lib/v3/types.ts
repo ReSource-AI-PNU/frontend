@@ -231,6 +231,8 @@ export type ExtractedField = {
   needsReview?: boolean;
   reviewReasons?: string[];
   confirmed: boolean;
+  /** 어느 허가 품목·매입 기준의 값인지(백엔드가 정한다). 확인할 때 받은 그대로 돌려보낸다 */
+  target?: Record<string, unknown> | null;
 };
 
 /** POST /intake/documents */
@@ -250,8 +252,20 @@ export type DocumentUploadResult = {
   note?: string;
 };
 
+/** 업체가 확인한 허가증·매입 기준표 값이 업체 프로필에 들어간 요약(업체가 아니면 null) */
+export type DocumentProfileSummary = {
+  permitsAdded: number;
+  permitsUpdated: number;
+  criteriaAdded: number;
+  criteriaUpdated: number;
+  permits: VendorProfile["permits"];
+  criteria: VendorProfile["criteria"];
+  /** 넣지 못한 것과 까닭(예: 단가를 확인하지 않아 매입 기준을 만들지 않았습니다) */
+  skipped: string[];
+};
+
 /** POST /intake/documents/confirm */
-export type DocumentConfirmResult = { evidence: string[] };
+export type DocumentConfirmResult = { evidence: string[]; profile?: DocumentProfileSummary | null };
 
 /** 배포 게이트 판정. 실제 등급 행으로 지금 기준값 규칙을 평가한 결과다 */
 export type RetrainGate = {

@@ -6,11 +6,24 @@ import { ChevronDownIcon } from "@/components/icons";
 import { Button, buttonClass } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/v3/api";
 import { formatNumber, priceSide } from "@/lib/v3/format";
-import { addPending, checkPending, dropPending, measureCsv, measureProblem, nothingDetected, parsePending, pendingKey, type PendingDocument } from "@/lib/v3/intake";
+import {
+  addPending,
+  checkPending,
+  dropPending,
+  measureCsv,
+  measureProblem,
+  nothingDetected,
+  parsePending,
+  pendingKey,
+  profileSummaryText,
+  type PendingDocument,
+} from "@/lib/v3/intake";
 import { AI_NAME } from "@/lib/v3/labels";
 import type {
   CsvUploadResult,
+  DocumentConfirmResult,
   DocumentKind,
+  DocumentProfileSummary,
   DocumentUploadResult,
   ExtractedField,
   MediaUploadResult,
@@ -171,7 +184,7 @@ function PendingExtraction({
   item: PendingDocument;
   canAct: boolean;
   onCheck: (field: string, value: boolean) => void;
-  onDone: (evidence: string[]) => void;
+  onDone: (result: DocumentConfirmResult) => void;
   onDiscard: () => void;
 }) {
   const { org } = useV3();
@@ -182,10 +195,11 @@ function PendingExtraction({
   const register = async () => {
     setState({ busy: true, error: null });
     try {
+      // 받은 항목(target 등)은 그대로 돌려보내고 확인 표시만 바꾼다
       const fields: ExtractedField[] = result.fields.map((field) => ({ ...field, confirmed: Boolean(checked[field.field]) }));
       const done = await api.confirmDocument(org.id, result.filename, fields);
       setState({ busy: false, error: null });
-      onDone(done.evidence);
+      onDone(done);
     } catch (error) {
       setState({ busy: false, error: error instanceof Error ? error.message : "등록하지 못했습니다." });
     }
@@ -269,12 +283,23 @@ function PendingExtraction({
  * 확인하지 않은 추출값은 새로 고치거나 다음 문서를 올려도 남는다(usePending).
  * 안전 검사나 표 읽기를 하지 못한 문서는 무엇을 직접 확인하면 되는지만 적는다(서비스 이름은 운영 화면에만).
  */
-function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAct: boolean; label: string }) {
+function DocumentUpload({
+  kinds,
+  canAct,
+  label,
+  onConfirmed,
+}: {
+  kinds: DocumentKind[];
+  canAct: boolean;
+  label: string;
+  /** 확인한 값을 등록한 뒤(업체는 응답의 profile로 허가 품목·매입 기준을 바로 다시 그린다) */
+  onConfirmed?: (result: DocumentConfirmResult) => void;
+}) {
   const { org, openEvidence } = useV3();
   const upload = useUpload<DocumentUploadResult>(canAct);
   const [kind, setKind] = useState<DocumentKind>(kinds[0]);
   const [pending, update] = usePending(pendingKey(org.id, label));
-  const [registered, setRegistered] = useState<{ filename: string; evidence: string[] } | null>(null);
+  const [registered, setRegistered] = useState<{ filename: string; evidence: string[]; profile: DocumentProfileSummary | null } | null>(null);
   const latest = upload.state.result;
 
   return (
@@ -326,9 +351,10 @@ function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAc
           item={item}
           canAct={canAct}
           onCheck={(name, value) => update((list) => checkPending(list, item.id, name, value))}
-          onDone={(evidence) => {
+          onDone={(result) => {
             update((list) => dropPending(list, item.id));
-            setRegistered({ filename: item.result.filename, evidence });
+            setRegistered({ filename: item.result.filename, evidence: result.evidence, profile: result.profile ?? null });
+            onConfirmed?.(result);
           }}
           onDiscard={() => update((list) => dropPending(list, item.id))}
         />
@@ -345,6 +371,12 @@ function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAc
               </button>
             </>
           )}
+          {registered.profile ? <span className="mt-0.5 block text-ink-2">{profileSummaryText(registered.profile)}</span> : null}
+          {registered.profile?.skipped.map((item) => (
+            <span key={item} className="mt-0.5 block text-warn">
+              {item}
+            </span>
+          ))}
         </p>
       ) : null}
     </div>
@@ -1082,10 +1114,13 @@ function VendorForm({
   profile,
   canAct,
   onSave,
+  onConfirmed,
 }: {
   profile: VendorProfile;
   canAct: boolean;
   onSave: (profile: VendorProfile) => Promise<void>;
+  /** 문서에서 확인한 값이 업체 정보에 들어갔다 */
+  onConfirmed: (result: DocumentConfirmResult) => void;
 }) {
   const { openEvidence } = useV3();
   const [floor, setFloor] = useState(
@@ -1112,12 +1147,15 @@ function VendorForm({
       .map((item) => item.trim())
       .filter(Boolean);
   const num = (text: string) => (text.trim() === "" ? null : Number(text));
+  // 문서 확인으로 새로 들어온 기준은 입력한 적이 없으므로 받은 단가에서 시작한다(빈 칸으로 저장해 단가를 지우지 않게)
+  const priceText = (row: VendorProfile["criteria"][number]) =>
+    prices[row.id] ?? (row.unitPriceKrwPerKg != null ? String(row.unitPriceKrwPerKg) : "");
 
   const save = async () => {
     const floorValue = num(floor);
     const pickupValue = num(pickups);
     const ceilingValue = num(ceiling);
-    const priceValues = profile.criteria.map((row) => num(prices[row.id] ?? ""));
+    const priceValues = profile.criteria.map((row) => num(priceText(row)));
     if (
       [floorValue, pickupValue, ceilingValue, ...priceValues].some((value) => value !== null && !Number.isFinite(value))
     ) {
@@ -1164,7 +1202,7 @@ function VendorForm({
         <h2 className={sectionTitle}>허가증·매입 기준표 올리기</h2>
         <p className="mt-1 text-sm text-muted">문서에서 뽑은 값은 담당자가 확인한 것만 아래 표에 근거로 들어갑니다.</p>
         <div className="mt-4">
-          <DocumentUpload kinds={["permit", "purchase_criteria"]} canAct={canAct} label="업체 문서" />
+          <DocumentUpload kinds={["permit", "purchase_criteria"]} canAct={canAct} label="업체 문서" onConfirmed={onConfirmed} />
         </div>
       </section>
 
@@ -1222,13 +1260,13 @@ function VendorForm({
                       {canAct ? (
                         <span className="inline-flex items-center justify-end gap-2">
                           <span className="text-[13px] text-muted">
-                            {Number.isFinite(num(prices[row.id] ?? "")) && num(prices[row.id] ?? "") !== null
-                              ? priceSide(num(prices[row.id] ?? "") as number)
+                            {Number.isFinite(num(priceText(row))) && num(priceText(row)) !== null
+                              ? priceSide(num(priceText(row)) as number)
                               : "확인 필요"}
                           </span>
                           <input
                             aria-label={`${row.material} ${row.grade}등급${row.form ? ` ${row.form}` : ""} 단가 (원/kg)`}
-                            value={prices[row.id] ?? ""}
+                            value={priceText(row)}
                             onChange={(event) => setPrices({ ...prices, [row.id]: event.target.value })}
                             inputMode="decimal"
                             className={`${field} !min-h-9 w-24 text-right tabular-nums`}
@@ -1389,6 +1427,13 @@ function VendorMaterials() {
         const body = { ...rest, ...(model?.provider ? { model } : {}), ...(fleet ? { fleet } : {}) };
         const saved = await api.putVendor(org.id, body as VendorProfile);
         remote.set(normalizeProfile(saved, org.id, org.name));
+      }}
+      onConfirmed={(result) => {
+        // 응답의 허가 품목·매입 기준으로 바로 다시 그리고, 프로필 전체는 다시 읽는다
+        if (result.profile && remote.data) {
+          remote.set(normalizeProfile({ ...remote.data, permits: result.profile.permits, criteria: result.profile.criteria }, org.id, org.name));
+        }
+        remote.reload();
       }}
     />
   );

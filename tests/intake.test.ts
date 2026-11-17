@@ -123,3 +123,19 @@ test("오염도·수분의 출처: 측정, 담당자 답(claim 이름), 사진 �
   assert.equal(basisNote(null, answered), null);
   assert.equal(basisNote(undefined, null), null);
 });
+
+test("업체가 확인한 문서 값이 업체 정보에 들어간 요약", async () => {
+  const { profileSummaryText } = await import("../src/lib/v3/intake.ts");
+  const base = { permitsAdded: 0, permitsUpdated: 0, criteriaAdded: 0, criteriaUpdated: 0, permits: [], criteria: [], skipped: [] };
+  assert.equal(profileSummaryText({ ...base, permitsAdded: 1, criteriaUpdated: 2 }), "업체 정보에 반영했습니다(허가 품목 1개 추가, 매입 기준 2개 수정).");
+  assert.equal(profileSummaryText(base), "업체 정보에는 이미 같은 값이 있어 그대로 두었습니다.");
+});
+
+test("확인 표시만 바꾸고 받은 항목(target)은 그대로 돌려보낸다", () => {
+  const result = doc("매입 기준표.xlsx", {
+    kind: "purchase_criteria",
+    fields: [{ field: "c0.unitPrice", label: "PP A등급 단가", value: 320, unit: "원/kg", confirmed: false, target: { criterion: 0, key: "unitPriceKrwPerKg" } }],
+  });
+  const restored = parsePending(JSON.stringify(addPending([], result, new Date("2026-11-18T00:00:00Z"))));
+  assert.deepEqual(restored[0].result.fields[0].target, { criterion: 0, key: "unitPriceKrwPerKg" });
+});

@@ -4,7 +4,7 @@
  *  - 사진 분석 결과에 찾은 것이 하나도 없는지.
  *  - 수치를 직접 적으면 측정값 CSV 한 줄로 만들어 같은 길(POST /intake/csv)로 올린다.
  */
-import type { DocumentUploadResult, MediaUploadResult } from "./types";
+import type { DocumentProfileSummary, DocumentUploadResult, MediaUploadResult } from "./types";
 
 /* ── 확인하지 않은 문서 추출값 ─────────────────────────────────────── */
 
@@ -115,4 +115,17 @@ export function measureProblem(input: { process: string; contamination: string; 
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.measuredOn)) return "측정일을 골라 주세요.";
   return null;
+}
+
+/* ── 확인한 문서 값이 업체 정보에 들어간 요약 ───────────────────────── */
+
+/** "업체 정보에 반영했습니다(허가 품목 1개 추가, 매입 기준 2개 수정)." 바뀐 것이 없으면 그렇다고 적는다 */
+export function profileSummaryText(profile: DocumentProfileSummary): string {
+  const parts = [
+    profile.permitsAdded > 0 ? `허가 품목 ${profile.permitsAdded}개 추가` : null,
+    profile.permitsUpdated > 0 ? `허가 품목 ${profile.permitsUpdated}개 수정` : null,
+    profile.criteriaAdded > 0 ? `매입 기준 ${profile.criteriaAdded}개 추가` : null,
+    profile.criteriaUpdated > 0 ? `매입 기준 ${profile.criteriaUpdated}개 수정` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? `업체 정보에 반영했습니다(${parts.join(", ")}).` : "업체 정보에는 이미 같은 값이 있어 그대로 두었습니다.";
 }
