@@ -163,6 +163,13 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
       </nav>
 
       <div className="mt-auto pt-4">
+        <Link
+          href="/trust"
+          onClick={() => setOpen(false)}
+          className="mb-2 flex min-h-9 items-center rounded-md px-2.5 text-[13px] text-muted hover:text-ink"
+        >
+          AI 신뢰도 · 공개 평가 결과
+        </Link>
         {readOnly ? (
           <DemoFooter />
         ) : (

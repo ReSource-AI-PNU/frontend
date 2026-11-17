@@ -31,7 +31,10 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
               ))}
             </p>
           </div>
-          <nav aria-label="약관 및 정책" className="flex items-start gap-x-1">
+          <nav aria-label="약관 및 정책" className="flex flex-wrap items-start gap-x-1">
+            <Link href="/trust" className="rounded-md px-2 py-2 hover:text-ink">
+              AI 신뢰도
+            </Link>
             <Link href="/terms" className="rounded-md px-2 py-2 hover:text-ink">
               이용약관
             </Link>

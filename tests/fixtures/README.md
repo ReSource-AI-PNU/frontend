@@ -12,6 +12,7 @@
 | `v3-view-terms-changed.json` | 업체 조건 변경으로 승인 막힘: 합의 뒤 (주)새길자원이 PP A등급 매입 단가를 내려 `blockedCodes`가 `VENDOR_TERMS_CHANGED` | 위와 같은 스크립트 |
 | `v3-view-renegotiated.json` | 위 진단을 다시 실행해 같은 대화에서 재합의(코드가 쓴 `counter`, 실행 기록의 `reopenedSeq`) | 위와 같은 스크립트 |
 | `v3-view-vendor-renegotiated.json` | 재합의한 진단을 (주)새길자원이 본 뷰(판단 그래프에 자기 매입 기준 노드) | 위와 같은 스크립트 |
+| `eval-latest.json` | 평가 결과 요약(AI 신뢰도 화면 `/trust`가 읽는 모양). 규칙 정책 회귀 시험(dev, test-v1) | 백엔드 `docs/v3/eval/latest.json`(origin/main)을 그대로 복사 |
 | `v3-view-handoff.json` | 담당자 인계: 배출 기업이 지시문이 든 문서를 올려 대화가 모두 넘어가고 진단이 `idle`·`done`으로 끝남 | 아래 |
 
 ## 담당자 인계 뷰

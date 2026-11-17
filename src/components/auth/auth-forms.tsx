@@ -212,6 +212,13 @@ export function AuthForms({
 
       <div className="border-t border-line pt-6">
         <TryDemo />
+        <p className="mt-3 text-[13px] text-muted">
+          AI를 어떻게 시험했는지 궁금하다면{" "}
+          <Link href="/trust" className="font-medium text-ink-2 underline underline-offset-4 hover:text-ink">
+            AI 신뢰도
+          </Link>
+          에서 공개 평가 결과를 볼 수 있습니다.
+        </p>
       </div>
     </div>
   );
