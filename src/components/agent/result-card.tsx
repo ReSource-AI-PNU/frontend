@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { ClaimText, ClaimValue } from "@/components/v3/claim";
@@ -9,6 +10,10 @@ import type { Assignment, Claim, OrgRole, Result, ViewStream } from "@/lib/v3/ty
 
 const CHECK_WORD = { met: "충족", conditional: "확인 필요", unmet: "맞지 않음", needs_information: "값 없음" } as const;
 const STATUS_WORD = { calculated: "조건 확정", conditional: "조건 확인 뒤 확정", needs_information: "값 확인 필요" } as const;
+
+function isEmitterRole(role: OrgRole) {
+  return role === "emitter";
+}
 
 function numberOf(claim: Claim | null | undefined) {
   return claim && typeof claim.value === "number" ? claim.value : null;
@@ -50,9 +55,13 @@ function Row({
   const { openEvidence } = useV3();
   const [open, setOpen] = useState(false);
   const placed = Boolean(assignment.vendorOrgId);
+  const reused = assignment.route === "reuse";
+  const reuse = assignment.reuse;
+  const reuseCandidate = Boolean(isEmitterRole(role) && reuse?.eligible && !reused);
   const todo = assignment.checks.filter((item) => item.status !== "met");
   const met = assignment.checks.length - todo.length;
-  const hasDetail = assignment.checks.length > 0 || assignment.alternatives.length > 0 || Boolean(assignment.threadId);
+  const hasDetail =
+    assignment.checks.length > 0 || assignment.alternatives.length > 0 || Boolean(assignment.threadId) || reuseCandidate || reused;
   const facts = [stream?.material, stream?.form].filter(Boolean).join(" · ");
   const panelId = `route-${assignment.streamId}`;
   const isEmitter = role === "emitter";
@@ -88,10 +97,12 @@ function Row({
         </p>
 
         <div className="min-w-0">
-          {isEmitter || !placed ? (
-            <p className={placed ? "font-medium" : "text-ink-2"}>{placed ? assignment.vendorName : "받을 곳을 찾지 못했습니다"}</p>
+          {reused ? (
+            <p className="font-medium">사내 공정에 다시 넣기</p>
+          ) : isEmitter || !placed ? (
+            <p className={placed ? "font-medium" : "text-ink-2"}>{placed ? assignment.vendorName : "지금 방식 그대로"}</p>
           ) : null}
-          {placed && hasDetail ? (
+          {(placed || reused || reuseCandidate) && hasDetail ? (
             <button
               type="button"
               aria-expanded={open}
@@ -99,7 +110,7 @@ function Row({
               onClick={() => setOpen((before) => !before)}
               className="-ml-1 flex min-h-7 items-center gap-0.5 rounded-md px-1 text-left text-[13px] text-muted hover:bg-sunken hover:text-ink"
             >
-              {STATUS_WORD[assignment.status]}
+              {placed ? STATUS_WORD[assignment.status] : reused ? "계산 내역" : "재투입 후보"}
               {todo.length > 0 ? ` · 확인할 것 ${todo.length}개` : ""}
               <ChevronDownIcon className={`size-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
@@ -109,13 +120,28 @@ function Row({
         </div>
 
         <p className="col-span-2 min-w-0 text-[15px] text-ink-2 sm:col-span-1">
-          {assignment.unitPrice ? (
+          {reused ? (
+            "신재 구입을 줄입니다"
+          ) : assignment.unitPrice ? (
             <ClaimValue claim={assignment.unitPrice} display={priceText(assignment.unitPrice)} className="!font-normal" />
           ) : placed ? (
             "단가 확인 필요"
           ) : (
-            "지금 방식 그대로"
+            <span className="text-muted">옮길 곳이 정해지지 않았습니다</span>
           )}
+          {isEmitter && placed && assignment.transportPaidBy ? (
+            <span className="block text-[13px] text-muted">
+              {assignment.transportPaidBy === "vendor" ? (
+                "운반비 포함"
+              ) : assignment.transport ? (
+                <>
+                  운반비 한 달 <ClaimValue claim={assignment.transport} display={won(assignment.transport)} className="!font-normal" /> 별도
+                </>
+              ) : (
+                "운반비 별도(금액 확인 필요)"
+              )}
+            </span>
+          ) : null}
         </p>
       </div>
 
@@ -123,6 +149,70 @@ function Row({
         <>
           {open ? (
             <div id={panelId} className="mt-3 rounded-xl bg-ground px-4 py-4 text-sm">
+              {isEmitter && assignment.revenue ? (
+                <dl className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1.5 border-b border-line pb-4 tabular-nums">
+                  <dt className="text-ink-2">
+                    {reused ? "신재 절감액" : (numberOf(assignment.revenue) ?? 0) < 0 ? "처리비" : "매각 수익"}
+                  </dt>
+                  <dd className="text-right">
+                    <ClaimValue claim={assignment.revenue} signed display={signedWon(assignment.revenue)} className="!font-normal" />
+                  </dd>
+                  {placed ? (
+                    <>
+                      <dt className="text-ink-2">운반비</dt>
+                      <dd className="text-right">
+                        {assignment.transportPaidBy === "vendor" ? (
+                          <span className="text-ink-2">업체 단가에 포함</span>
+                        ) : assignment.transport ? (
+                          <ClaimValue claim={assignment.transport} display={`−${won(assignment.transport)}`} className="!font-normal" />
+                        ) : (
+                          <span className="text-warn">확인 필요</span>
+                        )}
+                      </dd>
+                      <dt className="text-ink-2">전처리 인건비</dt>
+                      <dd className="text-right">
+                        {assignment.labor ? (
+                          <ClaimValue claim={assignment.labor} display={`−${won(assignment.labor)}`} className="!font-normal" />
+                        ) : (
+                          <span className="text-ink-2">넣지 않음</span>
+                        )}
+                      </dd>
+                    </>
+                  ) : null}
+                  <dt className="mt-1 border-t border-line pt-2 font-medium">옮긴 뒤 한 달</dt>
+                  <dd className="mt-1 border-t border-line pt-2 text-right font-medium">
+                    {assignment.monthlyAfter ? (
+                      <ClaimValue claim={assignment.monthlyAfter} signed display={signedWon(assignment.monthlyAfter)} />
+                    ) : null}
+                  </dd>
+                  <dt className="text-ink-2">지금 한 달</dt>
+                  <dd className="text-right">
+                    {assignment.monthlyNow ? (
+                      <ClaimValue claim={assignment.monthlyNow} signed display={signedWon(assignment.monthlyNow)} className="!font-normal" />
+                    ) : null}
+                  </dd>
+                </dl>
+              ) : null}
+              {reuseCandidate && reuse ? (
+                <p className="mb-4 border-b border-line pb-4 text-ink-2">
+                  <span className="font-medium text-ink">공정에 다시 넣을 수 있는 후보입니다.</span>{" "}
+                  {reuse.monthlyAfter ? (
+                    <>
+                      다시 넣으면 한 달{" "}
+                      <ClaimValue claim={reuse.monthlyAfter} signed display={signedWon(reuse.monthlyAfter)} className="!font-normal" />
+                      으로 계산됩니다.
+                    </>
+                  ) : (
+                    <>
+                      신재 구입 단가와 한 달에 다시 넣을 수 있는 양을{" "}
+                      <Link href="/app/materials" className="underline underline-offset-4 hover:text-ink">
+                        자료
+                      </Link>
+                      에 넣으면 업체에 보내는 것과 함께 견줍니다.
+                    </>
+                  )}
+                </p>
+              ) : null}
               {todo.length > 0 ? (
                 <ul className="space-y-3">
                   {todo.map((check, index) => (
@@ -264,7 +354,7 @@ export function ResultCard({
   const { openEvidence } = useV3();
   const { totals } = result;
   const count = result.assignments.length;
-  const placed = result.assignments.filter((item) => item.vendorOrgId).length;
+  const placed = result.assignments.filter((item) => item.vendorOrgId || item.route === "reuse").length;
   const assumptionIds = result.assumptions.map((item) => item.id);
   const isEmitter = role === "emitter";
   const conditional = result.status === "conditional";
@@ -275,10 +365,10 @@ export function ResultCard({
         {!isEmitter
           ? `${counterpart}에서 폐기물 ${count}가지를 문의했습니다.`
           : placed === 0
-            ? "받아 줄 곳을 찾지 못했습니다."
+            ? "지금보다 나은 곳을 찾지 못했습니다."
             : placed === count
-              ? `${count}가지 모두 받아 줄 곳을 찾았습니다.`
-              : `${count}가지 가운데 ${placed}가지는 받아 줄 곳을 찾았습니다.`}
+              ? `${count}가지 모두 보낼 곳을 찾았습니다.`
+              : `${count}가지 가운데 ${placed}가지는 보낼 곳을 찾았습니다.`}
       </h2>
       {isEmitter ? <MoneySentence totals={totals} conditional={conditional} /> : null}
 

@@ -64,7 +64,7 @@ async function toApproval() {
     for (const question of view.questions.filter((item) => !item.answered)) {
       view = await post(`/sessions/${id}/answers`, EMITTER, {
         questionId: question.id,
-        value: question.streamId === "st_film" ? "2" : "unknown",
+        value: question.streamId === "st_film" && question.field === "moisturePct" ? "2" : "unknown",
       });
     }
   }

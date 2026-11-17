@@ -97,6 +97,7 @@ export function modelLabel(model: { provider: string; name: string } | null | un
 }
 
 export const ROUTE_LABEL: Record<string, string> = {
+  reuse: "공정 재투입",
   sell: "매각",
   treat: "위탁 처리",
   keep: "현행 유지",
@@ -174,6 +175,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   mixture: "혼입물",
   permit: "허가 품목",
   current_assumed: "현행 처리",
+  current_method: "현행 처리 방법(가정)",
   transport: "운송비",
   carbon: "탄소",
   vendor_condition: "업체 조건",
