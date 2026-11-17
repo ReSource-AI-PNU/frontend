@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BrandLink } from "@/components/brand";
+import { DemoPreview } from "@/components/landing/demo-preview";
 import { ButtonLink } from "@/components/ui/button";
 import { PHOTOS, type Photo } from "@/lib/photos";
 
@@ -39,14 +40,6 @@ const STEPS = [
     title: "표를 보고 승인합니다",
     body: "누가 얼마에 받는지, 지금보다 한 달에 얼마가 달라지는지 봅니다. 양쪽이 승인하면 요청서와 이행 계획서가 나옵니다.",
   },
-];
-
-/** 시연용 가상 회사로 실제로 낸 결과를 옮긴 것이다. 회사·업체·금액은 모두 가상이다. */
-const PREVIEW = [
-  { name: "불량 사출품", amount: "한 달 400 kg", vendor: "(주)미소환경", state: "조건 확인 뒤 확정", price: "매입 kg당 200원", diff: "+180,000원" },
-  { name: "포장 필름", amount: "한 달 300 kg", vendor: "(주)새길자원", state: "조건 확인 뒤 확정", price: "매입 kg당 150원", diff: "+120,000원" },
-  { name: "퍼지 덩어리", amount: "한 달 250 kg", vendor: "(주)남해열분해", state: "조건 확인 뒤 확정", price: "처리비 kg당 80원", diff: "+42,500원" },
-  { name: "스프루·런너", amount: "한 달 600 kg", vendor: "(주)새길자원", state: "조건 확정", price: "매입 kg당 320원", diff: "+342,000원" },
 ];
 
 const SIDES: { photo: Photo; title: string; body: string; points: string[] }[] = [
@@ -104,56 +97,6 @@ function Wide({ photo, priority = false, className = "" }: { photo: Photo; prior
       </div>
       <figcaption className="mx-auto mt-2 max-w-[1160px] text-right">
         <Credit photo={photo} />
-      </figcaption>
-    </figure>
-  );
-}
-
-function Preview() {
-  return (
-    <figure>
-      <div className="overflow-hidden rounded-[20px] border border-line bg-bg shadow-[0_30px_80px_-50px_rgb(0_0_0/0.35)]">
-        <div className="px-5 py-6 sm:px-9 sm:py-9">
-          <div className="flex justify-end">
-            <p className="rounded-[20px] bg-sunken px-4 py-2.5 text-[15px]">폐기물 4가지를 받아 줄 곳을 찾아 주세요.</p>
-          </div>
-          <p className="mt-8 text-[20px] font-semibold tracking-[-0.025em] sm:text-[22px]">4가지 모두 받아 줄 곳을 찾았습니다.</p>
-          <p className="mt-1.5 text-[15px] text-ink-2">
-            지금은 한 달에 387,500원을 내고 있습니다. 조건이 확인되면 한 달에 297,000원을 받게 됩니다.
-          </p>
-          <div className="mt-6 hidden grid-cols-[1.1fr_1.2fr_1fr_7rem] gap-x-4 border-b border-line pb-2 text-[13px] text-muted sm:grid">
-            <span>폐기물</span>
-            <span>받는 곳</span>
-            <span>조건</span>
-            <span className="text-right">한 달 차이</span>
-          </div>
-          <ul className="mt-4 divide-y divide-line border-b border-line sm:mt-0">
-            {PREVIEW.map((row) => (
-              <li key={row.name} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 py-3 sm:grid-cols-[1.1fr_1.2fr_1fr_7rem] sm:items-baseline">
-                <span>
-                  <span className="block font-medium">{row.name}</span>
-                  <span className="block text-[13px] text-muted">{row.amount}</span>
-                </span>
-                <span className="text-right font-semibold tabular-nums text-gain sm:order-last">{row.diff}</span>
-                <span>
-                  <span className="block font-medium">{row.vendor}</span>
-                  <span className="block text-[13px] text-muted">{row.state}</span>
-                </span>
-                <span className="col-span-2 text-[15px] text-ink-2 sm:col-span-1">{row.price}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="flex items-baseline justify-between pt-4 font-semibold">
-            <span>한 달 합계</span>
-            <span className="text-[18px] tabular-nums text-gain">+684,500원</span>
-          </p>
-        </div>
-      </div>
-      <figcaption className="mt-3 text-[13px] text-muted">
-        시연용 가상 회사의 실제 찾기 결과입니다. 회사·업체·금액은 모두 가상입니다.{" "}
-        <Link href="/demo" className="underline underline-offset-4 hover:text-ink">
-          체험하기에서 전체 화면 보기
-        </Link>
       </figcaption>
     </figure>
   );
@@ -264,7 +207,7 @@ export default function LandingPage() {
             ))}
           </ol>
           <div className="mx-auto mt-16 max-w-[920px] lg:mt-20">
-            <Preview />
+            <DemoPreview />
           </div>
         </div>
       </section>

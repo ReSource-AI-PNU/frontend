@@ -5,40 +5,15 @@ import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { ClaimText, ClaimValue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
-import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, formatUnitPrice, isAssumed } from "@/lib/v3/format";
-import type { Assignment, Claim, OrgRole, Result, ViewStream } from "@/lib/v3/types";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, isAssumed } from "@/lib/v3/format";
+import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
+import type { Assignment, OrgRole, Result, ViewStream } from "@/lib/v3/types";
 
 const CHECK_WORD = { met: "충족", conditional: "확인 필요", unmet: "맞지 않음", needs_information: "값 없음" } as const;
 const STATUS_WORD = { calculated: "조건 확정", conditional: "조건 확인 뒤 확정", needs_information: "값 확인 필요" } as const;
 
 function isEmitterRole(role: OrgRole) {
   return role === "emitter";
-}
-
-function numberOf(claim: Claim | null | undefined) {
-  return claim && typeof claim.value === "number" ? claim.value : null;
-}
-
-/** "387,500원"처럼 크기만 적는다. 내는지 받는지는 문장이 말한다. */
-function won(claim: Claim | null | undefined) {
-  const value = numberOf(claim);
-  return value === null ? undefined : `${formatNumber(Math.abs(value))}원`;
-}
-
-/** "+180,000원"처럼 부호를 붙여 적는다. */
-function signedWon(claim: Claim | null | undefined) {
-  const value = numberOf(claim);
-  if (value === null) return undefined;
-  return `${value > 0 ? "+" : value < 0 ? "−" : ""}${formatNumber(Math.abs(value))}원`;
-}
-
-/** 단가를 "매입 kg당 200원", "처리비 kg당 80원"으로 적는다. 단위가 원/kg이 아니면 원래 표기를 쓴다. */
-function priceText(claim: Claim | null | undefined) {
-  const value = numberOf(claim);
-  if (value === null || claim?.unit !== "원/kg") return formatUnitPrice(claim) ?? undefined;
-  if (value === 0 && claim.role !== "treatmentFee") return "무상 수거";
-  const side = claim.role === "treatmentFee" || value < 0 ? "처리비" : "매입";
-  return `${side} kg당 ${formatNumber(Math.abs(value))}원`;
 }
 
 function Row({
