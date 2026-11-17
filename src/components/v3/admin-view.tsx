@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { api, API_BASE } from "@/lib/v3/api";
 import { MoreDetails } from "@/components/ui/more-details";
 import {
@@ -65,10 +65,14 @@ function StatusBody({ status }: { status: AdminStatus }) {
           <Row label="인증 모드">
             {status.auth.mode === "header" ? (
               <span className="font-semibold text-warn">
-                X-Org-Id 헤더를 그대로 믿음{status.auth.demoOnly ? " (시연 전용)" : ""}
+                X-Org-Id 머리글을 그대로 믿음{status.auth.demoOnly ? " (시연 전용)" : ""}
               </span>
+            ) : status.auth.mode === "bff" ? (
+              <span className="font-semibold">프런트 서버 키와 로그인한 사용자·회사 머리글</span>
+            ) : status.auth.mode === "token" ? (
+              <span className="font-semibold">회사별 서비스 토큰</span>
             ) : (
-              <span className="font-semibold">조직별 서비스 토큰(Authorization: Bearer)</span>
+              <span className="font-semibold">확인 필요</span>
             )}{" "}
             <span className="tabular-nums text-[12px] text-muted">{status.auth.mode}</span>
           </Row>
@@ -109,8 +113,7 @@ function StatusBody({ status }: { status: AdminStatus }) {
         {status.detector?.configured ? null : (
           <Row label="탐지 모델">
             <span className="text-warn">
-              연결되지 않았습니다. 자료 올리기의 사진·영상은 분석하지 않고 &ldquo;탐지 모델이 연결되지 않았습니다&rdquo;로
-              답합니다.
+              미연결. 사용자가 올린 사진·영상은 분석하지 않고 &ldquo;이 파일은 분석하지 못했습니다&rdquo;로 안내합니다.
             </span>
           </Row>
         )}
@@ -565,11 +568,11 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
 }
 
 export function AdminView() {
-  const { mode, org, orgs, setOrgId, setSessionId, reconnect } = useV3();
+  const { mode, org, memberships, setOrgId, switching, setSessionId, reconnect } = useV3();
   const live = mode === "live";
-  // 관리자 주소(/admin/*)는 운영 조직만 부른다. 다른 관점에서는 부르지 않고 관점을 바꾸라고 안내한다
+  // 운영 주소(/admin/*)는 운영 회사로만 부른다. 다른 회사로 보고 있으면 부르지 않고 운영 회사로 바꾸라고 안내한다
   const isAdmin = org.role === "admin";
-  const adminOrg = orgs.find((item) => item.role === "admin");
+  const adminOrg = memberships.find((item) => item.kind === "admin");
   const health = useRemote("health", live, () => api.health());
   const status = useRemote(`admin:${org.id}`, live && isAdmin, () => api.adminStatus(org.id));
   const [evalState, setEvalState] = useState<{ busy: boolean; result: EvalResult | null; error: string | null }>({
@@ -608,7 +611,7 @@ export function AdminView() {
     mode === "loading" ? (
       <p className="text-sm text-muted">불러오는 중입니다.</p>
     ) : !live ? (
-      <p className="text-sm text-muted">백엔드에 연결되지 않아 상태를 읽을 수 없습니다. 예시 값은 만들지 않습니다.</p>
+      <p className="text-sm text-muted">서버에 닿지 못해 상태를 읽을 수 없습니다.</p>
     ) : status.loading ? (
       <p className="text-sm text-muted">불러오는 중입니다.</p>
     ) : status.error ? (
@@ -618,7 +621,7 @@ export function AdminView() {
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       <header>
-        <h1 className="text-h1">관리자</h1>
+        <h1 className="text-h1">운영</h1>
         <p className="mt-1 text-sm text-muted">
           기준값과 법령 색인 상태, 외부 서비스 연결, 사례 시험, 재학습 데이터와 배포 게이트를 봅니다.
         </p>
@@ -626,20 +629,20 @@ export function AdminView() {
 
       {live && isAdmin && status.data?.auth?.mode === "header" ? (
         <div role="alert" className="rounded-md border border-warn bg-warn-bg px-4 py-3 text-sm font-semibold text-warn">
-          시연용 인증(X-Org-Id 신뢰). 공개 주소에 그대로 두면 조직 경계가 지켜지지 않습니다
+          시연용 인증 모드(X-Org-Id 머리글을 그대로 믿음)입니다. 공개 주소에 그대로 두면 회사 경계가 지켜지지 않습니다
         </div>
       ) : null}
 
       <section className="rounded-xl border border-line p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-h2">백엔드 연결</h2>
+            <h2 className="text-h2">서버 연결</h2>
             <p className="mt-1 text-sm">
               <span className="tabular-nums text-[13px] break-all">{API_BASE}</span> ·{" "}
               {mode === "loading" ? (
                 "연결하는 중"
               ) : !live ? (
-                <span className="font-semibold text-warn">연결 안 됨 (예시 데이터를 보여 주는 중)</span>
+                <span className="font-semibold text-warn">연결 안 됨</span>
               ) : health.loading ? (
                 "확인 중"
               ) : health.error ? (
@@ -664,18 +667,19 @@ export function AdminView() {
       </section>
 
       {live && !isAdmin ? (
-        <section role="status" className="rounded-xl border border-line p-5">
-          <h2 className="text-h2">관리자 관점으로 바꾸세요</h2>
+        <section role="status" className="rounded-xl border border-ink p-5">
+          <h2 className="text-h2">운영 계정으로 들어와 주세요</h2>
           <p className="mt-1 text-sm text-ink-2">
-            지금 관점은 <span className="font-semibold">{org.name}</span>입니다. 관리자 화면의 상태·사례 시험·재학습
-            데이터에는 여러 조직의 기록이 섞여 있어 운영 조직만 볼 수 있습니다. 이 관점에서는 관리자 주소를 부르지
-            않았습니다.
+            지금은 <span className="font-semibold">{org.name}</span>으로 보고 있습니다. 운영 화면에는 여러 회사의 기록이 섞여 있어
+            운영 회사의 멤버만 볼 수 있습니다.
           </p>
           <div className="mt-4">
             {adminOrg ? (
-              <Button onClick={() => setOrgId(adminOrg.id)}>관리자 관점으로 바꾸기 ({adminOrg.name})</Button>
+              <Button disabled={switching} onClick={() => setOrgId(adminOrg.orgId)}>
+                운영 회사로 바꾸기 ({adminOrg.orgName})
+              </Button>
             ) : (
-              <p className="text-sm text-warn">조직 목록에 관리자 조직이 없습니다. 백엔드의 시연 데이터를 확인하세요.</p>
+              <ButtonLink href="/app">찾기 화면으로</ButtonLink>
             )}
           </div>
         </section>
@@ -690,7 +694,7 @@ export function AdminView() {
             </div>
             <p className="mt-1 text-[13px] text-muted">
               운영 조직이 볼 수 있는 근거(법령·기준값·가정값)를 셉니다. 조직별 문서와 측정값은 그 조직과 대화 상대만
-              보므로 여기에 세지 않습니다. 색인을 다시 만드는 주소는 v3 API 계약에 없어 이 화면에서는 상태만 봅니다.
+              보므로 여기에 세지 않습니다. 색인 다시 만들기는 이 화면에서 하지 않고 상태만 봅니다.
             </p>
             <div className="mt-3">{unavailable ?? (status.data ? <StatusBody status={status.data} /> : null)}</div>
           </section>
