@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
 import { api } from "@/lib/v3/api";
-import { formatNumber } from "@/lib/v3/format";
+import { CHECK_KEY_LABEL, formatNumber } from "@/lib/v3/format";
+import { evidenceExcerpt, evidenceSource, evidenceTitle, evidenceTool } from "@/lib/v3/labels";
 import type { Evidence, EvidenceDetail } from "@/lib/v3/types";
 
 type Loaded = { id: string; detail: EvidenceDetail | null; error: string | null };
@@ -34,22 +35,31 @@ function accessText(access: string[], orgName: (id: string) => string): string {
   return access.map(orgName).join(", ");
 }
 
+/**
+ * 근거 하나. 출처·이름·발췌에 판단 도구의 내부 ID를 쓰지 않는다(src/lib/v3/labels.ts). 근거 ID와 판단 도구 ID 같은
+ * 기술 정보는 운영 회사(technical)에게만 보인다.
+ */
 function EvidenceCard({
   item,
   compact = false,
   orgName,
+  technical,
 }: {
   item: Evidence;
   compact?: boolean;
   orgName: (id: string) => string;
+  technical: boolean;
 }) {
   const value = valueText(item);
   const formula = typeof item.meta.formula === "string" ? item.meta.formula : null;
   const tool = typeof item.meta.tool === "string" ? item.meta.tool : null;
+  const toolName = evidenceTool(item);
+  const source = evidenceSource(item);
   const hiddenInputs = (item.meta.inputs as { hidden?: boolean } | undefined)?.hidden === true;
   const url = typeof item.meta.url === "string" && /^https?:\/\//.test(item.meta.url) ? item.meta.url : null;
   // 원문이 JSON 덩어리(기준표 등)면 줄글 대신 고정폭으로 보여 준다
   const structured = /^[[{]/.test(item.excerpt.trim());
+  const excerpt = structured ? item.excerpt : evidenceExcerpt(item, (key) => CHECK_KEY_LABEL[key]);
   const assumed = item.kind === "assumption";
   return (
     <article>
@@ -58,32 +68,32 @@ function EvidenceCard({
         {assumed ? <span className="ml-1.5 text-warn">팀이 정한 가정값입니다</span> : null}
       </p>
       <h3 className={compact ? "text-[15px] font-medium" : "mt-0.5 text-[17px] leading-snug font-semibold tracking-[-0.02em]"}>
-        {item.label || item.id}
+        {evidenceTitle(item)}
       </h3>
       {value ? (
         <p className={`mt-1 font-semibold tabular-nums ${compact ? "text-[17px]" : "text-[26px] leading-tight tracking-[-0.02em]"}`}>
           {value}
         </p>
       ) : null}
-      {item.excerpt ? (
+      {excerpt ? (
         structured ? (
           <pre className="mt-3 max-h-40 overflow-auto rounded-xl bg-ground p-3 font-mono text-[12px] break-all whitespace-pre-wrap text-ink-2">
-            {item.excerpt}
+            {excerpt}
           </pre>
         ) : (
           <blockquote className="mt-3 max-h-72 overflow-y-auto rounded-xl bg-ground px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-ink-2">
-            {item.excerpt}
+            {excerpt}
           </blockquote>
         )
       ) : null}
-      {formula && formula !== item.excerpt ? <p className="mt-3 text-sm text-ink-2">계산식: {formula}</p> : null}
+      {formula && formula !== item.excerpt && item.meta.call !== true ? <p className="mt-3 text-sm text-ink-2">계산식: {formula}</p> : null}
       {hiddenInputs ? (
         <p className="mt-2 text-[13px] text-muted">계산에 넣은 원본 값은 계산한 회사에게만 보입니다.</p>
       ) : null}
       <dl className="mt-3 grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1 text-[13px] text-ink-2">
         <dt className="text-muted">출처</dt>
         <dd>
-          {item.source || <span className="text-warn">확인 필요</span>}
+          {source ?? <span className="text-warn">확인 필요</span>}
           {url ? (
             <a href={url} target="_blank" rel="noreferrer" className="block text-[12px] break-all text-muted underline underline-offset-2 hover:text-ink">
               {readable(url)}
@@ -95,14 +105,22 @@ function EvidenceCard({
           {item.asOf}
           {item.validUntil ? ` (${item.validUntil}까지 유효)` : ""}
         </dd>
+        {toolName && !source?.includes(toolName) ? (
+          <>
+            <dt className="text-muted">계산한 곳</dt>
+            <dd>{toolName}</dd>
+          </>
+        ) : null}
         {compact ? null : (
           <>
             <dt className="text-muted">볼 수 있는 곳</dt>
             <dd>{accessText(item.access, orgName)}</dd>
+            <dt className="text-muted">버전</dt>
+            <dd className="tabular-nums">{item.version}</dd>
           </>
         )}
       </dl>
-      {compact ? null : (
+      {compact || !technical ? null : (
         <details className="mt-2 text-[12px] text-muted">
           <summary className="cursor-pointer hover:text-ink">기술 정보</summary>
           <p className="mt-1 font-mono break-all">
@@ -120,14 +138,17 @@ export function EvidencePanel({
   title,
   orgId,
   orgName,
+  technical = false,
   live,
   onClose,
 }: {
   ids: string[];
   title?: string;
   orgId: string;
-  /** 조직 ID를 이름으로. 모르는 조직이면 ID를 그대로 돌려준다 */
+  /** 조직 ID를 이름으로. 모르는 조직이면 "다른 회사"처럼 ID가 아닌 말을 돌려준다 */
   orgName: (id: string) => string;
+  /** 근거 ID와 판단 도구 ID를 보여 줄지(운영 회사만) */
+  technical?: boolean;
   /** 서버와 이어졌을 때만 근거를 읽는다 */
   live: boolean;
   onClose: () => void;
@@ -204,14 +225,14 @@ export function EvidencePanel({
                 {shown.length > 1 && index > 0 ? <p className="mb-2 text-[13px] text-muted">함께 쓴 근거</p> : null}
                 {item.detail ? (
                   <>
-                    <EvidenceCard item={item.detail.evidence} orgName={orgName} />
+                    <EvidenceCard item={item.detail.evidence} orgName={orgName} technical={technical} />
                     {item.detail.chain.length > 0 ? (
                       <div className="mt-6">
                         <p className="text-[13px] text-muted">이 값을 계산하는 데 쓴 값 {item.detail.chain.length}개</p>
                         <ol className="mt-3 space-y-5 border-l border-line-strong pl-4">
                           {item.detail.chain.map((link) => (
                             <li key={link.id} style={{ marginLeft: `${Math.max((link.depth ?? 1) - 1, 0) * 14}px` }}>
-                              <EvidenceCard item={link} compact orgName={orgName} />
+                              <EvidenceCard item={link} compact orgName={orgName} technical={technical} />
                             </li>
                           ))}
                         </ol>
@@ -220,7 +241,8 @@ export function EvidencePanel({
                   </>
                 ) : (
                   <p className="text-sm text-loss">
-                    {item.error} <span className="block text-[12px] break-all text-muted">{item.id}</span>
+                    {item.error}
+                    {technical ? <span className="block text-[12px] break-all text-muted">{item.id}</span> : null}
                   </p>
                 )}
               </section>

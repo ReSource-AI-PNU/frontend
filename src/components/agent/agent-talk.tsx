@@ -8,6 +8,7 @@ import { EventDetail } from "@/components/v3/event-detail";
 import { josa } from "@/lib/josa";
 import { evidenceOf, typingText, withinVendorRange, type TalkThread, type Typing } from "@/lib/v3/live";
 import { MESSAGE_LABEL, THREAD_LABEL, formatDateTime } from "@/lib/v3/format";
+import { eventSummary } from "@/lib/v3/labels";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
 import { Dots } from "./dots";
 
@@ -327,7 +328,7 @@ export function AgentTalk({
                           <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 py-2">
                             <span className="tabular-nums text-muted">{formatDateTime(event.at, "time")}</span>
                             <span>
-                              <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? event.actor}</span> {event.summary}
+                              <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? "시스템"}</span> {eventSummary(event.summary)}
                               <EventDetail event={event} streamName={streamName} />
                             </span>
                           </li>

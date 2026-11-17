@@ -191,7 +191,8 @@ export function V3Provider({
           ids={panel.ids}
           title={panel.title}
           orgId={org.id}
-          orgName={(id) => orgs.find((item) => item.id === id)?.name ?? id}
+          orgName={(id) => orgs.find((item) => item.id === id)?.name ?? "다른 회사"}
+          technical={org.role === "admin" && !demo}
           live={remote.mode === "live"}
           onClose={() => setPanel(null)}
         />

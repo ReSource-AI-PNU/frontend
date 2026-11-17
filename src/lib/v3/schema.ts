@@ -588,4 +588,8 @@ export const evidenceSchema = obj({
   meta: z.record(z.string(), z.unknown()),
   /** 계산 사슬 안에서의 깊이(사슬 항목에만 붙는다) */
   depth: z.number().optional(),
+  /** 사람이 읽는 출처(판단 도구 이름을 풀어 쓴 것). 있으면 source 대신 쓴다 */
+  sourceLabel: z.string().nullable().optional(),
+  /** 근거를 만든 판단 도구의 이름. 있으면 meta.tool(내부 ID) 대신 쓴다 */
+  toolLabel: z.string().nullable().optional(),
 });
