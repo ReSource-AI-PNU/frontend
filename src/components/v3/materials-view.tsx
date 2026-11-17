@@ -929,10 +929,18 @@ function VendorForm({
   return (
     <div className="divide-y divide-line">
       <section className="pb-8">
+        <h2 className={sectionTitle}>허가증·매입 기준표 올리기</h2>
+        <p className="mt-1 text-sm text-muted">문서에서 뽑은 값은 담당자가 확인한 것만 아래 표에 근거로 들어갑니다.</p>
+        <div className="mt-4">
+          <DocumentUpload kinds={["permit", "purchase_criteria"]} canAct={canAct} label="업체 문서" />
+        </div>
+      </section>
+
+      <section className="py-8">
         <h2 className={sectionTitle}>허가 품목</h2>
         <p className="mt-1 text-sm text-muted">허가 품목이 맞는 폐기물만 문의가 옵니다.</p>
         {profile.permits.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-2">아직 등록된 허가 품목이 없습니다. 아래에서 허가증을 올려 주세요.</p>
+          <p className="mt-3 text-sm text-ink-2">아직 등록된 허가 품목이 없습니다. 위에서 허가증을 올려 주세요.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line border-y border-line text-[15px]">
             {profile.permits.map((permit, index) => (
@@ -954,7 +962,7 @@ function VendorForm({
           AI는 이 표에 있는 조건과 단가로만 답합니다. 단가는 고쳐서 저장할 수 있습니다.
         </p>
         {profile.criteria.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-2">아직 등록된 매입 기준이 없습니다. 아래에서 매입 기준표를 올려 주세요.</p>
+          <p className="mt-3 text-sm text-ink-2">아직 등록된 매입 기준이 없습니다. 위에서 매입 기준표를 올려 주세요.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[640px] text-[15px]">
@@ -1056,7 +1064,7 @@ function VendorForm({
         </div>
       </section>
 
-      <section className="py-8">
+      <section className="pt-8">
         <h2 className={sectionTitle}>수거 차량</h2>
         {profile.fleet ? (
           <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-y-1.5 text-[15px] tabular-nums">
@@ -1074,13 +1082,6 @@ function VendorForm({
         )}
       </section>
 
-      <section className="pt-8">
-        <h2 className={sectionTitle}>허가증·매입 기준표 올리기</h2>
-        <p className="mt-1 text-sm text-muted">문서에서 뽑은 값은 담당자가 확인한 것만 위 표에 근거로 들어갑니다.</p>
-        <div className="mt-4">
-          <DocumentUpload kinds={["permit", "purchase_criteria"]} canAct={canAct} label="업체 문서" />
-        </div>
-      </section>
     </div>
   );
 }
