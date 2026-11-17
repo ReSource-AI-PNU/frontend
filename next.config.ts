@@ -21,6 +21,19 @@ const nextConfig: NextConfig = {
       ]),
     ];
   },
+  // 서비스 워커는 늘 새로 받는다(캐시해 두면 고친 판이 늦게 퍼진다). 같은 출처의 스크립트만 쓴다
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: { bodySizeLimit: "60mb" },
     proxyClientMaxBodySize: "60mb",

@@ -308,25 +308,38 @@ function MediaUpload({
   const media = useUpload<MediaUploadResult>(canAct);
   const result = media.state.result;
   const estimate = stream.photo?.materialEstimate;
+  const sendMedia = (file: File) =>
+    void media.send(async () => {
+      const uploaded = await api.uploadMedia(org.id, stream.id, file);
+      if (!uploaded.detectorUnavailable && uploaded.evidence.length > 0) onChanged();
+      return uploaded;
+    });
   return (
     <div className="space-y-3 text-sm">
       <p className="text-ink-2">
         사진이나 영상을 올리면 재질과 섞인 것의 비율을 추정해 근거로 등록합니다. 사진만으로는 수지 종류(PP·PE·ABS)를 가르지
         못하므로 등록한 재질은 바꾸지 않습니다.
       </p>
-      <FileButton
-        text="사진·영상 올리기"
-        label={`${stream.name} 사진·영상`}
-        accept="image/*,video/*"
-        disabled={!canAct || media.state.busy}
-        onFile={(file) =>
-          void media.send(async () => {
-            const uploaded = await api.uploadMedia(org.id, stream.id, file);
-            if (!uploaded.detectorUnavailable && uploaded.evidence.length > 0) onChanged();
-            return uploaded;
-          })
-        }
-      />
+      <div className="flex flex-wrap gap-2">
+        {/* 휴대폰(손가락으로 누르는 화면)에서는 카메라를 바로 연다. 올린 사진은 웹과 같은 계정·서버에 남는다 */}
+        <span className="hidden pointer-coarse:contents">
+          <FileButton
+            text="사진 찍기"
+            label={`${stream.name} 사진 찍기`}
+            accept="image/*"
+            capture="environment"
+            disabled={!canAct || media.state.busy}
+            onFile={sendMedia}
+          />
+        </span>
+        <FileButton
+          text="사진·영상 올리기"
+          label={`${stream.name} 사진·영상`}
+          accept="image/*,video/*"
+          disabled={!canAct || media.state.busy}
+          onFile={sendMedia}
+        />
+      </div>
       <p className="text-[13px]">
         {stream.photo?.contaminationPct != null ? (
           <>
@@ -466,12 +479,15 @@ function FileButton({
   label,
   text,
   accept,
+  capture,
   disabled,
   onFile,
 }: {
   label: string;
   text: string;
   accept?: string;
+  /** 휴대폰에서 카메라를 바로 연다(environment: 뒤쪽 카메라). 데스크톱 브라우저는 무시한다 */
+  capture?: "environment" | "user";
   disabled: boolean;
   onFile: (file: File) => void;
 }) {
@@ -483,6 +499,7 @@ function FileButton({
       <input
         type="file"
         accept={accept}
+        capture={capture}
         disabled={disabled}
         aria-label={label}
         className="sr-only"

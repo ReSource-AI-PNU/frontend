@@ -15,6 +15,7 @@ import {
   StampIcon,
   TalkIcon,
 } from "@/components/icons";
+import { InstallHint } from "@/components/pwa/install-hint";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useV3 } from "@/components/v3/context";
 import { KIND_LABEL } from "@/lib/auth/account";
@@ -219,6 +220,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
             </Link>
           </p>
         ) : null}
+        {readOnly ? null : <InstallHint />}
         <main className="flex min-w-0 flex-1 flex-col">{offline ? <Offline /> : children}</main>
       </div>
     </div>
