@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, ChevronDownIcon, CloseIcon, TalkIcon } from "@/components/icons";
+import { useEscape } from "@/components/use-escape";
 import { ClaimText } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { EventDetail } from "@/components/v3/event-detail";
@@ -170,14 +171,8 @@ export function AgentTalk({
   const streamName = (id: string) => view.streams.find((item) => item.id === id)?.name ?? id;
   const typingKey = thread?.typing ? `${thread.typing.side}:${thread.typing.phase}:${thread.typing.reason ?? ""}` : "";
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onOpenChange(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange]);
+  // Esc는 맨 위 패널만 닫는다. 근거 패널이 위에 열려 있으면 그것이 먼저 닫힌다
+  useEscape(open, () => onOpenChange(false));
 
   // 실행 중에는 새 말풍선과 쓰는 중 표시가 보이게 아래로 내린다
   useEffect(() => {

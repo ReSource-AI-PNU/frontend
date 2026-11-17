@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { useEscape } from "@/components/use-escape";
 import { api } from "@/lib/v3/api";
 import { CHECK_KEY_LABEL, formatNumber } from "@/lib/v3/format";
 import { evidenceExcerpt, evidenceSource, evidenceTitle, evidenceTool } from "@/lib/v3/labels";
@@ -177,13 +178,8 @@ export function EvidencePanel({
     };
   }, [ids, orgId, live]);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // Esc는 맨 위 패널만 닫는다(대화 패널 위에 열렸으면 이것만)
+  useEscape(true, onClose);
 
   const items: Loaded[] | null = live ? remote : null;
 

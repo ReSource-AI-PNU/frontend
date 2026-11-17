@@ -17,6 +17,7 @@ import {
 } from "@/components/icons";
 import { InstallHint } from "@/components/pwa/install-hint";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { useEscape } from "@/components/use-escape";
 import { useV3 } from "@/components/v3/context";
 import { KIND_LABEL } from "@/lib/auth/account";
 
@@ -122,6 +123,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
   const { mode, org, readOnly, basePath } = useV3();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  useEscape(open, () => setOpen(false));
 
   const items = navItems(org.role, basePath, readOnly);
   const active = (href: string, exact: boolean) => pathname === href || (!exact && pathname.startsWith(`${href}/`));
