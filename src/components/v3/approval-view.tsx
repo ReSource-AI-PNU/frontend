@@ -215,7 +215,7 @@ function OutcomeForm({
           </select>
         </label>
         <label className="flex flex-col gap-1 font-semibold">
-          실제 단가 (원/kg)
+          실제 단가 (kg당 원)
           <span className="flex gap-1">
             <select
               value={sideNow}
@@ -373,7 +373,6 @@ export function ApprovalView() {
             {thread ? (
               <p className="mt-1 text-[13px] text-muted">
                 업체 쪽 답변: {modelLabel(thread.vendorModel)}
-                {thread.vendorModel.configured ? ` · 설정: ${modelLabel(thread.vendorModel.configured)}` : ""}
               </p>
             ) : null}
             <div className="mt-3 text-sm">
