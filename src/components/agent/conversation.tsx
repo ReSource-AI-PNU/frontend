@@ -11,7 +11,7 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
-import { THREAD_LABEL } from "@/lib/v3/format";
+import { THREAD_LABEL, clearedApprovals } from "@/lib/v3/format";
 import { AI_NAME } from "@/lib/v3/labels";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
 import type { DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
@@ -587,6 +587,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
             codes={approval.blockedCodes}
             reason={approval.blockedReason}
             canRerun={isEmitter && d.canAct}
+            cleared={clearedApprovals(approval, view.events)}
             busy={d.busy || working}
             onRerun={d.run}
             vendorName={view.threads.find((item) => item.id === approval.threadId)?.vendorName}

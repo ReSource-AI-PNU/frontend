@@ -8,6 +8,7 @@ import { api } from "@/lib/v3/api";
 import Link from "next/link";
 import {
   THREAD_LABEL,
+  clearedApprovals,
   formatDateTime,
   formatNumber,
   formatSignedPrice,
@@ -430,6 +431,7 @@ export function ApprovalView() {
                   codes={approval.blockedCodes}
                   reason={reason}
                   canRerun={role === "emitter" && d.canAct}
+                  cleared={clearedApprovals(approval, view.events)}
                   busy={d.busy || view.session.status === "running"}
                   onRerun={d.run}
                 />

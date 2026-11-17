@@ -8,6 +8,7 @@ import { blockCodeLabel, blockNotice } from "@/lib/v3/format";
  *  - VENDOR_TERMS_CHANGED: 다시 실행하면 같은 대화를 새 조건으로 이어 간다(실행은 배출 기업만 한다).
  *  - STREAM_CHANGED, EVIDENCE_CHANGED: 자료가 바뀐 것이므로 새 진단이 필요하다.
  * 코드가 하나도 없으면(이 화면이 메시지의 검증 실패를 보고 막은 경우) 받은 문장을 그대로 적는다.
+ * "앞서 한 승인은 지워졌습니다"는 승인한 적이 있을 때만 쓴다(cleared, format.ts clearedApprovals).
  */
 export function BlockedNotice({
   codes,
@@ -16,6 +17,7 @@ export function BlockedNotice({
   busy,
   onRerun,
   vendorName,
+  cleared,
 }: {
   codes: string[];
   reason: string | null;
@@ -24,6 +26,8 @@ export function BlockedNotice({
   busy: boolean;
   onRerun: () => void;
   vendorName?: string;
+  /** 앞서 한 승인이 있었고 막히면서 지워졌는지 */
+  cleared: boolean;
 }) {
   const notice = blockNotice(codes);
   if (!notice) {
@@ -55,14 +59,14 @@ export function BlockedNotice({
           ) : null}
           <span className="text-[13px]">
             {canRerun
-              ? "같은 대화에서 회사 측이 조건을 다시 묻고 업체 측이 지금 조건으로 답합니다. 앞서 한 승인은 지워졌고, 재합의 뒤 양쪽이 다시 승인합니다."
-              : "배출 기업 담당자가 다시 실행하면 같은 대화를 새 조건으로 이어 갑니다. 앞서 한 승인은 지워졌습니다."}
+              ? `같은 대화에서 회사 측이 조건을 다시 묻고 업체 측이 지금 조건으로 답합니다. ${cleared ? "앞서 한 승인은 지워졌고, 재합의 뒤 양쪽이 다시 승인합니다." : "재합의 뒤 양쪽이 승인합니다."}`
+              : `배출 기업 담당자가 다시 실행하면 같은 대화를 새 조건으로 이어 갑니다.${cleared ? " 앞서 한 승인은 지워졌습니다." : ""}`}
           </span>
         </div>
       ) : (
         <p className="mt-1 text-[13px]">
-          앞서 한 승인은 양쪽 모두 지워졌습니다. 자료를 되돌리면 승인이 풀리고, 일부러 고친 것이라면 찾기 화면의 &ldquo;새로
-          찾기&rdquo;로 고친 자료로 다시 찾아 주세요.
+          {cleared ? "앞서 한 승인은 양쪽 모두 지워졌습니다. " : ""}자료를 되돌리면 다시 승인할 수 있고, 일부러 고친 것이라면 찾기
+          화면의 &ldquo;새로 찾기&rdquo;로 고친 자료로 다시 찾아 주세요.
         </p>
       )}
     </div>

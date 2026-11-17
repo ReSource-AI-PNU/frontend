@@ -425,6 +425,10 @@ export const approvalSchema = obj({
   blockedCodes: z.array(z.string()),
   /** 허가 품목이 일부만 맞지 않으면(409 PERMIT_MISMATCH) 그 흐름이 빠져 줄어든다 */
   streamIds: z.array(z.string()),
+  /** 막히면서 앞서 한 승인을 지웠는지(백엔드가 알려 주면). 없으면 화면은 실행 기록의 승인 줄로 가린다 */
+  approvalsCleared: z.boolean().optional(),
+  /** 막히면서 지운 쪽별 승인 */
+  clearedApprovals: obj({ emitter: z.boolean(), vendor: z.boolean() }).optional(),
 });
 
 export const viewDocumentSchema = obj({

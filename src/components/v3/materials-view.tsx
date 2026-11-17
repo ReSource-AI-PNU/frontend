@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { Button, buttonClass } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/v3/api";
 import { formatNumber, priceSide } from "@/lib/v3/format";
+import { addPending, checkPending, dropPending, measureCsv, measureProblem, nothingDetected, parsePending, pendingKey, type PendingDocument } from "@/lib/v3/intake";
 import { AI_NAME } from "@/lib/v3/labels";
 import type {
   CsvUploadResult,
@@ -117,41 +118,164 @@ const DOC_KIND_LABEL: Record<DocumentKind, string> = {
   contract: "위탁 계약서",
 };
 
+const PENDING_EVENT = "rsai-pending-documents";
+
+function subscribePending(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(PENDING_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(PENDING_EVENT, callback);
+  };
+}
+
+function readPending(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 아직 확인하지 않은 문서 추출값. 새로 고치거나 다음 문서를 올려도 남도록 이 탭의 저장소(sessionStorage)에 둔다.
+ * 고칠 때는 저장소의 지금 값을 읽어 고친다(늦게 온 응답이 앞선 변경을 덮지 않게).
+ */
+function usePending(key: string) {
+  const raw = useSyncExternalStore(subscribePending, () => readPending(key), () => null);
+  const list = useMemo(() => parsePending(raw), [raw]);
+  const update = useCallback(
+    (change: (list: PendingDocument[]) => PendingDocument[]) => {
+      const next = change(parsePending(readPending(key)));
+      try {
+        if (next.length === 0) window.sessionStorage.removeItem(key);
+        else window.sessionStorage.setItem(key, JSON.stringify(next));
+      } catch {
+        // 저장소를 쓸 수 없으면(사생활 보호 모드 등) 이 화면에서만 잃는다
+      }
+      window.dispatchEvent(new Event(PENDING_EVENT));
+    },
+    [key],
+  );
+  return [list, update] as const;
+}
+
+/** 확인을 기다리는 문서 하나: 뽑은 값마다 확인 표시를 하고, 표시한 것만 근거로 등록한다 */
+function PendingExtraction({
+  item,
+  canAct,
+  onCheck,
+  onDone,
+  onDiscard,
+}: {
+  item: PendingDocument;
+  canAct: boolean;
+  onCheck: (field: string, value: boolean) => void;
+  onDone: (evidence: string[]) => void;
+  onDiscard: () => void;
+}) {
+  const { org } = useV3();
+  const { result, checked } = item;
+  const [state, setState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
+  const picked = result.fields.filter((field) => checked[field.field]);
+
+  const register = async () => {
+    setState({ busy: true, error: null });
+    try {
+      const fields: ExtractedField[] = result.fields.map((field) => ({ ...field, confirmed: Boolean(checked[field.field]) }));
+      const done = await api.confirmDocument(org.id, result.filename, fields);
+      setState({ busy: false, error: null });
+      onDone(done.evidence);
+    } catch (error) {
+      setState({ busy: false, error: error instanceof Error ? error.message : "등록하지 못했습니다." });
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl bg-ground px-4 py-4">
+      <p className="text-[13px]">
+        <span className="tabular-nums">{result.filename}</span> · {DOC_KIND_LABEL[result.kind] ?? "문서"}
+        <span className="text-muted"> · 확인을 기다립니다</span>
+      </p>
+      {result.shieldUnavailable ? (
+        <p className="text-[13px] text-warn">이 문서는 안전 검사를 하지 못했습니다. 뽑은 값을 한 번 더 확인해 주세요.</p>
+      ) : null}
+      {result.extraction === "text_only" ? (
+        <p className="text-[13px] text-muted">이 문서는 글자만 읽었습니다. 표나 사진 속 값은 원본을 보고 직접 확인해 주세요.</p>
+      ) : null}
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="border-b border-line text-left text-muted">
+            <th className="py-1 pr-3">확인</th>
+            <th className="py-1 pr-3">항목</th>
+            <th className="py-1 pr-3">뽑은 값</th>
+            <th className="py-1">문서의 표기</th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.fields.map((field) => (
+            <tr key={field.field} className="border-b border-line align-top">
+              <td className="pr-3">
+                {/* 누르는 곳을 44px로: 칸 전체가 확인 표시다 */}
+                <label className="-ml-2 flex size-11 cursor-pointer items-center justify-center rounded-md hover:bg-sunken has-[:disabled]:cursor-not-allowed">
+                  <input
+                    type="checkbox"
+                    aria-label={`${field.label} 확인`}
+                    className="size-4 cursor-pointer accent-ink disabled:cursor-not-allowed"
+                    checked={Boolean(checked[field.field])}
+                    disabled={!canAct || state.busy}
+                    onChange={(event) => onCheck(field.field, event.target.checked)}
+                  />
+                </label>
+              </td>
+              <td className="py-3 pr-3 font-medium">{field.label}</td>
+              <td className="py-3 pr-3 tabular-nums">
+                {field.value === null ? (
+                  <span className="text-warn">확인 필요</span>
+                ) : (
+                  `${typeof field.value === "number" ? formatNumber(field.value) : field.value}${field.unit ? ` ${field.unit}` : ""}`
+                )}
+                {field.needsReview ? (
+                  <span className="ml-2 text-[12px] text-warn">
+                    다시 볼 것{field.reviewReasons?.length ? `: ${field.reviewReasons.join(", ")}` : ""}
+                  </span>
+                ) : null}
+              </td>
+              <td className="py-3 text-muted">{field.raw ?? "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Button size="sm" variant="secondary" disabled={!canAct || state.busy || picked.length === 0} onClick={register}>
+          {state.busy ? "등록 중" : `확인한 값 ${picked.length}개를 근거로 등록`}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={state.busy} onClick={onDiscard} className="!text-ink-2">
+          버리기
+        </Button>
+        <span className="text-[13px] text-muted">{result.note ?? "표시한 값만 근거로 등록됩니다."}</span>
+      </div>
+      {state.error ? (
+        <p role="alert" className="text-sm text-loss">
+          {state.error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * 문서 올리기와 추출값 확인. 뽑은 값은 담당자가 표시한 것만 doc 근거로 등록된다.
+ * 확인하지 않은 추출값은 새로 고치거나 다음 문서를 올려도 남는다(usePending).
  * 안전 검사나 표 읽기를 하지 못한 문서는 무엇을 직접 확인하면 되는지만 적는다(서비스 이름은 운영 화면에만).
  */
 function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAct: boolean; label: string }) {
   const { org, openEvidence } = useV3();
   const upload = useUpload<DocumentUploadResult>(canAct);
   const [kind, setKind] = useState<DocumentKind>(kinds[0]);
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [confirm, setConfirm] = useState<{ busy: boolean; evidence: string[] | null; error: string | null }>({
-    busy: false,
-    evidence: null,
-    error: null,
-  });
-  const result = upload.state.result;
-  const picked = result?.fields.filter((item) => checked[item.field]) ?? [];
-
-  const register = async () => {
-    if (!result) return;
-    setConfirm({ busy: true, evidence: null, error: null });
-    try {
-      const fields: ExtractedField[] = result.fields.map((item) => ({
-        ...item,
-        confirmed: Boolean(checked[item.field]),
-      }));
-      const done = await api.confirmDocument(org.id, result.filename, fields);
-      setConfirm({ busy: false, evidence: done.evidence, error: null });
-    } catch (error) {
-      setConfirm({
-        busy: false,
-        evidence: null,
-        error: error instanceof Error ? error.message : "등록하지 못했습니다.",
-      });
-    }
-  };
+  const [pending, update] = usePending(pendingKey(org.id, label));
+  const [registered, setRegistered] = useState<{ filename: string; evidence: string[] } | null>(null);
+  const latest = upload.state.result;
 
   return (
     <div className="space-y-2 text-sm">
@@ -173,118 +297,81 @@ function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAc
           label={label}
           disabled={!canAct || upload.state.busy}
           onFile={(file) => {
-            setChecked({});
-            setConfirm({ busy: false, evidence: null, error: null });
-            void upload.send(() => api.uploadDocument(org.id, file, kind));
+            setRegistered(null);
+            void upload.send(async () => {
+              const result = await api.uploadDocument(org.id, file, kind);
+              update((list) => addPending(list, result, new Date()));
+              return result;
+            });
           }}
         />
       </div>
       <UploadStatus state={upload.state} />
-      {result ? (
-        <div className="space-y-3 rounded-xl bg-ground px-4 py-4">
-          <p className="text-[13px]">
-            <span className="tabular-nums">{result.filename}</span> · {DOC_KIND_LABEL[result.kind] ?? result.kind}
-          </p>
-          {result.blocked || result.handoff ? (
-            <p role="alert" className="text-sm font-medium text-loss">
-              이 문서에서 AI에게 내리는 숨은 지시문이 발견되어 이 문서를 쓰지 않습니다.
-              {result.threadIds.length > 0
-                ? ` 진행 중인 대화 ${result.threadIds.length}건은 담당자가 직접 이어 가도록 넘겼습니다.`
-                : ""}
-            </p>
-          ) : null}
-          {result.shieldUnavailable ? (
-            <p className="text-[13px] text-warn">이 문서는 안전 검사를 하지 못했습니다. 뽑은 값을 한 번 더 확인해 주세요.</p>
-          ) : null}
-          {result.extraction === "text_only" ? (
-            <p className="text-[13px] text-muted">
-              이 문서는 글자만 읽었습니다. 표나 사진 속 값은 원본을 보고 직접 확인해 주세요.
-            </p>
-          ) : null}
-          {result.fields.length === 0 ? (
-            <p className="text-[13px] text-muted">이 문서에서 뽑은 값이 없습니다.</p>
+      {latest && (latest.blocked || latest.handoff) ? (
+        <p role="alert" className="rounded-xl bg-loss-bg px-4 py-3 text-sm font-medium text-loss">
+          {latest.filename}: 이 문서에서 AI에게 내리는 숨은 지시문이 발견되어 이 문서를 쓰지 않습니다.
+          {latest.threadIds.length > 0 ? ` 진행 중인 대화 ${latest.threadIds.length}건은 담당자가 직접 이어 가도록 넘겼습니다.` : ""}
+        </p>
+      ) : null}
+      {latest && !latest.blocked && latest.fields.length === 0 ? (
+        <p className="rounded-xl bg-ground px-4 py-3 text-[13px] text-ink-2">
+          <span className="tabular-nums">{latest.filename}</span>에서 뽑은 값이 없습니다. 값이 표나 사진에 있으면 원본을 보고 직접 적어
+          주세요.
+        </p>
+      ) : null}
+      {pending.length > 1 ? <p className="pt-1 text-[13px] text-muted">확인을 기다리는 문서 {pending.length}건</p> : null}
+      {pending.map((item) => (
+        <PendingExtraction
+          key={item.id}
+          item={item}
+          canAct={canAct}
+          onCheck={(name, value) => update((list) => checkPending(list, item.id, name, value))}
+          onDone={(evidence) => {
+            update((list) => dropPending(list, item.id));
+            setRegistered({ filename: item.result.filename, evidence });
+          }}
+          onDiscard={() => update((list) => dropPending(list, item.id))}
+        />
+      ))}
+      {registered ? (
+        <p role="status" className="text-[13px]">
+          {registered.evidence.length === 0 ? (
+            `${registered.filename}: 등록된 근거가 없습니다.`
           ) : (
             <>
-              <table className="w-full text-[13px]">
-                <thead>
-                  <tr className="border-b border-line text-left text-muted">
-                    <th className="py-1 pr-3">확인</th>
-                    <th className="py-1 pr-3">항목</th>
-                    <th className="py-1 pr-3">뽑은 값</th>
-                    <th className="py-1">문서의 표기</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.fields.map((item) => (
-                    <tr key={item.field} className="border-b border-line align-top">
-                      <td className="py-1.5 pr-3">
-                        <input
-                          type="checkbox"
-                          aria-label={`${item.label} 확인`}
-                          checked={Boolean(checked[item.field])}
-                          disabled={result.blocked || confirm.busy}
-                          onChange={(event) =>
-                            setChecked((before) => ({ ...before, [item.field]: event.target.checked }))
-                          }
-                        />
-                      </td>
-                      <td className="py-1.5 pr-3 font-medium">{item.label}</td>
-                      <td className="py-1.5 pr-3 tabular-nums">
-                        {item.value === null ? (
-                          <span className="text-warn">확인 필요</span>
-                        ) : (
-                          `${typeof item.value === "number" ? formatNumber(item.value) : item.value}${item.unit ? ` ${item.unit}` : ""}`
-                        )}
-                        {item.needsReview ? (
-                          <span className="ml-2 text-[12px] text-warn">
-                            다시 볼 것{item.reviewReasons?.length ? `: ${item.reviewReasons.join(", ")}` : ""}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-1.5 text-muted">{item.raw ?? "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!canAct || result.blocked || confirm.busy || picked.length === 0}
-                  onClick={register}
-                >
-                  {confirm.busy ? "등록 중" : `확인한 값 ${picked.length}개를 근거로 등록`}
-                </Button>
-                <span className="text-[13px] text-muted">
-                  {result.note ?? "표시한 값만 근거로 등록됩니다."}
-                </span>
-              </div>
+              {registered.filename}: 문서 근거 {registered.evidence.length}건을 등록했습니다.{" "}
+              <button type="button" className={`${link}`} onClick={() => openEvidence(registered.evidence, "등록한 문서 근거")}>
+                근거 보기
+              </button>
             </>
           )}
-          {confirm.error ? (
-            <p role="alert" className="text-sm text-loss">
-              {confirm.error}
-            </p>
-          ) : null}
-          {confirm.evidence ? (
-            <p className="text-[13px]">
-              {confirm.evidence.length === 0 ? (
-                "등록된 근거가 없습니다."
-              ) : (
-                <>
-                  문서 근거 {confirm.evidence.length}건을 등록했습니다.{" "}
-                  <button
-                    type="button"
-                    className={`${link}`}
-                    onClick={() => openEvidence(confirm.evidence ?? [], "등록한 문서 근거")}
-                  >
-                    근거 보기
-                  </button>
-                </>
-              )}
-            </p>
-          ) : null}
-        </div>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** 측정값 칸을 펴고 오염도 입력에 커서를 둔다("수치 직접 적기") */
+function openMeasure(streamId: string) {
+  const shelf = document.getElementById(`measure-${streamId}`);
+  if (shelf instanceof HTMLDetailsElement) shelf.open = true;
+  const input = document.getElementById(`measure-${streamId}-contamination`);
+  input?.scrollIntoView({ block: "center", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  input?.focus({ preventScroll: true });
+}
+
+/** 사진으로 값을 얻지 못했을 때의 다음 행동: 다른 사진을 올리거나 수치를 직접 적는다 */
+function NextStep({ title, streamId, canAct, note }: { title: string; streamId: string; canAct: boolean; note?: string | null }) {
+  return (
+    <div role="status" className="rounded-xl bg-warn-bg px-4 py-3 text-[13px] text-ink-2">
+      <p className="font-medium text-ink">{title}</p>
+      <p className="mt-0.5">
+        다른 사진을 올리거나 수치를 직접 적어 주세요.{note ? ` ${note}` : ""}
+      </p>
+      {canAct ? (
+        <Button size="sm" variant="secondary" className="mt-2.5" onClick={() => openMeasure(streamId)}>
+          수치 직접 적기
+        </Button>
       ) : null}
     </div>
   );
@@ -373,18 +460,15 @@ function MediaUpload({
         ) : null}
       </p>
       <UploadStatus state={media.state} />
-      {result?.detectorUnavailable ? (
-        <div role="status" className="rounded-xl bg-warn-bg px-4 py-3 text-[13px] text-ink-2">
-          <p className="font-medium text-ink">이 파일은 분석하지 못했습니다</p>
-          <p className="mt-0.5">
-            다른 사진을 올리거나, 측정값 칸에 오염도와 수분을 직접 적어 주세요.
-            {stream.photo?.contaminationPct != null || estimate
-              ? " 위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다."
-              : ""}
-          </p>
-        </div>
+      {result?.detectorUnavailable || (result && nothingDetected(result)) ? (
+        <NextStep
+          title={result.detectorUnavailable ? "이 파일은 분석하지 못했습니다" : "이 사진에서 찾은 것이 없습니다"}
+          streamId={stream.id}
+          canAct={canAct}
+          note={stream.photo?.contaminationPct != null || estimate ? "위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다." : null}
+        />
       ) : null}
-      {result && !result.detectorUnavailable ? (
+      {result && !result.detectorUnavailable && !nothingDetected(result) ? (
         <div className="space-y-3 rounded-xl bg-ground px-4 py-4 text-[13px]">
           <p>
             <span className="tabular-nums">{result.filename ?? "올린 파일"}</span>
@@ -515,9 +599,9 @@ function FileButton({
 }
 
 /** 접어 두는 자료 한 줄: 무엇을 올리는 곳인지와 지금까지 올린 것을 한 줄로 보여 준다. */
-function Shelf({ title, status, children }: { title: string; status: string; children: React.ReactNode }) {
+function Shelf({ id, title, status, children }: { id?: string; title: string; status: string; children: React.ReactNode }) {
   return (
-    <details className="group border-t border-line">
+    <details id={id} className="group border-t border-line">
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 text-[15px] [&::-webkit-details-marker]:hidden">
         <span className="w-24 shrink-0 font-medium">{title}</span>
         <span className="min-w-0 flex-1 truncate text-sm text-muted">{status}</span>
@@ -563,6 +647,135 @@ function NumberField({
         <span className="text-sm font-normal text-ink-2">{unit}</span>
       </span>
     </label>
+  );
+}
+
+const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+
+/**
+ * 오염도와 수분을 직접 적는 칸. 측정값 CSV와 같은 길(POST /intake/csv)로 한 줄을 올려 측정값 근거로 등록한다.
+ * 사진으로 값을 얻지 못했을 때 "수치 직접 적기"가 여기로 온다.
+ */
+function MeasureForm({ stream, canAct, onChanged }: { stream: StreamRecord; canAct: boolean; onChanged: () => void }) {
+  const { org, openEvidence } = useV3();
+  const [process, setProcess] = useState(stream.process ?? "");
+  const [contamination, setContamination] = useState("");
+  const [moisture, setMoisture] = useState("");
+  const [measuredOn, setMeasuredOn] = useState(today);
+  const [state, setState] = useState<{ busy: boolean; problem: string | null; result: CsvUploadResult | null }>({
+    busy: false,
+    problem: null,
+    result: null,
+  });
+
+  const submit = async () => {
+    const problem = measureProblem({ process, contamination, moisture, measuredOn });
+    if (problem) {
+      setState({ busy: false, problem, result: null });
+      return;
+    }
+    setState({ busy: true, problem: null, result: null });
+    try {
+      const csv = measureCsv({
+        name: stream.name,
+        process: process.trim(),
+        material: stream.material,
+        contaminationPct: Number(contamination),
+        moisturePct: Number(moisture),
+        measuredOn,
+      });
+      const result = await api.uploadCsv(org.id, new File([csv], `${stream.name} 측정값.csv`, { type: "text/csv" }));
+      setState({ busy: false, problem: null, result });
+      if (result.accepted > 0) onChanged();
+    } catch (error) {
+      setState({ busy: false, problem: error instanceof Error ? error.message : "등록하지 못했습니다.", result: null });
+    }
+  };
+
+  const done = state.result && state.result.accepted > 0;
+  return (
+    <form
+      className="space-y-3 rounded-xl border border-line px-4 py-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}
+    >
+      <p className="text-[13px] font-medium text-ink-2">수치 직접 적기</p>
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+          오염도
+          <span className="flex items-center gap-2">
+            <input
+              id={`measure-${stream.id}-contamination`}
+              value={contamination}
+              onChange={(event) => setContamination(event.target.value)}
+              inputMode="decimal"
+              placeholder="숫자"
+              className={`${field} w-24 tabular-nums`}
+              disabled={!canAct || state.busy}
+            />
+            <span className="text-sm font-normal">%</span>
+          </span>
+        </label>
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+          수분
+          <span className="flex items-center gap-2">
+            <input
+              value={moisture}
+              onChange={(event) => setMoisture(event.target.value)}
+              inputMode="decimal"
+              placeholder="숫자"
+              className={`${field} w-24 tabular-nums`}
+              disabled={!canAct || state.busy}
+            />
+            <span className="text-sm font-normal">%</span>
+          </span>
+        </label>
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+          잰 날
+          <input
+            type="date"
+            value={measuredOn}
+            onChange={(event) => setMeasuredOn(event.target.value)}
+            className={`${field} tabular-nums`}
+            disabled={!canAct || state.busy}
+          />
+        </label>
+        <label className="flex min-w-[10rem] flex-1 flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+          공정
+          <input
+            value={process}
+            onChange={(event) => setProcess(event.target.value)}
+            placeholder="예: 사출"
+            className={field}
+            disabled={!canAct || state.busy}
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" size="sm" variant="secondary" disabled={!canAct || state.busy}>
+          {state.busy ? "등록하는 중" : "측정값 등록"}
+        </Button>
+        {state.problem ? (
+          <p role="alert" className="text-[13px] text-loss">
+            {state.problem}
+          </p>
+        ) : done ? (
+          <p role="status" className="text-[13px] text-ink-2">
+            측정값을 등록했습니다. 다음에 찾을 때부터 씁니다.{" "}
+            {state.result && state.result.evidence.length > 0 ? (
+              <button type="button" className={link} onClick={() => openEvidence(state.result?.evidence ?? [], "등록한 측정값 근거")}>
+                근거 보기
+              </button>
+            ) : null}
+          </p>
+        ) : (
+          <p className="text-[13px] text-muted">잰 값이 있을 때만 적어 주세요. 적은 값은 측정값 근거로 등록됩니다.</p>
+        )}
+      </div>
+      {state.result && !done ? <CsvResult result={state.result} /> : null}
+    </form>
   );
 }
 
@@ -766,11 +979,12 @@ function StreamCard({
         <Shelf title="사진·영상" status={photoStatus}>
           <MediaUpload stream={stream} canAct={canAct} onChanged={onChanged} />
         </Shelf>
-        <Shelf title="측정값" status={measureStatus}>
+        <Shelf id={`measure-${stream.id}`} title="측정값" status={measureStatus}>
           <div className="space-y-3 text-sm">
             <p className="text-ink-2">
-              오염도와 수분을 잰 값이 있으면 CSV 파일로 올립니다. 측정값이 있으면 업체가 조건을 바로 확정할 수 있습니다.
+              오염도와 수분을 잰 값이 있으면 직접 적거나 CSV 파일로 올립니다. 측정값이 있으면 업체가 조건을 바로 확정할 수 있습니다.
             </p>
+            <MeasureForm stream={stream} canAct={canAct} onChanged={onChanged} />
             <div className="flex flex-wrap items-center gap-2">
               <FileButton
                 text="CSV 올리기"

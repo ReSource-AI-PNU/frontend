@@ -289,6 +289,19 @@ export function blockNotice(codes: string[]): BlockNotice | null {
   return { action: "rediagnose", headline: "근거를 다시 확인했더니 통과하지 못했습니다. 새 진단이 필요합니다" };
 }
 
+/**
+ * 막힌 합의에서 앞서 한 승인이 지워졌는지. 백엔드가 approvalsCleared·clearedApprovals를 주면 그것을 쓰고, 없으면
+ * 실행 기록에 그 대화의 승인 줄(kind "approval")이 있었는지로 가린다. 승인한 적이 없으면 "지워졌다"고 쓰지 않는다.
+ */
+export function clearedApprovals(
+  approval: { threadId: string; approvalsCleared?: boolean; clearedApprovals?: { emitter: boolean; vendor: boolean } },
+  events: { kind: string; threadId: string | null }[],
+): boolean {
+  if (approval.clearedApprovals) return approval.clearedApprovals.emitter || approval.clearedApprovals.vendor;
+  if (typeof approval.approvalsCleared === "boolean") return approval.approvalsCleared;
+  return events.some((event) => event.kind === "approval" && event.threadId === approval.threadId);
+}
+
 /** 판단 그래프 엣지의 종류(graph.edges[].kind) */
 export const EDGE_KIND_LABEL: Record<string, string> = {
   permit: "허가 품목",
