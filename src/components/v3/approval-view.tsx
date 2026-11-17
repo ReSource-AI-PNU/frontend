@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MoreDetails } from "@/components/ui/more-details";
@@ -18,6 +18,7 @@ import { BlockedNotice } from "./blocked-notice";
 import { ClaimText, ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
+import { useRemote } from "./use-remote";
 
 const DOC_LABEL = { request: "요청서", plan: "이행 계획서" } as const;
 
@@ -269,9 +270,16 @@ function OutcomeForm({
 /** 양쪽 담당자 승인. 근거 확인에 실패한 항목이 있으면 승인 버튼을 끈다. */
 export function ApprovalView() {
   const d = useDiagnosis();
-  const { org, readOnly, basePath } = useV3();
+  const { org, mode, readOnly, basePath, setSessionId } = useV3();
   const { view } = d;
-  if (d.loading) return <p className="mx-auto w-full max-w-[820px] px-5 pt-10 text-sm text-muted">불러오는 중입니다.</p>;
+  // 이 회사로 아직 연 찾기가 없으면 서버에 남은 최근 찾기를 연다(다른 기기에서 들어왔거나 회사를 바꿨을 때)
+  const lookUp = mode === "live" && !d.sessionId;
+  const recent = useRemote(`sessions:${org.id}`, lookUp, () => api.listSessions(org.id));
+  const latest = lookUp ? (recent.data?.[0]?.id ?? null) : null;
+  useEffect(() => {
+    if (latest) setSessionId(latest);
+  }, [latest, setSessionId]);
+  if (d.loading || (lookUp && (recent.loading || latest))) return <p className="mx-auto w-full max-w-[820px] px-5 pt-10 text-sm text-muted">불러오는 중입니다.</p>;
   if (!view) {
     return (
       <div className="mx-auto w-full max-w-[820px] px-5 pt-10 pb-16">

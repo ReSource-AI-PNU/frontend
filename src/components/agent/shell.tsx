@@ -176,7 +176,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
   );
 
   return (
-    <div className="flex min-h-dvh flex-1 bg-bg">
+    <div className="flex min-h-dvh flex-1 bg-bg" data-active-org={org.id}>
       <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 bg-ground lg:block">{sidebar}</aside>
 
       {open ? (

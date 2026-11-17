@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AgentShell } from "@/components/agent/shell";
 import { BrandLink } from "@/components/brand";
@@ -39,6 +40,8 @@ function Unavailable() {
  * 화면은 로그인한 화면과 같은 부품을 쓰고, 통로는 /api/v3-demo(GET만)를 부른다.
  */
 async function DemoWorkspace({ children }: { children: ReactNode }) {
+  // 요청마다 서버에 묻는다(빌드할 때 정해 두지 않는다)
+  await connection();
   const company = await demoCompany();
   if (!company) return <Unavailable />;
   return (
