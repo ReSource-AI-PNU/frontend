@@ -2,8 +2,8 @@
 
 import { Fragment, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CORRECTION_FIELD_LABEL, FIELD_LABEL } from "@/lib/v3/format";
-import type { Correction, CorrectionField, CorrectionInput, DiagnosisView, ViewStream } from "@/lib/v3/types";
+import { CORRECTION_FIELD_LABEL, FIELD_LABEL, basisNote } from "@/lib/v3/format";
+import type { Claim, Correction, CorrectionField, CorrectionInput, DiagnosisView, ViewStream } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 
@@ -142,6 +142,12 @@ function CorrectionForm({
   );
 }
 
+/** 값의 출처 한 줄(측정 · 담당자 답 · 사진 추정). 값 아래 12px로 적는다(DESIGN.md 폐기물 표) */
+function Basis({ basis, claim }: { basis: ViewStream["contaminationBasis"]; claim: Claim | null }) {
+  const note = basisNote(basis, claim);
+  return note ? <p className="text-[12px] text-muted">{note}</p> : null;
+}
+
 /** ① 식별·분류 결과: 흐름마다 물량, 오염도, 수분, 등급, 현행 처리. 값마다 근거가 열린다. */
 export function StreamTable({
   streams,
@@ -205,7 +211,10 @@ export function StreamTable({
                 </td>
                 <td className="py-2.5 pr-3 text-right whitespace-nowrap">
                   {stream.contamination ? (
-                    <ClaimValue claim={stream.contamination} />
+                    <>
+                      <ClaimValue claim={stream.contamination} />
+                      <Basis basis={stream.contaminationBasis} claim={stream.contamination} />
+                    </>
                   ) : stream.photoContamination ? (
                     <>
                       <ClaimValue claim={stream.photoContamination} />
@@ -217,6 +226,7 @@ export function StreamTable({
                 </td>
                 <td className="py-2.5 pr-3 text-right whitespace-nowrap">
                   <ClaimValue claim={stream.moisture} />
+                  {stream.moisture ? <Basis basis={stream.moistureBasis} claim={stream.moisture} /> : null}
                   {unknown.has("moisturePct") ? <p className="text-[12px] text-muted">담당자 답: 모름</p> : null}
                 </td>
                 <td className="py-2.5 pr-3">

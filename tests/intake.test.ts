@@ -112,3 +112,14 @@ test("질문 머리말: 진단 뷰의 questionBatch.intro·note를 쓰고, 없�
   const loose = [{ id: "x", answered: false }, { id: "y", answered: false }];
   assert.equal(questionIntro(currentBundle(loose)).intro, "찾기 전에 2가지를 여쭙겠습니다.");
 });
+
+test("오염도·수분의 출처: 측정, 담당자 답(claim 이름), 사진 추정", async () => {
+  const { basisNote } = await import("../src/lib/v3/format.ts");
+  const answered = { id: "st_defect_answeredContaminationPct", kind: "number" as const, value: 5, unit: "%", evidence: ["human:x"], label: "오염도(담당자 답)" };
+  assert.equal(basisNote("answered", answered), "오염도(담당자 답)");
+  assert.equal(basisNote("answered", { ...answered, label: undefined }), "담당자 답");
+  assert.equal(basisNote("measured", answered), "측정");
+  assert.equal(basisNote("photo_estimate", null), "사진 추정");
+  assert.equal(basisNote(null, answered), null);
+  assert.equal(basisNote(undefined, null), null);
+});

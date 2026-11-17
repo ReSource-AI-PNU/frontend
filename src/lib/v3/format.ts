@@ -177,6 +177,17 @@ export function questionIntro(
   return { intro, note: [left, batch <= 1 ? "답을 보고 한 번 더 여쭐 수 있습니다." : null].filter(Boolean).join(" ") || null };
 }
 
+/**
+ * 오염도·수분 값 아래에 적는 출처(streams[].contaminationBasis·moistureBasis). 담당자 답이면 claim 이름("오염도(담당자 답)")을
+ * 쓴다. 출처를 모르면 null.
+ */
+export function basisNote(basis: string | null | undefined, claim: Claim | null | undefined): string | null {
+  if (basis === "answered") return claim?.label ?? "담당자 답";
+  if (basis === "measured") return "측정";
+  if (basis === "photo_estimate") return "사진 추정";
+  return null;
+}
+
 /** 담당자 질문과 "모르는 값"에 나오는 항목 이름 */
 export const FIELD_LABEL: Record<string, string> = {
   moisturePct: "수분",
