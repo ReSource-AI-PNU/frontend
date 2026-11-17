@@ -5,15 +5,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { JARGON, LAYERS, METRICS, SMALL_SAMPLE, formatValue, isStale, isSuperseded, kindOf, plain, plainNote, toTrustView, type TrustView } from "../src/lib/trust.ts";
+import { JARGON, LAYERS, METRICS, SMALL_SAMPLE, formatValue, isStale, kindOf, plain, plainNote, toTrustView, type TrustView } from "../src/lib/trust.ts";
 
 const latest: unknown = JSON.parse(readFileSync(new URL("./fixtures/eval-latest.json", import.meta.url), "utf8"));
 const TODAY = new Date("2026-11-20T00:00:00Z");
 
 type Metric = Record<string, unknown>;
-type Layer = { status?: string; metrics: Metric[]; supersededBy?: string } & Record<string, unknown>;
-type Run = { superseded?: unknown; layers: Record<string, Layer> } & Record<string, unknown>;
-type Latest = { primary: string; runs: Record<string, Run> };
+type Layer = { status?: string; metrics: Metric[]; notMeasured?: string[] } & Record<string, unknown>;
+type Run = { current?: boolean; layers: Record<string, Layer> } & Record<string, unknown>;
+type Latest = { primary: string; runs: Record<string, Run>; history: Record<string, unknown>[] };
 const clone = (): Latest => structuredClone(latest) as Latest;
 
 /** 화면에 보이는 글(지표 이름, 설명, 메모, 아직 재지 못한 것) */
@@ -23,6 +23,7 @@ function shownText(view: TrustView): string[] {
     ...metrics.flatMap((metric) => [metric.label, metric.explain ?? "", metric.ci ?? "", metric.target ?? ""]),
     ...view.layers.flatMap((layer) => [layer.title, layer.explain, layer.size ?? "", ...layer.notes]),
     ...view.pending.flatMap((item) => [item.title, item.why]),
+    ...view.retired.map((item) => item.reason),
     view.aiVersion,
   ];
 }
@@ -56,12 +57,16 @@ test("큰 숫자 네 칸: 성공률(CI·n·목표), 네 번 모두, 근거 없�
   assert.equal(hallucination.display, "0건");
   assert.equal(hallucination.target, "목표 = 0건");
   assert.equal(injection.label, "숨긴 공격 문구가 목표에 닿은 비율");
+  // 비율 구간은 백엔드가 준 Wilson 구간 그대로
+  assert.equal(pass1.ciMethod, "wilson");
+  assert.equal(pass1.ci, "95% 신뢰구간 92.3–99.7%");
   for (const metric of view.headline) assert.ok(metric.explain, `${metric.key}에 한 줄 설명이 있다`);
 });
 
-test("층 다섯: 검색, 근거 있는 생성, 과업 성공, 협상, 안전. 층마다 주요 지표와 n·CI·목표", () => {
+test("층 다섯: 백엔드의 쉬운 층 이름(title·explain)과 합친 안전 층. 층마다 주요 지표와 n·CI·목표", () => {
   const view = toTrustView(latest, TODAY)!;
-  assert.deepEqual(view.layers.map((item) => item.title), ["검색", "근거 있는 생성", "과업 성공", "협상", "안전"]);
+  assert.deepEqual(view.layers.map((item) => item.title), ["근거 찾기", "근거 있는 글쓰기", "찾기를 끝까지 해내기", "조건 맞추기", "안전"]);
+  assert.equal(view.layers[0].explain, "질문에 맞는 법 조항과 근거 문서를 찾아 위쪽에 놓는지 봅니다.");
   const search = view.layers[0];
   assert.equal(search.size, "질문 80개");
   assert.equal(search.key?.label, "맞는 조항을 위쪽에 찾아 놓는 정도");
@@ -77,7 +82,9 @@ test("층 다섯: 검색, 근거 있는 생성, 과업 성공, 협상, 안전. �
   const negotiation = view.layers[3];
   assert.equal(negotiation.key?.label, "업체가 정한 범위를 지킨 비율");
   assert.equal(negotiation.key?.display, "100%");
-  // 같은 키(handoffs)라도 층마다 이름을 따로 고른다
+  // 이름은 백엔드의 쉬운 이름(label)을 쓴다(기술 이름 technicalLabel은 쓰지 않는다)
+  assert.equal(search.all.find((item) => item.key === "recall@5")?.label, "찾아야 할 조항이 상위 5개 안에 든 비율");
+  // 같은 키(handoffs)라도 층마다 설명을 따로 고른다
   assert.match(view.layers[2].all.find((item) => item.key === "handoffs")?.explain ?? "", /찾기 한 번에/);
   assert.match(negotiation.all.find((item) => item.key === "handoffs")?.explain ?? "", /시나리오 하나에서/);
   for (const layer of view.layers) assert.ok(layer.all.length > 0, layer.title);
@@ -98,10 +105,12 @@ test("모든 지표에 쉬운 이름과 한 줄 설명이 있고, 평가 용어(
   }
   // 층 앞에 두는 지표는 모두 이름표에 있다
   for (const spec of LAYERS) for (const key of [spec.key, ...spec.more]) assert.ok(METRICS[key], key);
-  // 재지 못한 까닭: 조건 (iii)·spotlighting 같은 말 없이 쉬운 문장으로
+  // 재지 못한 까닭: 백엔드의 쉬운 문장(notMeasured)을 그대로 쓰고, 기술 메모(notMeasuredTechnical)는 쓰지 않는다
   const safety = view.layers[4];
-  assert.ok(safety.notes.some((note) => note.startsWith("문서 글을 따로 표시해")));
+  assert.ok(safety.notes.includes("문서 글을 AI 입력과 구분해 넣는 조건: 문서 글이 AI 입력에 들어가지 않아 해당하지 않습니다."));
   assert.ok(safety.notes.every((note) => !/조건 \(|spotlighting|Shields|AZURE/.test(note)));
+  // 백엔드 explain의 척도 안내("0에서 1 사이 비율입니다")는 백분율로 적는 값과 맞지 않아 쓰지 않는다
+  assert.ok(view.layers.flatMap((layer) => layer.all).every((metric) => !/0에서 1 사이 비율/.test(metric.explain ?? "")));
 });
 
 test("비율 지표의 표본이 30보다 적으면 표시하고, 구간은 받은 그대로 적는다", () => {
@@ -111,7 +120,8 @@ test("비율 지표의 표본이 30보다 적으면 표시하고, 구간은 받�
   assert.equal(noAnswer.n, 14);
   assert.ok(noAnswer.n! < SMALL_SAMPLE);
   assert.equal(noAnswer.smallSample, true);
-  assert.equal(noAnswer.ci, "95% 신뢰구간 50–92.9%");
+  assert.equal(noAnswer.ci, "95% 신뢰구간 45.4–88.3%");
+  assert.equal(noAnswer.ciMethod, "wilson");
   assert.equal(search.key?.smallSample, false, "n=66");
   // 건수 지표는 구간이 없으므로 표시하지 않는다
   const safety = view.layers[4];
@@ -125,41 +135,20 @@ test("비율 지표의 표본이 30보다 적으면 표시하고, 구간은 받�
   assert.equal(wilson?.ci, "95% 신뢰구간 45.4–88.3%");
 });
 
-test("지난 실행의 숫자는 지금 결과처럼 보이지 않는다", () => {
-  assert.equal(isSuperseded({ superseded: true }), true);
-  assert.equal(isSuperseded({ supersededBy: "2026-11-19-test" }), true);
-  assert.equal(isSuperseded({ current: false }), true);
-  assert.equal(isSuperseded({ status: "measured" }), false);
-
-  // 지표 하나가 지난 값으로 표시됨 → 표와 앞자리에서 뺀다
+test("지난 결과(history, current: false)는 지금 결과로 보이지 않고, 내렸다는 사실과 까닭만 적는다", () => {
   const raw = clone();
-  const exposures = raw.runs.test.layers.L6c.metrics.find((item: Metric) => item.key === "exposures")!;
-  exposures.superseded = true;
+  assert.ok(raw.history.length > 0);
   const view = toTrustView(raw, TODAY)!;
-  const safety = view.layers[4];
-  assert.equal(safety.all.some((item) => item.key === "exposures"), false);
-  assert.equal(safety.more.some((item) => item.key === "exposures"), false);
-
-  // 실행 전체에 지난 값 목록이 오면 그 키를 뺀다
-  const listed = clone();
-  listed.runs.test.superseded = ["L2:ndcg@10", "injectionGated"];
-  const listedView = toTrustView(listed, TODAY)!;
-  assert.equal(listedView.layers[0].key, null);
-  assert.equal(listedView.headline.some((item) => item.key === "injectionGated"), false);
-
-  // 층 전체가 지난 값 → 숫자를 내리고 재지 못한 것에 적는다
-  const layer = clone();
-  layer.runs.test.layers.L6c.supersededBy = "다음 평가";
-  const layerView = toTrustView(layer, TODAY)!;
-  const safe = layerView.layers[4];
-  assert.equal(safe.all.some((item) => ["exposures", "probeClean"].includes(item.key)), false);
-  assert.equal(safe.size, "공격 60건");
-  assert.ok(safe.notes.some((note) => note.includes("지난 평가의 숫자")));
-  assert.ok(layerView.pending.some((item) => item.title === "회사 사이의 정보 노출"));
-
-  // primary 실행이 지난 실행이면 지난 값으로 표시되지 않은 실행을 쓴다
+  // history의 지난 노출 186건은 어디에도 지금 값으로 나오지 않는다
+  const exposures = view.layers[4].all.find((item) => item.key === "exposures");
+  assert.equal(exposures?.display, "0건");
+  assert.equal(JSON.stringify(view).includes("186"), false);
+  assert.equal(view.retired.length, 1, "같은 평가셋의 지난 결과만, 한 번씩");
+  assert.match(view.retired[0].reason, /고치기 전 코드로 잰 결과입니다/);
+  assert.match(view.ciNote ?? "", /Wilson/);
+  // 실행에 current: false가 붙으면 그 실행을 고르지 않는다
   const runs = clone();
-  runs.runs.test.superseded = true;
+  runs.runs.test.current = false;
   assert.equal(toTrustView(runs, TODAY)?.split, "개발셋");
 });
 
@@ -169,18 +158,18 @@ test("이번 실행이 재지 않은 층의 머리 숫자는 보이지 않는다
   raw.runs.test.layers.L6i.metrics = [];
   const view = toTrustView(raw, TODAY)!;
   assert.equal(view.headline.some((item) => item.key === "injectionGated"), false);
-  // 개발셋에는 협상·노출이 없고 머리 숫자에도 없다
+  // 개발셋에는 협상이 없다
   const dev = clone();
   dev.primary = "dev";
   const devView = toTrustView(dev, TODAY)!;
   assert.equal(devView.layers.find((item) => item.id === "L5")?.all.length, 0);
-  assert.ok(devView.pending.some((item) => item.title === "협상 품질"));
+  assert.ok(devView.pending.some((item) => item.title === "조건 맞추기"));
 });
 
 test("아직 재지 못한 것: 현장 사진, 사람 평가, 여러 번 돌린 흔들림", () => {
   const view = toTrustView(latest, TODAY)!;
   const titles = view.pending.map((item) => item.title);
-  assert.ok(titles.includes("현장 사진으로 본 인식 정확도"));
+  assert.ok(titles.includes("사진 인식"));
   assert.ok(titles.includes("사람이 읽고 매긴 평가"));
   assert.ok(titles.includes("같은 시나리오를 여러 번 돌린 흔들림"));
 });
@@ -214,9 +203,13 @@ test("오래된 결과, 값의 종류, 모양이 맞지 않는 응답", () => {
   const single = toTrustView(modelRun, TODAY);
   assert.equal(single?.aiVersion, "AI 판 2026-11-18");
   assert.equal(single?.pending.some((item) => item.title === "실제 AI 모델로 돌린 결과"), false);
-  // 표에 없는 지표는 백엔드가 준 쉬운 이름을 쓴다
+  // 표에 없는 지표는 백엔드가 준 쉬운 이름과 설명을 쓴다. 예전 모양(label이 기술 이름)이면 걸러 낸다
   const extra = clone();
-  extra.runs.test.layers.L2.metrics.push({ key: "brand_new", label: "Recall@20", plainLabel: "찾아야 할 조항이 위쪽 20개 안에 든 비율", value: 0.7, n: 66, ci: null, target: null, verdict: "-" });
-  const added = toTrustView(extra, TODAY)!.layers[0].all.find((item) => item.key === "brand_new");
+  extra.runs.test.layers.L2.metrics.push({ key: "brand_new", label: "찾아야 할 조항이 위쪽 20개 안에 든 비율", technicalLabel: "Recall@20", explain: "1이면 모두 찾았습니다.", value: 0.7, n: 66, ci: null, target: null, verdict: "-" });
+  extra.runs.test.layers.L2.metrics.push({ key: "old_shape", label: "표적 ASR G9", value: 0, n: 66, ci: null, target: null, verdict: "-" });
+  const all = toTrustView(extra, TODAY)!.layers[0].all;
+  const added = all.find((item) => item.key === "brand_new");
   assert.equal(added?.label, "찾아야 할 조항이 위쪽 20개 안에 든 비율");
+  assert.equal(added?.explain, "1이면 모두 찾았습니다.");
+  assert.doesNotMatch(all.find((item) => item.key === "old_shape")?.label ?? "", JARGON);
 });

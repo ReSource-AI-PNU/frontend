@@ -7,10 +7,12 @@
  *  - 목표 미달과 재지 못한 것도 그대로 보인다. 숫자를 지어내지 않고, 값이 없으면 "미측정"이다.
  *  - 모델을 연결하지 않은 실행(isModel: false)은 AI 모델의 성적처럼 보이지 않게 따로 밝힌다.
  *  - 평가일에서 staleAfterDays(기본 30일)가 지나면 "오래된 결과"를 붙인다.
- *  - 지난 실행의 숫자(superseded로 표시된 실행·층·지표)와 이번 실행에 없는 지표는 지금 결과처럼 보이지 않는다.
+ *  - 지난 결과(latest.json의 history, current: false)는 지금 결과처럼 보이지 않는다. 숫자 없이 "내렸다"는 사실과 까닭만
+ *    적는다. 이번 실행이 재지 않은 층의 머리 숫자도 보이지 않는다.
  * 일반 사용자 화면이므로 모델 이름, 설정 이름, 파일 경로 같은 개발자 말은 걸러 낸다(DESIGN.md 제품 문구 원칙).
- * 지표 이름은 아래 METRICS의 쉬운 말과 한 줄 설명을 쓰고(nDCG, ASR, 카나리아 같은 말을 쓰지 않는다), 표에 없는
- * 지표는 백엔드가 준 쉬운 이름(plainLabel)이나 걸러 낸 원래 이름을 쓴다.
+ * 이름은 백엔드가 준 쉬운 말(지표·층의 label, title, explain, notMeasured)을 쓰고 technicalLabel·technicalTitle은 쓰지
+ * 않는다. 지표마다 "무엇을 재는지" 한 줄은 아래 METRICS가 먼저다: 백엔드의 explain은 대개 척도 안내("0에서 1 사이
+ * 비율입니다")라 화면이 백분율로 적는 값과 맞지 않기 때문이다. 예전 모양(label이 기술 이름)이 오면 METRICS로 바꾼다.
  */
 
 type Json = Record<string, unknown>;
@@ -30,8 +32,10 @@ export type TrustMetric = {
   value: number | null;
   /** 화면에 쓸 값. 값이 없으면 "미측정" */
   display: string;
-  /** "95% 신뢰구간 97.1–100%" */
+  /** "95% 신뢰구간 97.1–100%". 받은 구간 그대로(비율은 Wilson) */
   ci: string | null;
+  /** 구간을 구한 방법(wilson | bootstrap 등). 화면은 바꾸지 않고 그대로 적는다 */
+  ciMethod: string | null;
   n: number | null;
   /** "목표 ≥ 80%" */
   target: string | null;
@@ -56,6 +60,9 @@ export type TrustLayer = {
 
 export type TrustPending = { title: string; why: string };
 
+/** 내린 지난 결과(숫자는 싣지 않는다) */
+export type TrustRetired = { date: string | null; reason: string };
+
 export type TrustView = {
   date: string;
   stale: boolean;
@@ -70,6 +77,10 @@ export type TrustView = {
   headline: TrustMetric[];
   layers: TrustLayer[];
   pending: TrustPending[];
+  /** 구간 읽는 법(백엔드 ciNote) */
+  ciNote: string | null;
+  /** 앞서 공개했다가 내린 결과 */
+  retired: TrustRetired[];
 };
 
 /* ── 값 다루기 ────────────────────────────────────────────────────── */
@@ -156,15 +167,6 @@ function verdictOf(raw: unknown, value: number | null): Verdict {
 
 /** 표본이 이보다 적은 비율 지표에는 "표본이 작아 구간이 넓습니다"를 붙인다 */
 export const SMALL_SAMPLE = 30;
-
-/**
- * 지난 실행의 값으로 표시됐는지. 백엔드는 실행·층·지표에 superseded(참), supersededBy(새 실행), current(거짓),
- * status "superseded" 가운데 하나를 붙인다.
- */
-export function isSuperseded(raw: unknown): boolean {
-  if (!isObj(raw)) return false;
-  return raw.superseded === true || str(raw.supersededBy) !== null || raw.current === false || raw.status === "superseded";
-}
 
 /* ── 쉬운 말 ──────────────────────────────────────────────────────── */
 
@@ -269,8 +271,14 @@ const NOTES: [RegExp, string][] = [
   [/현장 사진셋/, "공장 현장 사진과 정답 표시가 아직 모이지 않았습니다."],
 ];
 
-/** 재지 못한 까닭 한 줄. 뜻을 아는 메모는 쉬운 문장으로, 나머지는 plain으로 거른다 */
+const DEV_WORDS = /[A-Z][A-Z0-9]*_[A-Z0-9_]+|\.py\b|\.json\b|tests\/|backend|resource-ai|설정 없음|환경 변수/;
+
+/**
+ * 재지 못한 까닭 한 줄. 백엔드가 쉬운 말로 준 문장(용어·개발자 말이 없는 것)은 그대로 쓰고, 예전 모양의 기술 메모만
+ * 아는 것은 쉬운 문장으로, 나머지는 plain으로 거른다.
+ */
 export function plainNote(text: string): string | null {
+  if (!JARGON.test(text) && !DEV_WORDS.test(text)) return text.trim() || null;
   for (const [pattern, sentence] of NOTES) if (pattern.test(text)) return sentence;
   return plain(text);
 }
@@ -280,7 +288,7 @@ export function plainNote(text: string): string | null {
  * 서비스 이름과 용어는 하는 일로 바꾼다.
  */
 export function plain(text: string): string | null {
-  if (/[A-Z][A-Z0-9]*_[A-Z0-9_]+|\.py\b|\.json\b|tests\/|backend|resource-ai|설정 없음|환경 변수/.test(text)) return null;
+  if (DEV_WORDS.test(text)) return null;
   const out = text
     .replace(/Azure AI Search/g, "검색 서비스")
     .replace(/Prompt Shields|\bShields\b/g, "입력 공격 탐지기")
@@ -302,24 +310,33 @@ export function plain(text: string): string | null {
   return out === "" ? null : out;
 }
 
-/** 지표 하나. layer는 같은 키라도 층마다 뜻이 다를 때 쓴다 */
-function metricOf(raw: unknown, layer: string | null = null, label?: string): TrustMetric | null {
-  if (!isObj(raw) || isSuperseded(raw)) return null;
+/** 백엔드 explain 가운데 백분율로 적는 값과 맞지 않는 척도 안내 */
+const SCALE_NOTE = /^0에서 1 사이 비율입니다\.?$/;
+
+/**
+ * 지표 하나. layer는 같은 키라도 층마다 뜻이 다를 때 쓴다. 이름은 백엔드의 쉬운 이름(label, technicalLabel이 따로 있을 때)이
+ * 먼저이고, 예전 모양(label이 기술 이름)이면 METRICS, 그다음 걸러 낸 이름이다.
+ */
+function metricOf(raw: unknown, layer: string | null = null): TrustMetric | null {
+  if (!isObj(raw)) return null;
   const key = str(raw.key) ?? "";
-  const name = str(raw.label) ?? key;
+  const technical = str(raw.technicalLabel);
+  const given = str(raw.label);
   const known = (layer ? METRICS[`${layer}:${key}`] : undefined) ?? METRICS[key];
-  const given = str(raw.plainLabel) ?? str(raw.publicLabel);
-  const kind = kindOf(key, name);
+  const kind = kindOf(key, technical ?? given ?? key);
   const value = num(raw.value);
   const n = num(raw.n);
-  const explain = known?.explain ?? (str(raw.explain) ? plain(str(raw.explain) as string) : null);
+  const plainGiven = technical && given && !JARGON.test(given) ? given : null;
+  const backendExplain = str(raw.explain);
+  const usableExplain = backendExplain && !(kind === "rate" && SCALE_NOTE.test(backendExplain)) ? plain(backendExplain) : null;
   return {
     key,
-    label: label ?? known?.label ?? (given ? plain(given) : null) ?? plain(name) ?? "그 밖의 지표",
-    explain,
+    label: plainGiven ?? known?.label ?? (given ? plain(given) : null) ?? "그 밖의 지표",
+    explain: known?.explain ?? usableExplain,
     value,
     display: value === null ? "미측정" : formatValue(value, kind),
     ci: value === null ? null : formatCi(raw.ci, kind),
+    ciMethod: str(raw.ciMethod),
     n,
     target: formatTarget(raw.target, kind),
     verdict: verdictOf(raw.verdict, value),
@@ -402,42 +419,40 @@ function sizeOf(n: number | null, unit: string | null): string | null {
   return `${name} ${trim(n, 0)}${counter}`;
 }
 
-/** 이번 실행에서 그 층을 쟀는지(지난 실행 값으로 표시된 층은 재지 않은 것으로 본다) */
+/** 이번 실행에서 그 층을 쟀는지 */
 function measured(part: unknown): boolean {
-  return isObj(part) && !isSuperseded(part) && str(part.status) !== "not_measured";
+  return isObj(part) && str(part.status) !== "not_measured";
 }
 
-function layerOf(spec: LayerSpec, layers: Json, superseded: Set<string>): TrustLayer | null {
+function layerOf(spec: LayerSpec, layers: Json): TrustLayer | null {
   const parts = spec.sources.map((id) => [id, layers[id]] as const).filter((entry): entry is readonly [string, Json] => isObj(entry[1]));
   if (parts.length === 0) return null;
-  const current = parts.filter(([, part]) => !isSuperseded(part));
-  const metrics = current.flatMap(([id, part]) =>
-    (Array.isArray(part.metrics) ? part.metrics : [])
-      .filter((item) => isObj(item) && !superseded.has(String(item.key)) && !superseded.has(`${id}:${String(item.key)}`))
-      .map((item) => ({ id, item })),
-  );
+  const metrics = parts.flatMap(([id, part]) => (Array.isArray(part.metrics) ? part.metrics : []).map((item) => ({ id, item })));
   const all = metrics.map(({ id, item }) => metricOf(item, id)).filter((item): item is TrustMetric => item !== null);
   const find = (key: string) => all.find((item) => item.key === key) ?? null;
-  const statuses = parts.map(([, part]) => (isSuperseded(part) ? "not_measured" : (str(part.status) ?? "not_measured")));
+  const statuses = parts.map(([, part]) => str(part.status) ?? "not_measured");
   const status = statuses.every((item) => item === "not_measured")
     ? "not_measured"
     : statuses.every((item) => item === "measured")
       ? "measured"
       : "partial";
-  const sizes = current.map(([, part]) => sizeOf(num(part.n), str(part.unit))).filter((item): item is string => Boolean(item));
+  const sizes = parts.map(([, part]) => sizeOf(num(part.n), str(part.unit))).filter((item): item is string => Boolean(item));
   const notes = [
     ...new Set(
-      current
+      parts
         .flatMap(([, part]) => (Array.isArray(part.notMeasured) ? part.notMeasured : []))
         .map((item) => (typeof item === "string" ? plainNote(item) : null))
         .filter((item): item is string => Boolean(item)),
     ),
   ];
-  if (current.length < parts.length) notes.push("지난 평가의 숫자는 지금 결과와 맞지 않아 내렸습니다. 다시 잰 뒤 올립니다.");
+  // 층 하나로 된 것은 백엔드의 쉬운 이름과 설명을 쓴다(둘을 합친 안전 층은 화면의 이름)
+  const single = parts.length === 1 && spec.sources.length === 1 ? parts[0][1] : null;
+  const title = single && str(single.title) && !JARGON.test(str(single.title) as string) ? (str(single.title) as string) : spec.title;
+  const explain = single && str(single.explain) && !JARGON.test(str(single.explain) as string) ? (str(single.explain) as string) : spec.explain;
   return {
     id: spec.id,
-    title: spec.title,
-    explain: spec.explain,
+    title,
+    explain,
     status,
     size: sizes.length > 0 ? sizes.join(" · ") : null,
     key: find(spec.key),
@@ -457,11 +472,11 @@ const HEADLINE: [string, string[]][] = [
   ["injectionGated", ["L6i"]],
 ];
 
-function headlineOf(raw: unknown, layers: Json, superseded: Set<string>): TrustMetric[] {
+function headlineOf(raw: unknown, layers: Json): TrustMetric[] {
   if (!isObj(raw)) return [];
   return HEADLINE.flatMap(([key, from]) => {
     const item = raw[key];
-    if (!isObj(item) || superseded.has(key)) return [];
+    if (!isObj(item)) return [];
     // 이번 실행에 그 층이 없으면 숫자가 이 실행의 것이 아니다
     if (num(item.value) !== null && !from.some((id) => measured(layers[id]))) return [];
     const metric = metricOf({ ...item, key });
@@ -489,15 +504,28 @@ const PENDING_LAYER: Record<string, TrustPending> = {
   L7: { title: "사람이 읽고 매긴 평가", why: "글의 쓸모와 명확성을 매길 기준과 사람 채점이 아직 없습니다." },
 };
 
-/** 지난 값으로 표시된 지표 키 목록(실행이나 전체에 superseded: ["exposures", "L6c:probeClean"]처럼 올 수 있다) */
-function supersededKeys(...lists: unknown[]): Set<string> {
-  return new Set(lists.flatMap((list) => (Array.isArray(list) ? list.filter((item): item is string => typeof item === "string") : [])));
+/** 내린 지난 결과(history의 current: false). 숫자는 싣지 않고 날짜와 까닭만 */
+function retiredOf(history: unknown, split: string | null): TrustRetired[] {
+  if (!Array.isArray(history)) return [];
+  const seen = new Set<string>();
+  return history.flatMap((item) => {
+    if (!isObj(item) || item.current !== false) return [];
+    // 지금 보이는 실행과 같은 평가셋의 지난 결과만 적는다
+    if (split && str(item.split) && str(item.split) !== split) return [];
+    const reason = str(item.reason);
+    const shown = reason ? plainNote(reason) : null;
+    const date = str(item.date);
+    const key = `${date}|${shown}`;
+    if (!shown || seen.has(key)) return [];
+    seen.add(key);
+    return [{ date, reason: shown }];
+  });
 }
 
 /**
  * 평가 결과를 화면 모양으로. 모양이 맞지 않으면 null(화면은 "불러오지 못했습니다"를 보인다).
- * 응답이 latest.json 전체({primary, runs})이면 primary 실행을(지난 실행으로 표시됐으면 표시되지 않은 실행을),
- * 실행 하나만 오면 그것을 쓴다.
+ * 응답이 latest.json 전체({primary, runs, history})이면 primary 실행을, 실행 하나만 오면 그것을 쓴다.
+ * history(지난 결과)는 지금 결과로 쓰지 않는다.
  */
 export function toTrustView(raw: unknown, today: Date = new Date()): TrustView | null {
   if (!isObj(raw)) return null;
@@ -505,16 +533,17 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
   if (isObj(raw.runs)) {
     const runs = raw.runs;
     const primary = str(raw.primary);
-    const chosen = primary && isObj(runs[primary]) && !isSuperseded(runs[primary]) ? runs[primary] : null;
-    run = (chosen as Json | null) ?? Object.values(runs).find((item): item is Json => isObj(item) && !isSuperseded(item)) ?? null;
-  } else if (isObj(raw.layers) && !isSuperseded(raw)) {
+    // 지난 결과로 표시된 실행(current: false)은 지금 결과로 고르지 않는다
+    const usable = (item: unknown): item is Json => isObj(item) && item.current !== false;
+    const chosen = primary && usable(runs[primary]) ? runs[primary] : null;
+    run = (chosen as Json | null) ?? Object.values(runs).find(usable) ?? null;
+  } else if (isObj(raw.layers) && raw.current !== false) {
     run = raw;
   }
   if (!run || !isObj(run.layers)) return null;
   const date = str(run.date);
   if (!date) return null;
   const layers = run.layers;
-  const superseded = supersededKeys(Array.isArray(raw.superseded) ? raw.superseded : null, Array.isArray(run.superseded) ? run.superseded : null);
   const isModel = run.isModel === true;
   const when = versionDate(str(run.aiVersion), date);
   const setVersion = str(run.setVersion);
@@ -527,9 +556,13 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
   if (!isModel) pending.push({ title: "실제 AI 모델로 돌린 결과", why: "모델을 연결한 평가는 아직 공개하지 않았습니다. 아래 숫자는 정해 둔 규칙으로 돌린 시험입니다." });
   for (const [id, item] of Object.entries(PENDING_LAYER)) {
     const layer = layers[id];
-    if (isObj(layer) && (layer.status === "not_measured" || isSuperseded(layer))) pending.push(item);
+    if (!isObj(layer) || layer.status !== "not_measured") continue;
+    // 백엔드가 쉬운 말로 준 층 이름과 재지 못한 까닭이 있으면 그것을 쓴다
+    const title = str(layer.title);
+    const why = Array.isArray(layer.notMeasured) ? layer.notMeasured.map((note) => (typeof note === "string" ? plainNote(note) : null)).find(Boolean) : null;
+    pending.push({ title: title && !JARGON.test(title) ? title : item.title, why: why ?? item.why });
   }
-  const headline = headlineOf(run.headline, layers, superseded);
+  const headline = headlineOf(run.headline, layers);
   const pass4 = headline.find((item) => item.key === "pass4");
   if (pass4 && pass4.verdict === "unmeasured") {
     pending.push({ title: "같은 시나리오를 여러 번 돌린 흔들림", why: `이번에는 시나리오마다 ${num(run.repeats) ?? 1}번만 돌렸습니다.` });
@@ -546,7 +579,9 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
     reviewState: str(run.reviewState),
     scenarios: measured(layers.L4) ? num(perLayer.L4) : null,
     headline,
-    layers: LAYERS.map((spec) => layerOf(spec, layers, superseded)).filter((item): item is TrustLayer => item !== null),
+    layers: LAYERS.map((spec) => layerOf(spec, layers)).filter((item): item is TrustLayer => item !== null),
     pending,
+    ciNote: str(run.ciNote) ? plainNote(str(run.ciNote) as string) : null,
+    retired: retiredOf(raw.history, splitName),
   };
 }

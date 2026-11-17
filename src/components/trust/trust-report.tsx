@@ -192,6 +192,11 @@ function Report({ view }: { view: TrustView }) {
         <p className="text-[13px] text-muted">{meta.join(" · ")}</p>
         {view.stale ? <StatusChip tone="warn">오래된 결과</StatusChip> : null}
       </div>
+      {view.retired.map((item) => (
+        <p key={`${item.date}-${item.reason}`} className="mt-1 text-[13px] text-muted">
+          앞서 공개한 결과{item.date ? `(${item.date})` : ""}는 내렸습니다. {item.reason}
+        </p>
+      ))}
 
       {!view.isModel ? (
         <p className="mt-6 rounded-xl border border-line bg-ground px-4 py-3.5 text-[15px] text-ink-2">
@@ -253,6 +258,7 @@ function Report({ view }: { view: TrustView }) {
             <dd className="text-ink-2">
               n은 잰 사례 수입니다. 같은 시험을 다시 해도 결과가 신뢰구간 안에 들 가능성이 높다는 뜻이고, 사례가 적을수록 구간이
               넓어집니다. 비율을 30건보다 적게 잰 곳에는 &ldquo;{SMALL_NOTE}&rdquo;라고 적었습니다.
+              {view.ciNote ? <span className="mt-1 block text-[14px] text-muted">{view.ciNote}</span> : null}
             </dd>
           </div>
           <div>
