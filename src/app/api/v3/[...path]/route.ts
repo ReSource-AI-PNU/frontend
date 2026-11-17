@@ -5,7 +5,8 @@
  *   V3_BACKEND_URL=https://.../api/v3       실제 백엔드. 접두어 /api/v3까지 적는다
  *   V3_AUTH=bff, V3_BFF_KEY=...             운영. 서버 키와 X-User-Id, X-Org-Id를 붙인다
  *
- * - /health 말고는 로그인한 사용자만 지나간다.
+ * - /health와 /trust(공개 평가 결과) 말고는 로그인한 사용자만 지나간다.
+ * - 실시간 진행(GET /sessions/{id}/stream)은 모으지 않고 흘려보낸다(src/lib/server/proxy.ts).
  * - 회사는 세션의 활성 회사로만 정한다. 브라우저가 보낸 X-Org-Id는 쓰지 않는다(src/lib/v3/backend-plan.ts).
  */
 import { auth } from "@/auth";

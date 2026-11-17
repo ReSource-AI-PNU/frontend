@@ -82,6 +82,35 @@ test("다른 창에서 회사를 바꿔 화면의 회사와 세션의 회사가 
   assert.ok(demo.ok);
 });
 
+test("공개 읽기(public): /health와 /trust만 머리글 없이 넘기고 나머지는 없는 경로로 막는다", () => {
+  const publicScope = { kind: "public" as const };
+  const trust = planProxy({ method: "GET", path: ["trust"], config: BFF, scope: publicScope });
+  assert.ok(trust.ok);
+  assert.equal(trust.url, "https://api.example/api/v3/trust");
+  assert.ok(!("X-User-Id" in trust.headers) && !("X-Org-Id" in trust.headers) && !("X-Demo-View" in trust.headers));
+  assert.ok(planProxy({ method: "GET", path: ["health"], config: BFF, scope: publicScope }).ok);
+  for (const method of ["POST", "PUT", "DELETE"]) {
+    const write = planProxy({ method, path: ["trust"], config: BFF, scope: publicScope });
+    assert.ok(!write.ok && write.status === 404, method);
+  }
+  for (const path of [["sessions"], ["trust", "x"], ["orgs"], ["admin", "status"]]) {
+    const other = planProxy({ method: "GET", path, config: BFF, scope: publicScope });
+    assert.ok(!other.ok && other.status === 404, path.join("/"));
+  }
+  // 로그인한 통로와 체험 통로에서도 /trust는 로그인 없이 열린다
+  const anonymous = planProxy({ method: "GET", path: ["trust"], config: BFF, scope: { kind: "member", userId: null, orgId: null } });
+  assert.ok(anonymous.ok && !("X-Org-Id" in anonymous.headers));
+});
+
+test("실시간 진행(stream)은 체험하기에서도 GET이면 넘기고, 이어 받을 지점(?after)을 그대로 싣는다", () => {
+  const demo = planProxy({ method: "GET", path: ["sessions", "s1", "stream"], search: "?after=12", config: BFF, scope: { kind: "demo", orgId: "org_hanbit" } });
+  assert.ok(demo.ok && demo.url.endsWith("/sessions/s1/stream?after=12") && demo.headers["X-Demo-View"] === "1");
+  const run = planProxy({ method: "POST", path: ["sessions", "s1", "run"], search: "?mode=async", config: BFF, scope: { kind: "demo", orgId: "org_hanbit" } });
+  assert.ok(!run.ok && run.code === "DEMO_READ_ONLY");
+  const mine = planProxy({ method: "POST", path: ["sessions", "s1", "run"], search: "?mode=async", config: BFF, scope: member });
+  assert.ok(mine.ok && mine.url.endsWith("/sessions/s1/run?mode=async"));
+});
+
 test("계정·초대 경로는 브라우저 통로로 넘기지 않는다", () => {
   for (const path of [["accounts", "login"], ["accounts", "me"], ["invites", "tok", "accept"]]) {
     const plan = planProxy({ method: "POST", path, config: BFF, scope: member });

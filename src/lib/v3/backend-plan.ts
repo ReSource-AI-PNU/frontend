@@ -105,14 +105,17 @@ export function backendHeaders(
   return { ok: true, headers };
 }
 
-/** 브라우저가 부른 요청을 누구의 것으로 넘기는가 */
+/** 브라우저가 부른 요청을 누구의 것으로 넘기는가. public은 로그인 없이 여는 읽기(/health, /trust)만 넘긴다 */
 export type ProxyScope =
   | { kind: "member"; userId: string | null; orgId: string | null }
-  | { kind: "demo"; orgId: string | null };
+  | { kind: "demo"; orgId: string | null }
+  | { kind: "public" };
 
 export type ProxyPlan = { ok: true; url: string; headers: Record<string, string> } | Refusal;
 
 const READ = new Set(["GET", "HEAD"]);
+/** 로그인 없이 읽는 경로: 서버 상태와 공개 평가 결과(AI 신뢰도 화면) */
+const PUBLIC_READ = new Set(["health", "trust"]);
 /** 계정·초대는 서버 액션이 부른다. 브라우저 통로로는 넘기지 않는다. */
 const SERVER_ONLY = new Set(["accounts", "invites"]);
 
@@ -134,12 +137,13 @@ export function planProxy(input: {
   const method = input.method.toUpperCase();
   if (!config.ok) return refuse(503, config.code, USER_MESSAGE.unavailable);
   if (path.length === 0 || path.some(badSegment)) return refuse(404, "NOT_FOUND", USER_MESSAGE.notAllowed);
-  const open = path.length === 1 && path[0] === "health" && READ.has(method);
+  const open = path.length === 1 && PUBLIC_READ.has(path[0]) && READ.has(method);
   const url = `${config.url}/${path.map(encodeURIComponent).join("/")}${input.search ?? ""}`;
   if (open) {
     const built = backendHeaders(config, {});
     return built.ok ? { ok: true, url, headers: built.headers } : built;
   }
+  if (scope.kind === "public") return refuse(404, "NOT_FOUND", USER_MESSAGE.notAllowed);
   if (SERVER_ONLY.has(path[0])) return refuse(403, "SERVER_ONLY", USER_MESSAGE.notAllowed);
 
   if (scope.kind === "demo") {
