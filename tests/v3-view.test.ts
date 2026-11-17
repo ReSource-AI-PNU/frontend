@@ -92,13 +92,13 @@ test("단가는 claim의 role로 가리고 처리비는 크기로 적는다", ()
     evidence: [],
     ...(role ? { role } : {}),
   });
-  assert.equal(formatUnitPrice(claim(320, "unitPrice")), "매입 320 원/kg");
+  assert.equal(formatUnitPrice(claim(320, "unitPrice")), "매입 kg당 320원");
   // 처리비는 값이 음수 그대로 온다
-  assert.equal(formatUnitPrice(claim(-80, "treatmentFee")), "처리비 80 원/kg");
-  assert.equal(formatUnitPrice(claim(0, "unitPrice")), "무상 0 원/kg");
+  assert.equal(formatUnitPrice(claim(-80, "treatmentFee")), "처리비 kg당 80원");
+  assert.equal(formatUnitPrice(claim(0, "unitPrice")), "무상 kg당 0원");
   assert.equal(formatUnitPrice(claim(null, "unitPrice")), null);
   // role이 없는 단가(실제 결과의 기준표 단가)는 부호로 가린다
-  assert.equal(formatUnitPrice(claim(-80)), "처리비 80 원/kg");
+  assert.equal(formatUnitPrice(claim(-80)), "처리비 kg당 80원");
   assert.equal(isUnitPriceClaim(claim(1, "unitPrice")), true);
   assert.equal(isUnitPriceClaim(claim(-1, "treatmentFee")), true);
   assert.equal(isUnitPriceClaim(claim(1, "currentUnitCost")), false);

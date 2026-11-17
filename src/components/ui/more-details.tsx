@@ -24,7 +24,7 @@ export function MoreDetails({
   return (
     <details open={defaultOpen || undefined} className={`group/more ${className}`}>
       <summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-md text-[13.5px] [&::-webkit-details-marker]:hidden">
-        <span className="font-semibold text-ink underline decoration-line-strong decoration-1 underline-offset-4 group-hover/more:decoration-ink">
+        <span className="font-medium text-ink-2 group-hover/more:text-ink">
           <span className="group-open/more:hidden">{label}</span>
           <span className="hidden group-open/more:inline">{closeLabel}</span>
         </span>
