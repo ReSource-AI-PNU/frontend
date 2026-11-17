@@ -175,6 +175,7 @@ function Questions({
 }
 
 function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nameOf: (id: string | null) => string }) {
+  const { readOnly } = useV3();
   const isEmitter = view.viewer.role === "emitter";
   const [each, setEach] = useState(false);
   const mine = (item: DiagnosisView["approvals"][number]) => (isEmitter ? item.emitter : item.vendor);
@@ -208,7 +209,16 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
         </p>
       ) : null}
 
-      {pending.length > 0 ? (
+      {pending.length > 0 && readOnly ? (
+        <p className="mt-5 rounded-xl bg-ground px-4 py-3 text-sm text-ink-2">
+          체험 중에는 승인할 수 없습니다. 가입하면 내 회사의 찾기 결과를 이렇게 승인합니다.{" "}
+          <Link href="/signup" className="font-semibold text-ink underline underline-offset-4">
+            가입하기
+          </Link>
+        </p>
+      ) : null}
+
+      {pending.length > 0 && !readOnly ? (
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
           <Button disabled={disabled} onClick={() => d.approveAll(pending.map((item) => item.threadId))} className="!min-h-12 !px-6 !text-[16px]">
             {d.busy ? "승인하는 중" : "승인하고 진행"}
@@ -241,6 +251,8 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
                   <span className="text-sm font-medium text-warn">승인이 막혔습니다</span>
                 ) : mine(approval) ? (
                   <span className="text-sm text-muted">{other} 승인 기다리는 중</span>
+                ) : readOnly ? (
+                  <span className="text-sm text-muted">승인 전</span>
                 ) : (
                   <Button size="sm" variant="secondary" disabled={disabled} onClick={() => d.approve(approval.threadId)}>
                     승인
@@ -257,7 +269,8 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
           <button type="button" disabled={d.busy} onClick={d.reload} className="underline underline-offset-4 hover:text-ink">
             새로 고침
           </button>
-          {" · "}시연에서는 왼쪽 아래 ‘시연 회사’를 {isEmitter ? "처리 업체" : "배출 기업"}로 바꾸면 상대 쪽 승인을 해 볼 수 있습니다.
+          {" · "}
+          {isEmitter ? "업체" : "배출 기업"} 담당자가 승인하면 여기에 표시됩니다.
         </p>
       ) : null}
     </section>
@@ -265,6 +278,7 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
 }
 
 function Documents({ view }: { view: DiagnosisView }) {
+  const { basePath } = useV3();
   if (view.documents.length === 0) return null;
   return (
     <section aria-label="서류">
@@ -285,7 +299,7 @@ function Documents({ view }: { view: DiagnosisView }) {
       </ul>
       <p className="mt-2 text-[13px] text-muted">
         서류는 화면에만 만들고 밖으로 보내지 않습니다.{" "}
-        <Link href="/app/approval" className="underline underline-offset-4 hover:text-ink">
+        <Link href={`${basePath}/approval`} className="underline underline-offset-4 hover:text-ink">
           승인·서류에서 자세히 보기
         </Link>
       </p>
@@ -298,7 +312,7 @@ function Documents({ view }: { view: DiagnosisView }) {
  * AI끼리 나눈 대화는 화면 아래 단추로 연다. 판단 표와 그래프는 맨 아래에 접어 둔다.
  */
 export function Conversation({ d }: { d: Diagnosis }) {
-  const { orgs } = useV3();
+  const { orgs, basePath, readOnly } = useV3();
   const view = d.view as DiagnosisView;
   const [talkOpen, setTalkOpen] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
@@ -327,6 +341,16 @@ export function Conversation({ d }: { d: Diagnosis }) {
 
   return (
     <div className="flex flex-1 flex-col">
+      {!isEmitter && !readOnly ? (
+        <div className="flex justify-end px-3 pt-3">
+          <Link
+            href={`${basePath}/inquiries`}
+            className="flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-2 hover:bg-sunken hover:text-ink"
+          >
+            다른 문의 보기
+          </Link>
+        </div>
+      ) : null}
       {isEmitter && d.canAct && !running ? (
         <div className="flex justify-end px-3 pt-3">
           <button

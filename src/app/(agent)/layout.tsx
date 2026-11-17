@@ -3,28 +3,29 @@ import { Account } from "@/components/agent/account";
 import { AgentShell } from "@/components/agent/shell";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { V3Provider } from "@/components/v3/context";
-import { requireOrganization } from "@/lib/server/organization";
+import { requireWorkspace } from "@/lib/server/workspace";
 
-/** 로그인과 회사 등록을 마친 사람만 에이전트 화면을 본다. */
-async function OrganizationGate({ children }: { children: ReactNode }) {
-  await requireOrganization();
-  return children;
+/**
+ * 로그인과 회사 등록을 마친 사람만 본다. 지금 회사는 세션의 활성 회사이고, 화면에서 다른 회사를 고를 수 없다
+ * (바꿀 때는 소속 회사 가운데서 서버 액션으로 세션을 고친다).
+ */
+async function Workspace({ children }: { children: ReactNode }) {
+  const { user, memberships, active } = await requireWorkspace();
+  return (
+    <V3Provider
+      key={active.orgId}
+      org={{ id: active.orgId, name: active.orgName, role: active.kind }}
+      memberships={memberships}
+    >
+      <AgentShell account={<Account user={user} />}>{children}</AgentShell>
+    </V3Provider>
+  );
 }
 
 export default function AgentLayout({ children }: { children: ReactNode }) {
   return (
-    <V3Provider>
-      <AgentShell
-        account={
-          <Suspense fallback={<span className="block h-12 rounded-lg bg-sunken" aria-hidden="true" />}>
-            <Account />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<PageSkeleton />}>
-          <OrganizationGate>{children}</OrganizationGate>
-        </Suspense>
-      </AgentShell>
-    </V3Provider>
+    <Suspense fallback={<PageSkeleton />}>
+      <Workspace>{children}</Workspace>
+    </Suspense>
   );
 }

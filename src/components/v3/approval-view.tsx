@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MoreDetails } from "@/components/ui/more-details";
 import { api } from "@/lib/v3/api";
+import Link from "next/link";
 import {
   THREAD_LABEL,
   formatDateTime,
   formatNumber,
   formatSignedPrice,
-  modelLabel,
   rejectionLabel,
 } from "@/lib/v3/format";
 import type { Assignment, Outcome, OutcomeInput } from "@/lib/v3/types";
@@ -269,7 +269,7 @@ function OutcomeForm({
 /** 양쪽 담당자 승인. 근거 확인에 실패한 항목이 있으면 승인 버튼을 끈다. */
 export function ApprovalView() {
   const d = useDiagnosis();
-  const { mode, org } = useV3();
+  const { org, readOnly, basePath } = useV3();
   const { view } = d;
   if (d.loading) return <p className="mx-auto w-full max-w-[820px] px-5 pt-10 text-sm text-muted">불러오는 중입니다.</p>;
   if (!view) {
@@ -281,11 +281,16 @@ export function ApprovalView() {
           </p>
         ) : null}
         <EmptyState
-          title={mode === "fixture" ? "이 회사의 예시 데이터가 없습니다" : "아직 승인할 것이 없습니다"}
+          title="아직 승인할 것이 없습니다"
           description={
-            mode === "fixture"
-              ? "예시 데이터에는 배출 기업 한 곳의 결과만 들어 있습니다. 왼쪽 아래 ‘시연 회사’를 바꾸거나 서버를 띄우고 다시 연결하세요."
+            org.role === "vendor"
+              ? "배출 기업과 AI끼리 조건을 맞추면 여기에 나타납니다. 받은 문의는 대화 화면에서 볼 수 있습니다."
               : "찾기 화면에서 받아 줄 곳을 먼저 찾아 주세요. 조건이 맞는 업체가 나오면 여기에 나타납니다."
+          }
+          action={
+            <Link href={basePath} className="text-sm font-medium underline underline-offset-4">
+              {org.role === "vendor" ? "대화 화면으로" : "찾기 화면으로"}
+            </Link>
           }
         />
       </div>
@@ -308,9 +313,14 @@ export function ApprovalView() {
         <p className="mt-2 text-[15px] text-ink-2">
           양쪽 담당자가 모두 승인해야 확정되고, 그 뒤에 요청서와 이행 계획서가 만들어집니다.
         </p>
-        <p className="mt-1 text-[13px] text-muted">
-          시연에서는 왼쪽 아래 ‘시연 회사’를 바꿔 배출 기업과 처리 업체 양쪽에서 각각 승인해 볼 수 있습니다.
-        </p>
+        {readOnly ? (
+          <p className="mt-2 text-[13px] text-muted">
+            체험 중에는 승인할 수 없습니다.{" "}
+            <Link href="/signup" className="font-medium text-ink underline underline-offset-4">
+              가입하고 시작하기
+            </Link>
+          </p>
+        ) : null}
       </header>
       {d.error ? (
         <p role="alert" className="text-sm text-loss">
@@ -370,11 +380,6 @@ export function ApprovalView() {
                 <Side label="처리 업체" done={approval.vendor} />
               </div>
             </div>
-            {thread ? (
-              <p className="mt-1 text-[13px] text-muted">
-                업체 쪽 답변: {modelLabel(thread.vendorModel)}
-              </p>
-            ) : null}
             <div className="mt-3 text-sm">
               <p className="text-[13px] text-muted">
                 {approval.emitter && approval.vendor ? "확정한 폐기물" : "승인할 폐기물"}
@@ -429,7 +434,6 @@ export function ApprovalView() {
                     ✕ {message.seq}번째 메시지 근거 확인 실패
                     {(message.validation.rejections ?? []).map((rejection, index) => (
                       <span key={index} className="block pl-4 text-ink-2">
-                        <span className="tabular-nums">{rejection.code}</span>{" "}
                         {rejectionLabel(rejection.code, rejection.message)}
                       </span>
                     ))}
@@ -439,7 +443,7 @@ export function ApprovalView() {
             ) : null}
             {role === "admin" ? (
               <p className="mt-4 text-sm text-muted">운영자는 승인하지 않고 상태만 봅니다.</p>
-            ) : (
+            ) : readOnly ? null : (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button
                   variant={approval.threadId === firstActionable ? "primary" : "secondary"}
@@ -448,9 +452,6 @@ export function ApprovalView() {
                 >
                   {mine ? "승인했습니다" : "승인"}
                 </Button>
-                {!d.canAct ? (
-                  <span className="text-[13px] text-muted">예시 데이터에서는 승인을 보낼 수 없습니다.</span>
-                ) : null}
               </div>
             )}
             {confirmed && (outcomes.length > 0 || role === "vendor") ? (

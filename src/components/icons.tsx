@@ -172,3 +172,13 @@ export function TruckIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** 받은 문의 */
+export function InboxIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2 9.25l1.6-5.1a1 1 0 0 1 .95-.65h6.9a1 1 0 0 1 .95.65L14 9.25V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" />
+      <path d="M2 9.25h3.25l1 1.5h3.5l1-1.5H14" />
+    </Icon>
+  );
+}

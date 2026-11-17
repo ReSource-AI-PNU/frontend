@@ -4,35 +4,133 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { BrandLink } from "@/components/brand";
-import { CloseIcon, FolderIcon, GearIcon, MenuIcon, SearchIcon, StampIcon } from "@/components/icons";
+import {
+  CloseIcon,
+  FolderIcon,
+  GearIcon,
+  InboxIcon,
+  MenuIcon,
+  PlusIcon,
+  SearchIcon,
+  StampIcon,
+  TalkIcon,
+} from "@/components/icons";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { useV3 } from "@/components/v3/context";
+import { KIND_LABEL } from "@/lib/auth/account";
 
-const ROLE_LABEL = { emitter: "배출 기업", vendor: "처리 업체", admin: "운영" } as const;
-const ROLE_ORDER = ["emitter", "vendor", "admin"] as const;
 const row =
   "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] text-ink-2 transition-colors hover:bg-sunken hover:text-ink";
 
+type NavItem = { href: string; label: string; icon: typeof SearchIcon; exact: boolean };
+
+/** 회사의 종류에 따라 왼쪽 메뉴가 달라진다. 처리 업체는 받은 문의·대화·승인·업체 정보다. */
+function navItems(role: "emitter" | "vendor" | "admin", base: string, demo: boolean): NavItem[] {
+  if (role === "vendor") {
+    return [
+      ...(demo ? [] : [{ href: `${base}/inquiries`, label: "받은 문의", icon: InboxIcon, exact: false }]),
+      { href: base, label: "대화", icon: TalkIcon, exact: true },
+      { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
+      { href: `${base}/materials`, label: "업체 정보", icon: FolderIcon, exact: false },
+    ];
+  }
+  return [
+    { href: base, label: "찾기", icon: SearchIcon, exact: true },
+    ...(role === "emitter" ? [{ href: `${base}/materials`, label: "자료", icon: FolderIcon, exact: false }] : []),
+    { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
+    ...(role === "admin" && !demo ? [{ href: `${base}/admin`, label: "운영", icon: GearIcon, exact: false }] : []),
+  ];
+}
+
+/** 사이드바 아래의 지금 회사. 소속이 둘 이상이면 바꿀 수 있고, 회사를 더 등록할 수도 있다. */
+function CompanySwitcher() {
+  const { org, memberships, setOrgId, switching } = useV3();
+  return (
+    <div className="px-2.5 pb-1">
+      {memberships.length > 1 ? (
+        <label className="block">
+          <span className="block text-[12px] text-muted">회사</span>
+          <select
+            value={org.id}
+            disabled={switching}
+            onChange={(event) => setOrgId(event.target.value)}
+            className="mt-0.5 min-h-9 w-full min-w-0 cursor-pointer truncate rounded-md bg-transparent text-[14px] font-medium text-ink hover:text-ink-2"
+          >
+            {memberships.map((item) => (
+              <option key={item.orgId} value={item.orgId}>
+                {item.orgName} · {KIND_LABEL[item.kind]}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="min-w-0">
+          <span className="block truncate text-[14px] font-medium">{org.name}</span>
+          <span className="block text-[12px] text-muted">{KIND_LABEL[org.role]}</span>
+        </p>
+      )}
+      <Link
+        href="/onboarding"
+        className="-ml-1 mt-1 flex min-h-9 items-center gap-1.5 rounded-md px-1 text-[13px] text-muted hover:text-ink"
+      >
+        <PlusIcon className="size-3.5" />
+        회사 추가
+      </Link>
+    </div>
+  );
+}
+
+/** 체험하기 사이드바 아래: 지금 보는 시연 회사와 가입 단추 */
+function DemoFooter() {
+  const { org } = useV3();
+  return (
+    <div className="space-y-3 px-2.5 pb-2">
+      <p className="min-w-0">
+        <span className="block truncate text-[14px] font-medium">{org.name}</span>
+        <span className="block text-[12px] text-muted">시연 회사 · {KIND_LABEL[org.role]}</span>
+      </p>
+      <ButtonLink href="/signup" className="w-full">
+        가입하고 시작하기
+      </ButtonLink>
+      <Link href="/login" className="flex min-h-9 items-center justify-center text-[13px] text-ink-2 hover:text-ink">
+        로그인
+      </Link>
+    </div>
+  );
+}
+
+/** 서버에 닿지 못했을 때 본문 대신 보이는 화면 */
+function Offline() {
+  const { reconnect } = useV3();
+  return (
+    <div role="status" className="flex flex-1 flex-col items-center justify-center px-5 py-16 text-center">
+      <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.025em]">잠시 연결이 원활하지 않습니다</h1>
+      <p className="mt-2 text-[15px] text-ink-2">잠시 후 다시 시도해 주세요. 입력해 둔 내용은 서버에 남아 있습니다.</p>
+      <Button variant="secondary" className="mt-6" onClick={reconnect}>
+        다시 시도
+      </Button>
+    </div>
+  );
+}
+
 /**
- * 로그인한 뒤의 틀. 왼쪽에는 화면 셋, 맨 아래에 시연 회사와 계정만 둔다.
+ * 로그인한 뒤(또는 체험하기)의 틀. 왼쪽에는 화면 몇 개, 맨 아래에 지금 회사와 계정을 둔다.
  * 본문은 가운데 한 줄 폭으로 그린다. 좁은 화면에서는 사이드바가 서랍이 된다.
  */
-export function AgentShell({ account, children }: { account: ReactNode; children: ReactNode }) {
-  const { mode, fixture, reconnect, orgs, org, setOrgId } = useV3();
+export function AgentShell({ account, children }: { account?: ReactNode; children: ReactNode }) {
+  const { mode, org, readOnly, basePath } = useV3();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const items = [
-    { href: "/app", label: "찾기", icon: SearchIcon, exact: true },
-    { href: "/app/materials", label: org.role === "vendor" ? "매입 기준·자료" : "자료", icon: FolderIcon, exact: false },
-    { href: "/app/approval", label: "승인·서류", icon: StampIcon, exact: false },
-    ...(org.role === "admin" ? [{ href: "/app/admin", label: "운영", icon: GearIcon, exact: false }] : []),
-  ];
+  const items = navItems(org.role, basePath, readOnly);
   const active = (href: string, exact: boolean) => pathname === href || (!exact && pathname.startsWith(`${href}/`));
+  // 설정 화면은 서버가 그리므로 연결 상태와 상관없이 보인다
+  const offline = mode === "offline" && (pathname === basePath || pathname.startsWith(`${basePath}/`));
 
   const sidebar = (
-    <div className="flex h-full flex-col px-2.5 py-3">
+    <div className="flex h-full flex-col overflow-y-auto px-2.5 py-3">
       <div className="flex h-10 items-center justify-between px-2">
-        <BrandLink href="/app" />
+        <BrandLink href={readOnly ? "/" : "/app"} />
         <button
           type="button"
           aria-label="메뉴 닫기"
@@ -65,32 +163,14 @@ export function AgentShell({ account, children }: { account: ReactNode; children
       </nav>
 
       <div className="mt-auto pt-4">
-        <label className="flex min-h-9 items-center gap-2 px-2.5 text-[13px] text-muted">
-          <span className="shrink-0">시연 회사</span>
-          <select
-            value={org.id}
-            disabled={mode === "loading"}
-            onChange={(event) => setOrgId(event.target.value)}
-            className="min-w-0 flex-1 cursor-pointer truncate rounded-md bg-transparent py-1 text-[13px] font-medium text-ink-2 hover:text-ink"
-          >
-            {ROLE_ORDER.map((role) => {
-              const group = orgs.filter((item) => item.role === role);
-              return group.length > 0 ? (
-                <optgroup key={role} label={ROLE_LABEL[role]}>
-                  {group.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ) : null;
-            })}
-          </select>
-        </label>
-        {mode !== "live" ? (
-          <p className="px-2.5 pb-1 text-[12px] text-muted">{mode === "fixture" ? "서버에 연결되지 않아 예시를 보여 줍니다" : "연결하는 중"}</p>
-        ) : null}
-        <div className="mt-1 border-t border-line pt-2">{account}</div>
+        {readOnly ? (
+          <DemoFooter />
+        ) : (
+          <>
+            <CompanySwitcher />
+            <div className="mt-1 border-t border-line pt-2">{account}</div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -116,18 +196,23 @@ export function AgentShell({ account, children }: { account: ReactNode; children
           >
             <MenuIcon />
           </button>
-          <BrandLink href="/app" />
+          <BrandLink href={readOnly ? "/" : "/app"} />
+          <span className="ml-auto min-w-0 truncate px-2 text-[13px] text-muted">{org.name}</span>
         </div>
-        {mode === "fixture" && fixture ? (
-          <p role="status" className="bg-ground px-5 py-2.5 text-sm text-ink-2">
-            서버에 연결하지 못해 {fixture.meta.capturedOn}에 받아 둔 예시를 보여 줍니다. 회사와 숫자는 가상이고, 여기서는
-            찾기·답변·승인을 보낼 수 없습니다.{" "}
-            <button type="button" className="font-semibold underline underline-offset-4" onClick={reconnect}>
-              다시 연결
-            </button>
+        {readOnly ? (
+          <p
+            role="note"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-ground px-5 py-2.5 text-sm text-ink-2"
+          >
+            <span>
+              <span className="font-medium text-ink">체험 중</span> · 시연 회사의 가상 데이터입니다. 둘러보기만 할 수 있습니다.
+            </span>
+            <Link href="/signup" className="font-semibold text-ink underline underline-offset-4">
+              가입하기
+            </Link>
           </p>
         ) : null}
-        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col">{offline ? <Offline /> : children}</main>
       </div>
     </div>
   );

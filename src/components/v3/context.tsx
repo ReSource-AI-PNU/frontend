@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -8,26 +9,37 @@ import {
   useMemo,
   useState,
   useSyncExternalStore,
+  useTransition,
   type ReactNode,
 } from "react";
-import { api } from "@/lib/v3/api";
-import type { Fixture } from "@/lib/v3/fixture";
+import type { Membership } from "@/lib/auth/account";
+import { switchCompany } from "@/lib/server/company-actions";
+import { ApiError, api } from "@/lib/v3/api";
 import type { Org } from "@/lib/v3/types";
 import { EvidencePanel } from "./evidence-panel";
 
-/** live: 백엔드 연결됨(예시 데이터를 쓰지 않는다). fixture: 연결 실패, 저장해 둔 예시 데이터를 보여 준다. */
-export type DataMode = "loading" | "live" | "fixture";
+/** live: 서버와 이어짐. offline: 서버에 닿지 못함(다시 시도 화면을 보인다). */
+export type DataMode = "loading" | "live" | "offline";
 
 type Ctx = {
   mode: DataMode;
-  /** 예시 데이터. 백엔드에 연결하지 못했을 때만 불러온다 */
-  fixture: Fixture | null;
-  /** 백엔드에 다시 연결해 본다 */
+  /** 서버에 다시 닿아 본다 */
   reconnect: () => void;
+  /** 체험하기(시연 회사 읽기 전용) */
+  readOnly: boolean;
+  /** 저장·실행·승인·업로드를 보낼 수 있는지(서버와 이어졌고 체험이 아님) */
+  canWrite: boolean;
+  /** 화면 주소의 머리. 로그인한 화면은 /app, 체험하기는 /demo */
+  basePath: "/app" | "/demo";
+  /** 이름을 찾는 데 쓰는 조직 목록(서버가 보여 주는 만큼) */
   orgs: Org[];
-  /** 지금 보는 관점. 조직 목록을 받기 전(mode가 loading)에는 id가 빈 자리표시 조직이다 */
+  /** 지금 보는 회사. 세션(또는 체험 회사)이 정하고 화면에서 임의로 바꿀 수 없다 */
   org: Org;
+  /** 이 사람이 속한 회사들. 둘 이상이면 사이드바에서 바꾼다 */
+  memberships: Membership[];
+  /** 소속 회사 가운데 하나로 바꾼다(세션을 고친 뒤 화면을 다시 그린다) */
   setOrgId: (id: string) => void;
+  switching: boolean;
   sessionId: string | null;
   setSessionId: (id: string | null) => void;
   openEvidence: (ids: string[], title?: string) => void;
@@ -35,20 +47,7 @@ type Ctx = {
 
 const V3Context = createContext<Ctx | null>(null);
 
-/** 조직 목록을 받기 전에 쓰는 자리표시. 이 상태에서는 어떤 화면도 서버를 부르지 않는다. */
-const PENDING_ORG: Org = { id: "", name: "", role: "emitter" };
-
-const ORG_KEY = "rsai-v3-org";
-const SESSION_KEY = "rsai-v3-session";
 const EVENT = "rsai-v3-store";
-
-/** GET /orgs의 order 순(시연 주인공이 맨 앞, 운영 조직이 맨 뒤). order가 없는 조직은 받은 순서대로 뒤에 둔다. */
-function byOrder(orgs: Org[]): Org[] {
-  return orgs
-    .map((org, index) => ({ org, index }))
-    .sort((a, b) => (a.org.order ?? Infinity) - (b.org.order ?? Infinity) || a.index - b.index)
-    .map((item) => item.org);
-}
 
 function subscribe(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -73,49 +72,65 @@ function setStored(key: string, value: string | null) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-export function V3Provider({ children }: { children: ReactNode }) {
-  const [remote, setRemote] = useState<{ mode: DataMode; orgs: Org[]; fixture: Fixture | null }>({
-    mode: "loading",
-    orgs: [],
-    fixture: null,
-  });
+export function V3Provider({
+  org,
+  memberships = [],
+  demo = false,
+  children,
+}: {
+  org: Org;
+  memberships?: Membership[];
+  demo?: boolean;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const [remote, setRemote] = useState<{ mode: DataMode; orgs: Org[] }>({ mode: "loading", orgs: [] });
   const [attempt, setAttempt] = useState(0);
-  const storedOrg = useStored(ORG_KEY);
-  const sessionId = useStored(SESSION_KEY);
+  const [switching, startSwitch] = useTransition();
+  // 마지막으로 본 찾기 번호는 회사마다 따로 적어 둔다(회사를 바꾸면 그 회사의 것을 연다)
+  const sessionKey = `${demo ? "rsai-v3-demo-session" : "rsai-v3-session"}:${org.id}`;
+  const sessionId = useStored(sessionKey);
   const [panel, setPanel] = useState<{ ids: string[]; title?: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
     api
-      .health()
-      .then(() => api.listOrgs())
+      .listOrgs()
       .then((orgs) => {
-        if (alive) setRemote({ mode: "live", orgs: byOrder(orgs), fixture: null });
+        if (alive) setRemote({ mode: "live", orgs });
       })
-      .catch(async () => {
-        // 연결하지 못했을 때만 예시 데이터를 불러온다
-        const { FIXTURE } = await import("@/lib/v3/fixture");
-        if (alive) setRemote({ mode: "fixture", orgs: byOrder(FIXTURE.orgs), fixture: FIXTURE });
+      .catch((error: unknown) => {
+        if (!alive) return;
+        // 서버에는 닿았지만 목록을 주지 않은 경우(권한 등)는 이어진 것으로 본다. 이름은 각 화면의 값으로 찾는다
+        const reached = error instanceof ApiError && error.status < 500;
+        setRemote({ mode: reached ? "live" : "offline", orgs: [] });
       });
     return () => {
       alive = false;
     };
-  }, [attempt]);
+  }, [attempt, org.id]);
 
-  const orgs = remote.orgs;
-  const org =
-    orgs.find((item) => item.id === storedOrg) ??
-    // 예시 데이터는 받아 둔 관점부터 보여 준다
-    orgs.find((item) => item.id === remote.fixture?.meta.emitterOrgId) ??
-    orgs[0] ??
-    PENDING_ORG;
+  const orgs = useMemo(
+    () => (remote.orgs.some((item) => item.id === org.id) ? remote.orgs : [org, ...remote.orgs]),
+    [remote.orgs, org],
+  );
 
   const reconnect = useCallback(() => {
-    setRemote({ mode: "loading", orgs: [], fixture: null });
+    setRemote({ mode: "loading", orgs: [] });
     setAttempt((before) => before + 1);
   }, []);
-  const setOrgId = useCallback((id: string) => setStored(ORG_KEY, id), []);
-  const setSessionId = useCallback((id: string | null) => setStored(SESSION_KEY, id), []);
+  const setOrgId = useCallback(
+    (id: string) => {
+      if (demo || id === org.id) return;
+      startSwitch(async () => {
+        await switchCompany(id);
+        setPanel(null);
+        router.refresh();
+      });
+    },
+    [demo, org.id, router],
+  );
+  const setSessionId = useCallback((id: string | null) => setStored(sessionKey, id), [sessionKey]);
   const openEvidence = useCallback((ids: string[], title?: string) => {
     // 한 판단에 같은 근거가 여러 번 실려 올 수 있다. 한 번만 연다
     if (ids.length > 0) setPanel({ ids: [...new Set(ids)], title });
@@ -124,16 +139,20 @@ export function V3Provider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       mode: remote.mode,
-      fixture: remote.fixture,
       reconnect,
+      readOnly: demo,
+      canWrite: remote.mode === "live" && !demo,
+      basePath: demo ? "/demo" : "/app",
       orgs,
       org,
+      memberships,
       setOrgId,
+      switching,
       sessionId,
       setSessionId,
       openEvidence,
     }),
-    [remote.mode, remote.fixture, reconnect, orgs, org, setOrgId, sessionId, setSessionId, openEvidence],
+    [remote.mode, reconnect, demo, orgs, org, memberships, setOrgId, switching, sessionId, setSessionId, openEvidence],
   );
 
   return (
@@ -146,8 +165,7 @@ export function V3Provider({ children }: { children: ReactNode }) {
           title={panel.title}
           orgId={org.id}
           orgName={(id) => orgs.find((item) => item.id === id)?.name ?? id}
-          mode={remote.mode}
-          fixture={remote.fixture}
+          live={remote.mode === "live"}
           onClose={() => setPanel(null)}
         />
       ) : null}
@@ -160,3 +178,4 @@ export function useV3(): Ctx {
   if (!ctx) throw new Error("V3Provider 안에서만 쓸 수 있습니다");
   return ctx;
 }
+

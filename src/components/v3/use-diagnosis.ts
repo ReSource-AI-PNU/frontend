@@ -11,9 +11,9 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
 }
 
-/** 진단 뷰를 읽고 실행·답변·승인을 보낸다. 예시 데이터 모드에서는 어떤 호출도 보내지 않는다. */
+/** 진단 뷰를 읽고 실행·답변·승인을 보낸다. 체험하기(읽기 전용)에서는 읽기만 하고 아무것도 보내지 않는다. */
 export function useDiagnosis() {
-  const { mode, fixture, org, sessionId, setSessionId } = useV3();
+  const { mode, canWrite, org, sessionId, setSessionId } = useV3();
   const key = `${mode}:${org.id}:${sessionId ?? ""}`;
   const [loaded, setLoaded] = useState<Loaded>({ key: "", view: null, error: null });
   const [busy, setBusy] = useState(false);
@@ -23,7 +23,7 @@ export function useDiagnosis() {
 
   const live = mode === "live";
   const current = loaded.key === key ? loaded : null;
-  const view = live ? (current?.view ?? null) : (fixture?.view(org.id) ?? null);
+  const view = live ? (current?.view ?? null) : null;
   const running = live && view?.session.status === "running";
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function useDiagnosis() {
 
   const act = useCallback(
     async (call: () => Promise<DiagnosisView>) => {
-      if (!live) return;
+      if (!canWrite) return;
       setBusy(true);
       setActionError(null);
       try {
@@ -64,7 +64,7 @@ export function useDiagnosis() {
         setBusy(false);
       }
     },
-    [live, mode, org.id, sessionId, setSessionId, key],
+    [canWrite, mode, org.id, sessionId, setSessionId, key],
   );
 
   return {
@@ -75,7 +75,7 @@ export function useDiagnosis() {
     error: live ? ((actionError?.key === key ? actionError.message : null) ?? current?.error ?? null) : null,
     busy,
     loading: mode === "loading" || (live && Boolean(sessionId) && current === null),
-    canAct: live,
+    canAct: canWrite,
     start: () => act(() => api.createSession(org.id)),
     /** 진단을 만들고 곧바로 에이전트를 돌린다 */
     find: () =>

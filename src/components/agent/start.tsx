@@ -23,7 +23,18 @@ function newStreamId() {
   return `st_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function StreamForm({ onSave, onCancel, busy }: { onSave: (draft: Draft) => void; onCancel?: () => void; busy: boolean }) {
+function StreamForm({
+  onSave,
+  onCancel,
+  busy,
+  first,
+}: {
+  onSave: (draft: Draft) => void;
+  onCancel?: () => void;
+  busy: boolean;
+  /** 처음 등록하는 폐기물이면 단추를 먹색으로 크게 둔다 */
+  first: boolean;
+}) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((before) => ({ ...before, [key]: value }));
   const kg = Number(draft.monthlyKg);
@@ -92,8 +103,8 @@ function StreamForm({ onSave, onCancel, busy }: { onSave: (draft: Draft) => void
             취소
           </Button>
         ) : null}
-        <Button type="submit" variant="secondary" disabled={!valid || busy}>
-          {busy ? "추가하는 중" : "추가"}
+        <Button type="submit" variant={first ? "primary" : "secondary"} disabled={!valid || busy} className={first ? "w-full sm:w-auto" : ""}>
+          {busy ? "등록하는 중" : first ? "폐기물 등록" : "추가"}
         </Button>
       </div>
     </form>
@@ -116,17 +127,17 @@ export function Start({
   /** 서버에 남아 있는 지난 찾기를 다시 연다 */
   onResume?: () => void;
 }) {
-  const { mode, fixture, org } = useV3();
+  const { mode, canWrite, readOnly, org, basePath } = useV3();
   const live = mode === "live";
   const remote = useRemote(`streams:${org.id}`, live, () => api.listStreams(org.id));
-  const streams: StreamRecord[] = live ? (remote.data ?? []) : (fixture?.streams.filter((item) => item.orgId === org.id) ?? []);
+  const streams: StreamRecord[] = remote.data ?? [];
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const empty = live && !remote.loading && streams.length === 0;
-  const showForm = adding || empty;
-  const canFind = live && streams.length > 0 && !busy && !saving;
+  const empty = live && !remote.loading && !remote.error && streams.length === 0;
+  const showForm = canWrite && (adding || empty);
+  const canFind = canWrite && streams.length > 0 && !busy && !saving;
   const totalKg = streams.reduce((sum, item) => sum + (item.monthlyKg ?? 0), 0);
 
   async function save(draft: Draft) {
@@ -146,7 +157,7 @@ export function Start({
       setAdding(false);
       remote.reload();
     } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : "폐기물을 추가하지 못했습니다.");
+      setSaveError(cause instanceof Error ? cause.message : "폐기물을 등록하지 못했습니다.");
     } finally {
       setSaving(false);
     }
@@ -156,11 +167,11 @@ export function Start({
     <div className="flex flex-1 flex-col justify-center px-5 py-14">
       <div className="mx-auto w-full max-w-[640px]">
         <h1 className="text-[28px] leading-[1.3] font-semibold tracking-[-0.03em] text-balance sm:text-[32px]">
-          {empty ? "어떤 폐플라스틱이 나오나요?" : "받아 줄 곳을 찾아볼까요?"}
+          {empty ? "먼저 폐기물을 등록해 주세요" : "받아 줄 곳을 찾아볼까요?"}
         </h1>
         <p className="mt-2 text-[15px] text-ink-2">
           {empty
-            ? "공장에서 나오는 것을 한 가지씩 적어 주세요. 이름과 한 달 양만 알아도 됩니다."
+            ? "공장에서 나오는 폐플라스틱을 한 가지씩 적어 주세요. 이름과 한 달 양만 알아도 됩니다."
             : "아래 폐기물을 받을 수 있는 업체에 AI가 대신 조건을 물어봅니다."}
         </p>
 
@@ -188,15 +199,20 @@ export function Start({
           </div>
         ) : null}
 
-        {showForm && live ? (
+        {showForm ? (
           <div className={streams.length > 0 ? "border-t border-line" : "mt-6"}>
-            <StreamForm busy={saving} onSave={save} onCancel={streams.length > 0 ? () => setAdding(false) : undefined} />
+            <StreamForm
+              busy={saving}
+              first={streams.length === 0}
+              onSave={save}
+              onCancel={streams.length > 0 ? () => setAdding(false) : undefined}
+            />
           </div>
         ) : null}
 
         {streams.length > 0 && !showForm ? (
           <div className="mt-1 flex flex-wrap items-center gap-x-1 border-t border-line pt-3">
-            {live ? (
+            {canWrite ? (
               <button
                 type="button"
                 onClick={() => setAdding(true)}
@@ -206,7 +222,7 @@ export function Start({
                 폐기물 추가
               </button>
             ) : null}
-            <Link href="/app/materials" className="flex min-h-10 items-center rounded-lg px-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
+            <Link href={`${basePath}/materials`} className="flex min-h-10 items-center rounded-lg px-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
               사진·측정값 올리기
             </Link>
           </div>
@@ -234,9 +250,13 @@ export function Start({
             {saveError ?? error ?? remote.error}
           </p>
         ) : null}
-        {!live && mode !== "loading" ? <p className="mt-4 text-sm text-muted">예시 데이터에서는 찾기를 시작할 수 없습니다.</p> : null}
-        {org.synthetic ? (
-          <p className="mt-10 text-[13px] text-muted">{org.name}은 시연용 가상 회사입니다. 업체·단가·물량도 모두 가상입니다.</p>
+        {readOnly ? (
+          <p className="mt-4 text-sm text-muted">
+            체험 중에는 폐기물을 등록하거나 찾기를 시작할 수 없습니다.{" "}
+            <Link href="/signup" className="font-medium text-ink underline underline-offset-4">
+              가입하고 시작하기
+            </Link>
+          </p>
         ) : null}
       </div>
     </div>

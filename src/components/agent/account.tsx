@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOutAction } from "@/lib/server/auth-actions";
-import { getOptionalUser } from "@/lib/server/session";
 
 function initials(name: string) {
   const text = name.trim();
   return /^[가-힣]/.test(text) ? text.slice(-2) : text.slice(0, 2).toUpperCase();
 }
 
-/** 사이드바 맨 아래의 계정. 세션을 읽으므로 Suspense 안에서 그린다. */
-export async function Account() {
-  const user = await getOptionalUser();
-  if (!user) return null;
+/** 사이드바 맨 아래의 계정. 누르면 설정·화면 모드·로그아웃이 열린다. */
+export function Account({ user }: { user: { name: string; email: string | null } }) {
   return (
     <div>
       <button
@@ -30,10 +27,13 @@ export async function Account() {
       <div
         id="account-menu"
         popover="auto"
-        className="fixed top-auto right-auto bottom-[68px] left-3 m-0 h-fit w-60 rounded-xl border border-line bg-surface p-1.5 text-sm text-ink shadow-[0_16px_40px_-16px_rgb(15_21_18/0.35)]"
+        className="fixed top-auto right-auto bottom-[68px] left-3 m-0 h-fit w-60 max-w-[calc(100vw-24px)] rounded-xl border border-line bg-surface p-1.5 text-sm text-ink shadow-[0_16px_40px_-16px_rgb(15_21_18/0.35)]"
       >
         <Link href="/settings" className="flex min-h-10 items-center rounded-lg px-2.5 hover:bg-sunken">
           회사 정보·멤버
+        </Link>
+        <Link href="/settings/account" className="flex min-h-10 items-center rounded-lg px-2.5 hover:bg-sunken">
+          내 계정
         </Link>
         <div className="flex min-h-10 items-center justify-between px-2.5">
           <span>화면 모드</span>

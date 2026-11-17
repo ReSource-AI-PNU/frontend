@@ -19,30 +19,65 @@ function Centered({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-/** 에이전트 화면의 첫 화면. 보는 회사의 역할과 진단 유무에 따라 한 가지만 보여 준다. */
+/** 처리 업체가 아직 받은 문의가 없을 때. 허가증과 매입 기준표가 없으면 그것부터 올리게 한다. */
+function VendorEmpty({ error }: { error: string | null }) {
+  const { org, mode, readOnly, basePath } = useV3();
+  const profile = useRemote(`vendor:${org.id}`, mode === "live", () => api.getVendor(org.id));
+  const ready = Boolean(profile.data && (profile.data.permits.length > 0 || profile.data.criteria.length > 0));
+  if (profile.loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-5 py-16">
+        <Dots label="불러오는 중" />
+      </div>
+    );
+  }
+  return (
+    <Centered title={ready ? "아직 들어온 문의가 없습니다" : "허가증과 매입 기준표를 올려 주세요"}>
+      <p>
+        {ready
+          ? "배출 기업이 찾기를 시작하면, 허가 품목과 매입 기준에 맞는 물량이 여기에 나타납니다. AI가 매입 기준표의 조건으로 먼저 답하고, 확정은 담당자가 합니다."
+          : "허가 품목과 매입 기준이 있어야 맞는 물량 문의가 들어옵니다. 문서를 올리면 값을 뽑아 드리고, 담당자가 확인한 값만 씁니다."}
+      </p>
+      {error ? (
+        <p role="alert" className="mt-4 rounded-lg bg-loss-bg px-4 py-3 text-sm text-loss">
+          {error}
+        </p>
+      ) : null}
+      <Link
+        href={`${basePath}/materials`}
+        className={buttonClass(ready || readOnly ? "secondary" : "primary", "md", "mt-6 !min-h-12")}
+      >
+        {ready ? "업체 정보 보기" : "허가증·매입 기준표 올리기"}
+      </Link>
+    </Centered>
+  );
+}
+
+/** 에이전트 화면의 첫 화면. 보는 회사의 종류와 진단 유무에 따라 한 가지만 보여 준다. */
 export function AgentHome() {
-  const { orgs, mode, fixture, setSessionId } = useV3();
+  const { mode, readOnly, basePath, setSessionId } = useV3();
   const d = useDiagnosis();
   const stale = Boolean(d.sessionId) && !d.view && !d.loading && Boolean(d.error);
   const { forget } = d;
 
-  // 저장해 둔 찾기 번호가 서버에 없으면(서버를 다시 띄웠을 때 등) 묻지 않고 지우고 첫 화면을 보여 준다
+  // 적어 둔 찾기 번호가 서버에 없으면(지워졌거나 볼 수 없게 됐을 때) 묻지 않고 지우고 첫 화면을 보여 준다
   useEffect(() => {
-    if (stale && d.org.role === "emitter") forget();
+    if (stale) forget();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stale, d.org.role]);
+  }, [stale]);
 
-  // 이 기기에 적어 둔 찾기가 없거나 이 회사가 볼 수 없는 것이면, 서버에 남은 내 찾기 목록에서 최근 것을 찾는다
+  // 이 기기에 적어 둔 찾기가 없으면, 서버에 남은 내 찾기 목록에서 최근 것을 찾는다
   const lookUp = mode === "live" && !d.loading && !d.view;
   const recent = useRemote(`sessions:${d.org.id}:${d.sessionId ?? ""}`, lookUp, () => api.listSessions(d.org.id));
   const latest = lookUp ? (recent.data?.find((item) => item.id !== d.sessionId) ?? null) : null;
-  // 업체와 운영자는 받은 문의를 바로 연다. 배출 기업은 새로 찾을 수도 있으므로 고르게 한다
+  // 업체·운영자와 체험하기는 최근 것을 바로 연다. 배출 기업은 새로 찾을 수도 있으므로 고르게 한다
+  const autoOpen = d.org.role !== "emitter" || readOnly;
   useEffect(() => {
-    if (latest && d.org.role !== "emitter") setSessionId(latest.id);
+    if (latest && autoOpen) setSessionId(latest.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latest?.id, d.org.role]);
+  }, [latest?.id, autoOpen]);
 
-  if (d.loading || (latest && d.org.role !== "emitter")) {
+  if (d.loading || (latest && autoOpen) || (lookUp && recent.loading)) {
     return (
       <div className="flex flex-1 items-center justify-center px-5 py-16">
         <Dots label="불러오는 중" />
@@ -55,51 +90,20 @@ export function AgentHome() {
   if (d.org.role === "admin") {
     return (
       <Centered title="운영 화면에서 기준값과 사례 시험을 봅니다">
-        <p>찾기는 배출 기업으로 볼 때 시작할 수 있습니다. 왼쪽 아래 ‘시연 회사’를 바꿔 보세요.</p>
-        <Link href="/app/admin" className={buttonClass("secondary", "md", "mt-6")}>
+        <p>찾기는 배출 기업 계정으로 시작합니다. 진행 중인 찾기가 생기면 여기에서 상태를 볼 수 있습니다.</p>
+        <Link href={`${basePath}/admin`} className={buttonClass("secondary", "md", "mt-6")}>
           운영 화면 열기
         </Link>
       </Centered>
     );
   }
 
-  if (d.org.role === "vendor") {
-    return (
-      <Centered title="아직 들어온 문의가 없습니다">
-        <p>
-          배출 기업이 찾기를 시작하면, 매입 기준에 맞는 물량이 여기에 나타납니다. 매입 기준과 허가 품목은 미리 올려 둘 수
-          있습니다.
-        </p>
-        {d.error ? (
-          <p role="alert" className="mt-4 rounded-lg bg-loss-bg px-4 py-3 text-sm text-loss">
-            {d.error}{" "}
-            <button type="button" className="font-semibold underline" onClick={d.forget}>
-              지우고 다시 보기
-            </button>
-          </p>
-        ) : null}
-        <Link href="/app/materials" className={buttonClass("secondary", "md", "mt-6")}>
-          매입 기준 올리기
-        </Link>
-      </Centered>
-    );
-  }
-
-  if (mode === "fixture" && d.org.id !== fixture?.meta.emitterOrgId) {
-    return (
-      <Centered title="이 회사의 예시 데이터가 없습니다">
-        <p>
-          예시 데이터에는 {orgs.find((item) => item.id === fixture?.meta.emitterOrgId)?.name ?? "배출 기업 한 곳"}의 결과만 들어
-          있습니다. ‘시연 회사’를 그쪽으로 바꾸거나 서버를 띄우고 다시 연결하세요.
-        </p>
-      </Centered>
-    );
-  }
+  if (d.org.role === "vendor") return <VendorEmpty error={d.error ?? recent.error} />;
 
   return (
     <Start
       busy={d.busy}
-      error={d.sessionId ? null : d.error}
+      error={d.sessionId ? null : (d.error ?? recent.error)}
       onFind={d.find}
       onResume={latest ? () => setSessionId(latest.id) : undefined}
     />

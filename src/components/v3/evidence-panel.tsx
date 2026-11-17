@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { CloseIcon } from "@/components/icons";
 import { api } from "@/lib/v3/api";
-import type { Fixture } from "@/lib/v3/fixture";
 import { formatNumber } from "@/lib/v3/format";
 import type { Evidence, EvidenceDetail } from "@/lib/v3/types";
-import type { DataMode } from "./context";
 
 type Loaded = { id: string; detail: EvidenceDetail | null; error: string | null };
 
@@ -122,8 +120,7 @@ export function EvidencePanel({
   title,
   orgId,
   orgName,
-  mode,
-  fixture,
+  live,
   onClose,
 }: {
   ids: string[];
@@ -131,14 +128,14 @@ export function EvidencePanel({
   orgId: string;
   /** 조직 ID를 이름으로. 모르는 조직이면 ID를 그대로 돌려준다 */
   orgName: (id: string) => string;
-  mode: DataMode;
-  fixture: Fixture | null;
+  /** 서버와 이어졌을 때만 근거를 읽는다 */
+  live: boolean;
   onClose: () => void;
 }) {
   const [remote, setRemote] = useState<Loaded[] | null>(null);
 
   useEffect(() => {
-    if (mode !== "live") return;
+    if (!live) return;
     let alive = true;
     Promise.all(
       ids.map((id) =>
@@ -157,7 +154,7 @@ export function EvidencePanel({
     return () => {
       alive = false;
     };
-  }, [ids, orgId, mode]);
+  }, [ids, orgId, live]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -167,13 +164,7 @@ export function EvidencePanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const items: Loaded[] | null =
-    mode === "live"
-      ? remote
-      : ids.map((id) => {
-          const detail = fixture?.evidence(id) ?? null;
-          return { id, detail, error: detail ? null : "예시 데이터에 담지 않은 근거입니다." };
-        });
+  const items: Loaded[] | null = live ? remote : null;
 
   // 첫 근거의 계산 사슬에 이미 나온 근거는 아래에 다시 그리지 않는다
   const inChain = new Set(items?.[0]?.detail?.chain.map((link) => link.id) ?? []);
@@ -204,13 +195,9 @@ export function EvidencePanel({
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto border-t border-line px-5 py-5">
-          {mode !== "live" ? (
-            <p className="mb-5 text-[13px] text-muted">
-              서버에 연결되지 않아 저장해 둔 예시 근거를 보여 줍니다(시연용 가상 데이터 포함). 계산 과정은 저장해 둔 데까지만
-              보입니다.
-            </p>
+          {items === null ? (
+            <p className="text-sm text-muted">{live ? "근거를 불러오는 중입니다." : "잠시 연결이 원활하지 않습니다. 잠시 후 다시 열어 주세요."}</p>
           ) : null}
-          {items === null ? <p className="text-sm text-muted">근거를 불러오는 중입니다.</p> : null}
           <div className="divide-y divide-line">
             {shown?.map((item, index) => (
               <section key={item.id} className="py-6 first:pt-0 last:pb-0">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { Button, buttonClass } from "@/components/ui/button";
-import { api } from "@/lib/v3/api";
+import { ApiError, api } from "@/lib/v3/api";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import type {
   CsvUploadResult,
@@ -118,7 +118,7 @@ const DOC_KIND_LABEL: Record<DocumentKind, string> = {
 
 /**
  * 문서 올리기와 추출값 확인. 뽑은 값은 담당자가 표시한 것만 doc 근거로 등록된다.
- * 주입 검사나 문서 추출 서비스가 연결되지 않았으면 서버가 알려 준 그대로 보여 준다.
+ * 안전 검사나 표 읽기를 하지 못한 문서는 무엇을 직접 확인하면 되는지만 적는다(서비스 이름은 운영 화면에만).
  */
 function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAct: boolean; label: string }) {
   const { org, openEvidence } = useV3();
@@ -186,22 +186,18 @@ function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAc
           </p>
           {result.blocked || result.handoff ? (
             <p role="alert" className="text-sm font-medium text-loss">
-              문서에서 지시문 주입이 탐지되어 이 문서를 쓰지 않습니다.
+              이 문서에서 AI에게 내리는 숨은 지시문이 발견되어 이 문서를 쓰지 않습니다.
               {result.threadIds.length > 0
-                ? ` 진행 중인 대화 ${result.threadIds.length}건을 담당자에게 넘겼습니다.`
+                ? ` 진행 중인 대화 ${result.threadIds.length}건은 담당자가 직접 이어 가도록 넘겼습니다.`
                 : ""}
             </p>
           ) : null}
           {result.shieldUnavailable ? (
-            <p className="text-[13px] text-warn">
-              주입 검사 안 함 · {result.shield?.note ?? "Prompt Shields가 설정되지 않았습니다."}
-            </p>
-          ) : (
-            <p className="text-[13px] text-muted">주입 검사(Prompt Shields)를 거쳤습니다.</p>
-          )}
+            <p className="text-[13px] text-warn">이 문서는 안전 검사를 하지 못했습니다. 뽑은 값을 한 번 더 확인해 주세요.</p>
+          ) : null}
           {result.extraction === "text_only" ? (
             <p className="text-[13px] text-muted">
-              문서 추출 서비스(Document Intelligence)가 연결되지 않아 글 파일의 내용만 읽었습니다.
+              이 문서는 글자만 읽었습니다. 표나 사진 속 값은 원본을 보고 직접 확인해 주세요.
             </p>
           ) : null}
           {result.fields.length === 0 ? (
@@ -296,8 +292,8 @@ function DocumentUpload({ kinds, canAct, label }: { kinds: DocumentKind[]; canAc
 const pct = (value: number | null | undefined) => (value == null ? "확인 필요" : `${formatNumber(value * 100)}%`);
 
 /**
- * 사진·영상 올리기(POST /intake/media). 탐지 모델이 연결되지 않았으면 서버가 준 문장을 그대로 보여 주고
- * 탐지 결과를 그리지 않는다. 연결돼 있으면 재질 추정과 이물 비율이 모델 판정 근거로 등록된다.
+ * 사진·영상 올리기(POST /intake/media). 분석하지 못한 파일은 다음 행동만 알려 주고 탐지 결과를 그리지 않는다.
+ * 분석하면 재질 추정과 이물 비율이 AI 판정 근거로 등록된다.
  */
 function MediaUpload({
   stream,
@@ -364,12 +360,12 @@ function MediaUpload({
       </p>
       <UploadStatus state={media.state} />
       {result?.detectorUnavailable ? (
-        <div role="status" className="text-[13px] text-warn">
-          <p className="font-medium">{result.message ?? "탐지 모델이 연결되지 않았습니다"}</p>
+        <div role="status" className="rounded-xl bg-warn-bg px-4 py-3 text-[13px] text-ink-2">
+          <p className="font-medium text-ink">이 파일은 분석하지 못했습니다</p>
           <p className="mt-0.5">
-            탐지 모델이 연결되지 않아 이 파일은 분석하지 않았습니다. 이 파일로 새로 등록된 근거는 없습니다.
+            다른 사진을 올리거나, 측정값 칸에 오염도와 수분을 직접 적어 주세요.
             {stream.photo?.contaminationPct != null || estimate
-              ? " 위에 보이는 사진 추정값은 이전에 등록된 근거입니다."
+              ? " 위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다."
               : ""}
           </p>
         </div>
@@ -378,11 +374,6 @@ function MediaUpload({
         <div className="space-y-3 rounded-xl bg-ground px-4 py-4 text-[13px]">
           <p>
             <span className="tabular-nums">{result.filename ?? "올린 파일"}</span>
-            {result.model ? (
-              <>
-                {" · "}탐지 모델 <span className="tabular-nums">{`${result.model.name} ${result.model.version}`}</span>
-              </>
-            ) : null}
             {result.mode ? ` · ${result.mode === "video" ? "영상" : "사진"}` : ""}
             {result.framesAnalyzed != null ? ` · 분석한 장면 ${result.framesAnalyzed}` : ""}
             {result.mode === "video" && result.tracksTotal != null ? ` · 추적한 물체 ${result.tracksTotal}` : ""}
@@ -421,7 +412,7 @@ function MediaUpload({
                   ) : null}
                 </>
               ) : (
-                <span className="text-warn">상태 모델이 돌지 않아 값이 없습니다 · 확인 필요</span>
+                <span className="text-warn">이 파일로는 비율을 정하지 못했습니다 · 확인 필요</span>
               )}
             </dd>
           </dl>
@@ -455,9 +446,9 @@ function MediaUpload({
             <button
               type="button"
               className={`${link}`}
-              onClick={() => openEvidence(result.evidence, "등록된 모델 판정 근거")}
+              onClick={() => openEvidence(result.evidence, "등록된 AI 판정 근거")}
             >
-              등록된 모델 판정 근거 {result.evidence.length}건
+              등록된 AI 판정 근거 {result.evidence.length}건
             </button>
           ) : (
             <p className="text-muted">등록된 근거가 없습니다.</p>
@@ -817,26 +808,24 @@ function StreamCard({
 }
 
 function EmitterMaterials() {
-  const { mode, fixture, org } = useV3();
-  const live = mode === "live";
-  const remote = useRemote(`streams:${org.id}`, live, () => api.listStreams(org.id));
-  const streams = live ? remote.data : (fixture?.streams.filter((item) => item.orgId === org.id) ?? []);
+  const { mode, canWrite, org, basePath } = useV3();
+  const remote = useRemote(`streams:${org.id}`, mode === "live", () => api.listStreams(org.id));
+  const streams = remote.data;
   if (remote.loading) return <p className="text-sm text-muted">등록한 폐기물을 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   if (!streams || streams.length === 0) {
     return (
-      <p className="text-[15px] text-ink-2">
-        {live ? (
-          <>
-            아직 등록한 폐기물이 없습니다.{" "}
-            <Link href="/app" className="font-medium text-ink underline underline-offset-4">
-              찾기 화면에서 먼저 추가해 주세요.
-            </Link>
-          </>
-        ) : (
-          "예시 데이터에는 이 회사의 폐기물이 없습니다. 예시는 배출 기업 한 곳의 자료만 담고 있습니다."
-        )}
-      </p>
+      <div className="flex flex-col items-start gap-4 rounded-xl border border-dashed border-line-strong px-6 py-10">
+        <div>
+          <p className="text-[19px] font-semibold tracking-[-0.02em]">아직 등록한 폐기물이 없습니다</p>
+          <p className="mt-1 text-sm text-muted">폐기물을 먼저 등록하면 사진, 측정값, 문서를 폐기물마다 올릴 수 있습니다.</p>
+        </div>
+        {canWrite ? (
+          <Link href={basePath} className={buttonClass("primary", "md")}>
+            폐기물 등록
+          </Link>
+        ) : null}
+      </div>
     );
   }
   return (
@@ -845,7 +834,7 @@ function EmitterMaterials() {
         <StreamCard
           key={stream.id}
           stream={stream}
-          canAct={live}
+          canAct={canWrite}
           onChanged={remote.reload}
           onSave={async (next) => {
             await api.putStream(org.id, next);
@@ -878,8 +867,6 @@ function VendorForm({
   const [ceiling, setCeiling] = useState(
     profile.guardrails.ceilingPriceKrwPerKg != null ? String(profile.guardrails.ceilingPriceKrwPerKg) : "",
   );
-  const [provider, setProvider] = useState(profile.model.provider);
-  const [modelName, setModelName] = useState(profile.model.name);
   const [note, setNote] = useState<string | null>(null);
   // 매입 기준표의 단가(기준 ID → 입력한 글자). 배출 기업 기준이라 양수는 매입, 음수는 처리비다
   const [prices, setPrices] = useState<Record<string, string>>(() =>
@@ -917,7 +904,6 @@ function VendorForm({
           minPickupsPerMonth: pickupValue,
           autoDecline: list(decline),
         },
-        model: { provider, name: modelName.trim() || profile.model.name },
       });
       setNote("저장했습니다.");
     } catch (error) {
@@ -1060,41 +1046,12 @@ function VendorForm({
           </label>
         </div>
 
-        <details className="group mt-5">
-          <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
-            모델 설정 (기술 설정)
-            <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-2">
-            <label className={fieldLabel}>
-              AI 모델
-              <select
-                value={provider}
-                onChange={(event) => setProvider(event.target.value as VendorProfile["model"]["provider"])}
-                className={field}
-                disabled={!canAct}
-              >
-                <option value="foundry">Foundry (기본)</option>
-                <option value="ollama">Ollama 오픈 모델</option>
-              </select>
-            </label>
-            <label className={fieldLabel}>
-              모델 이름
-              <input value={modelName} onChange={(event) => setModelName(event.target.value)} className={field} disabled={!canAct} />
-            </label>
-            <p className="text-[13px] leading-relaxed text-muted sm:col-span-2">
-              여기는 설정일 뿐입니다. 실제로 무엇이 답했는지는 대화마다 따로 표시됩니다. 모델이 연결되지 않은 서버에서는
-              &ldquo;규칙 정책(모델 미연결)&rdquo;이 답합니다.
-            </p>
-          </div>
-        </details>
-
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button disabled={!canAct} onClick={save}>
             저장
           </Button>
           <span role="status" className={`text-sm ${note && note !== "저장했습니다." ? "text-loss" : "text-muted"}`}>
-            {note ?? (canAct ? "매입 기준표의 단가와 위 범위를 함께 저장합니다." : "예시 데이터에서는 저장할 수 없습니다.")}
+            {note ?? (canAct ? "매입 기준표의 단가와 위 범위를 함께 저장합니다." : "체험 중에는 저장할 수 없습니다.")}
           </span>
         </div>
       </section>
@@ -1128,41 +1085,70 @@ function VendorForm({
   );
 }
 
+/** 처음 가입한 업체에는 프로필이 없다. 빈 프로필로 시작해 문서를 올리고 범위를 정한다(모델 설정은 보내지 않는다). */
+function emptyProfile(orgId: string, name: string): VendorProfile {
+  return {
+    orgId,
+    name,
+    permits: [],
+    criteria: [],
+    fleet: null,
+    guardrails: { floorPriceKrwPerKg: null, ceilingPriceKrwPerKg: null, days: [], minPickupsPerMonth: null, autoDecline: [] },
+    model: undefined as unknown as VendorProfile["model"],
+  };
+}
+
+/** 업체 프로필을 읽는다. 아직 없으면(404) null */
+export function loadVendorProfile(orgId: string) {
+  return api.getVendor(orgId).catch((error: unknown) => {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  });
+}
+
 function VendorMaterials() {
-  const { mode, fixture, org } = useV3();
-  const live = mode === "live";
-  const remote = useRemote(`vendor:${org.id}`, live, () => api.getVendor(org.id));
-  const profile = live ? remote.data : (fixture?.vendors[org.id] ?? null);
+  const { mode, canWrite, org } = useV3();
+  const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id));
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
-  if (!profile) return <p className="text-sm text-ink-2">등록된 업체 정보가 없습니다.</p>;
+  const profile = remote.data ?? emptyProfile(org.id, org.name);
   return (
     <VendorForm
-      key={profile.orgId}
+      key={`${profile.orgId}:${remote.data ? "saved" : "new"}`}
       profile={profile}
-      canAct={live}
+      canAct={canWrite}
       onSave={async (next) => {
-        remote.set(await api.putVendor(org.id, next));
+        // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다
+        const { model, ...rest } = next;
+        remote.set(await api.putVendor(org.id, (model?.provider ? next : rest) as VendorProfile));
       }}
     />
   );
 }
 
 export function MaterialsView() {
-  const { org, mode } = useV3();
+  const { org, mode, readOnly } = useV3();
   return (
     <div className="mx-auto w-full max-w-[820px] px-5 pt-10 pb-16">
       <header className="mb-8">
         <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">
-          {org.role === "vendor" ? "매입 기준·자료" : "자료"}
+          {org.role === "vendor" ? "업체 정보" : "자료"}
         </h1>
         <p className="mt-2 text-[15px] text-ink-2">
           {org.role === "emitter"
             ? "지금 처리 방법과 단가, 사진, 측정값을 넣을수록 업체가 조건을 정확히 내놓습니다. 없는 것은 비워 둬도 됩니다."
             : org.role === "vendor"
-              ? "받을 수 있는 품목과 조건을 올려 두면, 맞는 물량에만 AI가 대신 답합니다."
-              : "자료는 배출 기업이나 처리 업체로 볼 때 올립니다. 왼쪽 아래 ‘시연 회사’를 바꿔 보세요."}
+              ? "허가증과 매입 기준표를 올려 두면, 맞는 물량에만 AI가 매입 기준표의 조건으로 대신 답합니다."
+              : "자료는 배출 기업과 처리 업체 계정에서 올립니다."}
         </p>
+        {readOnly ? (
+          <p className="mt-2 text-[13px] text-muted">
+            체험 중에는 자료를 올리거나 저장할 수 없습니다.{" "}
+            <Link href="/signup" className="font-medium text-ink underline underline-offset-4">
+              가입하고 시작하기
+            </Link>
+          </p>
+        ) : null}
       </header>
       {mode === "loading" ? <p className="text-sm text-muted">불러오는 중입니다.</p> : null}
       {mode !== "loading" && org.role === "emitter" ? <EmitterMaterials /> : null}
