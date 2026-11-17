@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import type { MemberRole } from "@/lib/auth/account";
 import { callBackend } from "./backend";
 import type { Workspace } from "./workspace";
@@ -7,6 +8,8 @@ export type Member = { userId: string; name: string; email: string; memberRole: 
 
 /** 회사 멤버(GET /orgs/{orgId}/members). 읽지 못하면 null */
 export async function listMembers(workspace: Workspace & { active: NonNullable<Workspace["active"]> }): Promise<Member[] | null> {
+  // 요청 때만 부른다(미리 그리기에서는 부르지 않는다)
+  await connection();
   try {
     const rows = await callBackend<unknown>(`/orgs/${encodeURIComponent(workspace.active.orgId)}/members`, {
       userId: workspace.user.id,
@@ -35,6 +38,7 @@ export type CompanyDetail = { region: string | null; address: string | null; biz
 /** 회사의 지역·주소·사업자등록번호. 조직 목록(GET /orgs)에서 이 회사를 찾는다. 없거나 읽지 못하면 빈 값 */
 export async function companyDetail(workspace: Workspace & { active: NonNullable<Workspace["active"]> }): Promise<CompanyDetail> {
   const empty = { region: null, address: null, bizNo: null };
+  await connection();
   try {
     const orgs = await callBackend<unknown>("/orgs", { userId: workspace.user.id, orgId: workspace.active.orgId });
     if (!Array.isArray(orgs)) return empty;

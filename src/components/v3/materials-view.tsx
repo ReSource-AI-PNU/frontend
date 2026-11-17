@@ -1099,17 +1099,49 @@ function emptyProfile(orgId: string, name: string): VendorProfile {
   };
 }
 
+/**
+ * 받은 프로필의 빈 칸을 채운다. 새로 가입한 업체의 프로필은 {permits: [], criteria: [], fleet: {}, guardrails: {}}처럼
+ * 비어 있고 모델 설정도 없다. 차량은 차고지와 적재량이 다 있을 때만 있는 것으로 본다.
+ */
+function normalizeProfile(raw: VendorProfile, orgId: string, name: string): VendorProfile {
+  const empty = emptyProfile(orgId, name);
+  const fleet = raw.fleet as Partial<NonNullable<VendorProfile["fleet"]>> | null | undefined;
+  const fleetOk =
+    fleet != null &&
+    Array.isArray(fleet.depot) &&
+    typeof fleet.capacityKg === "number" &&
+    typeof fleet.capacityM3 === "number" &&
+    typeof fleet.costPerKm === "number";
+  const guardrails = (raw.guardrails ?? {}) as Partial<VendorProfile["guardrails"]>;
+  return {
+    ...empty,
+    ...raw,
+    permits: Array.isArray(raw.permits) ? raw.permits.map((item) => ({ ...item, evidence: item.evidence ?? [] })) : [],
+    criteria: Array.isArray(raw.criteria) ? raw.criteria.map((item) => ({ ...item, evidence: item.evidence ?? [] })) : [],
+    fleet: fleetOk ? (fleet as NonNullable<VendorProfile["fleet"]>) : null,
+    guardrails: {
+      ...empty.guardrails,
+      ...guardrails,
+      days: Array.isArray(guardrails.days) ? guardrails.days : [],
+      autoDecline: Array.isArray(guardrails.autoDecline) ? guardrails.autoDecline : [],
+    },
+  };
+}
+
 /** 업체 프로필을 읽는다. 아직 없으면(404) null */
-export function loadVendorProfile(orgId: string) {
-  return api.getVendor(orgId).catch((error: unknown) => {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  });
+export function loadVendorProfile(orgId: string, name = "") {
+  return api.getVendor(orgId).then(
+    (profile) => normalizeProfile(profile, orgId, name),
+    (error: unknown) => {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    },
+  );
 }
 
 function VendorMaterials() {
   const { mode, canWrite, org } = useV3();
-  const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id));
+  const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   const profile = remote.data ?? emptyProfile(org.id, org.name);
@@ -1119,9 +1151,12 @@ function VendorMaterials() {
       profile={profile}
       canAct={canWrite}
       onSave={async (next) => {
-        // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다
-        const { model, ...rest } = next;
-        remote.set(await api.putVendor(org.id, (model?.provider ? next : rest) as VendorProfile));
+        // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다.
+        // 차량 정보가 없으면 보내지 않는다(빈 값을 근거로 등록하지 않게)
+        const { model, fleet, ...rest } = next;
+        const body = { ...rest, ...(model?.provider ? { model } : {}), ...(fleet ? { fleet } : {}) };
+        const saved = await api.putVendor(org.id, body as VendorProfile);
+        remote.set(normalizeProfile(saved, org.id, org.name));
       }}
     />
   );

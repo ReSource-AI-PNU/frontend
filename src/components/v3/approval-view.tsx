@@ -270,12 +270,12 @@ function OutcomeForm({
 /** 양쪽 담당자 승인. 근거 확인에 실패한 항목이 있으면 승인 버튼을 끈다. */
 export function ApprovalView() {
   const d = useDiagnosis();
-  const { org, mode, readOnly, basePath, setSessionId } = useV3();
+  const { org, mode, readOnly, basePath, setSessionId, failedSessions } = useV3();
   const { view } = d;
   // 이 회사로 아직 연 찾기가 없으면 서버에 남은 최근 찾기를 연다(다른 기기에서 들어왔거나 회사를 바꿨을 때)
   const lookUp = mode === "live" && !d.sessionId;
   const recent = useRemote(`sessions:${org.id}`, lookUp, () => api.listSessions(org.id));
-  const latest = lookUp ? (recent.data?.[0]?.id ?? null) : null;
+  const latest = lookUp ? (recent.data?.find((item) => !failedSessions.includes(item.id))?.id ?? null) : null;
   useEffect(() => {
     if (latest) setSessionId(latest);
   }, [latest, setSessionId]);

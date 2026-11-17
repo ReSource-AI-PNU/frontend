@@ -42,6 +42,9 @@ type Ctx = {
   switching: boolean;
   sessionId: string | null;
   setSessionId: (id: string | null) => void;
+  /** 열지 못한 찾기를 지우고 기억해 둔다(목록에서 같은 것을 다시 고르지 않게) */
+  dropSession: (id: string) => void;
+  failedSessions: string[];
   openEvidence: (ids: string[], title?: string) => void;
 };
 
@@ -91,6 +94,7 @@ export function V3Provider({
   const sessionKey = `${demo ? "rsai-v3-demo-session" : "rsai-v3-session"}:${org.id}`;
   const sessionId = useStored(sessionKey);
   const [panel, setPanel] = useState<{ ids: string[]; title?: string } | null>(null);
+  const [failedSessions, setFailedSessions] = useState<string[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -131,6 +135,13 @@ export function V3Provider({
     [demo, org.id, router],
   );
   const setSessionId = useCallback((id: string | null) => setStored(sessionKey, id), [sessionKey]);
+  const dropSession = useCallback(
+    (id: string) => {
+      setFailedSessions((before) => (before.includes(id) ? before : [...before, id]));
+      if (window.localStorage.getItem(sessionKey) === id) setStored(sessionKey, null);
+    },
+    [sessionKey],
+  );
   const openEvidence = useCallback((ids: string[], title?: string) => {
     // 한 판단에 같은 근거가 여러 번 실려 올 수 있다. 한 번만 연다
     if (ids.length > 0) setPanel({ ids: [...new Set(ids)], title });
@@ -150,9 +161,25 @@ export function V3Provider({
       switching,
       sessionId,
       setSessionId,
+      dropSession,
+      failedSessions,
       openEvidence,
     }),
-    [remote.mode, reconnect, demo, orgs, org, memberships, setOrgId, switching, sessionId, setSessionId, openEvidence],
+    [
+      remote.mode,
+      reconnect,
+      demo,
+      orgs,
+      org,
+      memberships,
+      setOrgId,
+      switching,
+      sessionId,
+      setSessionId,
+      dropSession,
+      failedSessions,
+      openEvidence,
+    ],
   );
 
   return (

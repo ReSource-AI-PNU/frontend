@@ -6,6 +6,7 @@ import { buttonClass } from "@/components/ui/button";
 import { useV3 } from "@/components/v3/context";
 import { useRemote } from "@/components/v3/use-remote";
 import { api } from "@/lib/v3/api";
+import { loadVendorProfile } from "@/components/v3/materials-view";
 import { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { Conversation, Dots } from "./conversation";
 import { Start } from "./start";
@@ -22,7 +23,7 @@ function Centered({ title, children }: { title: string; children: React.ReactNod
 /** 처리 업체가 아직 받은 문의가 없을 때. 허가증과 매입 기준표가 없으면 그것부터 올리게 한다. */
 function VendorEmpty({ error }: { error: string | null }) {
   const { org, mode, readOnly, basePath } = useV3();
-  const profile = useRemote(`vendor:${org.id}`, mode === "live", () => api.getVendor(org.id));
+  const profile = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
   const ready = Boolean(profile.data && (profile.data.permits.length > 0 || profile.data.criteria.length > 0));
   if (profile.loading) {
     return (
@@ -55,21 +56,22 @@ function VendorEmpty({ error }: { error: string | null }) {
 
 /** 에이전트 화면의 첫 화면. 보는 회사의 종류와 진단 유무에 따라 한 가지만 보여 준다. */
 export function AgentHome() {
-  const { mode, readOnly, basePath, setSessionId } = useV3();
+  const { mode, readOnly, basePath, setSessionId, dropSession, failedSessions } = useV3();
   const d = useDiagnosis();
   const stale = Boolean(d.sessionId) && !d.view && !d.loading && Boolean(d.error);
-  const { forget } = d;
 
-  // 적어 둔 찾기 번호가 서버에 없으면(지워졌거나 볼 수 없게 됐을 때) 묻지 않고 지우고 첫 화면을 보여 준다
+  // 적어 둔 찾기를 열지 못하면(지워졌거나 볼 수 없게 됐을 때) 지우고 첫 화면을 보여 준다.
+  // 열지 못한 것은 기억해 두어 목록에서 같은 찾기를 되풀이해 열지 않는다
   useEffect(() => {
-    if (stale) forget();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stale]);
+    if (stale && d.sessionId) dropSession(d.sessionId);
+  }, [stale, d.sessionId, dropSession]);
 
   // 이 기기에 적어 둔 찾기가 없으면, 서버에 남은 내 찾기 목록에서 최근 것을 찾는다
   const lookUp = mode === "live" && !d.loading && !d.view;
   const recent = useRemote(`sessions:${d.org.id}:${d.sessionId ?? ""}`, lookUp, () => api.listSessions(d.org.id));
-  const latest = lookUp ? (recent.data?.find((item) => item.id !== d.sessionId) ?? null) : null;
+  const latest = lookUp
+    ? (recent.data?.find((item) => item.id !== d.sessionId && !failedSessions.includes(item.id)) ?? null)
+    : null;
   // 업체·운영자와 체험하기는 최근 것을 바로 연다. 배출 기업은 새로 찾을 수도 있으므로 고르게 한다
   const autoOpen = d.org.role !== "emitter" || readOnly;
   useEffect(() => {
