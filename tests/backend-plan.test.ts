@@ -72,6 +72,16 @@ test("체험하기: GET만 넘기고, 사람 ID 없이 체험 머리글과 시�
   assert.ok(!missing.ok && missing.code === "DEMO_UNAVAILABLE");
 });
 
+test("다른 창에서 회사를 바꿔 화면의 회사와 세션의 회사가 다르면 409로 막는다", () => {
+  const changed = planProxy({ method: "POST", path: ["sessions"], config: BFF, scope: member, expectedOrg: "org_before" });
+  assert.ok(!changed.ok && changed.status === 409 && changed.code === "ORG_CHANGED");
+  const same = planProxy({ method: "POST", path: ["sessions"], config: BFF, scope: member, expectedOrg: "org_mine" });
+  assert.ok(same.ok);
+  // 체험하기는 서버가 시연 회사를 정하므로 보지 않는다
+  const demo = planProxy({ method: "GET", path: ["sessions"], config: BFF, scope: { kind: "demo", orgId: "org_hanbit" }, expectedOrg: "x" });
+  assert.ok(demo.ok);
+});
+
 test("계정·초대 경로는 브라우저 통로로 넘기지 않는다", () => {
   for (const path of [["accounts", "login"], ["accounts", "me"], ["invites", "tok", "accept"]]) {
     const plan = planProxy({ method: "POST", path, config: BFF, scope: member });
@@ -85,6 +95,11 @@ test("설정이 빠졌거나 주소가 이상하면 쉬운 말로 거절하고 �
   assert.ok(!unset.ok && !/V3_|백엔드|환경 변수/.test(unset.message));
   const dots = planProxy({ method: "GET", path: ["..", "admin"], config: BFF, scope: member });
   assert.ok(!dots.ok && dots.status === 404);
+  // 조각 안에 숨긴 "/"로 계정 경로나 다른 회사 경로를 비켜 가지 못한다
+  for (const path of [["accounts/signup"], ["accounts%2Fsignup"], ["orgs", "org_other/streams"], ["orgs%2Forg_other", "streams"], ["a\\b"], ["%E0%A4%A"]]) {
+    const plan = planProxy({ method: "POST", path, config: BFF, scope: member });
+    assert.ok(!plan.ok && plan.status === 404, path.join("|"));
+  }
   for (const message of Object.values(USER_MESSAGE)) assert.ok(!/V3_|\.env|백엔드|BACKEND/.test(message), message);
 });
 

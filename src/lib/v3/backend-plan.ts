@@ -34,6 +34,7 @@ export const USER_MESSAGE = {
   demoReadOnly: "체험 중에는 둘러보기만 할 수 있습니다. 가입하면 내 회사로 시작할 수 있습니다.",
   demoUnavailable: "지금은 체험 화면을 열 수 없습니다. 잠시 후 다시 시도해 주세요.",
   notAllowed: "이 화면에서는 할 수 없는 요청입니다.",
+  orgChanged: "다른 창에서 회사를 바꿨습니다. 화면을 새로 고쳐 주세요.",
 } as const;
 
 export const ORG_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -126,13 +127,13 @@ export function planProxy(input: {
   search?: string;
   config: BackendConfig;
   scope: ProxyScope;
+  /** 화면이 보고 있는 회사(X-Expected-Org). 다른 창에서 회사를 바꿔 세션과 어긋나면 409로 막는다 */
+  expectedOrg?: string | null;
 }): ProxyPlan {
   const { config, scope, path } = input;
   const method = input.method.toUpperCase();
   if (!config.ok) return refuse(503, config.code, USER_MESSAGE.unavailable);
-  if (path.length === 0 || path.some((part) => part === "" || part === "." || part === "..")) {
-    return refuse(404, "NOT_FOUND", USER_MESSAGE.notAllowed);
-  }
+  if (path.length === 0 || path.some(badSegment)) return refuse(404, "NOT_FOUND", USER_MESSAGE.notAllowed);
   const open = path.length === 1 && path[0] === "health" && READ.has(method);
   const url = `${config.url}/${path.map(encodeURIComponent).join("/")}${input.search ?? ""}`;
   if (open) {
@@ -150,6 +151,7 @@ export function planProxy(input: {
 
   if (!scope.userId) return refuse(401, "LOGIN_REQUIRED", USER_MESSAGE.login);
   if (!scope.orgId) return refuse(403, "ORG_REQUIRED", USER_MESSAGE.noCompany);
+  if (input.expectedOrg && input.expectedOrg !== scope.orgId) return refuse(409, "ORG_CHANGED", USER_MESSAGE.orgChanged);
   // 주소에 적힌 회사가 세션의 회사와 다르면 넘기지 않는다(조직 목록 GET /orgs는 회사 ID가 없다)
   const pathOrg =
     path[0] === "orgs" && path.length >= 2
@@ -160,6 +162,20 @@ export function planProxy(input: {
   if (pathOrg !== null && pathOrg !== scope.orgId) return refuse(403, "ORG_MISMATCH", USER_MESSAGE.otherCompany);
   const built = backendHeaders(config, { userId: scope.userId, orgId: scope.orgId });
   return built.ok ? { ok: true, url, headers: built.headers } : built;
+}
+
+/**
+ * 경로 조각 하나가 위험한지. 조각 안의 "/"·"\"(%2F 등으로 들어온 것 포함)는 백엔드가 경로를 다시 나눠
+ * 계정·회사 검사를 비켜 갈 수 있으므로 받지 않는다.
+ */
+function badSegment(part: string): boolean {
+  let decoded = part;
+  try {
+    decoded = decodeURIComponent(part);
+  } catch {
+    return true;
+  }
+  return [part, decoded].some((value) => value === "" || value === "." || value === ".." || /[/\\]/.test(value));
 }
 
 /** 백엔드 오류 본문 {"error": {"code", "message"}}에서 code를 읽는다. */

@@ -21,10 +21,14 @@ const KEEP_SERVER_MESSAGE = new Set([
   "DEMO_READ_ONLY",
   "DEMO_UNAVAILABLE",
   "ORG_MISMATCH",
+  "ORG_CHANGED",
 ]);
 
 const BY_CODE: Record<string, string> = {
   LOGIN_REQUIRED: "로그인이 필요합니다. 다시 로그인해 주세요.",
+  NOT_A_MEMBER: "이 회사의 멤버가 아닙니다. 소속 회사를 다시 불러옵니다.",
+  OWNER_ONLY: "회사 소유자만 할 수 있습니다.",
+  NOT_DEMO_ORG: "지금은 체험 화면을 열 수 없습니다. 잠시 후 다시 시도해 주세요.",
   ORG_REQUIRED: "회사를 먼저 등록해 주세요.",
   TOO_LARGE: "파일이 너무 큽니다. 20MB보다 작은 파일을 올려 주세요.",
   UNSUPPORTED_MEDIA: "사진이나 영상 파일만 올릴 수 있습니다.",

@@ -5,6 +5,7 @@
  * 백엔드 주소를 직접 적으면(로컬 개발) X-Org-Id 머리글로 회사를 밝힌다.
  * 오류 문구는 사용자 말로 바꿔 던지고(src/lib/v3/errors.ts), 원인은 ApiError.code에 남긴다.
  */
+import { refreshMemberships } from "@/lib/server/company-actions";
 import { UNAVAILABLE, userMessage } from "./errors";
 import type {
   AdminStatus,
@@ -60,10 +61,32 @@ export class ApiError extends Error {
 /** 서버에 닿지 못한 경우(꺼져 있음, 주소 틀림, 네트워크) */
 export class ApiUnreachable extends Error {}
 
+let recovering = false;
+
+/**
+ * 세션과 화면이 어긋났을 때 바로잡는다.
+ *  - ORG_CHANGED: 다른 창에서 회사를 바꿨다 → 지금 세션의 회사로 다시 그린다
+ *  - NOT_A_MEMBER: 회사에서 빠졌다 → 소속을 다시 읽고(서버 액션) 찾기 화면으로 간다(소속이 없으면 회사 등록)
+ */
+function recover(code: string) {
+  if (recovering || typeof window === "undefined" || inDemo()) return;
+  if (code === "ORG_CHANGED") {
+    recovering = true;
+    window.location.reload();
+  } else if (code === "NOT_A_MEMBER") {
+    recovering = true;
+    void refreshMemberships()
+      .catch(() => undefined)
+      // 세션이 바뀌었으므로 화면 전체를 새로 받는다(클라이언트 이동으로는 서버가 세션을 다시 읽지 않는다)
+      .finally(() => window.location.assign(new URL("/app", window.location.origin).href));
+  }
+}
+
 async function request<T>(path: string, orgId: string | null, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  // 통로를 거치면 서버가 세션으로 회사를 정한다. 바로 부를 때만 머리글로 밝힌다
-  if (orgId && !VIA_PROXY) headers.set("X-Org-Id", orgId);
+  // 통로를 거치면 서버가 세션으로 회사를 정한다. 화면이 보는 회사는 X-Expected-Org로 알려 어긋나면 409를 받는다.
+  // 바로 부를 때(로컬 개발)만 X-Org-Id로 회사를 밝힌다
+  if (orgId) headers.set(VIA_PROXY ? "X-Expected-Org" : "X-Org-Id", orgId);
   if (inDemo()) headers.set("X-Demo-View", "1");
   if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   let response: Response;
@@ -82,6 +105,7 @@ async function request<T>(path: string, orgId: string | null, init: RequestInit 
     } catch {
       // 본문이 JSON이 아니면 상태 코드로만 문구를 고른다
     }
+    recover(code);
     throw new ApiError(response.status, code, userMessage(response.status, code, serverMessage));
   }
   const type = response.headers.get("content-type") ?? "";

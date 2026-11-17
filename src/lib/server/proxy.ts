@@ -20,6 +20,7 @@ export async function forwardToBackend(request: Request, path: string[], scope: 
     search: new URL(request.url).search,
     config: backendConfig(),
     scope,
+    expectedOrg: request.headers.get("x-expected-org"),
   });
   if (!plan.ok) {
     if (plan.status >= 500) console.error("[v3 proxy] refused", plan.code, path.join("/"));

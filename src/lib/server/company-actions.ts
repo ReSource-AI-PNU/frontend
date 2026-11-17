@@ -91,6 +91,15 @@ export async function switchCompany(orgId: string): Promise<void> {
   await unstable_update({ activeOrgId: orgId });
 }
 
+/**
+ * 소속을 백엔드에서 다시 읽는다(회사에서 빠졌을 때 NOT_A_MEMBER를 받으면 화면이 부른다).
+ * 활성 회사가 더는 소속이 아니면 jwt 콜백이 남은 소속 가운데 첫 회사로 바꾸고, 소속이 없으면 회사 등록으로 간다.
+ */
+export async function refreshMemberships(): Promise<void> {
+  await sessionUser();
+  await unstable_update({});
+}
+
 export type InviteAcceptState = { error?: string } | undefined;
 
 /** 초대 수락: POST /invites/{token}/accept → 그 회사를 활성 회사로 두고 찾기 화면으로 간다. */

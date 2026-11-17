@@ -25,7 +25,7 @@ export async function demoOrgs(): Promise<DemoOrg[]> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.orgs;
   let orgs: DemoOrg[] = [];
   try {
-    orgs = normalize(await callBackend("/demo/orgs", { demo: true }));
+    orgs = normalize(await callBackend("/demo/orgs"));
   } catch (error) {
     const config = backendConfig();
     if (!(config.ok && config.mode === "header")) throw error;
