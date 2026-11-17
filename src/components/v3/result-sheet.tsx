@@ -55,7 +55,7 @@ function CheckLine({ check, named = true }: { check: Check; named?: boolean }) {
         {check.evidence.length > 0 ? (
           <button
             type="button"
-            className="underline decoration-dotted underline-offset-4"
+            className="underline underline-offset-4"
             onClick={() => openEvidence(check.evidence, `${CHECK_KEY_LABEL[check.key] ?? "확인 항목"}의 근거`)}
           >
             근거
@@ -164,12 +164,12 @@ function AssignmentRows({
               {rest.length > 0 ? (
                 <>
                   <p className="text-ink-2">
-                    조건 <span className="font-mono font-semibold">{conditions.length}</span>건 · 확인 필요{" "}
-                    <span className="font-mono font-semibold">{todo.length}</span>건
+                    조건 <span className="font-medium tabular-nums">{conditions.length}</span>건 · 확인 필요{" "}
+                    <span className="font-medium tabular-nums">{todo.length}</span>건
                     {met.length > 0 ? (
                       <>
                         {" "}
-                        · 충족 <span className="font-mono font-semibold">{met.length}</span>건
+                        · 충족 <span className="font-medium tabular-nums">{met.length}</span>건
                       </>
                     ) : null}
                   </p>
@@ -224,7 +224,7 @@ function AssignmentRows({
               {groups.map((group) => (
                 <div key={group.title}>
                   <p className="text-label text-muted">
-                    {group.title} <span className="font-mono">{group.items.length}</span>건
+                    {group.title} <span className="tabular-nums">{group.items.length}</span>건
                   </p>
                   <ul className="mt-0.5 space-y-1">
                     {group.items.map((check, index) => (
@@ -261,7 +261,7 @@ export function ResultSheet({
   if (!result) {
     return (
       <p className="p-5 text-sm text-muted">
-        아직 결과가 없습니다. 에이전트 대화가 끝나면 흐름별 배정과 월 손익이 여기에 나옵니다.
+        아직 결과가 없습니다. AI 대화가 끝나면 흐름별 배정과 월 손익이 여기에 나옵니다.
       </p>
     );
   }
@@ -318,7 +318,7 @@ export function ResultSheet({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-ink text-left text-label text-muted">
+            <tr className="border-b border-line-strong text-left text-label text-muted">
               <th className="py-2 pr-3 font-semibold">흐름</th>
               <th className="py-2 pr-3 font-semibold">배정 업체 · 경로</th>
               <th className="py-2 pr-3 text-right font-semibold">단가</th>
@@ -367,13 +367,13 @@ export function ResultSheet({
                     <button
                       type="button"
                       title="근거 보기"
-                      className="min-w-0 text-left underline decoration-line-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+                      className="min-w-0 text-left underline decoration-line-strong underline-offset-4 hover:decoration-ink"
                       onClick={() => openEvidence([item.id], item.label)}
                     >
                       {item.label}
                     </button>
                     {value !== null ? (
-                      <span className="font-mono font-semibold whitespace-nowrap tabular-nums">{value}</span>
+                      <span className="font-medium tabular-nums whitespace-nowrap tabular-nums">{value}</span>
                     ) : (
                       <span className="text-[13px] whitespace-nowrap text-muted">표 (눌러서 보기)</span>
                     )}
@@ -410,7 +410,7 @@ export function ResultSheet({
             {result.referencePrices.map((item) => (
               <li key={item.key} className="flex flex-wrap justify-between gap-x-4">
                 <span>
-                  {item.label} <span className="text-[12px] text-muted">기준일 <span className="font-mono">{item.asOf}</span></span>
+                  {item.label} <span className="text-[12px] text-muted">기준일 <span className="tabular-nums">{item.asOf}</span></span>
                 </span>
                 <ClaimValue claim={item.price} price={false} />
               </li>

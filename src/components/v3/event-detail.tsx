@@ -26,7 +26,7 @@ export function EventDetail({ event, streamName }: { event: RunEvent; streamName
   const excluded = strings(detail.excludedStreamIds);
   const reopened = detail.reopenedSeq;
   const called = event.kind === "tool_call" ? calledByLabel(detail.calledBy) : null;
-  const notes = [detail.reportedBy === "vendor" ? "업체 측 에이전트가 답과 함께 보낸 기록" : null, called].filter(Boolean);
+  const notes = [detail.reportedBy === "vendor" ? "업체 측 AI가 답과 함께 보낸 기록" : null, called].filter(Boolean);
   if (
     notes.length === 0 &&
     codes.length === 0 &&
@@ -41,7 +41,7 @@ export function EventDetail({ event, streamName }: { event: RunEvent; streamName
       {notes.length > 0 ? <span className="block">{notes.join(" · ")}</span> : null}
       {codes.map((code) => (
         <span key={code} className="block text-ink-2">
-          <span className="font-mono">{code}</span> {rejectionLabel(code)}
+          <span className="tabular-nums">{code}</span> {rejectionLabel(code)}
         </span>
       ))}
       {excluded.length > 0 ? (
@@ -49,12 +49,12 @@ export function EventDetail({ event, streamName }: { event: RunEvent; streamName
       ) : null}
       {typeof reopened === "number" ? (
         <span className="block text-ink-2">
-          <span className="font-mono">{reopened}</span>번째 메시지부터 다시 연 대화입니다
+          <span className="tabular-nums">{reopened}</span>번째 메시지부터 다시 연 대화입니다
         </span>
       ) : null}
       {typeof hidden === "number" && hidden > 0 ? (
         <span className="block">
-          상대 조직의 근거 <span className="font-mono">{hidden}</span>건은 보이지 않습니다
+          상대 조직의 근거 <span className="tabular-nums">{hidden}</span>건은 보이지 않습니다
         </span>
       ) : null}
     </span>

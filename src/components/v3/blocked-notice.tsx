@@ -42,7 +42,7 @@ export function BlockedNotice({
       <ul className="mt-1 space-y-0.5 text-[13px]">
         {codes.map((code) => (
           <li key={code}>
-            {blockCodeLabel(code)} <span className="font-mono text-[12px]">{code}</span>
+            {blockCodeLabel(code)} <span className="tabular-nums text-[12px]">{code}</span>
           </li>
         ))}
       </ul>

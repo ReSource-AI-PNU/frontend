@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { CloseIcon } from "@/components/icons";
 import { api } from "@/lib/v3/api";
 import type { Fixture } from "@/lib/v3/fixture";
 import { formatNumber } from "@/lib/v3/format";
@@ -9,17 +9,6 @@ import type { Evidence, EvidenceDetail } from "@/lib/v3/types";
 import type { DataMode } from "./context";
 
 type Loaded = { id: string; detail: EvidenceDetail | null; error: string | null };
-
-const KIND_TONE: Record<string, BadgeTone> = {
-  assumption: "warn",
-  calc: "neutral",
-  law: "neutral",
-  ref: "neutral",
-  doc: "neutral",
-  measure: "neutral",
-  model: "ai",
-  human: "neutral",
-};
 
 function valueText(item: Evidence): string | null {
   if (item.value === null || item.value === undefined) return null;
@@ -42,7 +31,7 @@ function readable(url: string): string {
  * 그 밖에 누가 볼 수 있는지는 서버가 알려 주지 않으므로 화면도 적지 않는다.
  */
 function accessText(access: string[], orgName: (id: string) => string): string {
-  if (access.includes("*")) return "모든 조직";
+  if (access.includes("*")) return "모든 회사";
   if (access.length === 0) return "확인 필요";
   return access.map(orgName).join(", ");
 }
@@ -63,63 +52,67 @@ function EvidenceCard({
   const url = typeof item.meta.url === "string" && /^https?:\/\//.test(item.meta.url) ? item.meta.url : null;
   // 원문이 JSON 덩어리(기준표 등)면 줄글 대신 고정폭으로 보여 준다
   const structured = /^[[{]/.test(item.excerpt.trim());
+  const assumed = item.kind === "assumption";
   return (
-    <article className="rounded-lg border border-line p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={KIND_TONE[item.kind] ?? "neutral"}>{item.kindLabel}</Badge>
-        <h3 className="text-sm font-semibold">{item.label || item.id}</h3>
-      </div>
-      {value ? <p className="mt-2 font-mono text-lg font-semibold tabular-nums">{value}</p> : null}
+    <article>
+      <p className="text-[13px] text-muted">
+        {item.kindLabel}
+        {assumed ? <span className="ml-1.5 text-warn">팀이 정한 가정값입니다</span> : null}
+      </p>
+      <h3 className={compact ? "text-[15px] font-medium" : "mt-0.5 text-[17px] leading-snug font-semibold tracking-[-0.02em]"}>
+        {item.label || item.id}
+      </h3>
+      {value ? (
+        <p className={`mt-1 font-semibold tabular-nums ${compact ? "text-[17px]" : "text-[26px] leading-tight tracking-[-0.02em]"}`}>
+          {value}
+        </p>
+      ) : null}
       {item.excerpt ? (
         structured ? (
-          <pre className="mt-2 max-h-40 overflow-auto rounded-md bg-sunken p-2 text-[12px] break-all whitespace-pre-wrap text-ink-2">
+          <pre className="mt-3 max-h-40 overflow-auto rounded-xl bg-ground p-3 font-mono text-[12px] break-all whitespace-pre-wrap text-ink-2">
             {item.excerpt}
           </pre>
         ) : (
-          <blockquote className="mt-2 max-h-72 overflow-y-auto border-l-2 border-ink pl-3 text-sm whitespace-pre-wrap text-ink-2">
+          <blockquote className="mt-3 max-h-72 overflow-y-auto rounded-xl bg-ground px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-ink-2">
             {item.excerpt}
           </blockquote>
         )
       ) : null}
-      {formula && formula !== item.excerpt ? <p className="mt-2 text-sm text-ink-2">계산식: {formula}</p> : null}
+      {formula && formula !== item.excerpt ? <p className="mt-3 text-sm text-ink-2">계산식: {formula}</p> : null}
       {hiddenInputs ? (
-        <p className="mt-2 text-[13px] text-muted">계산 입력 원본은 계산한 조직에게만 보입니다.</p>
+        <p className="mt-2 text-[13px] text-muted">계산에 넣은 원본 값은 계산한 회사에게만 보입니다.</p>
       ) : null}
-      <dl className="mt-3 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 text-[13px]">
+      <dl className="mt-3 grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1 text-[13px] text-ink-2">
         <dt className="text-muted">출처</dt>
         <dd>
-          {item.source || "확인 필요"}
-          {url ? <span className="block font-mono text-[12px] break-all text-muted">{readable(url)}</span> : null}
+          {item.source || <span className="text-warn">확인 필요</span>}
+          {url ? (
+            <a href={url} target="_blank" rel="noreferrer" className="block text-[12px] break-all text-muted underline underline-offset-2 hover:text-ink">
+              {readable(url)}
+            </a>
+          ) : null}
         </dd>
-        {tool ? (
-          <>
-            <dt className="text-muted">판단 도구</dt>
-            <dd className="font-mono">{tool}</dd>
-          </>
-        ) : null}
         <dt className="text-muted">기준일</dt>
-        <dd className="font-mono">{item.asOf}</dd>
-        {item.validUntil ? (
-          <>
-            <dt className="text-muted">유효 기한</dt>
-            <dd className="font-mono">{item.validUntil}</dd>
-          </>
-        ) : null}
-        <dt className="text-muted">버전</dt>
-        <dd className="font-mono">v{item.version}</dd>
+        <dd className="tabular-nums">
+          {item.asOf}
+          {item.validUntil ? ` (${item.validUntil}까지 유효)` : ""}
+        </dd>
         {compact ? null : (
           <>
-            <dt className="text-muted">열람 범위</dt>
+            <dt className="text-muted">볼 수 있는 곳</dt>
             <dd>{accessText(item.access, orgName)}</dd>
           </>
         )}
-        {compact ? null : (
-          <>
-            <dt className="text-muted">근거 ID</dt>
-            <dd className="font-mono text-[12px] break-all text-muted">{item.id}</dd>
-          </>
-        )}
       </dl>
+      {compact ? null : (
+        <details className="mt-2 text-[12px] text-muted">
+          <summary className="cursor-pointer hover:text-ink">기술 정보</summary>
+          <p className="mt-1 font-mono break-all">
+            {item.id} · v{item.version}
+            {tool ? ` · ${tool}` : ""}
+          </p>
+        </details>
+      )}
     </article>
   );
 }
@@ -187,70 +180,65 @@ export function EvidencePanel({
   const shown = items?.filter((item, index) => index === 0 || !inChain.has(item.id)) ?? null;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button
-        type="button"
-        aria-label="근거 패널 닫기"
-        className="absolute inset-0 bg-ink/20"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50">
+      <button type="button" aria-label="근거 패널 닫기" className="absolute inset-0 bg-ink/25" onClick={onClose} />
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="근거"
-        className="relative flex h-full w-full max-w-[440px] flex-col border-l border-ink bg-surface"
+        className="absolute inset-y-0 right-0 flex w-full max-w-[640px] flex-col bg-bg shadow-[0_0_60px_rgb(0_0_0/0.18)] [animation:rs-panel_240ms_var(--ease-out)_both]"
       >
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <p className="text-label text-muted">근거</p>
-            <h2 className="text-h2">{title ?? "이 값의 근거"}</h2>
+        <header className="flex items-start gap-3 px-5 pt-4 pb-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[17px] font-semibold tracking-[-0.02em]">{title ?? "이 값의 근거"}</h2>
+            <p className="text-[13px] text-muted">이 값이 어디서 왔는지, 위에서 아래로 따라가며 볼 수 있습니다.</p>
           </div>
           <button
             type="button"
+            autoFocus
             onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm font-semibold hover:bg-sunken"
+            aria-label="근거 패널 닫기"
+            className="grid size-9 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken"
           >
-            닫기
+            <CloseIcon />
           </button>
         </header>
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto border-t border-line px-5 py-5">
           {mode !== "live" ? (
-            <p className="rounded-md bg-warn-bg px-3 py-2 text-[13px] font-semibold text-warn">
-              예시 데이터 · 백엔드 로컬 서버가 낸 근거 레코드를 저장해 둔 것입니다(시연용 가상 데이터 포함).
-              계산 사슬은 저장해 둔 범위까지만 보입니다.
+            <p className="mb-5 text-[13px] text-muted">
+              서버에 연결되지 않아 저장해 둔 예시 근거를 보여 줍니다(시연용 가상 데이터 포함). 계산 과정은 저장해 둔 데까지만
+              보입니다.
             </p>
           ) : null}
           {items === null ? <p className="text-sm text-muted">근거를 불러오는 중입니다.</p> : null}
-          {shown?.map((item, index) => (
-            <section key={item.id} className="space-y-3">
-              {shown.length > 1 ? (
-                <p className="text-label text-muted">
-                  {index === 0 ? "값의 출처" : "보조 근거"}
-                </p>
-              ) : null}
-              {item.detail ? (
-                <>
-                  <EvidenceCard item={item.detail.evidence} orgName={orgName} />
-                  {item.detail.chain.length > 0 ? (
-                    <div className="space-y-2 border-l border-line-strong pl-4">
-                      <p className="text-label text-muted">
-                        계산 사슬 ({item.detail.chain.length}개)
-                      </p>
-                      {item.detail.chain.map((link) => (
-                        <div key={link.id} style={{ marginLeft: `${Math.max((link.depth ?? 1) - 1, 0) * 12}px` }}>
-                          <EvidenceCard item={link} compact orgName={orgName} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <p className="rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">
-                  {item.error} <span className="font-mono text-[12px] break-all">{item.id}</span>
-                </p>
-              )}
-            </section>
-          ))}
+          <div className="divide-y divide-line">
+            {shown?.map((item, index) => (
+              <section key={item.id} className="py-6 first:pt-0 last:pb-0">
+                {shown.length > 1 && index > 0 ? <p className="mb-2 text-[13px] text-muted">함께 쓴 근거</p> : null}
+                {item.detail ? (
+                  <>
+                    <EvidenceCard item={item.detail.evidence} orgName={orgName} />
+                    {item.detail.chain.length > 0 ? (
+                      <div className="mt-6">
+                        <p className="text-[13px] text-muted">이 값을 계산하는 데 쓴 값 {item.detail.chain.length}개</p>
+                        <ol className="mt-3 space-y-5 border-l border-line-strong pl-4">
+                          {item.detail.chain.map((link) => (
+                            <li key={link.id} style={{ marginLeft: `${Math.max((link.depth ?? 1) - 1, 0) * 14}px` }}>
+                              <EvidenceCard item={link} compact orgName={orgName} />
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-sm text-loss">
+                    {item.error} <span className="block text-[12px] break-all text-muted">{item.id}</span>
+                  </p>
+                )}
+              </section>
+            ))}
+          </div>
         </div>
       </aside>
     </div>
