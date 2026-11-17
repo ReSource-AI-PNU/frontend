@@ -341,7 +341,7 @@ export function AgentTalk({
                           <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 py-2">
                             <span className="tabular-nums text-muted">{formatDateTime(event.at, "time")}</span>
                             <span>
-                              <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? "시스템"}</span> {eventSummary(event.summary)}
+                              <span className="font-semibold">{ACTOR_LABEL[event.actor] ?? "시스템"}</span> {eventSummary(event.summary, event.detail)}
                               <EventDetail event={event} streamName={streamName} />
                             </span>
                           </li>

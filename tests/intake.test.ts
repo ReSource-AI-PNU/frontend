@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { clearedApprovals } from "../src/lib/v3/format.ts";
+import { clearedApprovalsText } from "../src/lib/v3/format.ts";
 import {
   PENDING_LIMIT,
   addPending,
@@ -81,15 +81,14 @@ test("직접 적은 수치는 측정값 양식 한 줄이 되고, 잘못된 값�
   assert.equal(measureProblem({ process: "사출", contamination: "5", moisture: "1", measuredOn: "" }), "측정일을 골라 주세요.");
 });
 
-test("막힌 합의: 승인한 적이 있을 때만 '앞서 한 승인은 지워졌습니다'", () => {
+test("막힌 합의: clearedApprovals가 비어 있지 않을 때만 '앞서 한 승인은 지워졌습니다'", () => {
   const blocked = JSON.parse(readFileSync(new URL("./fixtures/v3-view-blocked.json", import.meta.url), "utf8"));
-  const confirmed = JSON.parse(readFileSync(new URL("./fixtures/v3-view-confirmed.json", import.meta.url), "utf8"));
   const approval = blocked.approvals[0];
-  assert.equal(clearedApprovals(approval, blocked.events), blocked.events.some((event: { kind: string; threadId: string }) => event.kind === "approval" && event.threadId === approval.threadId));
-  assert.equal(clearedApprovals(approval, []), false, "승인 기록이 없으면 지워졌다고 쓰지 않는다");
-  assert.equal(clearedApprovals(approval, confirmed.events), true, "그 대화의 승인 기록이 있으면 지워진 것이다");
-  assert.equal(clearedApprovals({ ...approval, approvalsCleared: false }, confirmed.events), false, "백엔드가 알려 주면 그것을 쓴다");
-  assert.equal(clearedApprovals({ ...approval, clearedApprovals: { emitter: true, vendor: false } }, []), true);
+  assert.equal(clearedApprovalsText(approval), null, "예전 뷰(필드 없음)는 알리지 않는다");
+  assert.equal(clearedApprovalsText({ ...approval, clearedApprovals: [] }), null, "승인한 적이 없으면 알리지 않는다");
+  assert.equal(clearedApprovalsText({ ...approval, clearedApprovals: ["emitter", "vendor"] }), "앞서 한 승인은 양쪽 모두 지워졌습니다.");
+  assert.equal(clearedApprovalsText({ ...approval, clearedApprovals: ["emitter"] }), "앞서 한 배출 기업의 승인은 지워졌습니다.");
+  assert.equal(clearedApprovalsText({ ...approval, clearedApprovals: ["vendor"] }), "앞서 한 처리 업체의 승인은 지워졌습니다.");
 });
 
 test("질문 머리말의 숫자는 묶음의 질문 수와 같다", async () => {

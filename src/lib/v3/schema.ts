@@ -186,6 +186,9 @@ export const threadMessageSchema = obj({
   meta: messageMetaSchema.optional(),
 });
 
+/** 대화의 끝 상태(계약 8장 "대화의 끝 상태"). not_selected: 조건을 받았지만 최적안에 들지 않음, ended: 조건을 다 받지 못하고 끝남, waiting: 담당자 답 대기 */
+export const threadOutcomeSchema = z.enum(["agreed", "confirmed", "declined", "handoff", "not_selected", "ended", "waiting"]);
+
 export const threadSchema = obj({
   id: z.string(),
   emitterOrgId: z.string(),
@@ -204,6 +207,9 @@ export const threadSchema = obj({
   maxTurns: z.number(),
   agreedSeq: z.number().nullable(),
   messages: z.array(threadMessageSchema),
+  /** 실행이 멈춘 뒤의 끝 상태와 그 문장. 진행 중이거나 열지 않은 대화는 null */
+  outcome: threadOutcomeSchema.nullable().optional(),
+  outcomeText: z.string().nullable().optional(),
 });
 
 export const stageSchema = obj({
@@ -213,10 +219,15 @@ export const stageSchema = obj({
   status: stageStatusSchema,
 });
 
+/** 오염도·수분 값의 출처: 측정 | 담당자가 질문에 답한 값 | 사진 추정 */
+export const valueBasisSchema = z.enum(["measured", "answered", "photo_estimate"]);
+
 export const viewStreamSchema = obj({
   id: z.string(),
   orgId: z.string(),
   name: z.string(),
+  /** 보이는 이름(업체가 보는 뷰에서는 name과 같다) */
+  label: z.string().optional(),
   process: z.string().nullable(),
   wasteItem: z.string().nullable(),
   material: z.string().nullable(),
@@ -231,6 +242,9 @@ export const viewStreamSchema = obj({
   /** 탐지 모델이 사진에서 추정한 오염 비율 */
   photoContamination: claimOrNull,
   moisture: claimOrNull,
+  /** contamination·moisture 값의 출처. 담당자 답이면 claim 이름이 "오염도(담당자 답)"처럼 온다 */
+  contaminationBasis: valueBasisSchema.nullable().optional(),
+  moistureBasis: valueBasisSchema.nullable().optional(),
   /** 담당자가 "모름"으로 답한 값 */
   unknownFields: z.array(z.string()),
   grade: obj({
@@ -425,10 +439,8 @@ export const approvalSchema = obj({
   blockedCodes: z.array(z.string()),
   /** 허가 품목이 일부만 맞지 않으면(409 PERMIT_MISMATCH) 그 흐름이 빠져 줄어든다 */
   streamIds: z.array(z.string()),
-  /** 막히면서 앞서 한 승인을 지웠는지(백엔드가 알려 주면). 없으면 화면은 실행 기록의 승인 줄로 가린다 */
-  approvalsCleared: z.boolean().optional(),
-  /** 막히면서 지운 쪽별 승인 */
-  clearedApprovals: obj({ emitter: z.boolean(), vendor: z.boolean() }).optional(),
+  /** 막히면서 지운 승인 쪽(emitter, vendor). 아무도 승인하지 않았거나 막히지 않았으면 빈 배열 */
+  clearedApprovals: z.array(z.enum(["emitter", "vendor"])).optional(),
 });
 
 export const viewDocumentSchema = obj({
@@ -554,6 +566,19 @@ export const diagnosisViewSchema = obj({
   graph: obj({ nodes: z.array(graphNodeSchema), edges: z.array(graphEdgeSchema) }),
   result: resultSchema.nullable(),
   questions: z.array(questionSchema),
+  /** 답을 기다리는 질문 묶음의 요약과 머리 문장(배출 기업에게만). 기다리는 질문이 없으면 null */
+  questionBatch: obj({
+    batch: z.number(),
+    maxBatches: z.number(),
+    maxPerBatch: z.number(),
+    count: z.number(),
+    open: z.number(),
+    last: z.boolean(),
+    intro: z.string(),
+    note: z.string().nullable(),
+  })
+    .nullable()
+    .optional(),
   /** 질문 한도를 다 쓰고도 모르는 값 */
   unresolved: z.array(obj({ streamId: z.string(), field: z.string() })),
   approvals: z.array(approvalSchema),
@@ -592,8 +617,9 @@ export const evidenceSchema = obj({
   meta: z.record(z.string(), z.unknown()),
   /** 계산 사슬 안에서의 깊이(사슬 항목에만 붙는다) */
   depth: z.number().optional(),
-  /** 사람이 읽는 출처(판단 도구 이름을 풀어 쓴 것). 있으면 source 대신 쓴다 */
-  sourceLabel: z.string().nullable().optional(),
-  /** 근거를 만든 판단 도구의 이름. 있으면 meta.tool(내부 ID) 대신 쓴다 */
+  /** 저장된 출처 글(도구 ID 등). source는 화면 이름이다. 기술 정보에만 쓴다 */
+  sourceRaw: z.string().optional(),
+  /** 근거를 만든 판단 도구의 기계 ID(기술 정보에만)와 화면 이름 */
+  tool: z.string().optional(),
   toolLabel: z.string().nullable().optional(),
 });

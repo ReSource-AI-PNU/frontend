@@ -1,27 +1,29 @@
 /**
  * 화면에 보이는 이름을 한곳에서 정한다(DESIGN.md "제품 문구 원칙"). 네트워크도 React도 부르지 않는 순수 함수다
  * (tests/labels.test.ts).
- *  - 판단 도구 이름(judge_route 같은 내부 ID)은 일반 사용자에게 보이지 않는다. 백엔드가 이름(sourceLabel, toolLabel,
- *    label)을 주면 그것을 쓰고, 없으면 아래 표로 바꾸고, 표에도 없으면 "판단 도구"로만 적는다.
+ *  - 판단 도구 이름(judge_route 같은 내부 ID)은 일반 사용자에게 보이지 않는다. 백엔드는 근거의 source를 화면 이름으로,
+ *    toolLabel(근거)·detail.toolLabel(실행 기록)을 도구 이름으로 준다(계약 2장). 그것을 쓰고, 예전 서버처럼 ID가 오면
+ *    아래 표(백엔드 app/v3/names.py TOOL_LABELS와 같은 낱말)로 바꾸고, 표에도 없으면 "판단 도구"로만 적는다.
  *  - 두 AI의 이름은 백엔드의 작성자 표시(author.label)와 같은 낱말을 쓴다.
  */
 
 /** 두 AI의 이름. 백엔드 작성자 표시(author.label)와 같다. 화면 문구도 이것만 쓴다 */
 export const AI_NAME = { company: "회사 측 AI", vendor: "업체 측 AI" } as const;
 
-/** 판단 도구 ID → 하는 일 */
+/** 판단 도구 ID → 하는 일. 백엔드가 이름을 주지 않을 때만 쓴다(백엔드 names.TOOL_LABELS와 같은 낱말) */
 export const TOOL_LABEL: Record<string, string> = {
-  identify_stream: "폐기물 식별",
-  judge_route: "경로 판단",
-  judge_reuse: "재투입 판단",
-  check_loading: "적재 확인",
-  search_clauses: "조항 검색",
-  check_requirements: "규정 확인",
-  match_permit: "허가 대조",
+  identify_stream: "폐기물 식별·등급",
+  judge_route: "경로 판정·매입 기준 대조",
+  judge_reuse: "공정 재투입 검토",
+  check_loading: "최소 물량·적재 검사",
+  search_clauses: "법령 조항 찾기",
+  check_requirements: "규정 확인 항목",
+  match_permit: "허가 품목 대조",
   find_vendors: "업체 찾기",
   cost_carbon: "비용·탄소 계산",
   route_extra_cost: "노선 추가 비용 계산",
   optimize_assignment: "최적 배정 계산",
+  grade_stream: "등급 판정",
 };
 
 /** 판단 도구가 낸 판정 */
@@ -58,7 +60,7 @@ export function toolLabel(id: unknown): string | null {
 
 /**
  * 글 안의 판단 도구 ID를 이름으로 바꾼다. 표에 없는 내부 ID는 fallback으로 바꾼다(기본: 지운다).
- * 예: "판단 도구 optimize_assignment" → "판단 도구 · 최적 배정 계산", "judge_route · conditional" → "경로 판단 · 조건부"
+ * 예: "판단 도구 optimize_assignment" → "판단 도구 · 최적 배정 계산", "judge_route · conditional" → "경로 판정·매입 기준 대조 · 조건부"
  */
 export function plainIds(text: string, fallback = ""): string {
   let out = text.replace(/판단 도구\s+([a-z][a-z0-9]*(?:_[a-z0-9]+)+)/g, (_, id: string) => {
@@ -83,26 +85,27 @@ type EvidenceLike = {
   source: string;
   excerpt: string;
   meta: Record<string, unknown>;
-  /** 백엔드가 사람이 읽는 출처를 주면 그것을 쓴다 */
-  sourceLabel?: string | null;
+  /** 근거를 만든 판단 도구의 기계 ID와 화면 이름(백엔드가 준다) */
+  tool?: string | null;
   toolLabel?: string | null;
 };
 
 const text = (value: unknown): string | null => (typeof value === "string" && value.trim() !== "" ? value.trim() : null);
 
-/** 근거를 만든 판단 도구의 이름. 백엔드가 준 이름(toolLabel, meta.toolLabel)이 먼저다. 판단 도구가 아니면 null */
+/** 근거를 만든 판단 도구의 이름. 백엔드가 준 toolLabel이 먼저다. 판단 도구가 아니면 null */
 export function evidenceTool(item: EvidenceLike): string | null {
-  const given = text(item.toolLabel) ?? text(item.meta.toolLabel);
+  const given = text(item.toolLabel);
   if (given) return given;
-  const id = text(item.meta.tool);
+  const id = text(item.tool) ?? text(item.meta.tool);
   if (!id) return null;
   return TOOL_LABEL[id] ?? "판단 도구";
 }
 
-/** 근거의 출처 한 줄. 내부 ID와 서비스 이름을 쓰지 않는다. 비면 null(화면은 "확인 필요") */
+/**
+ * 근거의 출처 한 줄. 백엔드는 source를 화면 이름으로 준다(저장된 글은 sourceRaw). 예전 서버가 "판단 도구 judge_route"처럼
+ * 주면 이름으로 바꾼다. 내부 ID와 서비스 이름은 쓰지 않는다. 비면 null(화면은 "확인 필요")
+ */
 export function evidenceSource(item: EvidenceLike): string | null {
-  const given = text(item.sourceLabel) ?? text(item.meta.sourceLabel);
-  if (given) return plainIds(given) || null;
   const source = text(item.source);
   if (!source) return null;
   return plainIds(source, "판단 도구") || null;
@@ -133,7 +136,13 @@ export function evidenceExcerpt(item: EvidenceLike, checkLabel: (key: string) =>
   return plainIds(item.excerpt, "판단 도구");
 }
 
-/** 실행 기록 한 줄의 요약. 판단 도구 ID와 판정 낱말을 풀어 쓴다 */
-export function eventSummary(summary: string): string {
-  return plainIds(summary, "판단 도구");
+/**
+ * 실행 기록 한 줄의 요약. 도구 호출이면 백엔드가 준 이름(detail.toolLabel)으로 도구 ID(detail.tool)를 바꾸고,
+ * 남은 ID와 판정 낱말을 풀어 쓴다.
+ */
+export function eventSummary(summary: string, detail: Record<string, unknown> = {}): string {
+  const id = text(detail.tool);
+  const label = text(detail.toolLabel);
+  const named = id && label ? summary.split(id).join(label) : summary;
+  return plainIds(named, "판단 도구");
 }

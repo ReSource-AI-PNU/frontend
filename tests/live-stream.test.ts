@@ -454,7 +454,7 @@ test("맨 위 한 줄: 식별·분류 중에는 업체에 묻는다고 쓰지 �
   assert.equal(isTalking(identifying), false);
   assert.equal(liveTitle({ stage: 1, live: identifying }), "폐기물을 살펴보고 있습니다.");
   assert.equal(feedText(identifying.feed[0]), "폐기물 식별·등급: 확인 필요");
-  assert.equal(feedText({ kind: "tool", text: "판단 도구 · judge_route: 조건부" }), "경로 판단: 조건부");
+  assert.equal(feedText({ kind: "tool", text: "판단 도구 · judge_route: 조건부" }), "경로 판정·매입 기준 대조: 조건부");
 
   const asking = feed(
     tool(1, 1, "판단 도구 · 폐기물 식별·등급: 확인 필요"),

@@ -53,7 +53,7 @@ function EvidenceCard({
 }) {
   const value = valueText(item);
   const formula = typeof item.meta.formula === "string" ? item.meta.formula : null;
-  const tool = typeof item.meta.tool === "string" ? item.meta.tool : null;
+  const tool = item.tool ?? (typeof item.meta.tool === "string" ? item.meta.tool : null);
   const toolName = evidenceTool(item);
   const source = evidenceSource(item);
   const hiddenInputs = (item.meta.inputs as { hidden?: boolean } | undefined)?.hidden === true;
@@ -128,6 +128,7 @@ function EvidenceCard({
             {item.id} · v{item.version}
             {tool ? ` · ${tool}` : ""}
           </p>
+          {item.sourceRaw && item.sourceRaw !== item.source ? <p className="mt-0.5 break-all">저장된 출처: {item.sourceRaw}</p> : null}
         </details>
       )}
     </article>

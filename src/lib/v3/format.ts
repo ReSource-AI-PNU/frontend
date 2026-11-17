@@ -312,16 +312,14 @@ export function blockNotice(codes: string[]): BlockNotice | null {
 }
 
 /**
- * 막힌 합의에서 앞서 한 승인이 지워졌는지. 백엔드가 approvalsCleared·clearedApprovals를 주면 그것을 쓰고, 없으면
- * 실행 기록에 그 대화의 승인 줄(kind "approval")이 있었는지로 가린다. 승인한 적이 없으면 "지워졌다"고 쓰지 않는다.
+ * 막힌 합의에서 지운 승인을 알리는 문장. approvals[].clearedApprovals(지운 쪽: emitter, vendor)가 비어 있지 않을 때만
+ * 쓰고, 비었거나 없으면 null이다(승인한 적이 없으면 "지웠다"고 하지 않는다).
  */
-export function clearedApprovals(
-  approval: { threadId: string; approvalsCleared?: boolean; clearedApprovals?: { emitter: boolean; vendor: boolean } },
-  events: { kind: string; threadId: string | null }[],
-): boolean {
-  if (approval.clearedApprovals) return approval.clearedApprovals.emitter || approval.clearedApprovals.vendor;
-  if (typeof approval.approvalsCleared === "boolean") return approval.approvalsCleared;
-  return events.some((event) => event.kind === "approval" && event.threadId === approval.threadId);
+export function clearedApprovalsText(approval: { clearedApprovals?: ("emitter" | "vendor")[] }): string | null {
+  const sides = new Set(approval.clearedApprovals ?? []);
+  if (sides.size === 0) return null;
+  if (sides.has("emitter") && sides.has("vendor")) return "앞서 한 승인은 양쪽 모두 지워졌습니다.";
+  return sides.has("emitter") ? "앞서 한 배출 기업의 승인은 지워졌습니다." : "앞서 한 처리 업체의 승인은 지워졌습니다.";
 }
 
 /** 판단 그래프 엣지의 종류(graph.edges[].kind) */

@@ -26,17 +26,20 @@ test("판단 도구 ID마다 한국어 이름이 있다", () => {
     assert.ok(toolLabel(id), id);
     assert.doesNotMatch(toolLabel(id) ?? "", RAW_ID);
   }
-  assert.equal(TOOL_LABEL.judge_route, "경로 판단");
+  assert.equal(TOOL_LABEL.judge_route, "경로 판정·매입 기준 대조");
   assert.equal(TOOL_LABEL.optimize_assignment, "최적 배정 계산");
   assert.equal(TOOL_LABEL.cost_carbon, "비용·탄소 계산");
   assert.equal(toolLabel("no_such_tool"), null);
   assert.equal(toolLabel(3), null);
 });
 
-test("출처: 백엔드 이름이 있으면 그것을, 없으면 표로 바꾸고, 모르는 ID는 그대로 두지 않는다", () => {
+test("출처: 백엔드가 준 화면 이름(source)을 쓰고, 예전 서버의 ID는 표로 바꾸고, 모르는 ID는 그대로 두지 않는다", () => {
+  // 지금 백엔드: source는 화면 이름, 저장된 글은 sourceRaw, 도구는 tool·toolLabel
+  const current = evidence({ source: "최적 배정 계산", sourceRaw: "판단 도구 optimize_assignment", tool: "optimize_assignment", toolLabel: "최적 배정 계산" });
+  assert.equal(evidenceSource(current), "최적 배정 계산");
+  assert.equal(evidenceTool(current), "최적 배정 계산");
+  // 예전 서버
   assert.equal(evidenceSource(evidence()), "판단 도구 · 최적 배정 계산");
-  assert.equal(evidenceSource(evidence({ sourceLabel: "최적 배정 계산(판단 도구)" })), "최적 배정 계산(판단 도구)");
-  assert.equal(evidenceSource(evidence({ meta: { sourceLabel: "경로 판단 결과" } })), "경로 판단 결과");
   assert.equal(evidenceSource(evidence({ source: "판단 도구 brand_new_tool" })), "판단 도구");
   assert.equal(evidenceSource(evidence({ source: "" })), null);
   assert.equal(
@@ -51,6 +54,7 @@ test("출처: 백엔드 이름이 있으면 그것을, 없으면 표로 바꾸�
 test("이름·도구·발췌에도 ID가 나오지 않는다", () => {
   assert.equal(evidenceTool(evidence()), "최적 배정 계산");
   assert.equal(evidenceTool(evidence({ toolLabel: "배정 계산" })), "배정 계산");
+  assert.equal(evidenceTool(evidence({ tool: "judge_route", meta: {} })), "경로 판정·매입 기준 대조");
   assert.equal(evidenceTool(evidence({ meta: { tool: "mystery_tool" } })), "판단 도구");
   assert.equal(evidenceTool(evidence({ meta: {} })), null);
   assert.equal(evidenceTitle(evidence({ label: "" })), "계산", "이름이 없으면 ID 대신 종류");
@@ -64,8 +68,10 @@ test("이름·도구·발췌에도 ID가 나오지 않는다", () => {
   assert.equal(evidenceExcerpt(evidence()), "폐기물별 현행 월 손익의 합");
 });
 
-test("실행 기록 요약: 'judge_route · conditional' → '경로 판단 · 조건부'", () => {
-  assert.equal(eventSummary("judge_route · conditional"), "경로 판단 · 조건부");
+test("실행 기록 요약: 'judge_route · conditional' → 도구 이름 · 조건부", () => {
+  assert.equal(eventSummary("judge_route · conditional"), "경로 판정·매입 기준 대조 · 조건부");
+  // 백엔드가 detail.toolLabel을 주면 그 이름을 쓴다
+  assert.equal(eventSummary("judge_route · conditional", { tool: "judge_route", toolLabel: "경로 판정" }), "경로 판정 · 조건부");
   assert.equal(eventSummary("optimize_assignment · calculated"), "최적 배정 계산 · 확인됨");
   assert.equal(eventSummary("unknown_tool · needs_information"), "판단 도구 · 확인 필요");
   assert.equal(eventSummary("(주)한빛정밀 담당자가 승인했습니다."), "(주)한빛정밀 담당자가 승인했습니다.");
