@@ -41,7 +41,7 @@ export function EventDetail({ event, streamName }: { event: RunEvent; streamName
       {notes.length > 0 ? <span className="block">{notes.join(" · ")}</span> : null}
       {codes.map((code) => (
         <span key={code} className="block text-ink-2">
-          <span className="tabular-nums">{code}</span> {rejectionLabel(code)}
+          {rejectionLabel(code)}
         </span>
       ))}
       {excluded.length > 0 ? (

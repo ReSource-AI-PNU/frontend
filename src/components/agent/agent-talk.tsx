@@ -5,13 +5,7 @@ import { CheckIcon, ChevronDownIcon, CloseIcon, TalkIcon } from "@/components/ic
 import { ClaimText } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { EventDetail } from "@/components/v3/event-detail";
-import {
-  MESSAGE_LABEL,
-  THREAD_LABEL,
-  formatDateTime,
-  modelLabel,
-  rejectionLabel,
-} from "@/lib/v3/format";
+import { MESSAGE_LABEL, THREAD_LABEL, formatDateTime } from "@/lib/v3/format";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
 
 const ACTOR_LABEL: Record<string, string> = {
@@ -23,7 +17,6 @@ const ACTOR_LABEL: Record<string, string> = {
 };
 function Bubble({ message, mine, name }: { message: ThreadMessage; mine: boolean; name: string }) {
   const { validation } = message;
-  const rejections = validation.rejections ?? [];
   return (
     <li className={`flex ${mine ? "justify-start" : "justify-end"}`}>
       <div className="max-w-[92%]">
@@ -48,16 +41,7 @@ function Bubble({ message, mine, name }: { message: ThreadMessage; mine: boolean
           ) : (
             <span className="font-semibold text-loss">근거 확인 실패</span>
           )}
-          {(validation.attempts ?? 1) > 1 ? <span className="text-muted">· {(validation.attempts ?? 1) - 1}번 다시 씀</span> : null}
-          {message.model ? <span className="text-muted">· {modelLabel(message.model)}</span> : null}
         </p>
-        {rejections.length > 0 ? (
-          <ul className={`mt-1 space-y-0.5 text-[12px] text-muted ${mine ? "" : "text-right"}`}>
-            {rejections.map((rejection, index) => (
-              <li key={`${rejection.code}-${index}`}>거부된 초안: {rejectionLabel(rejection.code, rejection.message)}</li>
-            ))}
-          </ul>
-        ) : null}
       </div>
     </li>
   );
@@ -167,8 +151,7 @@ export function AgentTalk({
                 {thread ? (
                   <>
                     <p className="text-[13px] text-muted">
-                      {thread.streamIds.map(streamName).join(", ") || "다룬 폐기물 없음"} · {thread.turns}번 주고받음 · 업체 쪽 답변{" "}
-                      {modelLabel(thread.vendorModel)}
+                      {thread.streamIds.map(streamName).join(", ") || "다룬 폐기물 없음"} · {thread.turns}번 주고받음
                     </p>
                     {thread.statusReason ? (
                       <p

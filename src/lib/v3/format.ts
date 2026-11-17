@@ -299,12 +299,13 @@ export const EDGE_KIND_LABEL: Record<string, string> = {
   document: "근거 문서",
 };
 
-/** 판단 도구를 누가 불렀는지(events[].detail.calledBy). 모르는 값이면 null */
+/**
+ * 판단 도구를 누가 불렀는지(events[].detail.calledBy). 모르는 값이면 null.
+ * 사용자 화면에 보이므로 구현 이름(규칙 정책, 모델 공급자)은 쓰지 않는다. 구현은 운영 화면의 modelLabel로만 본다.
+ */
 export function calledByLabel(value: unknown): string | null {
   if (typeof value !== "string" || !value) return null;
-  if (value === "code") return "코드가 부름";
-  if (value === "orchestrator") return "진행기가 부름";
-  if (value === "model:rule") return "규칙 정책이 부름";
-  if (value.startsWith("model:")) return `모델이 부름(${PROVIDER_LABEL[value.slice(6)] ?? value.slice(6)})`;
+  if (value === "code" || value === "orchestrator") return "정해진 순서에 따라 부름";
+  if (value.startsWith("model:")) return "AI가 부름";
   return null;
 }

@@ -349,7 +349,8 @@ test("실행 기록의 새 항목(calledBy, reportedBy, codes)이 화면이 읽�
   for (const event of calls) {
     assert.ok(calledByLabel(event.detail.calledBy), `calledBy ${String(event.detail.calledBy)}의 화면 이름이 없다`);
   }
-  assert.equal(calledByLabel("code"), "코드가 부름");
+  assert.equal(calledByLabel("code"), "정해진 순서에 따라 부름");
+  assert.equal(calledByLabel("model:rule"), "AI가 부름");
   assert.equal(calledByLabel(undefined), null);
   assert.ok(view.events.some((event) => event.detail.reportedBy === "vendor"));
   const coded = view.events.filter((event) => event.detail.codes !== undefined);
