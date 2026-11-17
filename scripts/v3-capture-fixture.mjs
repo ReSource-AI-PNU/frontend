@@ -22,7 +22,7 @@ const ADMIN = "org_admin";
 /** 확정 뒤 업체가 본 뷰를 받을 업체와, 그 업체가 기록하는 실제 결과(가상 값) */
 const OUTCOME_VENDOR = "org_namhae";
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "../tests/fixtures");
-const ANSWERS = { st_film: "2" }; // 나머지는 "unknown"
+const ANSWERS = { "st_film.moisturePct": "2" }; // 흐름.항목. 나머지는 "unknown"(현행 처리비 질문도 모름으로 답한다)
 const out = path.join(path.dirname(fileURLToPath(import.meta.url)), "../src/lib/v3/fixture-data");
 
 async function call(pathname, orgId, init = {}) {
@@ -62,7 +62,7 @@ for (let turn = 0; turn < 6 && view.session.status !== "awaiting_approval"; turn
   for (const question of view.questions.filter((item) => !item.answered)) {
     view = await post(`/sessions/${id}/answers`, EMITTER, {
       questionId: question.id,
-      value: ANSWERS[question.streamId] ?? "unknown",
+      value: ANSWERS[`${question.streamId}.${question.field}`] ?? "unknown",
     });
   }
 }

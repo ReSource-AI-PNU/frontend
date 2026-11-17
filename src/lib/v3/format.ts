@@ -34,18 +34,23 @@ export function priceSide(value: number): "매입" | "처리비" | "무상" {
 }
 
 /**
- * 단가를 낱말과 크기로 적는다. 처리비(role treatmentFee)는 값이 음수 그대로 오므로 크기로 적는다("처리비 80 원/kg").
+ * 단가를 낱말과 크기로 적는다. 처리비(role treatmentFee)는 값이 음수 그대로 오므로 크기로 적는다("처리비 kg당 80원").
  * role이 없는 단가(실제 결과의 기준표 단가 등)는 부호로 가린다.
  */
 export function formatUnitPrice(claim: Claim | null | undefined): string | null {
   if (!claim || typeof claim.value !== "number") return formatClaim(claim);
   const side = claim.role === "treatmentFee" ? "처리비" : priceSide(claim.value);
-  return `${side} ${withUnit(formatNumber(Math.abs(claim.value)), claim.unit)}`;
+  return `${side} ${perKg(Math.abs(claim.value), claim.unit)}`;
 }
 
 /** 근거 없이 숫자만 있는 단가(입력값 되읽기)를 같은 방식으로 적는다. */
 export function formatSignedPrice(value: number, unit = "원/kg"): string {
-  return `${priceSide(value)} ${withUnit(formatNumber(Math.abs(value)), unit)}`;
+  return `${priceSide(value)} ${perKg(Math.abs(value), unit)}`;
+}
+
+/** 단가는 화면 어디서나 "kg당 200원"으로 적는다. 단위가 원/kg이 아니면 값과 단위를 그대로 적는다. */
+function perKg(size: number, unit: string | null): string {
+  return unit === "원/kg" ? `kg당 ${formatNumber(size)}원` : withUnit(formatNumber(size), unit);
 }
 
 /** 가정값처럼 근거 ID만 달린 값과 단위. 값 하나로 적을 수 없으면 null */
@@ -79,7 +84,11 @@ export function isAssumed(claim: Claim | null | undefined): boolean {
   return Boolean(claim?.evidence.some((id) => id.startsWith("assumption:")));
 }
 
-const PROVIDER_LABEL: Record<string, string> = { foundry: "Foundry", ollama: "Ollama" };
+const PROVIDER_LABEL: Record<string, string> = {
+  foundry: "Foundry",
+  ollama: "Ollama",
+  anthropic: "Anthropic",
+};
 
 /**
  * 실제로 답을 쓴 구현의 이름. 규칙 정책이면 백엔드가 준 이름("규칙 정책(모델 미연결)")을 그대로 쓴다.
@@ -93,6 +102,7 @@ export function modelLabel(model: { provider: string; name: string } | null | un
 }
 
 export const ROUTE_LABEL: Record<string, string> = {
+  reuse: "공정 재투입",
   sell: "매각",
   treat: "위탁 처리",
   keep: "현행 유지",
@@ -126,11 +136,11 @@ export const MESSAGE_LABEL: Record<string, string> = {
 };
 
 export const THREAD_LABEL: Record<string, string> = {
-  not_opened: "대화 안 엶",
-  open: "대화 중",
-  agreed: "합의",
+  not_opened: "아직 묻지 않음",
+  open: "조건을 묻는 중",
+  agreed: "조건이 맞음",
   declined: "거절",
-  handoff: "담당자 인계",
+  handoff: "담당자가 이어받음",
   confirmed: "확정",
 };
 
@@ -170,6 +180,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   mixture: "혼입물",
   permit: "허가 품목",
   current_assumed: "현행 처리",
+  current_method: "현행 처리 방법(가정)",
   transport: "운송비",
   carbon: "탄소",
   vendor_condition: "업체 조건",
@@ -187,7 +198,7 @@ export function sessionLabel(status: string, phase: string, started: boolean): s
   if (status === "idle") return phase === "done" ? "합의 없이 끝남" : started ? "이어서 실행 대기" : "실행 전";
   return (
     {
-      running: "에이전트 대화 중",
+      running: "AI가 조건을 묻는 중",
       awaiting_answers: "담당자 답변 대기",
       awaiting_approval: "승인 대기",
       confirmed: "확정",
@@ -215,8 +226,8 @@ export const REJECTION_LABEL: Record<string, string> = {
   TYPE_NOT_ALLOWED: "지금 보낼 수 없는 종류의 메시지였습니다",
   APPROVAL_REQUIRED: "양쪽 담당자 승인 전에 확정을 보내려 했습니다",
   THREAD_RULE: "대화 규칙에 맞지 않는 메시지였습니다",
-  UNKNOWN_STREAM: "이 대화에 없는 흐름을 적었습니다",
-  PERMIT_MISMATCH: "허가 품목이 맞지 않는 흐름에 조건을 내려 했습니다",
+  UNKNOWN_STREAM: "이 대화에 없는 폐기물을 적었습니다",
+  PERMIT_MISMATCH: "허가 품목이 맞지 않는 폐기물에 조건을 내려 했습니다",
   UNBACKED_TERM:
     "숫자 없이 조건을 뜻하는 낱말(무상, 반값, 주말, 매일, 전량 등)을 그에 해당하는 조건 항목이나 값 없이 썼습니다",
   TOO_MANY_TOOL_ROUNDS: "판단 도구를 정해진 횟수보다 많이 부르려 했습니다",
@@ -240,7 +251,7 @@ export function rejectionLabel(code: string, fallback?: string | null): string {
  */
 export const BLOCK_CODE_LABEL: Record<string, string> = {
   EVIDENCE_CHANGED: "대화에서 인용한 근거가 합의 뒤에 바뀌었거나 사라졌습니다",
-  STREAM_CHANGED: "합의한 뒤에 배정된 흐름의 자료(재질, 물량, 측정값 등)가 바뀌었습니다",
+  STREAM_CHANGED: "합의한 뒤에 배정된 폐기물의 자료(재질, 물량, 측정값 등)가 바뀌었습니다",
   VENDOR_TERMS_CHANGED: "합의한 뒤에 업체가 매입 기준표·허가 품목·가드레일을 바꿔 합의 조건에 영향을 줍니다",
   VALUE_MISMATCH: "메시지의 값이 지금 근거의 값과 다릅니다",
   EVIDENCE_EXPIRED: "인용한 근거의 유효 기한이 지났습니다",
@@ -283,7 +294,7 @@ export const EDGE_KIND_LABEL: Record<string, string> = {
   permit: "허가 품목",
   criterion: "매입 기준",
   assignment: "최적안 배정",
-  excluded: "뺀 흐름",
+  excluded: "뺀 폐기물",
   regulation: "규정",
   document: "근거 문서",
 };

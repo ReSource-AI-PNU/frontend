@@ -4,11 +4,11 @@ import localFont from "next/font/local";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-// 대회장 네트워크와 무관하게 동작하도록 본문 글꼴은 저장소에 포함한다 (SIL OFL 1.1, fonts/OFL.txt)
-const wantedSans = localFont({
-  src: "./fonts/WantedSansVariable.woff2",
-  variable: "--font-wanted",
-  weight: "400 1000",
+// 대회장 네트워크와 무관하게 동작하도록 본문 글꼴은 저장소에 포함한다 (SIL OFL 1.1, fonts/OFL-Pretendard.txt)
+const pretendard = localFont({
+  src: "./fonts/PretendardVariable.woff2",
+  variable: "--font-pretendard",
+  weight: "45 920",
   display: "swap",
 });
 
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s · Re:Source AI",
   },
   description:
-    "폐기물 사진 한 장으로 품목·오염도를 판정하고, 산업단지 묶음 수거와 처리 방식별 비용·탄소를 비교해 견적 요청서까지 만드는 에이전트.",
+    "공장에서 나오는 폐플라스틱을 등록하면, 에이전트가 처리 업체의 에이전트와 근거를 확인하며 조건을 맞춰 받아 줄 곳을 찾습니다.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ko"
       data-theme="light"
       suppressHydrationWarning
-      className={`${wantedSans.variable} ${geistMono.variable} h-full`}
+      className={`${pretendard.variable} ${geistMono.variable} h-full`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

@@ -52,6 +52,17 @@ export type ViewDocument = z.infer<typeof s.viewDocumentSchema>;
 export type RunEvent = z.infer<typeof s.runEventSchema>;
 export type DiagnosisView = z.infer<typeof s.diagnosisViewSchema>;
 
+/** GET /sessions: 내가 당사자인 찾기의 목록(최근 것이 앞) */
+export type SessionSummary = {
+  id: string;
+  emitterOrgId: string;
+  emitterName: string;
+  status: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  as: "emitter" | "vendor" | "admin";
+};
+
 /** 계약 6장 도메인 레코드 (GET/PUT /orgs/{id}/streams) */
 export type StreamRecord = {
   id: string;
@@ -84,6 +95,15 @@ export type StreamRecord = {
     method: string;
     unitCostKrwPerKg: number | null;
     evidence: string[];
+  } | null;
+  /** 순비용 계산에 넣는 배출 기업만의 값. 업체에는 가지 않는다 */
+  pretreatHoursPerMonth?: number | null;
+  laborCostKrwPerHour?: number | null;
+  reuse?: {
+    virginPriceKrwPerKg: number;
+    reusableKgPerMonth: number;
+    regrindCostKrwPerKg?: number | null;
+    evidence?: string[];
   } | null;
   synthetic?: boolean;
 };

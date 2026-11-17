@@ -71,6 +71,33 @@ export async function saveOrganization(_prev: OnboardingState, formData: FormDat
 
   const existed = Boolean(await findOrganizationByOwner(user.id));
   await upsertOrganization(user.id, parsed.data);
-  // 처음 등록이면 v3 진단·연결 화면으로, 수정이면 설정 화면으로 돌아간다
-  redirect(existed ? "/settings?saved=1" : "/v3");
+  // 처음 등록이면 에이전트 화면으로, 수정이면 설정 화면으로 돌아간다
+  redirect(existed ? "/settings?saved=1" : "/app");
+}
+
+const quickSchema = z.object({
+  name: z.string().trim().min(2, "회사명을 2자 이상 입력해 주세요.").max(60),
+  role: z.enum(COMPANY_ROLES, "하는 일을 골라 주세요."),
+  complexId: z.string().refine((id) => COMPLEXES.some((c) => c.id === id), "산업단지를 골라 주세요."),
+});
+
+/**
+ * 처음 들어온 사람의 간단 등록. 회사명, 하는 일, 산업단지만 받고 곧바로 에이전트 화면으로 보낸다.
+ * 사업자등록번호·업종·품목별 배출량은 비워 두고, 나중에 설정의 회사 정보에서 채운다.
+ */
+export async function saveQuickOrganization(_prev: OnboardingState, formData: FormData): Promise<OnboardingState> {
+  const user = await getCurrentUser();
+  const text = (key: string) => {
+    const v = formData.get(key);
+    return typeof v === "string" ? v : "";
+  };
+  const values = { name: text("name"), role: text("role"), complexId: text("complexId") };
+  const parsed = quickSchema.safeParse(values);
+  if (!parsed.success) {
+    const errors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) errors[String(issue.path[0])] ??= issue.message;
+    return { errors, values };
+  }
+  await upsertOrganization(user.id, { ...parsed.data, bizNo: "", industry: "", contactTitle: "", wasteStreams: [] });
+  redirect("/app");
 }

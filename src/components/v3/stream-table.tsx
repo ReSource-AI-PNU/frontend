@@ -104,8 +104,8 @@ function CorrectionForm({
         </label>
         <p className="flex flex-col gap-1">
           <span className="font-semibold">지금 값</span>
-          <span className="flex min-h-[34px] items-center font-mono text-ink-2">
-            {before === null ? <span className="font-sans text-warn">확인 필요</span> : `${before}${numeric ? "%" : ""}`}
+          <span className="flex min-h-[34px] items-center tabular-nums text-ink-2">
+            {before === null ? <span className="text-warn">확인 필요</span> : `${before}${numeric ? "%" : ""}`}
           </span>
         </p>
         <label className="flex flex-col gap-1 font-semibold">
@@ -114,7 +114,7 @@ function CorrectionForm({
             value={after}
             onChange={(event) => setAfter(event.target.value)}
             inputMode={numeric ? "decimal" : undefined}
-            className={`${input} ${numeric ? "w-28 font-mono" : "w-40"}`}
+            className={`${input} ${numeric ? "w-28 tabular-nums" : "w-40"}`}
           />
         </label>
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 font-semibold">
@@ -133,7 +133,7 @@ function CorrectionForm({
         바꿔 다시 진단하려면 자료 올리기에서 고치세요.
       </p>
       {state.error ? (
-        <p role="alert" className="mt-2 rounded-md bg-loss-bg px-3 py-2 text-sm text-loss">
+        <p role="alert" className="mt-2 text-sm text-loss">
           {state.error}
         </p>
       ) : null}
@@ -166,7 +166,7 @@ export function StreamTable({
     <div className="overflow-x-auto px-5 py-3">
       <table className="w-full min-w-[760px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-ink text-left text-label text-muted">
+          <tr className="border-b border-line-strong text-left text-label text-muted">
             <th className="py-2 pr-3 font-semibold">흐름</th>
             <th className="py-2 pr-3 text-right font-semibold">월 발생량</th>
             <th className="py-2 pr-3 text-right font-semibold">오염도</th>
@@ -225,7 +225,7 @@ export function StreamTable({
                       type="button"
                       disabled={stream.grade.evidence.length === 0}
                       onClick={() => openEvidence(stream.grade.evidence, `${stream.name} 등급`)}
-                      className="font-semibold underline decoration-line-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+                      className="font-semibold underline decoration-line-strong underline-offset-4 hover:decoration-ink"
                     >
                       {stream.grade.value}
                     </button>
@@ -292,14 +292,14 @@ export function StreamTable({
                               <button
                                 type="button"
                                 title="근거 보기"
-                                className="font-semibold underline decoration-line-strong decoration-dotted underline-offset-4"
+                                className="font-semibold underline decoration-line-strong underline-offset-4"
                                 onClick={() => openEvidence([item.id], "담당자 교정")}
                               >
                                 {item.after ?? "값 없음"}
                               </button>
                             </span>
                             {item.note ? <span className="text-muted">{item.note}</span> : null}
-                            <span className="font-mono text-[12px] text-muted">{item.recordedOn}</span>
+                            <span className="tabular-nums text-[12px] text-muted">{item.recordedOn}</span>
                             <span className="text-[12px] text-muted">
                               {item.target === "detector" ? "탐지 모델 재학습 후보" : "등급 모델 재학습 후보"} · 기록만
                               남고 위 값은 그대로입니다

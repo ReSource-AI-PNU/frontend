@@ -24,6 +24,7 @@ export const claimRoleSchema = z.enum([
   "carbon",
   "carbonValue",
   "transport",
+  "labor",
   "extraCost",
   "distance",
   "trips",
@@ -101,11 +102,11 @@ export const messageTypeSchema = z.enum([
  * vendorModel에는 code가 오지 않는다(메시지에만 붙는다).
  */
 export const modelRefSchema = obj({
-  provider: z.enum(["foundry", "ollama", "rule", "code"]),
+  provider: z.enum(["foundry", "ollama", "anthropic", "rule", "code"]),
   name: z.string(),
 });
 export const vendorModelSchema = obj({
-  provider: z.enum(["foundry", "ollama", "rule"]),
+  provider: z.enum(["foundry", "ollama", "anthropic", "rule"]),
   name: z.string(),
   /** 업체가 고른 설정. 실제로 쓴 구현(provider, name)과 다를 수 있다. */
   configured: obj({ provider: z.enum(["foundry", "ollama"]), name: z.string() })
@@ -231,6 +232,16 @@ export const viewStreamSchema = obj({
     unitCost: claimOrNull,
     assumed: z.boolean(),
   }).nullable(),
+  /** 순비용에 쓰는 배출 기업만의 입력. 배출 기업이 보는 뷰에만 온다 */
+  costInputs: obj({
+    pretreatHoursPerMonth: z.number().nullable(),
+    laborCostKrwPerHour: z.number().nullable(),
+    reuse: obj({
+      virginPriceKrwPerKg: z.number(),
+      reusableKgPerMonth: z.number(),
+      regrindCostKrwPerKg: z.number().nullable(),
+    }).nullable(),
+  }).optional(),
 });
 
 /**
@@ -264,6 +275,7 @@ export const checkKeySchema = z.enum([
   "mixture",
   "permit",
   "current_assumed",
+  "current_method",
   "transport",
   "carbon",
   "vendor_condition",
@@ -294,6 +306,18 @@ export const alternativeSchema = obj({
   note: z.string(),
 });
 
+/** 공정 재투입 후보(판단 도구 judge_reuse). 업체가 보는 뷰에서는 null이다 */
+export const reuseSchema = obj({
+  /** 후보인가. 조건을 다 보지 못했으면 null */
+  eligible: z.boolean().nullable(),
+  status: triStatusSchema,
+  reason: z.string(),
+  /** 신재 구입 단가와 다시 넣을 수 있는 양을 넣었을 때만 온다 */
+  monthlyAfter: claimOrNull,
+  difference: claimOrNull,
+  checks: z.array(obj({ key: z.string(), status: checkStatusSchema, text: z.string(), evidence: z.array(z.string()) })),
+});
+
 export const assignmentSchema = obj({
   streamId: z.string(),
   vendorOrgId: z.string().nullable(),
@@ -306,6 +330,13 @@ export const assignmentSchema = obj({
   monthlyAfter: claimOrNull,
   monthlyNow: claimOrNull,
   difference: claimOrNull,
+  /** 순비용의 내역: 매각 수익(처리비면 음수), 배출 기업이 따로 내는 운반비, 전처리 인건비. 업체 뷰에서는 null */
+  revenue: claimOrNull,
+  transport: claimOrNull,
+  labor: claimOrNull,
+  /** 운반비를 누가 내는가. 업체가 조건을 밝히지 않았으면 null */
+  transportPaidBy: z.enum(["vendor", "emitter"]).nullable(),
+  reuse: reuseSchema.nullable(),
   carbon: claimOrNull,
   /** 탄소 감축량을 KAU 시세로 환산한 금액 */
   carbonValue: claimOrNull,

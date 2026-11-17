@@ -11,15 +11,15 @@ export default function NotFound() {
       <FocusHeader />
       <main className="flex flex-1 flex-col">
         <div className="mx-auto grid w-full max-w-[720px] gap-6 px-6 pt-20 pb-24 lg:px-8">
-          <p className="num text-[13px] tracking-[0.04em] text-muted">404 · NOT FOUND</p>
+          <p className="text-[13px] text-muted">404</p>
           <h1 className="text-display">찾는 페이지가 없습니다</h1>
           <p className="max-w-xl text-lg text-ink-2">
-            주소가 바뀌었거나 삭제되었을 수 있습니다. 다른 회사의 세션은 같은 회사 멤버만 열 수 있습니다.
+            주소가 바뀌었거나 없어진 화면일 수 있습니다.
           </p>
           <div className="mt-2 flex flex-wrap gap-3">
             <ButtonLink href="/">홈으로 가기</ButtonLink>
-            <ButtonLink href="/session" variant="secondary">
-              내 세션 보기
+            <ButtonLink href="/app" variant="secondary">
+              찾기 화면으로
             </ButtonLink>
           </div>
           <p className="border-t border-line pt-6 text-sm text-muted">

@@ -330,7 +330,7 @@ export function JudgementGraph({ nodes, edges: rawEdges }: { nodes: GraphNode[];
                 {edge.evidence.length > 0 ? (
                   <button
                     type="button"
-                    className="self-start underline decoration-dotted underline-offset-4"
+                    className="self-start underline underline-offset-4"
                     onClick={() => openEvidence(edge.evidence, edge.label || STROKE[edge.status].label)}
                   >
                     근거 {edge.evidence.length}건

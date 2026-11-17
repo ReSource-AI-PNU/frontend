@@ -9,9 +9,7 @@ const PLACEHOLDER = /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g;
 
 export function NeedsCheck() {
   return (
-    <span className="rounded-sm bg-warn-bg px-1.5 py-0.5 text-[13px] font-semibold text-warn">
-      확인 필요
-    </span>
+    <span className="text-[13px] font-medium text-warn">확인 필요</span>
   );
 }
 
@@ -25,6 +23,8 @@ export function ClaimValue({
   signed = false,
   price,
   inline = false,
+  display,
+  hideAssumed = false,
   title,
   className = "",
 }: {
@@ -37,13 +37,19 @@ export function ClaimValue({
    * 단가는 낱말을 다시 붙이지 않고 크기만 적는다.
    */
   inline?: boolean;
+  /** 문장에 맞춰 다르게 적을 때(예: "387,500원"). 근거와 가정 표시는 그대로 붙는다 */
+  display?: string;
+  /** 가정 표시를 값 옆에 붙이지 않는다. 표의 숫자 칸처럼 줄을 맞춰야 할 때 쓰고, 표시는 부르는 쪽이 따로 한다 */
+  hideAssumed?: boolean;
   title?: string;
   className?: string;
 }) {
   const { openEvidence } = useV3();
   const asPrice = price ?? isUnitPriceClaim(claim);
   const text =
-    asPrice && inline && claim && typeof claim.value === "number"
+    display !== undefined && claim
+      ? display
+      : asPrice && inline && claim && typeof claim.value === "number"
       ? formatClaim({ ...claim, value: Math.abs(claim.value) })
       : asPrice
         ? formatUnitPrice(claim)
@@ -61,16 +67,14 @@ export function ClaimValue({
   const body = (
     <>
       {claim.kind === "clause" ? `“${text}”` : text}
-      {assumed ? (
-        <span className="ml-1 rounded-sm bg-warn-bg px-1 py-px align-middle font-sans text-[11px] font-semibold text-warn">
-          가정값
-        </span>
+      {assumed && !hideAssumed ? (
+        <span className="ml-1 align-baseline text-[11px] font-normal text-muted">가정</span>
       ) : null}
     </>
   );
   if (claim.evidence.length === 0) {
     return (
-      <span className={`font-mono tabular-nums ${className}`}>
+      <span className={`tabular-nums ${className}`}>
         {body} <NeedsCheck />
       </span>
     );
@@ -80,7 +84,7 @@ export function ClaimValue({
       type="button"
       onClick={() => openEvidence(claim.evidence, title ?? claim.label)}
       title={claim.label ? `${claim.label} · 근거 보기` : "근거 보기"}
-      className={`inline cursor-pointer rounded-sm font-semibold underline decoration-line-strong decoration-dotted underline-offset-4 hover:bg-sunken hover:decoration-ink ${claim.kind === "number" ? "font-mono tabular-nums" : ""} ${tone} ${className}`}
+      className={`inline cursor-pointer rounded-[4px] font-semibold decoration-current/40 underline-offset-4 hover:underline ${claim.kind === "number" ? "tabular-nums" : ""} ${tone} ${className}`}
     >
       {body}
     </button>

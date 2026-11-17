@@ -12,10 +12,10 @@ declare module "next-auth" {
 
 /** 로그인해야 들어갈 수 있는 경로. proxy.ts가 낙관적으로 먼저 거른다. */
 export const PROTECTED_PREFIXES = [
-  "/upload", "/session", "/complex", "/dashboard", "/onboarding", "/c",
-  "/knowledge", "/vendor", "/neighbor", "/admin", "/settings",
-  // v3 화면도 로그인한 사람만 본다(로그인 전에는 페이지를 그리지 않고 로그인으로 보낸다)
-  "/v3",
+  // 옛 화면 주소(/upload, /session 등)와 /v3는 next.config.ts가 /app으로 돌려보내므로 여기 두지 않는다
+  "/onboarding", "/settings",
+  // 에이전트 화면도 로그인한 사람만 본다(로그인 전에는 페이지를 그리지 않고 로그인으로 보낸다)
+  "/app",
 ];
 
 export const entraConfigured = Boolean(
@@ -72,7 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const loggedIn = Boolean(session?.user);
       if (isProtected(nextUrl.pathname)) return loggedIn;
       if (loggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
-        return Response.redirect(new URL("/v3", nextUrl));
+        return Response.redirect(new URL("/app", nextUrl));
       }
       return true;
     },

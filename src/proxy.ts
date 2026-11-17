@@ -2,5 +2,5 @@
 export { auth as proxy } from "@/auth";
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|data|fonts|favicon.ico|.*\\.(?:png|jpg|svg|geojson|json|woff2)$).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|data|fonts|favicon.ico|.*\\.(?:png|jpg|webp|svg|geojson|json|woff2)$).*)"],
 };
