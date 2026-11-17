@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
-import { ClaimText, ClaimValue } from "@/components/v3/claim";
+import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, isAssumed } from "@/lib/v3/format";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
@@ -294,14 +294,19 @@ function MoneySentence({ totals, conditional }: { totals: Result["totals"]; cond
     <p className="mt-2 text-[16px] leading-relaxed text-ink-2">
       {now !== null ? (
         <>
-          지금은 한 달에 <ClaimValue claim={totals.monthlyNow} display={won(totals.monthlyNow)} className="text-ink" />을{" "}
+          지금은 한 달에{" "}
+          <Glue>
+            <ClaimValue claim={totals.monthlyNow} display={won(totals.monthlyNow)} className="text-ink" />을
+          </Glue>{" "}
           {now < 0 ? "내고" : "받고"} 있습니다.{" "}
         </>
       ) : null}
       {after !== null ? (
         <>
           {conditional ? "조건이 확인되면" : "이대로 바꾸면"} 한 달에{" "}
-          <ClaimValue claim={totals.monthlyAfter} display={won(totals.monthlyAfter)} className="text-ink" />을{" "}
+          <Glue>
+            <ClaimValue claim={totals.monthlyAfter} display={won(totals.monthlyAfter)} className="text-ink" />을
+          </Glue>{" "}
           {after < 0 ? "내게" : "받게"} 됩니다.
         </>
       ) : null}
@@ -394,7 +399,11 @@ export function ResultCard({
         {isEmitter && totals.carbon ? (
           <>
             {" "}
-            탄소 배출 변화는 <ClaimValue claim={totals.carbon} className="!font-normal" />입니다.
+            탄소 배출 변화는{" "}
+            <Glue>
+              <ClaimValue claim={totals.carbon} className="!font-normal" />
+              입니다.
+            </Glue>
           </>
         ) : null}
       </p>

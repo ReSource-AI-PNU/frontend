@@ -1,11 +1,10 @@
 "use client";
 
 import { Fragment } from "react";
+import { splitClaimText } from "@/lib/v3/claim-text";
 import { formatClaim, formatUnitPrice, isAssumed, isUnitPriceClaim } from "@/lib/v3/format";
 import type { Claim } from "@/lib/v3/types";
 import { useV3 } from "./context";
-
-const PLACEHOLDER = /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g;
 
 export function NeedsCheck() {
   return (
@@ -91,25 +90,32 @@ export function ClaimValue({
   );
 }
 
-/** 본문의 {{claimId}} 자리를 claims로 그린다. 맞는 claim이 없으면 "확인 필요". */
+/**
+ * 본문의 {{claimId}} 자리를 claims로 그린다. 맞는 claim이 없으면 "확인 필요".
+ * 숫자 값은 앞뒤에 붙은 글자와 한 덩어리(줄 바꿈 없음)로 묶어 줄이 쉼표나 조사로 시작하지 않게 한다(claim-text.ts).
+ */
 export function ClaimText({ text, claims }: { text: string; claims: Claim[] }) {
-  const byId = new Map(claims.map((claim) => [claim.id, claim]));
-  const parts: { key: string; text?: string; claim?: Claim | null }[] = [];
-  let last = 0;
-  for (const match of text.matchAll(PLACEHOLDER)) {
-    const index = match.index ?? 0;
-    if (index > last) parts.push({ key: `t${last}`, text: text.slice(last, index) });
-    parts.push({ key: `c${index}`, claim: byId.get(match[1]) ?? null });
-    last = index + match[0].length;
-  }
-  if (last < text.length) parts.push({ key: `t${last}`, text: text.slice(last) });
+  const segments = splitClaimText(text, claims);
   return (
     <span className="whitespace-pre-wrap">
-      {parts.map((part) => (
-        <Fragment key={part.key}>
-          {part.text !== undefined ? part.text : <ClaimValue claim={part.claim} inline />}
-        </Fragment>
-      ))}
+      {segments.map((segment, index) =>
+        segment.kind === "text" ? (
+          <Fragment key={index}>{segment.text}</Fragment>
+        ) : segment.before || segment.after ? (
+          <span key={index} className="whitespace-nowrap">
+            {segment.before}
+            <ClaimValue claim={segment.claim} inline />
+            {segment.after}
+          </span>
+        ) : (
+          <ClaimValue key={index} claim={segment.claim} inline />
+        ),
+      )}
     </span>
   );
+}
+
+/** 문장 안의 값과 바로 뒤에 붙는 글자("을", "입니다.")를 한 덩어리로 둔다. 줄이 조사나 쉼표로 시작하지 않게 한다 */
+export function Glue({ children }: { children: React.ReactNode }) {
+  return <span className="whitespace-nowrap">{children}</span>;
 }
