@@ -1,108 +1,62 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { DefinitionTable, formatDate, SettingsSection } from "@/components/settings/section";
+import { DefinitionTable, SettingsSection } from "@/components/settings/section";
 import { ButtonLink } from "@/components/ui/button";
+import { KIND_LABEL, MEMBER_ROLE_LABEL } from "@/lib/auth/account";
 import { formatBizNo } from "@/lib/bizno";
-import { findComplex } from "@/lib/complexes";
-import { formatNumber } from "@/lib/format";
-import { requireOrganization } from "@/lib/server/organization";
+import { companyDetail } from "@/lib/server/company-data";
+import { requireWorkspace } from "@/lib/server/workspace";
 
 export const metadata: Metadata = { title: "설정 · 회사 정보" };
 
-const ROLE_LABEL = { 배출: "폐기물 배출", 처리업체: "수거·처리업체", 수요처: "재생원료 수요처" } as const;
-
-const EMPTY = <span className="text-muted">아직 입력하지 않았습니다</span>;
+const EMPTY = <span className="text-muted">등록하지 않았습니다</span>;
 
 export default async function CompanySettingsPage() {
-  const org = await requireOrganization();
-  const complex = findComplex(org.complexId);
-  const totalKg = org.wasteStreams.reduce((sum, w) => sum + w.monthlyKg, 0);
+  const workspace = await requireWorkspace();
+  const { active, memberships } = workspace;
+  const detail = await companyDetail(workspace);
 
   return (
     <>
-      <SettingsSection
-        id="company"
-        title="회사 정보"
-        description="가입할 때는 회사 이름, 하는 일, 산업단지만 받았습니다. 사업자등록번호와 업종은 여기서 채울 수 있습니다."
-        aside={<ButtonLink href="/onboarding" variant="secondary">회사 정보 {org.bizNo ? "수정" : "채우기"}</ButtonLink>}
-      >
+      <SettingsSection id="company" title="회사 정보" description="회사를 등록할 때 적은 정보입니다.">
         <DefinitionTable
           rows={[
-            { label: "회사명", value: org.name },
-            { label: "사업자등록번호", value: org.bizNo ? formatBizNo(org.bizNo) : EMPTY, numeric: Boolean(org.bizNo) },
-            { label: "업종", value: org.industry || EMPTY },
-            { label: "서비스에서 하는 역할", value: ROLE_LABEL[org.role] ?? org.role },
-            { label: "담당자 직책", value: org.contactTitle || EMPTY },
+            { label: "회사 이름", value: active.orgName },
+            { label: "하는 일", value: KIND_LABEL[active.kind] },
+            { label: "내 역할", value: MEMBER_ROLE_LABEL[active.memberRole] },
+            { label: "지역", value: detail.region ?? EMPTY },
+            { label: "주소", value: detail.address ?? EMPTY },
             {
-              label: "산업단지",
-              value: complex ? (
-                <>
-                  {complex.shortName}
-                  <span className="ml-2 text-sm text-muted">{complex.name}</span>
-                </>
-              ) : (
-                <span className="text-muted">등록된 단지를 찾을 수 없습니다</span>
-              ),
+              label: "사업자등록번호",
+              value: detail.bizNo ? formatBizNo(detail.bizNo) : EMPTY,
+              numeric: Boolean(detail.bizNo),
             },
-            { label: "등록일", value: formatDate(org.createdAt), numeric: true },
-            { label: "최근 수정", value: formatDate(org.updatedAt), numeric: true },
           ]}
         />
       </SettingsSection>
 
       <SettingsSection
-        id="streams"
-        title="배출 품목"
-        description="묶음 수거 후보를 고르는 기준입니다. 물량이 크게 바뀌었으면 회사 정보 수정에서 함께 고쳐 주세요."
+        id="companies"
+        title="내가 속한 회사"
+        description="여러 회사에 속해 있으면 왼쪽 아래 회사 이름에서 바꿔 볼 수 있습니다."
+        aside={
+          <ButtonLink href="/onboarding" variant="secondary">
+            회사 추가
+          </ButtonLink>
+        }
       >
-        {org.wasteStreams.length === 0 ? (
-          <p className="text-[15px] text-ink-2">
-            아직 등록한 품목이 없습니다. 받아 줄 곳을 찾을 폐기물은{" "}
-            <Link href="/app" className="font-medium text-ink underline underline-offset-4">
-              찾기 화면
-            </Link>
-            에서 추가합니다.
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-            <table className="w-full min-w-[480px] border-collapse text-left text-[15px]">
-              <caption className="sr-only">배출 품목과 월 배출량</caption>
-              <thead>
-                <tr className="border-b border-line text-label text-muted">
-                  <th scope="col" className="px-5 py-2.5 font-semibold">
-                    품목
-                  </th>
-                  <th scope="col" className="px-5 py-2.5 text-right font-semibold">
-                    월 배출량 (kg)
-                  </th>
-                  <th scope="col" className="px-5 py-2.5 font-semibold">
-                    보관 장소
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {org.wasteStreams.map((w) => (
-                  <tr key={w.item} className="border-b border-line last:border-b-0">
-                    <th scope="row" className="px-5 py-3 font-semibold">
-                      {w.item}
-                    </th>
-                    <td className="num px-5 py-3 text-right">{formatNumber(w.monthlyKg)}</td>
-                    <td className="px-5 py-3 text-ink-2">{w.storage ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-line-strong">
-                  <th scope="row" className="px-5 py-3 text-sm font-semibold text-muted">
-                    합계
-                  </th>
-                  <td className="num px-5 py-3 text-right font-semibold">{formatNumber(totalKg)}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
+        <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+          {memberships.map((item) => (
+            <li key={item.orgId} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-5 py-3.5">
+              <span className="min-w-0 flex-1 font-medium">
+                {item.orgName}
+                {item.orgId === active.orgId ? <span className="ml-2 text-[13px] font-normal text-muted">지금 보는 회사</span> : null}
+              </span>
+              <span className="text-sm text-ink-2">
+                {KIND_LABEL[item.kind]} · {MEMBER_ROLE_LABEL[item.memberRole]}
+              </span>
+            </li>
+          ))}
+        </ul>
       </SettingsSection>
     </>
   );

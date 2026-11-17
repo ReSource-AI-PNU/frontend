@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto grid w-full max-w-[880px] gap-8 px-5 py-8 sm:px-8 lg:py-12">
-      <PageHeader title="설정" description="회사 정보와 멤버, 내 계정과 데이터를 관리합니다." />
+      <PageHeader title="설정" description="회사 정보와 멤버, 내 계정을 봅니다." />
       <div className="grid min-w-0 gap-8">
         <nav aria-label="설정 메뉴" className="min-w-0">
           <Suspense fallback={<SettingsNavList pathname={null} />}>
