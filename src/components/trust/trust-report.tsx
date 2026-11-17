@@ -25,31 +25,46 @@ function Value({ metric, size }: { metric: TrustMetric; size: "lg" | "md" | "sm"
   return <span className={`num font-semibold ${cls}`}>{metric.display}</span>;
 }
 
-/** n · 신뢰구간 · 목표를 한 줄로 */
+/** 표본이 작은 비율 지표에 붙이는 말 */
+const SMALL_NOTE = "표본이 작아 구간이 넓습니다";
+
+/** n · 신뢰구간 · 목표를 한 줄로. 표본이 작은 비율이면 그 아래에 한 줄 더 */
 function Facts({ metric }: { metric: TrustMetric }) {
   const parts = [
     metric.n !== null ? <span key="n">n = <span className="num">{metric.n}</span></span> : null,
     metric.ci ? <span key="ci">{metric.ci}</span> : null,
     metric.target ? <span key="t">{metric.target}</span> : null,
-    metric.smallSample ? <span key="s">표본 적음</span> : null,
   ].filter(Boolean);
-  if (parts.length === 0) return null;
+  if (parts.length === 0 && !metric.smallSample) return null;
   return (
-    <p className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[12px] text-muted">
-      {parts.map((part, index) => (
-        <span key={index} className="flex gap-x-2.5">
-          {index > 0 ? <span aria-hidden="true">·</span> : null}
-          {part}
-        </span>
-      ))}
-    </p>
+    <div className="text-[12px] text-muted">
+      {parts.length > 0 ? (
+        <p className="flex flex-wrap gap-x-2.5 gap-y-0.5">
+          {parts.map((part, index) => (
+            <span key={index} className="flex gap-x-2.5">
+              {index > 0 ? <span aria-hidden="true">·</span> : null}
+              {part}
+            </span>
+          ))}
+        </p>
+      ) : null}
+      {metric.smallSample ? <p className="mt-0.5">{SMALL_NOTE}</p> : null}
+    </div>
   );
+}
+
+/** 무엇을 재는지 한 줄 */
+function Explain({ metric, className = "" }: { metric: TrustMetric; className?: string }) {
+  return metric.explain ? <p className={`text-[13px] leading-snug text-muted ${className}`}>{metric.explain}</p> : null;
 }
 
 function Tile({ metric }: { metric: TrustMetric }) {
   return (
     <div className="flex min-w-0 flex-col gap-2 border-t border-line-strong pt-4">
-      <p className="text-[14px] leading-snug text-ink-2">{metric.label}</p>
+      <div>
+        <p className="text-[14px] leading-snug text-ink-2">{metric.label}</p>
+        <Explain metric={metric} className="mt-0.5" />
+      </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Value metric={metric} size="lg" />
         <Verdict metric={metric} />
@@ -62,7 +77,7 @@ function Tile({ metric }: { metric: TrustMetric }) {
 function MetricTable({ metrics }: { metrics: TrustMetric[] }) {
   return (
     <div className="mt-2 overflow-x-auto rounded-xl border border-line">
-      <table className="w-full min-w-[560px] text-left text-[13px]">
+      <table className="w-full min-w-[640px] text-left text-[13px]">
         <thead className="bg-ground text-muted">
           <tr>
             <th className="px-3 py-2 font-medium">지표</th>
@@ -75,10 +90,16 @@ function MetricTable({ metrics }: { metrics: TrustMetric[] }) {
         </thead>
         <tbody className="divide-y divide-line">
           {metrics.map((metric, index) => (
-            <tr key={`${metric.key}-${index}`}>
-              <td className="px-3 py-2 text-ink-2">{metric.name}</td>
+            <tr key={`${metric.key}-${index}`} className="align-top">
+              <td className="px-3 py-2 text-ink-2">
+                {metric.label}
+                {metric.explain ? <span className="mt-0.5 block text-[12px] leading-snug text-muted">{metric.explain}</span> : null}
+              </td>
               <td className="px-3 py-2 whitespace-nowrap">{metric.value === null ? <span className="text-muted">미측정</span> : <span className="num">{metric.display}</span>}</td>
-              <td className="px-3 py-2 whitespace-nowrap text-muted">{metric.ci?.replace("95% 신뢰구간 ", "") ?? "—"}</td>
+              <td className="px-3 py-2 text-muted">
+                <span className="whitespace-nowrap">{metric.ci?.replace("95% 신뢰구간 ", "") ?? "—"}</span>
+                {metric.smallSample ? <span className="mt-0.5 block text-[12px]">{SMALL_NOTE}</span> : null}
+              </td>
               <td className="px-3 py-2 text-muted">{metric.n !== null ? <span className="num">{metric.n}</span> : "—"}</td>
               <td className="px-3 py-2 whitespace-nowrap text-muted">{metric.target?.replace("목표 ", "") ?? "—"}</td>
               <td className="px-3 py-2 whitespace-nowrap">
@@ -107,7 +128,10 @@ function Layer({ layer }: { layer: TrustLayer }) {
 
       {layer.key ? (
         <div className="mt-4 flex flex-col gap-2">
-          <p className="text-[14px] text-ink-2">{layer.key.label}</p>
+          <div>
+            <p className="text-[14px] text-ink-2">{layer.key.label}</p>
+            <Explain metric={layer.key} className="mt-0.5" />
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <Value metric={layer.key} size="md" />
             <Verdict metric={layer.key} />
@@ -120,10 +144,15 @@ function Layer({ layer }: { layer: TrustLayer }) {
         <ul className="mt-4 divide-y divide-line border-y border-line">
           {layer.more.map((metric) => (
             <li key={metric.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2.5">
-              <span className="min-w-0 flex-1 text-[14px] text-ink-2">{metric.label}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] text-ink-2">{metric.label}</span>
+                {metric.explain ? <span className="mt-0.5 block text-[12px] leading-snug text-muted">{metric.explain}</span> : null}
+              </span>
               <Value metric={metric} size="sm" />
               <span className="w-full text-[12px] text-muted sm:w-auto">
-                {[metric.target, metric.verdict === "met" ? "달성" : metric.verdict === "unmet" ? "미달" : null].filter(Boolean).join(" · ")}
+                {[metric.target, metric.verdict === "met" ? "달성" : metric.verdict === "unmet" ? "미달" : null, metric.smallSample ? SMALL_NOTE : null]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
             </li>
           ))}
@@ -221,7 +250,10 @@ function Report({ view }: { view: TrustView }) {
           </div>
           <div>
             <dt className="font-medium">95% 신뢰구간과 n</dt>
-            <dd className="text-ink-2">n은 잰 사례 수입니다. 같은 시험을 다시 해도 결과가 신뢰구간 안에 들 가능성이 높다는 뜻이고, 사례가 적을수록 구간이 넓어집니다.</dd>
+            <dd className="text-ink-2">
+              n은 잰 사례 수입니다. 같은 시험을 다시 해도 결과가 신뢰구간 안에 들 가능성이 높다는 뜻이고, 사례가 적을수록 구간이
+              넓어집니다. 비율을 30건보다 적게 잰 곳에는 &ldquo;{SMALL_NOTE}&rdquo;라고 적었습니다.
+            </dd>
           </div>
           <div>
             <dt className="font-medium">가상 사례</dt>

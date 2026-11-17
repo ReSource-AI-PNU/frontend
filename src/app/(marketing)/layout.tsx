@@ -24,7 +24,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               개인정보처리방침
             </Link>
           </nav>
-          <span className="w-full sm:w-auto">숫자는 시연용 가정값입니다. © 2026 Re:Source AI 팀</span>
+          <span className="w-full sm:w-auto">© 2026 Re:Source AI 팀</span>
         </div>
       </footer>
     </>

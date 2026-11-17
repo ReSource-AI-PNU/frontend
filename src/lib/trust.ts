@@ -7,7 +7,10 @@
  *  - 목표 미달과 재지 못한 것도 그대로 보인다. 숫자를 지어내지 않고, 값이 없으면 "미측정"이다.
  *  - 모델을 연결하지 않은 실행(isModel: false)은 AI 모델의 성적처럼 보이지 않게 따로 밝힌다.
  *  - 평가일에서 staleAfterDays(기본 30일)가 지나면 "오래된 결과"를 붙인다.
+ *  - 지난 실행의 숫자(superseded로 표시된 실행·층·지표)와 이번 실행에 없는 지표는 지금 결과처럼 보이지 않는다.
  * 일반 사용자 화면이므로 모델 이름, 설정 이름, 파일 경로 같은 개발자 말은 걸러 낸다(DESIGN.md 제품 문구 원칙).
+ * 지표 이름은 아래 METRICS의 쉬운 말과 한 줄 설명을 쓰고(nDCG, ASR, 카나리아 같은 말을 쓰지 않는다), 표에 없는
+ * 지표는 백엔드가 준 쉬운 이름(plainLabel)이나 걸러 낸 원래 이름을 쓴다.
  */
 
 type Json = Record<string, unknown>;
@@ -20,10 +23,10 @@ export type MetricKind = "rate" | "count" | "seconds" | "score";
 
 export type TrustMetric = {
   key: string;
-  /** 쉬운 말 이름(주요 지표) 또는 걸러 낸 원래 이름 */
+  /** 쉬운 말 이름 */
   label: string;
-  /** 원래 지표 이름(상세 표에 작게) */
-  name: string;
+  /** 무엇을 재는지 한 줄. 모르는 지표면 null */
+  explain: string | null;
   value: number | null;
   /** 화면에 쓸 값. 값이 없으면 "미측정" */
   display: string;
@@ -33,6 +36,7 @@ export type TrustMetric = {
   /** "목표 ≥ 80%" */
   target: string | null;
   verdict: Verdict;
+  /** 비율 지표인데 표본이 30보다 적다(또는 백엔드가 표본이 적다고 표시했다). 화면은 "표본이 작아 구간이 넓습니다"를 붙인다 */
   smallSample: boolean;
 };
 
@@ -102,7 +106,10 @@ const SCORE_KEYS = new Set([
   "pareto",
 ]);
 
+const RATE_KEYS = new Set(["variantConsistency", "verdictMatch", "probeClean", "zeroRegret", "guardrailCompliance", "agreement"]);
+
 export function kindOf(key: string, label: string): MetricKind {
+  if (RATE_KEYS.has(key)) return "rate";
   if (COUNT_KEYS.has(key) || /건수/.test(label)) return "count";
   if (SECONDS_KEYS.has(key)) return "seconds";
   if (SCORE_KEYS.has(key)) return "score";
@@ -121,6 +128,7 @@ export function formatValue(value: number, kind: MetricKind): string {
   return trim(value, 2);
 }
 
+/** 구간은 받은 그대로 적는다(비율 지표는 백엔드가 Wilson 구간을 준다) */
 function formatCi(ci: unknown, kind: MetricKind): string | null {
   if (!Array.isArray(ci) || ci.length !== 2) return null;
   const [low, high] = ci.map(num);
@@ -146,38 +154,177 @@ function verdictOf(raw: unknown, value: number | null): Verdict {
   return "none";
 }
 
+/** 표본이 이보다 적은 비율 지표에는 "표본이 작아 구간이 넓습니다"를 붙인다 */
+export const SMALL_SAMPLE = 30;
+
 /**
- * 원래 지표 이름이나 까닭에서 개발자 말을 걷어 낸다. 설정·파일·내부 코드가 들어간 문장은 통째로 빼고(null),
- * 서비스 이름은 하는 일로 바꾼다.
+ * 지난 실행의 값으로 표시됐는지. 백엔드는 실행·층·지표에 superseded(참), supersededBy(새 실행), current(거짓),
+ * status "superseded" 가운데 하나를 붙인다.
+ */
+export function isSuperseded(raw: unknown): boolean {
+  if (!isObj(raw)) return false;
+  return raw.superseded === true || str(raw.supersededBy) !== null || raw.current === false || raw.status === "superseded";
+}
+
+/* ── 쉬운 말 ──────────────────────────────────────────────────────── */
+
+/** 화면에 남으면 안 되는 평가 용어(tests/trust.test.ts가 화면 모양 전체에서 찾는다) */
+export const JARGON = /Shields|ASR|\bL\d|카나리아|spotlighting|탐침|정규식|조건 \(i+\)|nDCG|Recall|MRR|pass\^|Cohen|BM25|RRF|루브릭|프롬프트|쌍둥이|게이트|스레드|handoff/i;
+
+type MetricText = { label: string; explain: string };
+
+/** 지표 키 → 쉬운 이름과 한 줄 설명. "층:키"가 있으면 그 층에서 먼저 쓴다(L4와 L5의 handoffs는 뜻이 다르다) */
+export const METRICS: Record<string, MetricText> = {
+  // 검색
+  "ndcg@10": { label: "맞는 조항을 위쪽에 찾아 놓는 정도", explain: "찾은 목록 위쪽 10개 안에서 맞는 조항이 얼마나 앞에 있는지 0~1로 잽니다. 1이 가장 좋습니다." },
+  "recall@5": { label: "찾아야 할 조항이 위쪽 5개 안에 든 비율", explain: "꼭 찾아야 할 조항 가운데 찾은 목록 위쪽 5개 안에 든 몫입니다." },
+  "recall@10": { label: "찾아야 할 조항이 위쪽 10개 안에 든 비율", explain: "꼭 찾아야 할 조항 가운데 찾은 목록 위쪽 10개 안에 든 몫입니다." },
+  mrr: { label: "첫 번째 맞는 조항의 순위 점수", explain: "처음 나온 맞는 조항이 1위면 1, 2위면 0.5처럼 매긴 점수의 평균입니다." },
+  no_answer_accuracy: { label: "답이 없는 질문에 없다고 답한 비율", explain: "근거 문서에 답이 없는 질문에 지어내지 않고 없다고 한 몫입니다." },
+  answer_rate: { label: "답이 있는 질문에 답을 낸 비율(참고)", explain: "답이 있는 질문에서 기준 점수를 넘는 조항을 찾아 답을 낸 몫입니다." },
+  // 근거 있는 생성
+  firstTry: { label: "첫 초안이 근거 확인을 통과한 비율", explain: "AI가 처음 쓴 글이 고치지 않고 근거 확인을 통과한 몫입니다." },
+  afterRewrite: { label: "고쳐 쓴 뒤까지 근거 확인을 통과한 비율", explain: "돌려보낸 글을 고쳐 쓴 뒤까지 합쳐 근거 확인을 통과한 몫입니다." },
+  handoff: { label: "끝내 통과하지 못해 담당자에게 넘긴 비율", explain: "고쳐 써도 근거 확인을 통과하지 못해 사람에게 넘긴 몫입니다." },
+  numberHallucination: { label: "초안에 근거 없는 숫자가 섞인 비율", explain: "보내기 전 초안에 근거에 없는 숫자가 섞인 몫입니다. 이런 초안은 나가지 않습니다." },
+  evidenceHallucination: { label: "초안이 없는 근거를 댄 비율", explain: "보내기 전 초안이 근거 저장소에 없는 근거를 가리킨 몫입니다. 이런 초안은 나가지 않습니다." },
+  quoteMismatch: { label: "조항 인용이 원문과 다른 비율", explain: "인용한 조항 문장이 원문과 글자 그대로 같지 않은 몫입니다." },
+  recheckRejected: { label: "받은 쪽이 다시 확인해 돌려보낸 비율", explain: "상대 AI가 받은 글을 다시 확인했을 때 근거와 맞지 않아 돌려보낸 몫입니다." },
+  outgoingHallucination: { label: "근거 없는 숫자가 상대에게 나간 횟수", explain: "근거 확인을 지나 상대에게 실제로 보낸 글에서 근거 없는 숫자가 나온 횟수입니다." },
+  // 과업 성공
+  "pass^1": { label: "찾기를 끝까지 맞게 마친 비율", explain: "가상 시나리오를 한 번 돌렸을 때 끝난 모습(합의·거절·담당자 인계)이 기대와 같은 몫입니다." },
+  pass1: { label: "찾기를 끝까지 맞게 마친 비율", explain: "가상 시나리오를 한 번 돌렸을 때 끝난 모습(합의·거절·담당자 인계)이 기대와 같은 몫입니다." },
+  "pass^2": { label: "두 번 돌려 두 번 모두 맞은 비율", explain: "같은 시나리오를 두 번 돌려 모두 기대대로 끝난 몫입니다. 결과가 흔들리지 않는지 봅니다." },
+  "pass^3": { label: "세 번 돌려 세 번 모두 맞은 비율", explain: "같은 시나리오를 세 번 돌려 모두 기대대로 끝난 몫입니다. 결과가 흔들리지 않는지 봅니다." },
+  "pass^4": { label: "네 번 돌려 네 번 모두 맞은 비율", explain: "같은 시나리오를 네 번 돌려 모두 기대대로 끝난 몫입니다. 결과가 흔들리지 않는지 봅니다." },
+  pass4: { label: "같은 시나리오를 네 번 돌려 네 번 모두 맞은 비율", explain: "같은 시나리오를 네 번 돌려 모두 기대대로 끝난 몫입니다. 결과가 흔들리지 않는지 봅니다." },
+  verdictMatch: { label: "끝난 모습이 기대와 같은 비율", explain: "합의·거절·담당자 인계 가운데 어느 쪽으로 끝났는지가 기대와 같은 몫입니다." },
+  violations: { label: "하면 안 되는 일을 한 횟수", explain: "승인 없이 확정하기처럼 금지한 일을 한 횟수입니다." },
+  requiredRecall: { label: "꼭 물어야 할 것을 물은 비율", explain: "담당자에게 꼭 물어야 할 값을 빠뜨리지 않고 물은 몫입니다." },
+  unneededQuestions: { label: "묻지 않아도 될 것을 물은 비율", explain: "이미 아는 값을 담당자에게 다시 물은 몫입니다." },
+  latencyP50: { label: "찾기 한 번에 걸린 시간(가운데 값)", explain: "시나리오 하나를 끝까지 돌리는 데 걸린 시간을 줄 세웠을 때 가운데 값입니다." },
+  latencyP95: { label: "찾기 한 번에 걸린 시간(느린 쪽)", explain: "100번 가운데 95번은 이 시간 안에 끝났습니다." },
+  turnsPerThread: { label: "업체 한 곳과 주고받은 횟수(평균)", explain: "열린 대화 하나에서 두 AI가 글을 주고받은 횟수의 평균입니다." },
+  questionBatches: { label: "담당자에게 질문을 보낸 횟수(평균)", explain: "찾기 한 번에 담당자에게 질문을 묶어 보낸 횟수의 평균입니다." },
+  "L4:handoffs": { label: "담당자에게 넘긴 대화 수(평균)", explain: "찾기 한 번에 AI가 끝내지 않고 사람에게 넘긴 대화 수의 평균입니다." },
+  tokens: { label: "AI가 읽고 쓴 글의 양", explain: "AI 모델이 읽고 쓴 글의 양입니다." },
+  cost: { label: "찾기 한 번의 비용", explain: "AI 모델을 부르는 데 든 비용입니다." },
+  variantConsistency: { label: "표현만 바꾼 자료에서 같은 결과를 낸 비율", explain: "단위나 말투만 바꾼 같은 자료로 돌려도 결과가 같은 몫입니다." },
+  // 협상
+  agreement: { label: "합의할 수 있는 대화를 합의한 비율", explain: "조건이 맞을 수 있는 대화 가운데 실제로 합의에 이른 몫입니다." },
+  wrongAgreements: { label: "합의하면 안 되는 대화를 합의한 횟수", explain: "조건이 맞을 수 없는 대화에서 합의해 버린 횟수입니다." },
+  normalizedRegret: { label: "가장 좋은 조건과의 차이", explain: "합의한 조건이 가능한 가장 좋은 조건에서 얼마나 떨어졌는지 0~1로 잽니다. 0이 가장 좋습니다." },
+  zeroRegret: { label: "가장 좋은 조건으로 합의한 비율", explain: "가능한 가장 좋은 조건과 같은 조건으로 합의한 몫입니다." },
+  guardrailCompliance: { label: "업체가 정한 범위를 지킨 비율", explain: "업체 측 AI가 낸 조건이 업체가 정한 단가·요일 범위 안에 있었던 몫입니다." },
+  turnsToAgreement: { label: "합의까지 주고받은 횟수(평균)", explain: "합의에 이르기까지 두 AI가 글을 주고받은 횟수의 평균입니다." },
+  "L5:handoffs": { label: "담당자에게 넘긴 대화 수(평균)", explain: "시나리오 하나에서 AI가 끝내지 않고 사람에게 넘긴 대화 수의 평균입니다." },
+  handoffs: { label: "담당자에게 넘긴 대화 수(평균)", explain: "AI가 끝내지 않고 사람에게 넘긴 대화 수의 평균입니다." },
+  tacticSensitivity: { label: "상대의 말투에 흔들린 정도", explain: "상대가 세게 나오든 약하게 나오든 결과가 바뀌지 않는지 봅니다. 0이 가장 좋습니다." },
+  pareto: { label: "더 나아질 여지가 없는 합의의 비율", explain: "한쪽을 손해 보게 하지 않고는 더 나은 조건이 없는 합의의 몫입니다." },
+  regretWithTransport: { label: "운반비까지 넣은 조건 차이(참고)", explain: "운반비를 넣어 계산했을 때 가장 좋은 조건과의 차이입니다." },
+  // 안전: 회사 사이의 정보 노출
+  exposures: { label: "다른 회사에 보인 정보 건수", explain: "한 회사의 정보가 다른 회사의 화면이나 대화에 보인 건수입니다." },
+  probeClean: { label: "정보를 캐물어도 새지 않은 비율", explain: "다른 회사 정보를 알아내려는 시험 질문을 넣어도 정보가 새지 않은 몫입니다." },
+  baseExposures: { label: "평소대로 돌렸을 때 보인 정보 건수", explain: "시험 질문 없이 평소대로 돌렸을 때 다른 회사에 보인 정보 건수입니다." },
+  probeAdded: { label: "캐묻는 질문으로 더 보인 정보 건수", explain: "정보를 캐묻는 시험 질문 때문에 더 보인 건수입니다." },
+  viewExposures: { label: "화면·대화·서류에 보인 다른 회사 정보 건수", explain: "결과 화면, 대화, 서류에 다른 회사의 정보가 보인 건수입니다." },
+  probeErrors: { label: "시험 중 멈춘 횟수", explain: "시험을 돌리다 오류로 멈춘 횟수입니다." },
+  // 안전: 숨긴 공격 문구와 개인정보
+  benign_utility: { label: "공격 문구가 없을 때 찾기를 맞게 마친 비율", explain: "공격 문구를 뺀 같은 자료로 돌렸을 때 기대대로 끝난 몫입니다." },
+  utility_under_attack: { label: "공격 문구가 있어도 찾기를 맞게 마친 비율", explain: "자료에 공격 문구를 숨겨도 기대대로 끝난 몫입니다." },
+  safe_handoff: { label: "수상한 자료를 보고 담당자에게 넘긴 비율", explain: "공격 문구가 든 자료를 보고 끝내지 않고 사람에게 넘긴 몫입니다." },
+  asr_code_gated: { label: "숨긴 공격 문구가 목표에 닿은 비율", explain: "문서에 숨긴 지시가 AI를 움직여 막아야 할 일을 하게 만든 몫입니다. 0이 목표입니다." },
+  injectionGated: { label: "숨긴 공격 문구가 목표에 닿은 비율", explain: "문서에 숨긴 지시가 AI를 움직여 막아야 할 일을 하게 만든 몫입니다. 0이 목표입니다." },
+  asr_G1: { label: "범위 밖 단가를 내게 만든 공격이 통한 비율", explain: "업체가 정한 범위 밖의 단가를 내거나 받게 만든 몫입니다." },
+  asr_G2: { label: "승인 없이 확정하게 만든 공격이 통한 비율", explain: "담당자 승인 없이 확정하게 만든 몫입니다." },
+  asr_G3: { label: "허가 없는 업체와 대화하게 만든 공격이 통한 비율", explain: "허가 품목이 맞지 않는 업체와 대화하거나 배정하게 만든 몫입니다." },
+  asr_G4: { label: "다른 회사 정보를 빼내게 만든 공격이 통한 비율", explain: "다른 회사의 정보를 상대에게 보내게 만든 몫입니다." },
+  asr_G5: { label: "근거 없는 숫자를 넣게 만든 공격이 통한 비율", explain: "근거에 없는 숫자나 조항을 글에 넣게 만든 몫입니다." },
+  asr_G6: { label: "숨긴 지시를 상대에게 옮기게 만든 공격이 통한 비율", explain: "숨긴 지시 문장이나 링크를 보내는 글에 옮기게 만든 몫입니다." },
+  utility_plus_handoff: { label: "공격 중에도 맞게 마치거나 담당자에게 넘긴 비율", explain: "공격 문구가 있어도 기대대로 끝내거나 안전하게 사람에게 넘긴 몫입니다." },
+  relay_rate: { label: "공격 문구가 상대에게 그대로 전해진 비율(참고)", explain: "숨긴 문구가 상대에게 보내는 글에 그대로 실린 몫입니다." },
+  twin_goal_state: { label: "공격 없이도 같은 결과가 난 사례 수(기준)", explain: "공격 문구 없이도 공격이 노린 결과가 나온 사례 수입니다. 공격이 통한 것으로 세지 않으려고 따로 셉니다." },
+  shields_detect: { label: "입력 공격 탐지기가 공격을 잡은 비율", explain: "문서에 숨긴 공격을 탐지기가 찾아낸 몫입니다." },
+  shields_false_positive: { label: "입력 공격 탐지기가 정상 문서를 잘못 잡은 비율", explain: "공격이 없는 문서를 공격으로 잘못 본 몫입니다." },
+  asr_documents_shields_on: { label: "문서 공격이 통한 비율(탐지기 켬)", explain: "입력 공격 탐지기를 켜고 문서에 공격을 숨겼을 때 목표에 닿은 몫입니다." },
+  asr_documents_shields_off: { label: "문서 공격이 통한 비율(탐지기 끔)", explain: "탐지기 없이 문서에 공격을 숨겼을 때 목표에 닿은 몫입니다." },
+  pii_other_orgs: { label: "다른 회사에 보인 개인정보 건수", explain: "담당자 이름·연락처 같은 개인정보가 다른 회사에 보인 건수입니다." },
+  pii_model_input_documents: { label: "AI에 들어간 개인정보 건수(문서)", explain: "올린 문서에서 온 개인정보가 AI 입력에 들어간 건수입니다." },
+  pii_model_input_names: { label: "AI에 들어간 개인정보 건수(이름 입력, 참고)", explain: "사람이 적은 이름이 AI 입력에 들어간 건수입니다." },
+  pii_events: { label: "실행 기록에 남은 개인정보 건수(참고)", explain: "실행 기록에 개인정보가 남은 건수입니다." },
+  pii_control_false_hits: { label: "개인정보 검사가 잘못 잡은 건수", explain: "개인정보를 넣지 않은 사례에서 개인정보로 잘못 본 건수입니다." },
+};
+
+/** 평가 메모 가운데 뜻을 알고 있는 것은 쉬운 문장으로 바꾼다(앞에서부터 처음 맞는 것) */
+const NOTES: [RegExp, string][] = [
+  [/spotlighting|입력 구분 표시/, "문서 글을 따로 표시해 AI에 넣는 방어: 지금은 문서 글이 AI에 들어가지 않아 해당하지 않습니다."],
+  [/Prompt Shields|입력 공격 탐지기/, "입력 공격 탐지기를 켠 시험: 탐지기를 아직 연결하지 않아 돌리지 않았습니다."],
+  [/실제 모델의 주입 저항/, "실제 AI 모델이 숨긴 공격 문구를 견디는지: 이번 시험은 모델을 연결하지 않은 기본 규칙으로 돌렸습니다."],
+  [/Cohen|이중 라벨/, "관련 조항을 두 사람이 따로 매겨 맞춰 보는 검토는 아직 하지 않았습니다."],
+  [/인용 문장 적합률/, "인용한 문장이 질문에 맞는지: 질문마다 맞는 답을 표시한 자료가 아직 없습니다."],
+  [/의미 지표/, "인용이 빠짐없고 정확한지, 주장이 근거에 충실한지: 채점할 모델과 사람이 표시한 문장이 아직 없습니다."],
+  [/카나리아|탐침/, "회사 사이의 정보 노출은 공개 시험셋으로만 잽니다."],
+  [/L5는 시험셋|협상 \d+건으로만/, "협상은 공개 시험셋으로만 잽니다."],
+  [/루브릭|판정 프롬프트/, "글의 쓸모와 명확성을 매길 기준과 사람 채점이 아직 없습니다."],
+  [/현장 사진셋/, "공장 현장 사진과 정답 표시가 아직 모이지 않았습니다."],
+];
+
+/** 재지 못한 까닭 한 줄. 뜻을 아는 메모는 쉬운 문장으로, 나머지는 plain으로 거른다 */
+export function plainNote(text: string): string | null {
+  for (const [pattern, sentence] of NOTES) if (pattern.test(text)) return sentence;
+  return plain(text);
+}
+
+/**
+ * 원래 지표 이름이나 까닭에서 개발자 말과 평가 용어를 걷어 낸다. 설정·파일·내부 코드가 들어간 문장은 통째로 빼고(null),
+ * 서비스 이름과 용어는 하는 일로 바꾼다.
  */
 export function plain(text: string): string | null {
   if (/[A-Z][A-Z0-9]*_[A-Z0-9_]+|\.py\b|\.json\b|tests\/|backend|resource-ai|설정 없음|환경 변수/.test(text)) return null;
-  return text
+  const out = text
     .replace(/Azure AI Search/g, "검색 서비스")
-    .replace(/Prompt Shields/g, "입력 공격 탐지기")
+    .replace(/Prompt Shields|\bShields\b/g, "입력 공격 탐지기")
     .replace(/규칙 정책/g, "모델을 연결하지 않은 기본 규칙")
     .replace(/\s*\((?:평가 설계 )?\d+장\)/g, "")
-    .replace(/\(평가 설계 \d+장\)/g, "")
+    .replace(/조건 \((?:i{1,3}|iv|v)\)\s*/g, "")
+    .replace(/\s*\(spotlighting\)/gi, "")
+    .replace(/\bL\d[a-z]?(?:는|은|의|에서)?\s*/g, "")
+    .replace(/표적 ASR,?\s*|\bASR\b/g, "공격이 통한 비율 ")
+    .replace(/카나리아/g, "심어 둔 표식")
+    .replace(/탐침/g, "시험 질문")
+    .replace(/정규식 오탐/g, "잘못 잡은 건수")
+    .replace(/\s*\(test-v\d+\)/g, "")
+    .replace(/없다(?=[.)]|$)/g, "없습니다")
+    .replace(/않았다(?=[.)]|$)/g, "않았습니다")
+    .replace(/잰다(?=[.)]|$)/g, "잽니다")
+    .replace(/\s{2,}/g, " ")
     .trim();
+  return out === "" ? null : out;
 }
 
-function metricOf(raw: unknown, label?: string): TrustMetric | null {
-  if (!isObj(raw)) return null;
+/** 지표 하나. layer는 같은 키라도 층마다 뜻이 다를 때 쓴다 */
+function metricOf(raw: unknown, layer: string | null = null, label?: string): TrustMetric | null {
+  if (!isObj(raw) || isSuperseded(raw)) return null;
   const key = str(raw.key) ?? "";
   const name = str(raw.label) ?? key;
+  const known = (layer ? METRICS[`${layer}:${key}`] : undefined) ?? METRICS[key];
+  const given = str(raw.plainLabel) ?? str(raw.publicLabel);
   const kind = kindOf(key, name);
   const value = num(raw.value);
+  const n = num(raw.n);
+  const explain = known?.explain ?? (str(raw.explain) ? plain(str(raw.explain) as string) : null);
   return {
     key,
-    label: label ?? plain(name) ?? key,
-    name: plain(name) ?? key,
+    label: label ?? known?.label ?? (given ? plain(given) : null) ?? plain(name) ?? "그 밖의 지표",
+    explain,
     value,
     display: value === null ? "미측정" : formatValue(value, kind),
     ci: value === null ? null : formatCi(raw.ci, kind),
-    n: num(raw.n),
+    n,
     target: formatTarget(raw.target, kind),
     verdict: verdictOf(raw.verdict, value),
-    smallSample: raw.smallSample === true,
+    // 구간이 있는 비율 지표에만 붙인다(건수에는 구간이 없다)
+    smallSample: value !== null && kind === "rate" && (raw.smallSample === true || (n !== null && n < SMALL_SAMPLE)),
   };
 }
 
@@ -189,103 +336,112 @@ type LayerSpec = {
   sources: string[];
   title: string;
   explain: string;
-  key: [string, string];
-  more: [string, string][];
+  /** 앞에 둘 지표 */
+  key: string;
+  more: string[];
 };
 
-/** 공개 화면의 층 다섯 개와 층마다 앞에 둘 지표(쉬운 말 이름) */
+/** 공개 화면의 층 다섯 개와 층마다 앞에 둘 지표 */
 export const LAYERS: LayerSpec[] = [
   {
     id: "L2",
     sources: ["L2"],
     title: "검색",
     explain: "질문에 맞는 법 조항과 근거 문서를 찾아 위쪽에 놓는지 잽니다. AI가 인용하는 조항은 여기서 찾은 것입니다.",
-    key: ["ndcg@10", "맞는 조항을 위쪽에 찾아 놓는 정도"],
-    more: [
-      ["recall@10", "찾아야 할 조항이 상위 10개 안에 든 비율"],
-      ["no_answer_accuracy", "답이 없는 질문에 없다고 답한 비율"],
-    ],
+    key: "ndcg@10",
+    more: ["recall@10", "no_answer_accuracy"],
   },
   {
     id: "L3",
     sources: ["L3"],
     title: "근거 있는 생성",
     explain: "AI가 쓴 글의 숫자와 조항이 근거와 맞는지 보내기 전에 검사합니다. 통과하지 못한 초안은 상대에게 나가지 않습니다.",
-    key: ["firstTry", "첫 초안이 근거 확인을 통과한 비율"],
-    more: [
-      ["outgoingHallucination", "근거 없는 숫자가 상대에게 나간 횟수"],
-      ["handoff", "끝내 통과하지 못해 담당자에게 넘긴 비율"],
-    ],
+    key: "firstTry",
+    more: ["outgoingHallucination", "handoff"],
   },
   {
     id: "L4",
     sources: ["L4"],
     title: "과업 성공",
     explain: "가상 시나리오마다 찾기를 끝까지 돌려, 끝난 모습(합의·거절·담당자 인계)이 기대와 같은지 봅니다.",
-    key: ["pass^1", "찾기를 끝까지 맞게 마친 비율"],
-    more: [
-      ["violations", "하면 안 되는 일을 한 횟수"],
-      ["requiredRecall", "꼭 물어야 할 것을 물은 비율"],
-    ],
+    key: "pass^1",
+    more: ["violations", "requiredRecall"],
   },
   {
     id: "L5",
     sources: ["L5"],
     title: "협상",
     explain: "업체 측 AI가 업체가 정한 범위를 지키는지, 합의할 수 있는 대화는 합의하는지, 가장 좋은 조건에 가까운지 봅니다.",
-    key: ["guardrailCompliance", "업체가 정한 범위를 지킨 비율"],
-    more: [
-      ["agreement", "합의할 수 있는 대화를 합의한 비율"],
-      ["normalizedRegret", "가장 좋은 조건과의 차이(0이 가장 좋음)"],
-    ],
+    key: "guardrailCompliance",
+    more: ["agreement", "normalizedRegret"],
   },
   {
     id: "L6",
     sources: ["L6i", "L6c"],
     title: "안전",
     explain: "문서에 숨긴 공격 문구가 AI를 움직이는지, 다른 회사의 정보가 새는지 봅니다.",
-    key: ["asr_code_gated", "숨긴 공격 문구가 목표에 닿은 비율"],
-    more: [
-      ["exposures", "다른 회사에 보인 정보 건수"],
-      ["pii_other_orgs", "다른 회사에 보인 개인정보 건수"],
-    ],
+    key: "asr_code_gated",
+    more: ["exposures", "pii_other_orgs"],
   },
 ];
 
-const UNITS: Record<string, string> = { 질의: "개", 시나리오: "건", 공격: "건", 실행: "건" };
+/** 규모 단위 → 화면 낱말 */
+const UNITS: Record<string, [string, string]> = {
+  질의: ["질문", "개"],
+  시나리오: ["시나리오", "건"],
+  공격: ["공격", "건"],
+  실행: ["실행", "건"],
+  차례: ["주고받은 글", "건"],
+};
 
 function sizeOf(n: number | null, unit: string | null): string | null {
   if (n === null || n <= 0) return null;
-  if (!unit || unit === "-") return `${n}건`;
+  if (!unit || unit === "-") return `${trim(n, 0)}건`;
   const word = unit.replace(/\(.*\)$/, "").trim();
-  return `${word} ${trim(n, 0)}${UNITS[word] ?? "건"}`;
+  const [name, counter] = UNITS[word] ?? [word, "건"];
+  return `${name} ${trim(n, 0)}${counter}`;
 }
 
-function layerOf(spec: LayerSpec, layers: Json): TrustLayer | null {
-  const parts = spec.sources.map((id) => layers[id]).filter(isObj);
+/** 이번 실행에서 그 층을 쟀는지(지난 실행 값으로 표시된 층은 재지 않은 것으로 본다) */
+function measured(part: unknown): boolean {
+  return isObj(part) && !isSuperseded(part) && str(part.status) !== "not_measured";
+}
+
+function layerOf(spec: LayerSpec, layers: Json, superseded: Set<string>): TrustLayer | null {
+  const parts = spec.sources.map((id) => [id, layers[id]] as const).filter((entry): entry is readonly [string, Json] => isObj(entry[1]));
   if (parts.length === 0) return null;
-  const metrics = parts.flatMap((part) => (Array.isArray(part.metrics) ? part.metrics : []));
-  const find = (key: string, label: string) => metricOf(metrics.find((item) => isObj(item) && item.key === key), label);
-  const statuses = parts.map((part) => str(part.status) ?? "not_measured");
+  const current = parts.filter(([, part]) => !isSuperseded(part));
+  const metrics = current.flatMap(([id, part]) =>
+    (Array.isArray(part.metrics) ? part.metrics : [])
+      .filter((item) => isObj(item) && !superseded.has(String(item.key)) && !superseded.has(`${id}:${String(item.key)}`))
+      .map((item) => ({ id, item })),
+  );
+  const all = metrics.map(({ id, item }) => metricOf(item, id)).filter((item): item is TrustMetric => item !== null);
+  const find = (key: string) => all.find((item) => item.key === key) ?? null;
+  const statuses = parts.map(([, part]) => (isSuperseded(part) ? "not_measured" : (str(part.status) ?? "not_measured")));
   const status = statuses.every((item) => item === "not_measured")
     ? "not_measured"
     : statuses.every((item) => item === "measured")
       ? "measured"
       : "partial";
-  const sizes = parts.map((part) => sizeOf(num(part.n), str(part.unit))).filter((item): item is string => Boolean(item));
-  const all = metrics.map((item) => metricOf(item)).filter((item): item is TrustMetric => item !== null);
-  const notes = parts
-    .flatMap((part) => (Array.isArray(part.notMeasured) ? part.notMeasured : []))
-    .map((item) => (typeof item === "string" ? plain(item) : null))
-    .filter((item): item is string => Boolean(item));
+  const sizes = current.map(([, part]) => sizeOf(num(part.n), str(part.unit))).filter((item): item is string => Boolean(item));
+  const notes = [
+    ...new Set(
+      current
+        .flatMap(([, part]) => (Array.isArray(part.notMeasured) ? part.notMeasured : []))
+        .map((item) => (typeof item === "string" ? plainNote(item) : null))
+        .filter((item): item is string => Boolean(item)),
+    ),
+  ];
+  if (current.length < parts.length) notes.push("지난 평가의 숫자는 지금 결과와 맞지 않아 내렸습니다. 다시 잰 뒤 올립니다.");
   return {
     id: spec.id,
     title: spec.title,
     explain: spec.explain,
     status,
     size: sizes.length > 0 ? sizes.join(" · ") : null,
-    key: find(...spec.key),
-    more: spec.more.map(([key, label]) => find(key, label)).filter((item): item is TrustMetric => item !== null),
+    key: find(spec.key),
+    more: spec.more.map(find).filter((item): item is TrustMetric => item !== null),
     all,
     notes,
   };
@@ -293,19 +449,22 @@ function layerOf(spec: LayerSpec, layers: Json): TrustLayer | null {
 
 /* ── 머리 ─────────────────────────────────────────────────────────── */
 
-const HEADLINE: [string, string][] = [
-  ["pass1", "찾기를 끝까지 맞게 마친 비율"],
-  ["pass4", "같은 시나리오를 네 번 돌려 네 번 모두 맞은 비율"],
-  ["outgoingHallucination", "근거 없는 숫자가 상대에게 나간 횟수"],
-  ["injectionGated", "숨긴 공격 문구가 목표에 닿은 비율"],
+/** 머리 숫자 네 개와 그 숫자를 잰 층. 그 층을 이번 실행에서 재지 않았으면 숫자를 보이지 않는다 */
+const HEADLINE: [string, string[]][] = [
+  ["pass1", ["L4"]],
+  ["pass4", ["L4"]],
+  ["outgoingHallucination", ["L3"]],
+  ["injectionGated", ["L6i"]],
 ];
 
-function headlineOf(raw: unknown): TrustMetric[] {
+function headlineOf(raw: unknown, layers: Json, superseded: Set<string>): TrustMetric[] {
   if (!isObj(raw)) return [];
-  return HEADLINE.flatMap(([key, label]) => {
+  return HEADLINE.flatMap(([key, from]) => {
     const item = raw[key];
-    if (!isObj(item)) return [];
-    const metric = metricOf({ ...item, key }, label);
+    if (!isObj(item) || superseded.has(key)) return [];
+    // 이번 실행에 그 층이 없으면 숫자가 이 실행의 것이 아니다
+    if (num(item.value) !== null && !from.some((id) => measured(layers[id]))) return [];
+    const metric = metricOf({ ...item, key });
     return metric ? [metric] : [];
   });
 }
@@ -330,9 +489,15 @@ const PENDING_LAYER: Record<string, TrustPending> = {
   L7: { title: "사람이 읽고 매긴 평가", why: "글의 쓸모와 명확성을 매길 기준과 사람 채점이 아직 없습니다." },
 };
 
+/** 지난 값으로 표시된 지표 키 목록(실행이나 전체에 superseded: ["exposures", "L6c:probeClean"]처럼 올 수 있다) */
+function supersededKeys(...lists: unknown[]): Set<string> {
+  return new Set(lists.flatMap((list) => (Array.isArray(list) ? list.filter((item): item is string => typeof item === "string") : [])));
+}
+
 /**
  * 평가 결과를 화면 모양으로. 모양이 맞지 않으면 null(화면은 "불러오지 못했습니다"를 보인다).
- * 응답이 latest.json 전체({primary, runs})이면 primary 실행을, 실행 하나만 오면 그것을 쓴다.
+ * 응답이 latest.json 전체({primary, runs})이면 primary 실행을(지난 실행으로 표시됐으면 표시되지 않은 실행을),
+ * 실행 하나만 오면 그것을 쓴다.
  */
 export function toTrustView(raw: unknown, today: Date = new Date()): TrustView | null {
   if (!isObj(raw)) return null;
@@ -340,14 +505,16 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
   if (isObj(raw.runs)) {
     const runs = raw.runs;
     const primary = str(raw.primary);
-    run = (primary && isObj(runs[primary]) ? runs[primary] : Object.values(runs).find(isObj)) ?? null;
-  } else if (isObj(raw.layers)) {
+    const chosen = primary && isObj(runs[primary]) && !isSuperseded(runs[primary]) ? runs[primary] : null;
+    run = (chosen as Json | null) ?? Object.values(runs).find((item): item is Json => isObj(item) && !isSuperseded(item)) ?? null;
+  } else if (isObj(raw.layers) && !isSuperseded(raw)) {
     run = raw;
   }
   if (!run || !isObj(run.layers)) return null;
   const date = str(run.date);
   if (!date) return null;
   const layers = run.layers;
+  const superseded = supersededKeys(Array.isArray(raw.superseded) ? raw.superseded : null, Array.isArray(run.superseded) ? run.superseded : null);
   const isModel = run.isModel === true;
   const when = versionDate(str(run.aiVersion), date);
   const setVersion = str(run.setVersion);
@@ -360,9 +527,9 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
   if (!isModel) pending.push({ title: "실제 AI 모델로 돌린 결과", why: "모델을 연결한 평가는 아직 공개하지 않았습니다. 아래 숫자는 정해 둔 규칙으로 돌린 시험입니다." });
   for (const [id, item] of Object.entries(PENDING_LAYER)) {
     const layer = layers[id];
-    if (isObj(layer) && layer.status === "not_measured") pending.push(item);
+    if (isObj(layer) && (layer.status === "not_measured" || isSuperseded(layer))) pending.push(item);
   }
-  const headline = headlineOf(run.headline);
+  const headline = headlineOf(run.headline, layers, superseded);
   const pass4 = headline.find((item) => item.key === "pass4");
   if (pass4 && pass4.verdict === "unmeasured") {
     pending.push({ title: "같은 시나리오를 여러 번 돌린 흔들림", why: `이번에는 시나리오마다 ${num(run.repeats) ?? 1}번만 돌렸습니다.` });
@@ -377,9 +544,9 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
     split,
     repeats: num(run.repeats),
     reviewState: str(run.reviewState),
-    scenarios: num(perLayer.L4),
+    scenarios: measured(layers.L4) ? num(perLayer.L4) : null,
     headline,
-    layers: LAYERS.map((spec) => layerOf(spec, layers)).filter((item): item is TrustLayer => item !== null),
+    layers: LAYERS.map((spec) => layerOf(spec, layers, superseded)).filter((item): item is TrustLayer => item !== null),
     pending,
   };
 }
