@@ -19,7 +19,7 @@ export function BlockedNotice({
 }: {
   codes: string[];
   reason: string | null;
-  /** 배출 기업 관점이고 백엔드에 연결돼 있을 때만 다시 실행할 수 있다 */
+  /** 배출 기업이고 서버에 보낼 수 있을 때(체험하기 아님)만 다시 실행할 수 있다 */
   canRerun: boolean;
   busy: boolean;
   onRerun: () => void;
@@ -42,7 +42,7 @@ export function BlockedNotice({
       <ul className="mt-1 space-y-0.5 text-[13px]">
         {codes.map((code) => (
           <li key={code}>
-            {blockCodeLabel(code)} <span className="tabular-nums text-[12px]">{code}</span>
+            {blockCodeLabel(code)}
           </li>
         ))}
       </ul>
@@ -61,8 +61,8 @@ export function BlockedNotice({
         </div>
       ) : (
         <p className="mt-1 text-[13px]">
-          앞서 한 승인은 양쪽 모두 지워졌습니다. 자료를 되돌리면 승인이 풀리고, 일부러 고친 것이라면 진단·연결 화면에서
-          고친 자료로 새 진단을 시작하세요.
+          앞서 한 승인은 양쪽 모두 지워졌습니다. 자료를 되돌리면 승인이 풀리고, 일부러 고친 것이라면 찾기 화면의 &ldquo;새로
+          찾기&rdquo;로 고친 자료로 다시 찾아 주세요.
         </p>
       )}
     </div>

@@ -129,8 +129,8 @@ function CorrectionForm({
         </Button>
       </div>
       <p className="mt-2 text-[13px] text-muted">
-        고친 값은 사람 확인 근거로 기록되어 재학습 데이터가 됩니다. 이 진단의 흐름 값과 계산은 바뀌지 않습니다. 값을
-        바꿔 다시 진단하려면 자료 올리기에서 고치세요.
+        고친 값은 사람 확인 근거로 기록되어 AI 판정을 고치는 데 쓰입니다. 이 찾기의 폐기물 값과 계산은 바뀌지 않습니다. 값을
+        바꿔 다시 찾으려면 자료 화면에서 고친 뒤 새로 찾아 주세요.
       </p>
       {state.error ? (
         <p role="alert" className="mt-2 text-sm text-loss">
@@ -301,7 +301,7 @@ export function StreamTable({
                             {item.note ? <span className="text-muted">{item.note}</span> : null}
                             <span className="tabular-nums text-[12px] text-muted">{item.recordedOn}</span>
                             <span className="text-[12px] text-muted">
-                              {item.target === "detector" ? "탐지 모델 재학습 후보" : "등급 모델 재학습 후보"} · 기록만
+                              {item.target === "detector" ? "사진 판정을 고치는 데 쓰임" : "등급 판정을 고치는 데 쓰임"} · 기록만
                               남고 위 값은 그대로입니다
                             </span>
                           </li>
