@@ -79,7 +79,7 @@ AUTH_SECRET="$(openssl rand -base64 33)" AUTH_DEV_LOGIN=true AUTH_TRUST_HOST=tru
 
 ### 배포 이미지
 
-`next.config.ts`의 `output: "standalone"`과 `Dockerfile`로 이미지를 만든다. `NEXT_PUBLIC_API_BASE`는 빌드 인자로 넘긴다. standalone 출력과 `server.js` 기동까지는 로컬에서 확인했고, docker 이미지 빌드는 아직 해 보지 않았다(파일 머리의 "미실행" 참고).
+`next.config.ts`의 `output: "standalone"`과 `Dockerfile`로 이미지를 만든다. `NEXT_PUBLIC_API_BASE`는 빌드 인자로 넘긴다. 백엔드 주소를 직접 적으면 브라우저가 백엔드를 바로 부르고(시연용, `X-Org-Id`만 간다), `/api/v3`로 적으면 프런트 서버의 통로(`src/app/api/v3`)를 거친다. 통로는 로그인한 사용자만 지나가고, 실행 환경의 `V3_BACKEND_URL`로 넘기며, `V3_ORG_TOKENS`가 있으면 조직 토큰을 서버가 붙인다(백엔드 `V3_AUTH=token`). 계정과 조직을 묶는 일은 아직 없다: 로그인한 사람은 표에 있는 어느 조직으로든 볼 수 있다(시연 회사 고르기). standalone 출력과 `server.js` 기동까지는 로컬에서 확인했고, docker 이미지 빌드는 아직 해 보지 않았다(파일 머리의 "미실행" 참고).
 
 ```bash
 docker build --build-arg NEXT_PUBLIC_API_BASE=https://<백엔드 주소>/api/v3 -t resource-ai-frontend .
@@ -91,14 +91,19 @@ docker run -p 3000:3000 -e AUTH_SECRET=... -e AUTH_URL=https://<프런트 주소
 ```bash
 npm run lint
 npm run build
-node --test tests/v3-view.test.ts   # v3 진단 뷰가 화면 타입(스키마)에 맞는지
+node --test tests/v3-view.test.ts   # 진단 뷰가 화면 타입(스키마)에 맞는지
+BACKEND_DIR=../backend npm run test:e2e   # 브라우저로 끝까지: 찾기 → 결과 → 양쪽 승인 → 서류, 업체에 안 보여야 할 값
 ```
+
+E2E(`e2e/find.spec.ts`, Playwright)는 백엔드의 표준 라이브러리 서버(`app.v3.devserver`, 규칙 정책, 가상 시연 데이터)와 이 프런트를 띄워 돈다. 모델과 Azure는 부르지 않는다. 처음 한 번 `npx playwright install chromium`이 필요하다. 이미 떠 있는 서버로 돌리려면 `E2E_BASE_URL`과 `E2E_API`를 준다.
+
+CI(`.github/workflows/ci.yml`)의 E2E 작업은 backend 저장소를 받아야 해서 저장소 비밀 `BACKEND_READ_TOKEN`(backend 저장소 Contents 읽기 전용 토큰)이 있을 때만 돈다. 없으면 건너뛰고 알림만 남긴다. 이 작업은 아직 GitHub에서 돌려 보지 않았다(작성한 환경에서는 브라우저를 띄울 수 없어, 같은 순서를 손으로 따라 해 확인했다).
 
 ## 인증
 
 - [Auth.js v5](https://authjs.dev) + Microsoft Entra External ID. `AUTH_MICROSOFT_ENTRA_ID_*` 세 값을 넣으면 "Microsoft 계정으로 로그인" 버튼이 켜진다. 가입 버튼은 `prompt=create`로 Entra 가입 화면을 연다.
 - Entra 앱 등록의 리디렉션 URI: `{AUTH_URL}/api/auth/callback/microsoft-entra-id`
-- 세션은 암호화된 JWT 쿠키다. `src/proxy.ts`가 보호 경로(`/upload`, `/session`, `/complex`, `/dashboard`, `/onboarding`)를 쿠키로 먼저 거르고, 실제 확인은 `src/lib/server/session.ts`에서 한다.
+- 세션은 암호화된 JWT 쿠키다. `src/proxy.ts`가 보호 경로(`/app`, `/settings`, `/onboarding`)를 쿠키로 먼저 거르고, 실제 확인은 `src/lib/server/session.ts`에서 한다.
 - Cache Components가 켜져 있으므로 세션을 읽는 컴포넌트는 반드시 `<Suspense>` 안에 둔다. 밖에 두면 빌드가 실패한다.
 - 운영 배포에서는 `AUTH_DEV_LOGIN=false`, `AUTH_URL=https://실제도메인`으로 둔다.
 
@@ -119,15 +124,15 @@ node --test tests/v3-view.test.ts   # v3 진단 뷰가 화면 타입(스키마)�
 | 경로 | 화면 |
 |---|---|
 | `/` · `/terms` · `/privacy` | 소개, 이용약관, 개인정보처리방침 (초안, 법률 검토 전) |
-| `/login` · `/signup` · `/onboarding` | 로그인, 회원가입, 회사·단지·배출 품목 등록 |
-| `/upload` | 사진·영상·PDF 업로드, 샘플 사진으로 체험 |
-| `/session/[id]/analyzing` → `classify` → `feasibility` → `regulation` → `matching` → `cost-carbon` → `proposal` | 판정 흐름 6단계 (박스 수정, 되묻기, 손익 전환, 규정 영수증, 묶음 3D 지도, 경로 비교, 서류·승인·실제 결과) |
-| `/session` · `/dashboard` | 세션 이력, 절감 비용·탄소·예측 정확도 |
-| `/complex` · `/complex/[id]` | 산업단지 목록, 건물 3D 지도와 입주 기업 |
-| `/knowledge` | 현장 지식 카드 (암묵지: 조건 → 판단 → 근거, 동의, 채택) |
-| `/vendor` | 처리업체 시점: 받은 요청, 단지 묶음, 실제 매입 결과 기록 |
-| `/admin/learning` | 라벨 검수 → 데이터셋 → 재학습 → 모델 비교 → 배포 게이트 |
+| `/login` · `/signup` · `/onboarding` | 로그인, 회원가입, 회사 등록(이름, 하는 일, 산업단지) |
+| `/app` | 찾기: 폐기물 목록 → 질문 → 결과(받는 곳, 조건, 한 달 차이, 순비용 내역, 재투입 후보) → 승인. 업체로 보면 받은 문의 |
+| `/app/materials` | 자료: 현행 처리, 사진·영상, 측정값 CSV, 비용(전처리 작업 시간, 재투입 값), 문서. 업체는 매입 기준과 허가 품목 |
+| `/app/approval` | 승인·서류: 양쪽 승인, 요청서와 이행 계획서, 업체의 실제 결과 기록 |
+| `/app/admin` | 운영(운영 조직만): 연결 상태, 기준값, 사례 시험, 시연 데이터 되돌리기 |
 | `/settings` · `/settings/members` · `/settings/account` | 회사 정보, 멤버·역할, 데이터 내보내기, 탈퇴 |
+| `/passport/[id]` · `/passport-label/[id]` | 자원 여권과 라벨(이전 버전 화면) |
+
+예전 주소(`/v3`, `/upload`, `/session`, `/dashboard`, `/vendor`, `/complex`, `/knowledge`, `/neighbor`, `/c`, `/admin`)는 `/app`으로 보낸다(`next.config.ts`). 그 화면들이 쓰던 부품(`src/components/{session,vendor,dashboard,complex,knowledge,learning,...}`)은 아직 저장소에 남아 있고 어디에서도 불러 쓰지 않는다.
 
 ## 디자인
 

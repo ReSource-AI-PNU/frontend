@@ -25,10 +25,13 @@ function orgTokens(): Record<string, string> | null | "invalid" {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "invalid";
-    return Object.fromEntries(Object.entries(parsed).filter(([, value]) => typeof value === "string" && value)) as Record<
-      string,
-      string
-    >;
+    // 값은 토큰 하나이거나 목록이다(백엔드는 바꾸는 동안 옛 토큰과 새 토큰을 함께 받는다). 목록이면 첫 번째를 쓴다
+    const table: Record<string, string> = {};
+    for (const [orgId, value] of Object.entries(parsed)) {
+      const token = Array.isArray(value) ? value.find((item) => typeof item === "string" && item) : value;
+      if (typeof token === "string" && token) table[orgId] = token;
+    }
+    return table;
   } catch {
     return "invalid";
   }
