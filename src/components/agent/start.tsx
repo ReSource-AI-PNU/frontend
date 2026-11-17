@@ -32,7 +32,7 @@ function StreamForm({
   onSave: (draft: Draft) => void;
   onCancel?: () => void;
   busy: boolean;
-  /** 처음 등록하는 폐기물이면 단추를 먹색으로 크게 둔다 */
+  /** 처음 등록하는 폐기물이면 단추를 넓게 두고 "폐기물 등록"이라고 쓴다 */
   first: boolean;
 }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -103,7 +103,8 @@ function StreamForm({
             취소
           </Button>
         ) : null}
-        <Button type="submit" variant={first ? "primary" : "secondary"} disabled={!valid || busy} className={first ? "w-full sm:w-auto" : ""}>
+        {/* 폼이 열려 있는 동안은 이것이 이 화면의 주 행동이다(먹색 하나). 다 적기 전에는 꺼진 모양으로 보인다 */}
+        <Button type="submit" variant="primary" disabled={!valid || busy} className={first ? "w-full sm:w-auto" : ""}>
           {busy ? "등록하는 중" : first ? "폐기물 등록" : "추가"}
         </Button>
       </div>
@@ -216,13 +217,13 @@ export function Start({
               <button
                 type="button"
                 onClick={() => setAdding(true)}
-                className="-ml-2 flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink"
+                className="-ml-2 flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink"
               >
                 <PlusIcon />
                 폐기물 추가
               </button>
             ) : null}
-            <Link href={`${basePath}/materials`} className="flex min-h-10 items-center rounded-lg px-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
+            <Link href={`${basePath}/materials`} className="flex min-h-11 items-center rounded-lg px-2 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
               사진·측정값 올리기
             </Link>
           </div>
@@ -230,7 +231,13 @@ export function Start({
 
         {streams.length > 0 ? (
           <div className="mt-8">
-            <Button disabled={!canFind} onClick={onFind} className="!min-h-12 w-full !text-[16px] sm:w-auto sm:!px-7">
+            {/* 폐기물을 더하는 폼이 열려 있으면 그 "추가"가 먹색 단추이므로 찾기는 테두리 단추로 낮춘다(먹색 단추는 하나) */}
+            <Button
+              variant={showForm ? "secondary" : "primary"}
+              disabled={!canFind}
+              onClick={onFind}
+              className="!min-h-12 w-full !text-[16px] sm:w-auto sm:!px-7"
+            >
               {busy ? "업체에 물어보는 중" : "받아 줄 곳 찾기"}
             </Button>
             {onResume ? (

@@ -63,7 +63,7 @@ function DevLogin({ callbackUrl }: { callbackUrl?: string }) {
   const id = useId();
   return (
     <details className="group rounded-md border border-dashed border-line-strong px-3.5 py-2 text-sm">
-      <summary className="flex min-h-9 cursor-pointer list-none items-center text-[13px] text-muted [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center text-[13px] text-muted [&::-webkit-details-marker]:hidden">
         개발용 빠른 로그인
       </summary>
       <form action={action} className="mt-2 grid gap-3 pb-2">

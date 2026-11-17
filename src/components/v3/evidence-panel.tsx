@@ -206,7 +206,7 @@ export function EvidencePanel({
             autoFocus
             onClick={onClose}
             aria-label="근거 패널 닫기"
-            className="grid size-9 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken"
+            className="-mr-1 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken"
           >
             <CloseIcon />
           </button>

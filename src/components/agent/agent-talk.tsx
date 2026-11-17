@@ -223,7 +223,7 @@ export function AgentTalk({
                 autoFocus
                 onClick={() => onOpenChange(false)}
                 aria-label="대화 닫기"
-                className="ml-auto grid size-9 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken"
+                className="-mr-1 ml-auto grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken"
               >
                 <CloseIcon />
               </button>
@@ -238,13 +238,13 @@ export function AgentTalk({
                       {liveLine ?? (replay.active ? "지난 대화를 다시 보여 드립니다." : title)}
                     </span>
                     {replay.active ? (
-                      <button type="button" onClick={replay.skip} className="min-h-9 shrink-0 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
+                      <button type="button" onClick={replay.skip} className="min-h-11 shrink-0 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
                         건너뛰기
                       </button>
                     ) : null}
                   </>
                 ) : (
-                  <button type="button" onClick={replay.start} className="-ml-2 min-h-9 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
+                  <button type="button" onClick={replay.start} className="-ml-2 min-h-11 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
                     처음부터 다시 보기
                   </button>
                 )}
@@ -330,7 +330,7 @@ export function AgentTalk({
                       type="button"
                       aria-expanded={showEvents}
                       onClick={() => setShowEvents((before) => !before)}
-                      className="flex min-h-10 items-center gap-1 text-[13px] text-muted hover:text-ink"
+                      className="flex min-h-11 items-center gap-1 text-[13px] text-muted hover:text-ink"
                     >
                       <ChevronDownIcon className={showEvents ? "rotate-180" : ""} />
                       실행 기록 {view.events.length}건

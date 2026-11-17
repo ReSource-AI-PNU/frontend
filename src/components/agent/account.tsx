@@ -29,13 +29,13 @@ export function Account({ user }: { user: { name: string; email: string | null }
         popover="auto"
         className="fixed top-auto right-auto bottom-[68px] left-3 m-0 h-fit w-60 max-w-[calc(100vw-24px)] rounded-xl border border-line bg-surface p-1.5 text-sm text-ink shadow-[0_16px_40px_-16px_rgb(15_21_18/0.35)]"
       >
-        <Link href="/settings" className="flex min-h-10 items-center rounded-lg px-2.5 hover:bg-sunken">
+        <Link href="/settings" className="flex min-h-11 items-center rounded-lg px-2.5 hover:bg-sunken">
           회사 정보·멤버
         </Link>
-        <Link href="/settings/account" className="flex min-h-10 items-center rounded-lg px-2.5 hover:bg-sunken">
+        <Link href="/settings/account" className="flex min-h-11 items-center rounded-lg px-2.5 hover:bg-sunken">
           내 계정
         </Link>
-        <div className="flex min-h-10 items-center justify-between px-2.5">
+        <div className="flex min-h-11 items-center justify-between px-2.5">
           <span>화면 모드</span>
           <ThemeToggle />
         </div>

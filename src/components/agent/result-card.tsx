@@ -83,7 +83,7 @@ function Row({
               aria-expanded={open}
               aria-controls={panelId}
               onClick={() => setOpen((before) => !before)}
-              className="-ml-1 flex min-h-7 items-center gap-0.5 rounded-md px-1 text-left text-[13px] text-muted hover:bg-sunken hover:text-ink"
+              className="-my-2 -ml-1 flex min-h-11 items-center gap-0.5 rounded-md px-1 text-left text-[13px] text-muted hover:bg-sunken hover:text-ink"
             >
               {placed ? STATUS_WORD[assignment.status] : reused ? "계산 내역" : "재투입 후보"}
               {todo.length > 0 ? ` · 확인할 것 ${todo.length}개` : ""}

@@ -111,13 +111,13 @@ export default function LandingPage() {
       <header className="mx-auto flex w-full max-w-[1200px] items-center gap-4 px-5 pt-5 lg:px-8">
         <BrandLink href="/" />
         <nav aria-label="계정" className="ml-auto flex items-center gap-1">
-          <Link href="/demo" className="hidden min-h-10 items-center rounded-[10px] px-3.5 text-sm text-ink-2 hover:bg-sunken hover:text-ink sm:flex">
+          <Link href="/demo" className="hidden min-h-11 items-center rounded-[10px] px-3.5 text-sm text-ink-2 hover:bg-sunken hover:text-ink sm:flex">
             체험하기
           </Link>
-          <Link href="/login" className="flex min-h-10 items-center rounded-[10px] px-3.5 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
+          <Link href="/login" className="flex min-h-11 items-center rounded-[10px] px-3.5 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
             로그인
           </Link>
-          <ButtonLink href="/signup" size="sm" className="!min-h-10 !px-4 !text-sm">
+          <ButtonLink href="/signup" size="sm" className="!px-4 !text-sm">
             시작하기
           </ButtonLink>
         </nav>
@@ -230,7 +230,7 @@ export default function LandingPage() {
               <div>
                 <h3 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">{item.title}</h3>
                 <p className="mt-2 text-[16px] leading-relaxed text-ink-2">{item.body}</p>
-                <Link href={item.link.href} className="mt-3 inline-flex min-h-10 items-center text-[15px] font-semibold text-ink underline underline-offset-4">
+                <Link href={item.link.href} className="mt-3 inline-flex min-h-11 items-center text-[15px] font-semibold text-ink underline underline-offset-4">
                   {item.link.label}
                 </Link>
               </div>

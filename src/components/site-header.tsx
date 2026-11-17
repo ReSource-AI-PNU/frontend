@@ -17,13 +17,13 @@ export function MarketingHeader() {
     <HeaderFrame>
       <BrandLink />
       <nav aria-label="소개 메뉴" className="mr-auto hidden items-center gap-1 text-sm text-muted md:flex">
-        <Link href="/#how" className="rounded-md px-3 py-2 hover:text-ink">
+        <Link href="/#how" className="inline-flex min-h-11 items-center rounded-md px-3 hover:text-ink">
           어떻게 찾나요
         </Link>
-        <Link href="/demo" className="rounded-md px-3 py-2 hover:text-ink">
+        <Link href="/demo" className="inline-flex min-h-11 items-center rounded-md px-3 hover:text-ink">
           체험하기
         </Link>
-        <Link href="/trust" className="rounded-md px-3 py-2 hover:text-ink">
+        <Link href="/trust" className="inline-flex min-h-11 items-center rounded-md px-3 hover:text-ink">
           AI 신뢰도
         </Link>
       </nav>

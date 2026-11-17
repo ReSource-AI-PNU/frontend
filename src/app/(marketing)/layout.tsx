@@ -14,13 +14,13 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             Re:Source AI
           </span>
           <nav aria-label="약관 및 정책" className="flex flex-wrap items-center gap-x-1 gap-y-1">
-            <Link href="/trust" className="rounded-md px-2 py-2 hover:text-ink">
+            <Link href="/trust" className="inline-flex min-h-11 items-center rounded-md px-2 hover:text-ink">
               AI 신뢰도
             </Link>
-            <Link href="/terms" className="rounded-md px-2 py-2 hover:text-ink">
+            <Link href="/terms" className="inline-flex min-h-11 items-center rounded-md px-2 hover:text-ink">
               이용약관
             </Link>
-            <Link href="/privacy" className="rounded-md px-2 py-2 font-semibold text-ink-2 hover:text-ink">
+            <Link href="/privacy" className="inline-flex min-h-11 items-center rounded-md px-2 font-semibold text-ink-2 hover:text-ink">
               개인정보처리방침
             </Link>
           </nav>

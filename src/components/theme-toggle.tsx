@@ -18,7 +18,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="화면 모드 전환"
-      className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-[13px] text-ink transition-colors hover:border-ink [&_svg]:size-4"
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] border border-line-strong bg-surface px-3 text-[13px] text-ink transition-colors hover:border-ink [&_svg]:size-4"
     >
       <MoonIcon className="dark:hidden" />
       <SunIcon className="hidden dark:block" />

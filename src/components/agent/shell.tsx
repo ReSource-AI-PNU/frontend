@@ -22,7 +22,7 @@ import { useV3 } from "@/components/v3/context";
 import { KIND_LABEL } from "@/lib/auth/account";
 
 const row =
-  "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] text-ink-2 transition-colors hover:bg-sunken hover:text-ink";
+  "flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] text-ink-2 transition-colors hover:bg-sunken hover:text-ink";
 
 type NavItem = { href: string; label: string; icon: typeof SearchIcon; exact: boolean };
 
@@ -56,7 +56,7 @@ function CompanySwitcher() {
             value={org.id}
             disabled={switching}
             onChange={(event) => setOrgId(event.target.value)}
-            className="mt-0.5 min-h-9 w-full min-w-0 cursor-pointer truncate rounded-md bg-transparent text-[14px] font-medium text-ink hover:text-ink-2"
+            className="mt-0.5 min-h-11 w-full min-w-0 cursor-pointer truncate rounded-md bg-transparent text-[14px] font-medium text-ink hover:text-ink-2"
           >
             {memberships.map((item) => (
               <option key={item.orgId} value={item.orgId}>
@@ -73,7 +73,7 @@ function CompanySwitcher() {
       )}
       <Link
         href="/onboarding"
-        className="-ml-1 mt-1 flex min-h-9 items-center gap-1.5 rounded-md px-1 text-[13px] text-muted hover:text-ink"
+        className="-ml-1 mt-1 flex min-h-11 items-center gap-1.5 rounded-md px-1 text-[13px] text-muted hover:text-ink"
       >
         <PlusIcon className="size-3.5" />
         회사 추가
@@ -94,7 +94,7 @@ function DemoFooter() {
       <ButtonLink href="/signup" className="w-full">
         가입하고 시작하기
       </ButtonLink>
-      <Link href="/login" className="flex min-h-9 items-center justify-center text-[13px] text-ink-2 hover:text-ink">
+      <Link href="/login" className="flex min-h-11 items-center justify-center text-[13px] text-ink-2 hover:text-ink">
         로그인
       </Link>
     </div>
@@ -137,7 +137,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
         <button
           type="button"
           aria-label="메뉴 닫기"
-          className="grid size-9 place-items-center rounded-lg text-muted hover:bg-sunken hover:text-ink lg:hidden"
+          className="grid size-11 place-items-center rounded-lg text-muted hover:bg-sunken hover:text-ink lg:hidden"
           onClick={() => setOpen(false)}
         >
           <CloseIcon />
@@ -169,7 +169,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
         <Link
           href="/trust"
           onClick={() => setOpen(false)}
-          className="mb-2 flex min-h-9 items-center rounded-md px-2.5 text-[13px] text-muted hover:text-ink"
+          className="mb-2 flex min-h-11 items-center rounded-md px-2.5 text-[13px] text-muted hover:text-ink"
         >
           AI 신뢰도 · 공개 평가 결과
         </Link>
@@ -201,7 +201,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
           <button
             type="button"
             aria-label="메뉴 열기"
-            className="grid size-10 place-items-center rounded-lg hover:bg-sunken"
+            className="grid size-11 place-items-center rounded-lg hover:bg-sunken"
             onClick={() => setOpen(true)}
           >
             <MenuIcon />
@@ -217,7 +217,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
             <span>
               <span className="font-medium text-ink">체험 중</span> · 시연 회사의 가상 데이터입니다. 둘러보기만 할 수 있습니다.
             </span>
-            <Link href="/signup" className="font-semibold text-ink underline underline-offset-4">
+            <Link href="/signup" className="-my-2.5 inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-4">
               가입하기
             </Link>
           </p>

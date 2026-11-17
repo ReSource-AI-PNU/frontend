@@ -99,7 +99,7 @@ function Progress({
   if (done === 0) return null;
   return (
     <details className="group">
-      <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
         {done === stages.length ? `${stages.length}단계 확인을 마쳤습니다` : `${stages.length}단계 가운데 ${done}단계까지 확인했습니다`}
         {flagged.length > 0 ? ` · 사람이 확인할 것 ${flagged.length}곳` : ""}
         <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />
@@ -286,7 +286,7 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
             {d.busy ? "승인하는 중" : "승인하고 진행"}
           </Button>
           {pending.length > 1 && !showList ? (
-            <button type="button" onClick={() => setEach(true)} className="min-h-10 text-sm text-ink-2 underline underline-offset-4 hover:text-ink">
+            <button type="button" onClick={() => setEach(true)} className="min-h-11 text-sm text-ink-2 underline underline-offset-4 hover:text-ink">
               업체별로 따로 승인
             </button>
           ) : null}
@@ -456,7 +456,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
         <div className="flex justify-end px-3 pt-3">
           <Link
             href={`${basePath}/inquiries`}
-            className="flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-2 hover:bg-sunken hover:text-ink"
+            className="flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-2 hover:bg-sunken hover:text-ink"
           >
             다른 문의 보기
           </Link>
@@ -468,7 +468,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
             type="button"
             disabled={d.busy}
             onClick={d.forget}
-            className="flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-2 hover:bg-sunken hover:text-ink"
+            className="flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-2 hover:bg-sunken hover:text-ink"
           >
             <PlusIcon className="size-3.5" />
             새로 찾기
@@ -490,7 +490,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
           line={liveLine}
           action={
             replaying ? (
-              <button type="button" onClick={stream.skip} className="min-h-9 text-[13px] text-ink-2 underline underline-offset-4 hover:text-ink">
+              <button type="button" onClick={stream.skip} className="min-h-11 text-[13px] text-ink-2 underline underline-offset-4 hover:text-ink">
                 건너뛰기
               </button>
             ) : null
@@ -603,7 +603,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
 
         {result && !working ? (
           <details className="group border-t border-line pt-3">
-            <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
               판단 과정 전체 보기 (자료 표, 판단 그래프, 계산표)
               <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />
             </summary>

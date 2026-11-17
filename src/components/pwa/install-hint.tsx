@@ -66,12 +66,12 @@ export function InstallHint() {
           onClick={() => {
             void prompt.prompt().finally(() => setShow(false));
           }}
-          className="min-h-9 shrink-0 rounded-md px-2 font-semibold text-ink underline underline-offset-4"
+          className="min-h-11 shrink-0 rounded-md px-2 font-semibold text-ink underline underline-offset-4"
         >
           추가
         </button>
       ) : null}
-      <button type="button" aria-label="안내 닫기" onClick={() => setShow(false)} className="-mr-2 grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-sunken hover:text-ink">
+      <button type="button" aria-label="안내 닫기" onClick={() => setShow(false)} className="-mr-2 grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:bg-sunken hover:text-ink">
         <CloseIcon />
       </button>
     </div>
