@@ -1,39 +1,49 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { OnboardingForm } from "@/components/onboarding/onboarding-form";
-import { QuickOnboarding } from "@/components/onboarding/quick-onboarding";
+import { CompanyForm, InviteLinkForm } from "@/components/onboarding/company-form";
 import { PhotoPane } from "@/components/photo-pane";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { COMPLEXES } from "@/lib/complexes";
 import { PHOTOS } from "@/lib/photos";
-import { getCurrentOrganization } from "@/lib/server/organization";
+import { getWorkspace } from "@/lib/server/workspace";
 
 export const metadata: Metadata = { title: "회사 등록" };
 
-/** 처음이면 세 가지만 묻는 간단 등록, 이미 등록했으면 전체 회사 정보를 고치는 폼을 보여 준다. */
+/** 가입한 뒤 처음 오는 곳. 회사를 새로 등록하거나 받은 초대로 들어간다. 이미 소속이 있으면 회사를 하나 더 등록한다. */
 async function Form() {
-  const org = await getCurrentOrganization();
-  if (org) {
-    return (
-      <div className="mx-auto w-full max-w-[960px] px-6 pt-12 lg:px-8">
-        <h1 className="text-display">회사 정보 고치기</h1>
-        <p className="mt-3 mb-10 max-w-xl text-ink-2">사업자등록번호, 업종, 품목별 배출량을 채우거나 고칩니다.</p>
-        <OnboardingForm complexes={COMPLEXES} initial={org} />
-      </div>
-    );
-  }
+  const workspace = await getWorkspace();
+  if (!workspace) redirect("/login?callbackUrl=/onboarding");
+  const first = workspace.memberships.length === 0;
   return (
     <div className="grid flex-1 lg:grid-cols-12">
       <PhotoPane photo={PHOTOS.plantFloor} className="hidden lg:col-span-6 lg:block">
         <p className="max-w-[16ch] text-[32px] leading-[1.2] font-semibold tracking-[-0.035em] text-balance xl:text-[38px]">
-          세 가지만 알려 주시면 바로 시작합니다.
+          회사만 등록하면 바로 시작합니다.
         </p>
       </PhotoPane>
-      <div className="flex items-center justify-center px-6 py-14 lg:col-span-6 lg:px-12">
-        <div className="w-full max-w-md">
-          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.03em]">회사를 등록합니다</h1>
-          <p className="mt-2 mb-8 text-sm text-ink-2">처음 한 번만 합니다. 등록이 끝나면 곧바로 받아 줄 곳을 찾을 수 있습니다.</p>
-          <QuickOnboarding complexes={COMPLEXES} />
+      <div className="flex items-start justify-center px-5 py-12 sm:px-6 lg:col-span-6 lg:items-center lg:px-12">
+        <div className="w-full max-w-md min-w-0">
+          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.03em]">
+            {first ? "회사를 등록합니다" : "회사를 하나 더 등록합니다"}
+          </h1>
+          <p className="mt-2 mb-8 text-sm text-ink-2">
+            {first
+              ? `${workspace.user.name}님, 가입을 환영합니다. 일하시는 회사를 등록하면 바로 시작할 수 있습니다.`
+              : "등록한 회사는 왼쪽 아래 회사 이름을 눌러 바꿔 볼 수 있습니다."}
+          </p>
+          <CompanyForm complexes={COMPLEXES} />
+          <div className="mt-10 border-t border-line pt-6">
+            <InviteLinkForm />
+          </div>
+          {!first ? (
+            <p className="mt-8 text-sm">
+              <Link href="/app" className="text-ink-2 underline underline-offset-4 hover:text-ink">
+                등록하지 않고 돌아가기
+              </Link>
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
