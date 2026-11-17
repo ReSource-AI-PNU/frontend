@@ -59,7 +59,7 @@ export function AnalyzingView({ sessionId, streams }: { sessionId: string; strea
             <div className="h-px w-full bg-marker shadow-[0_0_12px_2px_var(--color-marker)]" />
           </div>
         ) : null}
-        <figcaption className="absolute bottom-2.5 left-3 rounded-sm bg-black/40 px-2 py-0.5 text-[12px] text-white/80">
+        <figcaption className="absolute bottom-2.5 left-3 rounded-sm bg-photo/40 px-2 py-0.5 text-[12px] text-white/80">
           {current.name} · {current.process || "공정 미지정"}
         </figcaption>
       </figure>

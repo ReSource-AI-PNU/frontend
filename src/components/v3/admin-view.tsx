@@ -135,7 +135,7 @@ function StatusBody({ status }: { status: AdminStatus }) {
                 >
                   {item.label}
                 </button>
-                <span className="font-mono text-[13px] text-muted">기준일 {item.asOf}</span>
+                <span className="text-[13px] text-muted">기준일 <span className="font-mono">{item.asOf}</span></span>
               </li>
             ))}
           </ul>
@@ -182,7 +182,7 @@ function CaseSet({ cases }: { cases: NonNullable<EvalResult["cases"]> }) {
         </div>
         <div>
           <dt className="text-[13px] text-muted">설계 판단이 남은 사례</dt>
-          <dd className="font-mono text-xl font-semibold tabular-nums">{summary.openCount}건</dd>
+          <dd className="text-xl font-semibold tabular-nums"><span className="font-mono">{summary.openCount}</span>건</dd>
           <dd className="text-[13px] text-muted">
             다시 쓴 횟수 {summary.rewritten ?? 0} · 담당자 인계 {summary.handedOff ?? 0}
           </dd>
@@ -415,9 +415,9 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
             {gate.realLabelCount === 0 ? (
               "아직 없습니다"
             ) : (
-              <span className="font-mono">{gate.realLabelCount}건</span>
+              <><span className="font-mono">{gate.realLabelCount}</span>건</>
             )}{" "}
-            <span className="font-mono">(기준 {gate.minRealLabels}건 이상)</span>
+            <span>(기준 <span className="font-mono">{gate.minRealLabels}</span>건 이상)</span>
           </dd>
           <dt className="text-muted">평가한 것</dt>
           <dd>

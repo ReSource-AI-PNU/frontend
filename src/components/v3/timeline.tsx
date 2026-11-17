@@ -87,7 +87,7 @@ function ValidationNote({ message }: { message: ThreadMessage }) {
             {rejections.map((rejection, index) => (
               <li key={`${rejection.code}-${index}`}>
                 {typeof rejection.attempt === "number" ? (
-                  <span className="font-mono">{rejection.attempt}번째 초안 </span>
+                  <span><span className="font-mono">{rejection.attempt}</span>번째 초안 </span>
                 ) : null}
                 <span className="font-mono text-ink-2">{rejection.code}</span>{" "}
                 {rejectionLabel(rejection.code, rejection.message)}

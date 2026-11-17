@@ -410,7 +410,7 @@ export function ResultSheet({
             {result.referencePrices.map((item) => (
               <li key={item.key} className="flex flex-wrap justify-between gap-x-4">
                 <span>
-                  {item.label} <span className="font-mono text-[12px] text-muted">기준일 {item.asOf}</span>
+                  {item.label} <span className="text-[12px] text-muted">기준일 <span className="font-mono">{item.asOf}</span></span>
                 </span>
                 <ClaimValue claim={item.price} price={false} />
               </li>

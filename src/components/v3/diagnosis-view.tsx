@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MoreDetails } from "@/components/ui/more-details";
 import { api } from "@/lib/v3/api";
 import { PHASE_LABEL, THREAD_LABEL, formatDateTime, sessionLabel as labelOf } from "@/lib/v3/format";
 import { BlockedNotice } from "./blocked-notice";
@@ -211,14 +212,11 @@ export function DiagnosisView() {
         <section aria-label="판단 그래프" className="min-w-0">
           <h2 className="border-b border-line px-5 py-3 text-label text-muted">판단 그래프</h2>
           <JudgementGraph nodes={view.graph.nodes} edges={view.graph.edges} />
-          <details className="border-t border-line">
-            <summary className="cursor-pointer px-5 py-3 text-label text-muted">
-              실행 기록 ({events.length}건)
-            </summary>
+          <MoreDetails className="border-t border-line px-5 pt-1" hint={`실행 기록 ${events.length}건`}>
             {events.length === 0 ? (
-              <p className="px-5 pb-4 text-sm text-muted">남은 실행 기록이 없습니다.</p>
+              <p className="pb-4 text-sm text-muted">남은 실행 기록이 없습니다.</p>
             ) : (
-              <ol className="max-h-72 divide-y divide-line overflow-y-auto text-[13px]">
+              <ol className="-mx-5 max-h-72 divide-y divide-line overflow-y-auto text-[13px]">
                 {events.map((event) => {
                   return (
                     <li key={event.seq} className="grid grid-cols-[4.5rem_1fr] gap-2 px-5 py-2">
@@ -233,7 +231,7 @@ export function DiagnosisView() {
                 })}
               </ol>
             )}
-          </details>
+          </MoreDetails>
         </section>
       </div>
 

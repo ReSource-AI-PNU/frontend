@@ -234,7 +234,7 @@ export function Walkthrough({ error }: { error?: string }) {
                 {mode === "demo" ? "시연 워크스루를 재생하면 녹산 (주)한빛정밀을 한 바퀴 돕니다." : "마이크를 켜고 흐름 앞에서 이름·공정·양을 말해 주세요."}
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-5 pt-10 pb-4 text-white">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-photo/80 to-transparent px-5 pt-10 pb-4 text-white">
               <p className="num text-[11.5px] text-white/60">
                 {listening ? "● 듣는 중" : playing ? "● 재생 중" : "정지"} · 정지점 {state.drafts.length}곳
               </p>

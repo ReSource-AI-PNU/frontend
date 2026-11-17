@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MoreDetails } from "@/components/ui/more-details";
 import { api } from "@/lib/v3/api";
 import {
   THREAD_LABEL,
@@ -402,17 +403,14 @@ export function ApprovalView() {
               )}
             </div>
             {thread && thread.messages.length > 0 ? (
-              <details className="mt-3 text-sm">
-                <summary className="cursor-pointer text-muted">
-                  마지막 메시지 보기 ({thread.messages.length}번째)
-                </summary>
+              <MoreDetails className="mt-3 text-sm" hint={`마지막 메시지 (${thread.messages.length}번째)`}>
                 <p className="mt-2 border-l-2 border-line-strong pl-3 text-ink-2">
                   <ClaimText
                     text={thread.messages[thread.messages.length - 1].text}
                     claims={thread.messages[thread.messages.length - 1].claims}
                   />
                 </p>
-              </details>
+              </MoreDetails>
             ) : null}
             {blocked ? (
               <div className="mt-3">
