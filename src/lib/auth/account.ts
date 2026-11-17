@@ -126,6 +126,48 @@ export function inviteMessage(status: number, code: string | null): string {
   return "지금은 초대를 수락할 수 없습니다. 잠시 후 다시 시도해 주세요.";
 }
 
+/** GET /invites/{token}: 초대한 회사와 유효한지(수락 전에 보인다) */
+export type InviteInfo = { orgName: string | null; kind: MemberKind | null; expiresAt: string | null; valid: boolean };
+
+/** 초대 정보 응답을 읽는다. 모양이 틀리면 null(화면은 정보 없이 수락 단추만 둔다) */
+export function parseInviteInfo(raw: unknown): InviteInfo | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const item = raw as Record<string, unknown>;
+  const kind = text(item.kind);
+  return {
+    orgName: text(item.orgName) || null,
+    kind: KINDS.has(kind) ? (kind as MemberKind) : null,
+    expiresAt: text(item.expiresAt) || null,
+    valid: item.valid !== false,
+  };
+}
+
+/**
+ * 초대 정보를 읽지 못했을 때. 410(또는 초대가 없거나 끝났다는 코드)이면 쓸 수 없는 초대이고, 그 밖(서버 오류, 이 주소를 모르는
+ * 서버)은 알 수 없으므로 수락 단추를 그대로 둔다.
+ */
+export function inviteLookupFailure(status: number, code: string | null): "invalid" | "unknown" {
+  if (status === 410) return "invalid";
+  if (code && /^INVITE_(INVALID|EXPIRED|USED|REVOKED|NOT_FOUND)$/.test(code)) return "invalid";
+  return "unknown";
+}
+
+const kstExpiry = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  month: "long",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** 유효 기한: 지났는지와 "11월 25일 오후 6:00까지"(한국 시각). 읽을 수 없으면 text는 null */
+export function inviteExpiry(expiresAt: string | null, now: Date): { expired: boolean; text: string | null } {
+  if (!expiresAt) return { expired: false, text: null };
+  const at = new Date(expiresAt);
+  if (Number.isNaN(at.getTime())) return { expired: false, text: null };
+  return { expired: at.getTime() <= now.getTime(), text: `${kstExpiry.format(at)}까지` };
+}
+
 /** 붙여 넣은 초대 링크나 코드에서 토큰만 뽑는다. 토큰으로 쓸 수 없는 글자가 있으면 null. */
 export function inviteTokenFrom(value: unknown): string | null {
   const raw = text(value);

@@ -99,3 +99,26 @@ test("미들웨어는 세션 쿠키가 있는지만 보고, 보호 경로만 거
   assert.equal(isProtected("/invite/abc"), false);
   assert.equal(isProtected("/apple-icon.png"), false);
 });
+
+test("초대 정보: 수락 전에 초대한 회사와 유효 기한을 읽고, 410이면 쓸 수 없는 초대", async () => {
+  const { inviteExpiry, inviteLookupFailure, parseInviteInfo } = await import("../src/lib/auth/account.ts");
+  assert.deepEqual(parseInviteInfo({ orgName: " (주)한빛정밀 ", kind: "emitter", expiresAt: "2026-11-25T09:00:00Z", valid: true }), {
+    orgName: "(주)한빛정밀",
+    kind: "emitter",
+    expiresAt: "2026-11-25T09:00:00Z",
+    valid: true,
+  });
+  assert.equal(parseInviteInfo({ orgName: "x", kind: "alien", valid: false })?.kind, null);
+  assert.equal(parseInviteInfo({ orgName: "x", valid: false })?.valid, false);
+  assert.equal(parseInviteInfo(null), null);
+  assert.equal(parseInviteInfo([]), null);
+  assert.equal(inviteLookupFailure(410, "INVITE_INVALID"), "invalid");
+  assert.equal(inviteLookupFailure(404, "INVITE_NOT_FOUND"), "invalid");
+  assert.equal(inviteLookupFailure(404, "NOT_FOUND"), "unknown", "이 주소를 모르는 서버는 수락 단추를 그대로 둔다");
+  assert.equal(inviteLookupFailure(503, "BACKEND_UNREACHABLE"), "unknown");
+  const now = new Date("2026-11-18T00:00:00Z");
+  assert.deepEqual(inviteExpiry("2026-11-25T09:00:00Z", now), { expired: false, text: "11월 25일 오후 6:00까지" });
+  assert.equal(inviteExpiry("2026-11-17T09:00:00Z", now).expired, true);
+  assert.deepEqual(inviteExpiry(null, now), { expired: false, text: null });
+  assert.deepEqual(inviteExpiry("언젠가", now), { expired: false, text: null });
+});
