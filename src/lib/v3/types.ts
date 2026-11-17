@@ -63,6 +63,9 @@ export type SessionSummary = {
   as: "emitter" | "vendor" | "admin";
 };
 
+/** POST /sessions/{id}/run?mode=async (202). after는 이 실행이 남길 첫 진행 기록 바로 앞의 seq다 */
+export type RunStarted = { sessionId: string; status: "running"; runId: string; after?: number };
+
 /** 계약 6장 도메인 레코드 (GET/PUT /orgs/{id}/streams) */
 export type StreamRecord = {
   id: string;

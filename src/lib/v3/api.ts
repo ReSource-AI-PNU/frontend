@@ -25,6 +25,7 @@ import type {
   OutcomeInput,
   OutcomeResult,
   RetrainExport,
+  RunStarted,
   SessionSummary,
   StreamRecord,
   VendorProfile,
@@ -82,12 +83,20 @@ function recover(code: string) {
   }
 }
 
+/**
+ * 회사를 밝히는 머리글. 통로를 거치면 서버가 세션으로 회사를 정하고, 화면이 보는 회사는 X-Expected-Org로 알려
+ * 어긋나면 409를 받는다. 바로 부를 때(로컬 개발)만 X-Org-Id로 회사를 밝힌다.
+ */
+export function scopeHeaders(orgId: string | null): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (orgId) headers[VIA_PROXY ? "X-Expected-Org" : "X-Org-Id"] = orgId;
+  if (inDemo()) headers["X-Demo-View"] = "1";
+  return headers;
+}
+
 async function request<T>(path: string, orgId: string | null, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  // 통로를 거치면 서버가 세션으로 회사를 정한다. 화면이 보는 회사는 X-Expected-Org로 알려 어긋나면 409를 받는다.
-  // 바로 부를 때(로컬 개발)만 X-Org-Id로 회사를 밝힌다
-  if (orgId) headers.set(VIA_PROXY ? "X-Expected-Org" : "X-Org-Id", orgId);
-  if (inDemo()) headers.set("X-Demo-View", "1");
+  for (const [name, value] of Object.entries(scopeHeaders(orgId))) headers.set(name, value);
   if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   let response: Response;
   try {
@@ -143,6 +152,15 @@ export const api = {
     request<DiagnosisView>(`/sessions/${enc(sessionId)}`, orgId),
   run: (sessionId: string, orgId: string) =>
     request<DiagnosisView>(`/sessions/${enc(sessionId)}/run`, orgId, { method: "POST" }),
+  /**
+   * 실행을 뒤에서 돌린다(202 {sessionId, status, runId, after}). 진행은 streamUrl을 읽어 본다.
+   * 이 방식을 모르는 서버는 쿼리를 무시하고 끝까지 돌린 진단 뷰를 돌려준다(그대로 쓴다).
+   * 이미 돌고 있으면 409 RUN_IN_PROGRESS다.
+   */
+  runAsync: (sessionId: string, orgId: string) =>
+    request<RunStarted | DiagnosisView>(`/sessions/${enc(sessionId)}/run?mode=async`, orgId, { method: "POST" }),
+  /** 실시간 진행(SSE). 이어 받을 지점은 클라이언트가 ?after=와 Last-Event-ID로 붙인다 */
+  streamUrl: (sessionId: string) => `${apiBase()}/sessions/${enc(sessionId)}/stream`,
   /** value는 답(숫자·고른 값·글)이거나 "unknown"(모름)이다. */
   answer: (sessionId: string, orgId: string, questionId: string, value: string | number) =>
     request<DiagnosisView>(
@@ -200,6 +218,9 @@ export const api = {
   /** 업체가 확정된 대화의 실제 결과(등급·단가·중량·검수일)를 기록한다. */
   recordOutcome: (sessionId: string, orgId: string, body: OutcomeInput) =>
     request<OutcomeResult>(`/sessions/${enc(sessionId)}/outcomes`, orgId, json(body)),
+
+  /** 공개 평가 결과(로그인 없이 읽는다). 모양은 src/lib/trust.ts가 읽는다 */
+  trust: () => request<unknown>("/trust", null),
 
   /** 아래 /admin/*은 관리자 조직(role이 admin)으로만 부른다. 다른 조직은 403 FORBIDDEN을 받는다. */
   adminStatus: (orgId: string) => request<AdminStatus>("/admin/status", orgId),

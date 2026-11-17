@@ -8,7 +8,7 @@ import { useV3 } from "@/components/v3/context";
 import { useRemote } from "@/components/v3/use-remote";
 import { api } from "@/lib/v3/api";
 import { formatDateTime } from "@/lib/v3/format";
-import { Dots } from "./conversation";
+import { Dots } from "./dots";
 
 const STATUS_WORD: Record<string, string> = {
   idle: "진행 전",

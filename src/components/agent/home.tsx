@@ -8,7 +8,8 @@ import { useRemote } from "@/components/v3/use-remote";
 import { api } from "@/lib/v3/api";
 import { loadVendorProfile } from "@/components/v3/materials-view";
 import { useDiagnosis } from "@/components/v3/use-diagnosis";
-import { Conversation, Dots } from "./conversation";
+import { Conversation } from "./conversation";
+import { Dots } from "./dots";
 import { Start } from "./start";
 
 function Centered({ title, children }: { title: string; children: React.ReactNode }) {

@@ -12,7 +12,10 @@ import {
   isHistory,
   mergeThreads,
   paceMs,
+  presentStages,
+  presentThreads,
   reduceLive,
+  replayFromView,
   retryDelay,
   rewriteText,
   toLiveEvent,
@@ -339,4 +342,86 @@ test("화면이 닫으면 더 붙지 않는다", async () => {
   handle.close();
   assert.equal(await handle.finished, "closed");
   assert.equal(calls.length, 1);
+});
+
+test("저장된 대화로 다시 보기: 메시지마다 작성 → 근거 확인 → (거부 기록이 있으면 다시 쓰기) → 보냄, 끝에 done", () => {
+  const company = {
+    ...MESSAGE,
+    id: "m0",
+    seq: 0,
+    from: "org_factory",
+    to: "org_vendor",
+    type: "inquiry",
+    stage: 4,
+    createdAt: "2026-11-18T00:59:00Z",
+    claims: [],
+    validation: { ok: true, attempts: 2, rejections: [{ code: "NUMBER_OUTSIDE_PLACEHOLDER", message: "…", attempt: 1 }] },
+    author: { side: "company", kind: "agent", label: "회사 측 AI" },
+    meta: { asks: [], excluded: [], reason: null, terms: null },
+  };
+  const view = {
+    session: { emitterOrgId: "org_factory", status: "awaiting_approval" },
+    stages: [4, 5].map((stage) => ({ stage, key: `s${stage}`, label: `${stage}단계`, status: "done" })),
+    threads: [
+      { id: "th_1", vendorOrgId: "org_vendor", vendorName: "(주)새길자원", status: "agreed" as const, statusReason: null, reasonEvidence: [], streamIds: [], turns: 2, messages: [MESSAGE as never, company as never] },
+    ],
+  };
+  const events = replayFromView(view);
+  const kinds = events.map((item) => (item.type === "activity" ? item.kind : item.type));
+  assert.deepEqual(kinds, [
+    "status",
+    "status",
+    "status",
+    "drafting",
+    "validating",
+    "rejected",
+    "rewriting",
+    "validating",
+    "sent",
+    "status",
+    "drafting",
+    "validating",
+    "rejected",
+    "rewriting",
+    "validating",
+    "sent",
+    "status",
+    "done",
+  ]);
+  const rejected = events.find((item) => item.type === "activity" && item.kind === "rejected");
+  assert.ok(rejected && rejected.type === "activity");
+  assert.deepEqual(rejected.reasons, ["근거에 없는 숫자"]);
+  // 시도가 두 번이고 사유 기록이 없으면(상대 조직이 본 뷰) 사유를 지어내지 않고 일반 문구로 적는다
+  const second = events.filter((item) => item.type === "activity" && item.kind === "rejected")[1];
+  assert.ok(second && second.type === "activity");
+  assert.deepEqual(second.reasons, ["검사를 통과하지 못함"]);
+  let state = initialLive();
+  for (const event of events) state = reduceLive(state, event);
+  assert.equal(state.threads.th_1.messages.length, 2);
+  assert.equal(state.threads.th_1.messages[0].id, "m0", "보낸 순서대로");
+  assert.equal(state.done, true);
+  assert.equal(state.stages?.every((item) => item.status === "done"), true);
+});
+
+test("실행 중 보여 주기: 실행 전 메시지만 두고 스트림으로 받은 것을 더하며, 단계는 스트림 상태에 뷰의 이름을 붙인다", () => {
+  const old = { ...MESSAGE, id: "m_old", seq: 0 };
+  const viewThreads = [
+    { id: "th_1", vendorOrgId: "org_vendor", vendorName: "(주)새길자원", status: "agreed" as const, statusReason: "합의", reasonEvidence: ["ev"], streamIds: [], turns: 3, messages: [old as never, MESSAGE as never] },
+    { id: "th_9", vendorOrgId: "org_x", vendorName: "(주)다른곳", status: "declined" as const, statusReason: "허가 품목 없음", reasonEvidence: [], streamIds: [], turns: 1, messages: [{ ...MESSAGE, id: "m_x" } as never] },
+  ];
+  let state = initialLive();
+  const before = presentThreads(viewThreads, state, new Set(["m_old"]));
+  assert.deepEqual(before.map((item) => [item.id, item.messages.length]), [["th_1", 1]], "아직 이 실행에서 받은 것이 없으면 실행 전 메시지만");
+  state = reduceLive(state, toLiveEvent(new SseParser().push(act(1, "sent", { message: MESSAGE }))[0])!);
+  const during = presentThreads(viewThreads, state, new Set(["m_old"]));
+  assert.equal(during[0].messages.length, 2);
+  assert.equal(during[0].status, "open", "끝나기 전에는 합의 상태를 미리 보이지 않는다");
+  assert.equal(presentThreads(viewThreads, state, null)[0].status, "agreed");
+
+  type StageStatus = "waiting" | "running" | "done" | "needs_check";
+  const viewStages = [1, 2].map((stage) => ({ stage, key: `k${stage}`, label: `이름${stage}`, status: "done" as StageStatus }));
+  assert.deepEqual(presentStages(viewStages, initialLive(), viewStages.map((item) => ({ ...item, status: "waiting" as StageStatus }))).map((item) => item.status), ["waiting", "waiting"]);
+  const running = reduceLive(initialLive(), { type: "status", seq: 1, status: "running", phase: null, stages: [{ stage: 1, key: null, label: null, status: "done" }, { stage: 2, key: null, label: null, status: "running" }] });
+  const shown = presentStages(viewStages, running, null);
+  assert.deepEqual(shown.map((item) => [item.label, item.status]), [["이름1", "done"], ["이름2", "running"]]);
 });

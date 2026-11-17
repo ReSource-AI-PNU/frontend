@@ -373,7 +373,9 @@ export function reduceLive(state: LiveState, event: LiveEvent): LiveState {
   if (!found) return base;
   const side = sideOf(event);
   const label = event.author?.label ?? (side ? AUTHOR_LABEL[side] : "AI");
-  let thread: LiveThread = { ...found.thread, touched: lastSeq, lastText: event.text || found.thread.lastText };
+  // 대화 한 줄 요약에는 판단 도구 줄을 쓰지 않는다(두 AI가 한 일만)
+  const summary = event.kind !== "tool" && event.text ? event.text : found.thread.lastText;
+  let thread: LiveThread = { ...found.thread, touched: lastSeq, lastText: summary };
   switch (event.kind) {
     case "drafting":
       if (side) thread = { ...thread, typing: { side, label, phase: "drafting", reason: null } };
@@ -520,6 +522,40 @@ export function mergeThreads(viewThreads: ViewThreadLike[], live: LiveState | nu
   return out;
 }
 
+/**
+ * 화면에 그릴 대화. baseline(실행 전에 있던 메시지 ID)이 있으면 실행이 끝날 때까지 뷰의 메시지 가운데 그것만 두고
+ * 스트림으로 받은 것을 차례로 더한다. 아직 아무 일도 없는 대화는 빼고, 결과 상태(합의 등)는 끝난 뒤에 보인다.
+ */
+export function presentThreads(viewThreads: ViewThreadLike[], live: LiveState | null, baseline: Set<string> | null): TalkThread[] {
+  if (!baseline) return mergeThreads(viewThreads, live);
+  const masked = viewThreads.map((thread) => ({ ...thread, messages: thread.messages.filter((message) => baseline.has(message.id)) }));
+  return mergeThreads(masked, live)
+    .filter((thread) => thread.messages.length > 0 || Boolean(live?.threads[thread.id]))
+    .map((thread) => {
+      const extra = live?.threads[thread.id];
+      if (!extra) return thread;
+      return { ...thread, status: extra.handoff ? "handoff" : "open", statusReason: null, reasonEvidence: [], turns: thread.messages.length };
+    });
+}
+
+type StageLike = { stage: number; key: string; label: string; status: "waiting" | "running" | "done" | "needs_check" };
+
+/** 단계 목록: 스트림으로 받은 단계 상태가 있으면 그것을, 없으면 baseline(실행 전) 또는 뷰의 것을 쓴다. 이름은 뷰의 것 */
+export function presentStages<T extends StageLike>(viewStages: T[], live: LiveState | null, baseline: T[] | null): T[] {
+  const from = live?.stages;
+  const base = baseline && baseline.length > 0 ? baseline : viewStages;
+  if (!from) return base;
+  const known = new Set(["waiting", "running", "done", "needs_check"]);
+  const names = new Map(viewStages.map((item) => [item.stage, item]));
+  const out = from.flatMap((item) => {
+    const named = names.get(item.stage);
+    if (!named) return [];
+    const status = (known.has(item.status) ? item.status : named.status) as T["status"];
+    return [{ ...named, label: item.label ?? named.label, status }];
+  });
+  return out.length > 0 ? out : base;
+}
+
 /** 근거 n개: 메시지의 숫자·조항(claim) 수와 그 근거 ID들 */
 export function evidenceOf(message: Pick<ThreadMessage, "claims">): { count: number; ids: string[] } {
   const ids = [...new Set(message.claims.flatMap((claim) => claim.evidence))];
@@ -536,4 +572,138 @@ export function withinVendorRange(message: Pick<ThreadMessage, "type" | "meta" |
   if (message.author?.side !== "vendor" || message.author.kind !== "agent") return false;
   if (!OFFER_TYPES.has(message.type)) return false;
   return Boolean(message.meta?.terms && message.meta.terms.items.length > 0 && message.validation.ok);
+}
+
+/* ── 저장된 대화로 다시 보기 ──────────────────────────────────────── */
+
+/** 초안 거부 코드 → 화면의 사유 분류(백엔드 app/v3/live.py REASONS와 같은 낱말) */
+const REASON_OF_CODE: Record<string, string> = {
+  NUMBER_OUTSIDE_PLACEHOLDER: "근거에 없는 숫자",
+  UNKNOWN_PLACEHOLDER: "근거에 없는 값",
+  UNKNOWN_CLAIM_REF: "근거에 없는 값",
+  CLAIM_WITHOUT_EVIDENCE: "근거에 없는 값",
+  EVIDENCE_NOT_FOUND: "근거에 없는 값",
+  UNUSED_CLAIM: "본문과 값이 맞지 않음",
+  VALUE_MISMATCH: "근거와 다른 값",
+  UNIT_MISMATCH: "근거와 다른 값",
+  QUOTE_MISMATCH: "원문과 다른 조항 인용",
+  EVIDENCE_FORBIDDEN: "볼 수 없는 근거",
+  EVIDENCE_EXPIRED: "기한이 지난 근거",
+  TYPE_NOT_ALLOWED: "지금 보낼 수 없는 종류",
+  APPROVAL_REQUIRED: "지금 보낼 수 없는 종류",
+  THREAD_RULE: "대화 규칙에 맞지 않음",
+  UNKNOWN_STREAM: "대화에 없는 폐기물",
+  PERMIT_MISMATCH: "허가 품목이 맞지 않음",
+  UNBACKED_TERM: "근거 없는 조건 낱말",
+  TOO_MANY_TOOL_ROUNDS: "응답 형식 오류",
+  INVALID_OUTPUT: "응답 형식 오류",
+};
+
+export function reasonOfCode(code: string): string {
+  if (code.startsWith("GUARDRAIL_")) return "업체 기준 밖의 조건";
+  if (code.startsWith("OTHER_EMITTER")) return "다른 회사 정보";
+  return REASON_OF_CODE[code] ?? "검사를 통과하지 못함";
+}
+
+function withJosa(word: string, pair: "이/가" | "을/를" | "와/과"): string {
+  const [batchim, plain] = pair.split("/");
+  return `${word}${hasBatchim(word) ? batchim : plain}`;
+}
+
+const TYPE_WORD: Record<string, string> = {
+  inquiry: "문의",
+  question: "질문",
+  answer: "답변",
+  offer: "제안",
+  counter: "수정 제안",
+  conditional: "조건부 제안",
+  decline: "거절",
+  handoff: "담당자 넘김",
+  confirm: "확정",
+};
+
+type ReplayStage = { stage: number; key: string; label: string; status: string };
+type ReplayView = {
+  session: { emitterOrgId: string; status: string };
+  stages: ReplayStage[];
+  threads: ViewThreadLike[];
+};
+
+/**
+ * 스트림 기록이 없는 찾기(이 기능 전에 돈 시연 찾기 등)를 저장된 대화로 다시 보여 줄 이벤트.
+ * 메시지마다 작성 중 → 근거 확인 → (거부됐으면 다시 쓰기) → 보냄 순서이고, 거부 횟수와 사유는 메시지의 검증 기록
+ * (validation.attempts, rejections)에서만 가져온다. 기록에 없는 일은 만들지 않는다.
+ */
+export function replayFromView(view: ReplayView): LiveEvent[] {
+  const out: LiveEvent[] = [];
+  let seq = 0;
+  const next = () => ++seq;
+  const stageList = (current: number | null, final = false): LiveStage[] =>
+    view.stages.map((item) => ({
+      stage: item.stage,
+      key: item.key,
+      label: item.label,
+      status: final ? item.status : current === null || item.stage > current ? "waiting" : item.stage === current ? "running" : "done",
+    }));
+  out.push({ type: "status", seq: next(), status: "running", phase: null, stages: stageList(0) });
+
+  const all = view.threads.flatMap((thread) => thread.messages.map((message) => ({ thread, message })));
+  all.sort((a, b) => a.message.createdAt.localeCompare(b.message.createdAt) || a.message.seq - b.message.seq);
+  const opened = new Set<string>();
+  let stage: number | null = 0;
+  for (const { thread, message } of all) {
+    if (message.stage !== stage) {
+      stage = message.stage;
+      out.push({ type: "status", seq: next(), status: "running", phase: null, stages: stageList(stage) });
+    }
+    const side: LiveSide = message.author?.side ?? (message.from === view.session.emitterOrgId ? "company" : "vendor");
+    const system = message.author?.kind === "system";
+    const label = message.author?.label ?? AUTHOR_LABEL[side];
+    const base = {
+      type: "activity" as const,
+      at: null,
+      stage: message.stage,
+      threadId: thread.id,
+      vendorOrgId: thread.vendorOrgId,
+      vendorName: thread.vendorName,
+      author: { side, kind: system ? ("system" as const) : ("agent" as const), label },
+      message: null,
+      reasons: [] as string[],
+      evidenceCount: null,
+      attempt: null,
+    };
+    const actor = side === "company" ? "company_agent" : "vendor_agent";
+    if (!opened.has(thread.id)) {
+      opened.add(thread.id);
+      out.push({ ...base, seq: next(), actor: "system", kind: "status", author: null, text: `${withJosa(thread.vendorName, "와/과")} 대화를 엽니다.` });
+    }
+    if (!system) {
+      out.push({ ...base, seq: next(), actor, kind: "drafting", text: `${withJosa(label, "이/가")} ${side === "company" ? "메시지를" : "답을"} 쓰고 있습니다.` });
+      const attempts = Math.max(1, message.validation.attempts ?? 1);
+      const rejections = message.validation.rejections ?? [];
+      for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        out.push({ ...base, seq: next(), actor: "validator", kind: "validating", text: "보내기 전에 숫자와 조항을 근거와 대조하고 있습니다.", attempt });
+        if (attempt === attempts) break;
+        const codes = rejections.filter((item) => (item.attempt ?? 1) === attempt).map((item) => item.code);
+        const reasons = [...new Set((codes.length > 0 ? codes : rejections.map((item) => item.code)).map(reasonOfCode))];
+        const shown = reasons.length > 0 ? reasons : ["검사를 통과하지 못함"];
+        out.push({ ...base, seq: next(), actor: "validator", kind: "rejected", reasons: shown, text: `근거 확인에서 돌려보냈습니다: ${shown.join(", ")}.`, attempt });
+        out.push({ ...base, seq: next(), actor, kind: "rewriting", text: `${withJosa(label, "이/가")} 거부 사유를 고쳐 다시 쓰고 있습니다.`, attempt: attempt + 1 });
+      }
+    }
+    const handoff = message.type === "handoff";
+    const what = withJosa(TYPE_WORD[message.type] ?? "메시지", "을/를");
+    out.push({
+      ...base,
+      seq: next(),
+      actor,
+      kind: handoff ? "handoff" : "sent",
+      text: handoff ? `${side === "company" ? "회사" : "업체"} 측 담당자에게 넘겼습니다.` : `${withJosa(label, "이/가")} ${what} 보냈습니다.`,
+      message,
+      evidenceCount: handoff ? null : message.claims.length,
+    });
+  }
+  out.push({ type: "status", seq: next(), status: view.session.status, phase: null, stages: stageList(null, true) });
+  out.push({ type: "done", status: view.session.status, lastSeq: seq });
+  return out;
 }
