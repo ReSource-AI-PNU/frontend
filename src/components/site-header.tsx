@@ -17,17 +17,11 @@ export function MarketingHeader() {
     <HeaderFrame>
       <BrandLink />
       <nav aria-label="소개 메뉴" className="mr-auto hidden items-center gap-1 text-sm text-muted md:flex">
-        <Link href="/#problem" className="rounded-md px-3 py-2 hover:text-ink">
-          왜 필요한가
-        </Link>
-        <Link href="/#streams" className="rounded-md px-3 py-2 hover:text-ink">
-          시연 공장
-        </Link>
         <Link href="/#how" className="rounded-md px-3 py-2 hover:text-ink">
-          진단 절차
+          어떻게 찾나요
         </Link>
-        <Link href="/#loop" className="rounded-md px-3 py-2 hover:text-ink">
-          현장 지식
+        <Link href="/demo" className="rounded-md px-3 py-2 hover:text-ink">
+          체험하기
         </Link>
       </nav>
       <div className="ml-auto flex items-center gap-2 md:ml-0">

@@ -41,7 +41,7 @@ const STEPS = [
   },
 ];
 
-/** 시연 서버가 실제로 낸 결과를 옮긴 것이다. 회사·업체·금액은 모두 가상이다. */
+/** 시연용 가상 회사로 실제로 낸 결과를 옮긴 것이다. 회사·업체·금액은 모두 가상이다. */
 const PREVIEW = [
   { name: "불량 사출품", amount: "한 달 400 kg", vendor: "(주)미소환경", state: "조건 확인 뒤 확정", price: "매입 kg당 200원", diff: "+180,000원" },
   { name: "포장 필름", amount: "한 달 300 kg", vendor: "(주)새길자원", state: "조건 확인 뒤 확정", price: "매입 kg당 150원", diff: "+120,000원" },
@@ -131,7 +131,10 @@ function Preview() {
         </div>
       </div>
       <figcaption className="mt-3 text-[13px] text-muted">
-        시연 서버가 낸 결과를 그대로 옮긴 화면입니다. 회사·업체·금액은 모두 가상입니다.
+        시연용 가상 회사의 실제 찾기 결과입니다. 회사·업체·금액은 모두 가상입니다.{" "}
+        <Link href="/demo" className="underline underline-offset-4 hover:text-ink">
+          체험하기에서 전체 화면 보기
+        </Link>
       </figcaption>
     </figure>
   );
@@ -145,6 +148,9 @@ export default function LandingPage() {
       <header className="mx-auto flex w-full max-w-[1200px] items-center gap-4 px-5 pt-5 lg:px-8">
         <BrandLink href="/" />
         <nav aria-label="계정" className="ml-auto flex items-center gap-1">
+          <Link href="/demo" className="hidden min-h-10 items-center rounded-[10px] px-3.5 text-sm text-ink-2 hover:bg-sunken hover:text-ink sm:flex">
+            체험하기
+          </Link>
           <Link href="/login" className="flex min-h-10 items-center rounded-[10px] px-3.5 text-sm text-ink-2 hover:bg-sunken hover:text-ink">
             로그인
           </Link>
@@ -169,6 +175,9 @@ export default function LandingPage() {
             <ButtonLink href="/signup" className="!min-h-12 !px-6 !text-[16px]">
               시작하기
             </ButtonLink>
+            <Link href="/demo" className="flex min-h-12 items-center rounded-[10px] border border-line-strong px-5 text-[15px] font-semibold text-ink hover:border-ink">
+              체험하기
+            </Link>
             <a href="#how" className="flex min-h-12 items-center rounded-[10px] px-4 text-[15px] text-ink-2 hover:bg-sunken hover:text-ink">
               어떻게 찾나요
             </a>

@@ -16,7 +16,7 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
               Re:Source AI
             </p>
             <p className="mt-3 max-w-xl">
-              화면에 나오는 회사·업체·단가·물량은 시연용 가상 데이터입니다. 사진은 Unsplash 라이선스로 받은 실제 산업 현장
+              소개 화면과 체험하기에 나오는 회사·업체·단가·물량은 가상입니다. 사진은 Unsplash 라이선스로 받은 실제 산업 현장
               사진이며 저희 고객사의 모습이 아닙니다.
             </p>
             <p className="mt-2">
