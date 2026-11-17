@@ -72,6 +72,25 @@ const SIDES: { photo: Photo; title: string; body: string; points: string[] }[] =
   },
 ];
 
+/** 기술적으로 다른 점 세 가지. 각각 실제로 볼 수 있는 곳(체험하기, AI 신뢰도)으로 이어진다 */
+const DIFFERENTIATORS: { title: string; body: string; link: { href: string; label: string } }[] = [
+  {
+    title: "근거를 확인한 숫자만 말하는 AI",
+    body: "AI가 보내는 단가·물량·법 조항은 근거와 대조한 뒤에만 나갑니다. 근거에 없는 숫자가 있으면 보내기 전에 돌려보내 다시 쓰게 하고, 화면의 숫자를 누르면 그 근거가 열립니다.",
+    link: { href: "/demo", label: "체험하기에서 근거 열어 보기" },
+  },
+  {
+    title: "공장과 업체를 각각 대변하는 두 AI의 실시간 협상",
+    body: "공장 쪽 AI는 올라온 자료로 묻고, 업체 쪽 AI는 업체가 정한 단가와 조건 범위 안에서만 답합니다. 두 AI가 주고받는 말이 오는 대로 보이고, 확정은 양쪽 담당자가 합니다.",
+    link: { href: "/demo", label: "체험하기에서 두 AI의 대화 보기" },
+  },
+  {
+    title: "공개 평가 점수",
+    body: "AI를 가상 시나리오로 시험한 결과를 목표와 신뢰구간과 함께 공개합니다. 목표에 못 미친 것과 아직 재지 못한 것도 그대로 적습니다.",
+    link: { href: "/trust", label: "AI 신뢰도 보기" },
+  },
+];
+
 function Credit({ photo, className = "" }: { photo: Photo; className?: string }) {
   return <p className={`text-[12px] text-muted ${className}`}>사진 {photo.by} · Unsplash</p>;
 }
@@ -248,6 +267,32 @@ export default function LandingPage() {
             <Preview />
           </div>
         </div>
+      </section>
+
+      {/* 다른 점 */}
+      <section aria-labelledby="why-trust" className="mx-auto grid max-w-[1200px] gap-x-20 gap-y-10 px-5 pt-24 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:px-8 lg:pt-36">
+        <div>
+          <h2 id="why-trust" className={`${h2} max-w-[13ch]`}>
+            AI에게 맡겨도 되는 세 가지 이유
+          </h2>
+          <p className="mt-6 max-w-[30rem] text-[17px] leading-relaxed text-ink-2">
+            돈이 오가는 조건을 AI가 대신 묻는 만큼, 숫자마다 근거가 있고 누구 편에서 말하는지 분명해야 합니다.
+          </p>
+        </div>
+        <ol className="divide-y divide-line border-y border-line">
+          {DIFFERENTIATORS.map((item, index) => (
+            <li key={item.title} className="grid gap-x-6 gap-y-1.5 py-6 sm:grid-cols-[2rem_minmax(0,1fr)]">
+              <span className="num text-[15px] text-muted">{index + 1}</span>
+              <div>
+                <h3 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">{item.title}</h3>
+                <p className="mt-2 text-[16px] leading-relaxed text-ink-2">{item.body}</p>
+                <Link href={item.link.href} className="mt-3 inline-flex min-h-10 items-center text-[15px] font-semibold text-ink underline underline-offset-4">
+                  {item.link.label}
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* 양쪽 */}
