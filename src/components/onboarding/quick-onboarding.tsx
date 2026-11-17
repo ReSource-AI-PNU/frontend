@@ -7,7 +7,7 @@ import type { IndustrialComplex } from "@/lib/domain";
 import { saveQuickOrganization } from "@/lib/server/organization-actions";
 
 const input =
-  "min-h-12 w-full rounded-lg border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss";
+  "min-h-12 w-full rounded-[10px] border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss";
 
 const ROLES = [
   { value: "배출", title: "공장에서 내보냅니다", body: "폐플라스틱을 받아 줄 곳을 찾습니다", icon: FactoryIcon },
@@ -30,7 +30,7 @@ export function QuickOnboarding({ complexes }: { complexes: IndustrialComplex[] 
   return (
     <form action={action} className="grid gap-6">
       <div>
-        <label htmlFor="name" className="text-sm font-semibold">
+        <label htmlFor="name" className="text-sm font-medium">
           회사 이름
         </label>
         <input
@@ -47,12 +47,12 @@ export function QuickOnboarding({ complexes }: { complexes: IndustrialComplex[] 
       </div>
 
       <fieldset>
-        <legend className="text-sm font-semibold">하는 일</legend>
+        <legend className="text-sm font-medium">하는 일</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {ROLES.map((role, index) => (
             <label
               key={role.value}
-              className="flex cursor-pointer items-start gap-3 rounded-xl border border-line-strong bg-surface p-4 transition-colors hover:border-ink has-[:checked]:border-brand has-[:checked]:bg-brand-bg"
+              className="flex cursor-pointer items-start gap-3 rounded-xl border border-line-strong bg-surface p-4 transition-colors hover:border-ink has-[:checked]:border-ink has-[:checked]:shadow-[inset_0_0_0_1px_var(--color-ink)]"
             >
               <input
                 type="radio"
@@ -61,9 +61,9 @@ export function QuickOnboarding({ complexes }: { complexes: IndustrialComplex[] 
                 defaultChecked={values.role ? values.role === role.value : index === 0}
                 className="sr-only"
               />
-              <role.icon className="mt-0.5 size-5 text-brand" />
+              <role.icon className="mt-0.5 size-5 text-ink-2" />
               <span>
-                <span className="block font-semibold">{role.title}</span>
+                <span className="block font-medium">{role.title}</span>
                 <span className="block text-[13px] text-ink-2">{role.body}</span>
               </span>
             </label>
@@ -73,7 +73,7 @@ export function QuickOnboarding({ complexes }: { complexes: IndustrialComplex[] 
       </fieldset>
 
       <div>
-        <label htmlFor="complexId" className="text-sm font-semibold">
+        <label htmlFor="complexId" className="text-sm font-medium">
           산업단지
         </label>
         <select

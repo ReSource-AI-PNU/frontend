@@ -8,10 +8,10 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <main className="flex flex-1 flex-col">{children}</main>
-      <footer className="border-t border-line bg-ground">
-        <div className="mx-auto grid max-w-[1240px] gap-6 px-6 py-10 text-[13px] text-muted lg:grid-cols-[1fr_auto] lg:px-10">
+      <footer>
+        <div className="mx-auto grid max-w-[1200px] gap-6 px-5 py-12 text-[13px] text-muted lg:grid-cols-[1fr_auto] lg:px-8">
           <div>
-            <p className="flex items-center gap-2.5 font-semibold text-ink">
+            <p className="flex items-center gap-2.5 font-medium text-ink">
               <BrandMark />
               Re:Source AI
             </p>
@@ -35,7 +35,7 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
             <Link href="/terms" className="rounded-md px-2 py-2 hover:text-ink">
               이용약관
             </Link>
-            <Link href="/privacy" className="rounded-md px-2 py-2 font-semibold text-ink-2 hover:text-ink">
+            <Link href="/privacy" className="rounded-md px-2 py-2 hover:text-ink">
               개인정보처리방침
             </Link>
           </nav>

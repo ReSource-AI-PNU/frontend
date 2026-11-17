@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* 디자인 토큰 (2026-11 화면 개편)
-   공장 바닥에서 가져온 색: 에폭시 바닥의 녹색(brand)과 통로를 긋는 안전선 노랑(lane).
-   노랑은 선과 표시에만 쓰고 글자에는 쓰지 않는다. 중립색은 녹색 쪽으로 살짝 기울였다. */
+/* 디자인 토큰 (2026-11 화면 개편 2차)
+   흰 바탕, 무채색 회색, 먹색 글자와 먹색 버튼. 색은 뜻이 있을 때만 쓴다:
+   녹색은 표지와 받는 돈, 빨강은 내는 돈과 오류, 호박색은 확인이 필요한 곳의 글자에만. 장식용 선과 무늬는 두지 않는다. */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -13,27 +13,27 @@
   --color-current: currentColor;
 
   --color-bg: #ffffff;
-  --color-ground: #f3f5f2;
+  --color-ground: #f7f7f8;
   --color-surface: #ffffff;
-  --color-sunken: #eef1ed;
-  --color-line: #e0e5e0;
-  --color-line-strong: #c5cdc7;
-  --color-ink: #0f1512;
-  --color-ink-2: #38413c;
-  --color-muted: #5c6660;
+  --color-sunken: #f2f2f4;
+  --color-line: #ececef;
+  --color-line-strong: #d4d4d9;
+  --color-ink: #111114;
+  --color-ink-2: #3f3f47;
+  --color-muted: #6e6e78;
   --color-on-ink: #ffffff;
   --color-brand: #17694b;
   --color-brand-strong: #0f4f38;
-  --color-brand-bg: #e6f1eb;
+  --color-brand-bg: #eaf3ee;
   --color-on-brand: #ffffff;
   --color-lane: #f5c400;
-  --color-marker: #f5c400;
-  --color-marker-ink: #1a1500;
-  --color-gain: #0c7148;
+  --color-marker: #d7ecdf;
+  --color-marker-ink: #0b2b1e;
+  --color-gain: #0b6b44;
   --color-gain-bg: #e9f4ee;
   --color-loss: #b5332a;
   --color-loss-bg: #fbeceb;
-  --color-warn: #9a5b00;
+  --color-warn: #8a5200;
   --color-warn-bg: #fbf3e4;
   --color-photo: #18181b;
 
@@ -84,12 +84,14 @@
     }
   }
 
-  @keyframes rs-lane {
-    from {
-      background-position: 0 0;
+  @keyframes rs-dot {
+    0%,
+    80%,
+    100% {
+      opacity: 0.25;
     }
-    to {
-      background-position: 40px 0;
+    40% {
+      opacity: 1;
     }
   }
 
@@ -105,6 +107,17 @@
   @keyframes rs-sheet {
     from {
       transform: translateY(24px);
+      opacity: 0;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes rs-panel {
+    from {
+      transform: translateX(24px);
       opacity: 0;
     }
     to {
@@ -136,21 +149,21 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-wanted), "Pretendard Variable", "Apple SD Gothic Neo", sans-serif;
+  --font-sans: var(--font-pretendard), "Pretendard Variable", "Apple SD Gothic Neo", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 [data-theme="dark"] {
-  --color-bg: #0d110f;
-  --color-ground: #080b09;
-  --color-surface: #141916;
-  --color-sunken: #0a0d0b;
-  --color-line: #242b27;
-  --color-line-strong: #37413b;
-  --color-ink: #f2f5f2;
-  --color-ink-2: #cfd6d1;
-  --color-muted: #98a39c;
-  --color-on-ink: #0d110f;
+  --color-bg: #111113;
+  --color-ground: #0b0b0d;
+  --color-surface: #18181b;
+  --color-sunken: #1d1d21;
+  --color-line: #26262b;
+  --color-line-strong: #3a3a41;
+  --color-ink: #f4f4f5;
+  --color-ink-2: #d1d1d6;
+  --color-muted: #9a9aa3;
+  --color-on-ink: #111113;
   --color-brand: #3fb485;
   --color-brand-strong: #5cc79c;
   --color-brand-bg: #12261d;
@@ -182,13 +195,14 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     line-height: 1.6;
+    letter-spacing: -0.006em;
     word-break: keep-all;
     overflow-wrap: break-word;
     -webkit-font-smoothing: antialiased;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-ink);
     outline-offset: 2px;
   }
 
@@ -199,7 +213,7 @@
 
   input,
   textarea {
-    caret-color: var(--color-brand);
+    caret-color: var(--color-ink);
   }
 
   /* 스크롤 막대도 화면의 일부다. 얇게, 중립색으로 */
@@ -209,14 +223,6 @@
   }
 }
 
-/* 안전선: 공장 통로를 긋는 노란 선. 연결과 진행을 나타내는 곳에만 쓴다 */
-@utility lane {
-  background-image: repeating-linear-gradient(90deg, var(--color-lane) 0 24px, transparent 24px 40px);
-  background-size: 40px 100%;
-}
-@utility lane-run {
-  animation: rs-lane 900ms linear infinite;
-}
 @utility rise {
   animation: rs-rise 420ms var(--ease-out) both;
 }
