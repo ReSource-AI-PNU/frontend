@@ -70,7 +70,7 @@ export async function saveOrganization(_prev: OnboardingState, formData: FormDat
   }
 
   const existed = Boolean(await findOrganizationByOwner(user.id));
-  const org = await upsertOrganization(user.id, parsed.data);
-  // 처음 등록이면 내 산업단지 지도로, 수정이면 설정 화면으로 돌아간다
-  redirect(existed ? "/settings?saved=1" : `/complex/${org.complexId}`);
+  await upsertOrganization(user.id, parsed.data);
+  // 처음 등록이면 v3 진단·연결 화면으로, 수정이면 설정 화면으로 돌아간다
+  redirect(existed ? "/settings?saved=1" : "/v3");
 }

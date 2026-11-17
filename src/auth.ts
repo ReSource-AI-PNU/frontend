@@ -72,7 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const loggedIn = Boolean(session?.user);
       if (isProtected(nextUrl.pathname)) return loggedIn;
       if (loggedIn && (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup")) {
-        return Response.redirect(new URL("/upload", nextUrl));
+        return Response.redirect(new URL("/v3", nextUrl));
       }
       return true;
     },

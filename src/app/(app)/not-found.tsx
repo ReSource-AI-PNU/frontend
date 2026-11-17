@@ -11,9 +11,9 @@ export default function AppNotFound() {
           지워졌거나, 다른 회사의 자료이거나, 주소가 잘못되었습니다. 세션과 견적 요청서는 같은 회사 멤버만 볼 수 있습니다.
         </p>
         <div className="flex flex-wrap gap-3">
-          <ButtonLink href="/session">세션 목록으로</ButtonLink>
-          <ButtonLink href="/upload" variant="secondary">
-            새로 업로드하기
+          <ButtonLink href="/v3">진단·연결로</ButtonLink>
+          <ButtonLink href="/v3/materials" variant="secondary">
+            자료 올리기
           </ButtonLink>
         </div>
       </div>
