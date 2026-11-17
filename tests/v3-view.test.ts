@@ -78,7 +78,7 @@ test("예시 데이터의 근거 레코드가 스키마에 맞는다", () => {
 test("예시 데이터는 규칙 정책(모델 미연결)이 쓴 것으로 표시된다", () => {
   const view = diagnosisViewSchema.parse(read("../src/lib/v3/fixture-data/view.json"));
   for (const thread of view.threads) {
-    assert.equal(thread.vendorModel.provider, "rule");
+    assert.equal(thread.vendorModel?.provider, "rule");
     assert.equal(modelLabel(thread.vendorModel), "규칙 정책(모델 미연결)");
   }
 });

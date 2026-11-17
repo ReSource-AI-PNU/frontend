@@ -159,6 +159,16 @@ export const messageMetaSchema = obj({
   }).nullable(),
 });
 
+/**
+ * 화면에 보이는 작성자 표시(계약 7장 "작성자 표시"). 구현 이름 대신 이것만 일반 화면에 쓴다.
+ * label은 "회사 측 AI" | "업체 측 AI" | "자동 안내"다.
+ */
+export const authorSchema = obj({
+  side: z.enum(["company", "vendor"]),
+  kind: z.enum(["agent", "system"]),
+  label: z.string(),
+});
+
 export const threadMessageSchema = obj({
   id: z.string(),
   seq: z.number(),
@@ -172,6 +182,7 @@ export const threadMessageSchema = obj({
   validation: validationSchema,
   createdAt: z.string(),
   model: modelRefSchema.nullable().optional(),
+  author: authorSchema.optional(),
   meta: messageMetaSchema.optional(),
 });
 
@@ -180,7 +191,9 @@ export const threadSchema = obj({
   emitterOrgId: z.string(),
   vendorOrgId: z.string(),
   vendorName: z.string(),
-  vendorModel: vendorModelSchema,
+  /** 구현 이름(운영 정보). 일반 화면에는 쓰지 않고, 백엔드가 일반 뷰에서 지울 수 있다 */
+  vendorModel: vendorModelSchema.optional(),
+  vendorAuthor: authorSchema.optional(),
   status: threadStatusSchema,
   statusReason: z.string().nullable(),
   reasonEvidence: z.array(z.string()),

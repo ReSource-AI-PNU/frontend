@@ -9,19 +9,24 @@ import { MESSAGE_LABEL, THREAD_LABEL, formatDateTime } from "@/lib/v3/format";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
 
 const ACTOR_LABEL: Record<string, string> = {
-  company_agent: "공장 쪽 AI",
-  vendor_agent: "업체 쪽 AI",
+  company_agent: "회사 측 AI",
+  vendor_agent: "업체 측 AI",
   validator: "근거 검증기",
   tool: "판단 도구",
   system: "시스템",
 };
+/**
+ * 말풍선 하나. 누가 썼는지는 백엔드가 준 작성자 표시(author.label: 회사 측 AI · 업체 측 AI · 자동 안내)로 적고,
+ * 모델·구현 이름은 쓰지 않는다. 표시가 없는 예전 뷰는 보낸 쪽으로 정한다.
+ */
 function Bubble({ message, mine, name }: { message: ThreadMessage; mine: boolean; name: string }) {
   const { validation } = message;
   return (
     <li className={`flex ${mine ? "justify-start" : "justify-end"}`}>
       <div className="max-w-[92%]">
         <p className={`mb-1 flex flex-wrap items-center gap-x-2 text-[12px] text-muted ${mine ? "" : "justify-end"}`}>
-          <span className="font-medium text-ink-2">{name} AI</span>
+          <span className="font-medium text-ink-2">{message.author?.label ?? (mine ? "회사 측 AI" : "업체 측 AI")}</span>
+          <span>{name}</span>
           <span>{MESSAGE_LABEL[message.type] ?? message.type}</span>
         </p>
         <div
