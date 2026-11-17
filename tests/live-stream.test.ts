@@ -476,26 +476,35 @@ test("맨 위 한 줄: 식별·분류 중에는 업체에 묻는다고 쓰지 �
   assert.equal(isTalking(ended), false);
 });
 
-test("대화 상태: 끝날 때 온 대화별 마지막 상태를 쓰고, 뷰가 정한 상태가 먼저다", () => {
+test("대화 상태: 실행이 멈출 때 온 끝 상태(threadOutcome)를 쓰고, 뷰가 정한 상태·끝 상태가 먼저다", () => {
   const live = feed(
     act(1, "sent", { message: MESSAGE }),
-    sse("activity", { seq: 2, actor: "system", kind: "status", threadId: "th_1", threadStatus: "agreed", text: "(주)새길자원과 조건이 맞았습니다." }, 2),
-    sse("activity", { seq: 3, actor: "system", kind: "status", threadId: "th_2", vendorName: "(주)미소환경", status: "declined", text: "거절" }, 3),
-    sse("activity", { seq: 4, actor: "system", kind: "status", threadId: "th_3", vendorName: "(주)남해열분해", threadStatus: "bogus", text: "?" }, 4),
+    sse("activity", { seq: 2, actor: "system", kind: "status", threadId: "th_1", threadStatus: "agreed", threadOutcome: "agreed", text: "조건이 맞아 양쪽 담당자의 승인을 기다립니다." }, 2),
+    sse("activity", { seq: 3, actor: "system", kind: "status", threadId: "th_2", vendorName: "(주)미소환경", threadStatus: "open", threadOutcome: "not_selected", text: "조건을 받았지만 이번 최적안에는 들지 않아 대화를 마쳤습니다." }, 3),
+    sse("activity", { seq: 4, actor: "system", kind: "status", threadId: "th_3", vendorName: "(주)남해열분해", threadOutcome: "bogus", text: "?" }, 4),
   );
-  assert.equal(live.threads.th_1.finalStatus, "agreed");
-  assert.equal(live.threads.th_2.finalStatus, "declined");
-  assert.equal(live.threads.th_3.finalStatus, null, "모르는 상태는 받지 않는다");
+  assert.equal(live.threads.th_1.outcome, "agreed");
+  assert.equal(live.threads.th_2.outcome, "not_selected");
+  assert.equal(live.threads.th_2.outcomeText, "조건을 받았지만 이번 최적안에는 들지 않아 대화를 마쳤습니다.");
+  assert.equal(live.threads.th_3.outcome, null, "모르는 끝 상태는 받지 않는다");
   const view = [
     { id: "th_1", vendorOrgId: "org_vendor", vendorName: "(주)새길자원", status: "open" as const, statusReason: null, reasonEvidence: [], streamIds: ["st_1"], turns: 1, messages: [] },
-    { id: "th_2", vendorOrgId: "org_miso", vendorName: "(주)미소환경", status: "confirmed" as const, statusReason: null, reasonEvidence: [], streamIds: ["st_1"], turns: 1, messages: [] },
+    { id: "th_2", vendorOrgId: "org_miso", vendorName: "(주)미소환경", status: "open" as const, statusReason: null, reasonEvidence: [], streamIds: ["st_1"], turns: 1, messages: [], outcome: "ended" as const, outcomeText: "조건을 다 받지 못한 채 대화를 마쳤습니다." },
+    { id: "th_4", vendorOrgId: "org_x", vendorName: "(주)엑스", status: "confirmed" as const, statusReason: null, reasonEvidence: [], streamIds: ["st_1"], turns: 1, messages: [] },
   ];
   const merged = mergeThreads(view, live);
-  assert.equal(merged.find((item) => item.id === "th_1")?.status, "agreed", "뷰가 아직 open이면 마지막 상태");
-  assert.equal(merged.find((item) => item.id === "th_2")?.status, "confirmed", "뷰가 정한 상태가 먼저");
-  // 실행 중 가리기(baseline)에서도 마지막 상태가 보인다
+  assert.equal(merged.find((item) => item.id === "th_1")?.status, "agreed", "뷰가 아직 open이면 끝 상태의 합의");
+  assert.equal(merged.find((item) => item.id === "th_2")?.outcome, "ended", "뷰의 끝 상태가 먼저");
+  assert.equal(merged.find((item) => item.id === "th_4")?.status, "confirmed", "뷰가 정한 상태가 먼저");
+  const th2 = merged.find((item) => item.id === "th_2")!;
+  assert.equal(threadLabel(th2, { working: false, sessionStatus: "awaiting_approval" }), "합의 없이 끝남");
+  assert.equal(threadLabel({ ...th2, outcome: "not_selected" }, { working: false, sessionStatus: "awaiting_approval" }), "최적안에 들지 않음");
+  assert.equal(threadLabel({ ...th2, outcome: "waiting" }, { working: false, sessionStatus: "awaiting_answers" }), "담당자 답을 기다림");
+  assert.equal(threadLabel(th2, { working: true, sessionStatus: "running" }), "조건을 묻는 중", "실행 중에는 지난 끝 상태를 쓰지 않는다");
+  // 실행 중 가리기(baseline)에서도 이번 스트림의 끝 상태가 보인다
   const shown = presentThreads(view, live, new Set());
   assert.equal(shown.find((item) => item.id === "th_1")?.status, "agreed");
+  assert.equal(shown.find((item) => item.id === "th_2")?.outcome, "not_selected");
 });
 
 test("탭 낱말: 실행이 끝났는데 open이면 '조건을 묻는 중'이 아니다", () => {

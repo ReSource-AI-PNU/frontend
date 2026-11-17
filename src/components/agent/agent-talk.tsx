@@ -284,7 +284,11 @@ export function AgentTalk({
                       vendorName={thread.vendorName}
                       names={sideNames(thread, view.threads.find((item) => item.id === thread.id)?.vendorAuthor)}
                     />
-                    {thread.statusReason ? <StatusReason thread={thread} /> : null}
+                    {thread.statusReason ? (
+                      <StatusReason thread={thread} />
+                    ) : !working && thread.outcomeText ? (
+                      <p className="mt-3 rounded-xl bg-ground px-3.5 py-2.5 text-sm text-ink-2">{thread.outcomeText}</p>
+                    ) : null}
                     <ol className="mt-5 space-y-5">
                       {thread.messages.map((message) => {
                         const mine = message.author ? message.author.side === "company" : message.from === view.session.emitterOrgId;

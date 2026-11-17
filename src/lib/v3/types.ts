@@ -25,6 +25,7 @@ export type StageStatus = z.infer<typeof s.stageStatusSchema>;
 export type SessionStatus = z.infer<typeof s.sessionStatusSchema>;
 export type SessionPhase = z.infer<typeof s.sessionPhaseSchema>;
 export type ThreadStatus = z.infer<typeof s.threadStatusSchema>;
+export type ThreadOutcome = z.infer<typeof s.threadOutcomeSchema>;
 export type MessageType = z.infer<typeof s.messageTypeSchema>;
 
 export type Rejection = z.infer<typeof s.rejectionSchema>;
