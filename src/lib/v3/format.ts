@@ -154,16 +154,27 @@ export function currentBundle<T extends { answered: boolean; batch?: number | nu
   return questions.filter((item) => item.batch === batch);
 }
 
+type BatchSummary = { batch: number; count: number; open: number; intro: string; note: string | null };
+
 /**
- * 질문 묶음의 머리말. 숫자는 그 묶음의 질문 수와 남은 수에 맞춘다(화면에 그리는 질문 수와 같다).
- * 첫 묶음은 "찾기 전에 n가지만", 두 번째 묶음은 "n가지를 더", 일부 답했으면 "n가지 가운데 m가지가 남았습니다".
+ * 질문 묶음의 머리말과 덧붙임. 백엔드가 진단 뷰에 questionBatch(intro, note)를 주고 그 묶음이 지금 보이는 묶음과 같으면
+ * 그 문장을 쓴다. 없으면(예전 서버, 실행 중 스트림으로 막 받은 묶음) 같은 말투로 만든다: 첫 묶음 "찾기 전에 n가지를
+ * 여쭙겠습니다."(뒤에 더 물을 수 있어 "…만"이라고 쓰지 않는다), 둘째 묶음 "n가지만 더 여쭙겠습니다. 이번이 마지막
+ * 질문입니다." 일부 답했으면 남은 수를 덧붙인다. 숫자는 늘 그 묶음의 질문 수다.
  */
-export function questionIntro(bundle: { answered: boolean; batch?: number | null }[]): string {
+export function questionIntro(
+  bundle: { answered: boolean; batch?: number | null }[],
+  summary?: BatchSummary | null,
+): { intro: string; note: string | null } {
   const total = bundle.length;
   const open = bundle.filter((item) => !item.answered).length;
-  const first = (bundle[0]?.batch ?? 1) <= 1;
-  if (open === total) return first ? `찾기 전에 ${total}가지만 여쭤볼게요.` : `${total}가지를 더 여쭤볼게요.`;
-  return `여쭤본 ${total}가지 가운데 ${open}가지가 남았습니다.`;
+  const batch = bundle[0]?.batch ?? 1;
+  const left = open < total ? `${total}가지 가운데 ${open}가지가 남았습니다.` : null;
+  if (summary && summary.batch === batch) {
+    return { intro: summary.intro, note: [left, summary.note].filter(Boolean).join(" ") || null };
+  }
+  const intro = batch <= 1 ? `찾기 전에 ${total}가지를 여쭙겠습니다.` : `${total}가지만 더 여쭙겠습니다. 이번이 마지막 질문입니다.`;
+  return { intro, note: [left, batch <= 1 ? "답을 보고 한 번 더 여쭐 수 있습니다." : null].filter(Boolean).join(" ") || null };
 }
 
 /** 담당자 질문과 "모르는 값"에 나오는 항목 이름 */

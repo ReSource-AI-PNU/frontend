@@ -156,11 +156,14 @@ const field =
 
 function Questions({
   questions,
+  summary,
   streams,
   disabled,
   onAnswer,
 }: {
   questions: Question[];
+  /** 진단 뷰의 questionBatch(머리 문장 intro, 덧붙임 note) */
+  summary: DiagnosisView["questionBatch"];
   streams: ViewStream[];
   disabled: boolean;
   onAnswer: (questionId: string, value: string | number) => void;
@@ -170,10 +173,14 @@ function Questions({
   const bundle = currentBundle(questions);
   const current = bundle.filter((item) => !item.answered);
   if (current.length === 0) return null;
+  const head = questionIntro(bundle, summary);
   return (
     <div>
-      <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">{questionIntro(bundle)}</h2>
-      <p className="mt-1.5 text-[15px] text-ink-2">모르면 ‘모름’을 누르세요. 다시 묻지 않고 그대로 진행합니다.</p>
+      <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">{head.intro}</h2>
+      <p className="mt-1.5 text-[15px] text-ink-2">
+        모르면 ‘모름’을 누르세요. 다시 묻지 않고 그대로 진행합니다.
+        {head.note ? <span className="mt-0.5 block text-[13px] text-muted">{head.note}</span> : null}
+      </p>
       <ul className="mt-6 space-y-6">
         {current.map((question) => {
           const stream = streams.find((item) => item.id === question.streamId);
@@ -529,6 +536,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
           <div>
             <Questions
               questions={questions}
+              summary={holding ? null : view.questionBatch}
               streams={view.streams}
               disabled={!d.canAct || d.busy || working}
               onAnswer={d.answerAndContinue}

@@ -91,19 +91,24 @@ test("막힌 합의: clearedApprovals가 비어 있지 않을 때만 '앞서 한
   assert.equal(clearedApprovalsText({ ...approval, clearedApprovals: ["vendor"] }), "앞서 한 처리 업체의 승인은 지워졌습니다.");
 });
 
-test("질문 머리말의 숫자는 묶음의 질문 수와 같다", async () => {
+test("질문 머리말: 진단 뷰의 questionBatch.intro·note를 쓰고, 없으면 같은 말투로 묶음의 질문 수를 적는다", async () => {
   const { currentBundle, questionIntro } = await import("../src/lib/v3/format.ts");
   const q = (id: string, batch: number, answered = false) => ({ id, batch, answered });
   const first = [q("a", 1), q("b", 1), q("c", 1)];
   assert.deepEqual(currentBundle(first).map((item) => item.id), ["a", "b", "c"]);
-  assert.equal(questionIntro(currentBundle(first)), "찾기 전에 3가지만 여쭤볼게요.");
-  const partly = [q("a", 1, true), q("b", 1), q("c", 1)];
-  assert.equal(questionIntro(currentBundle(partly)), "여쭤본 3가지 가운데 2가지가 남았습니다.");
+  // 백엔드 문장(첫 묶음)
+  const summary = { batch: 1, count: 3, open: 3, intro: "찾기 전에 3가지를 여쭙겠습니다.", note: "답을 보고 한 번 더 여쭐 수 있습니다." };
+  assert.deepEqual(questionIntro(currentBundle(first), summary), { intro: "찾기 전에 3가지를 여쭙겠습니다.", note: "답을 보고 한 번 더 여쭐 수 있습니다." });
+  // 묶음이 다르면(실행 중 막 받은 둘째 묶음) 백엔드 문장을 쓰지 않는다
   const second = [q("a", 1, true), q("b", 2), q("c", 2)];
   assert.deepEqual(currentBundle(second).map((item) => item.id), ["b", "c"]);
-  assert.equal(questionIntro(currentBundle(second)), "2가지를 더 여쭤볼게요.");
+  assert.deepEqual(questionIntro(currentBundle(second), summary), { intro: "2가지만 더 여쭙겠습니다. 이번이 마지막 질문입니다.", note: null });
+  // 백엔드 문장이 없으면 첫 묶음은 "…만" 없이
+  assert.equal(questionIntro(currentBundle(first)).intro, "찾기 전에 3가지를 여쭙겠습니다.");
+  const partly = [q("a", 1, true), q("b", 1), q("c", 1)];
+  assert.equal(questionIntro(currentBundle(partly), { ...summary, open: 2 }).note, "3가지 가운데 2가지가 남았습니다. 답을 보고 한 번 더 여쭐 수 있습니다.");
   assert.deepEqual(currentBundle([q("a", 1, true)]), []);
   // 묶음 번호가 없으면 답하지 않은 질문 전부를 한 묶음으로 본다(0가지로 쓰지 않는다)
   const loose = [{ id: "x", answered: false }, { id: "y", answered: false }];
-  assert.equal(questionIntro(currentBundle(loose)), "찾기 전에 2가지만 여쭤볼게요.");
+  assert.equal(questionIntro(currentBundle(loose)).intro, "찾기 전에 2가지를 여쭙겠습니다.");
 });
