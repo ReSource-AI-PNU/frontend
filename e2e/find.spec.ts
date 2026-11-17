@@ -10,6 +10,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 const API = (process.env.E2E_API ?? "http://localhost:8000/api/v3").replace(/\/$/, "");
 const WON = /[+−-]?\d{1,3}(,\d{3})*원/;
+/** 백엔드가 bff 모드(계정 API)로 떠 있으면 1. 개발용 로그인은 bff가 아닐 때만 켜지므로 그 검사들은 건너뛴다 */
+const BFF = process.env.E2E_ACCOUNTS === "1";
 
 async function signIn(page: Page) {
   await page.goto("/login?callbackUrl=/app");
@@ -51,11 +53,13 @@ async function answerQuestions(page: Page) {
 }
 
 test.beforeEach(async ({ request }) => {
+  if (BFF) return; // bff 모드의 시연 되돌리기는 운영 계정만 부른다
   const reset = await request.post(`${API}/demo/reset`, { headers: { "X-Org-Id": "org_admin" } });
   expect(reset.ok(), "시연 데이터를 처음 상태로 되돌린다").toBeTruthy();
 });
 
 test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 차이가 나오고 숫자마다 근거가 열린다", async ({ page }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
   await expect(page.getByRole("heading", { name: "받아 줄 곳을 찾아볼까요?" })).toBeVisible();
@@ -91,6 +95,7 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
 });
 
 test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 계획서가 만들어진다", async ({ page }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
@@ -118,6 +123,7 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 
 });
 
 test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 조건이 보이지 않는다", async ({ page, request }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
@@ -154,6 +160,7 @@ test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 
 });
 
 test("통로는 세션의 회사로만 부른다: 다른 회사 주소와 바꿔 보낸 X-Org-Id는 통하지 않는다", async ({ page }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
   const other = await page.request.get("/api/v3/orgs/org_saegil/streams");
@@ -189,7 +196,7 @@ test("체험하기는 로그인 없이 시연 회사를 읽기 전용으로 보�
 });
 
 test("이메일로 가입하면 회사를 등록하고 빈 상태에서 폐기물 등록으로 시작한다", async ({ page }) => {
-  test.skip(process.env.E2E_ACCOUNTS !== "1", "백엔드 계정 API(bff)가 있을 때만 돈다");
+  test.skip(!BFF, "백엔드 계정 API(bff)가 있을 때만 돈다");
   await page.goto("/signup");
   await page.getByLabel("이름", { exact: true }).fill("김담당");
   await page.getByLabel("이메일", { exact: true }).fill(`e2e-${Date.now()}@example.com`);

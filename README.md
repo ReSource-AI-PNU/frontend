@@ -18,11 +18,12 @@ http://localhost:3000 에서 확인한다. 로그인 화면의 "개발용 빠른
 
 ## 계정과 회사
 
-- **가입·로그인:** 이메일과 비밀번호. 프런트 서버가 백엔드 `POST /accounts/signup`, `POST /accounts/login`을 서버 키로 부르고, 세션 JWT(Auth.js)에 사용자 ID·이름·이메일·소속 회사(멤버십)·활성 회사를 담는다. Microsoft 로그인은 `AUTH_MICROSOFT_ENTRA_ID_*` 세 값이 다 있을 때만 버튼이 나온다.
+- **가입·로그인:** 이메일과 비밀번호 하나다. 프런트 서버가 백엔드 `POST /accounts/signup`, `POST /accounts/login`을 서버 키로 부르고, 세션 JWT(Auth.js)에 사용자 ID·이름·이메일·소속 회사(멤버십)·활성 회사를 담는다. 외부 로그인(Microsoft 등)은 백엔드 계정과 잇는 길이 없어 두지 않는다.
 - **회사 등록·초대:** 가입한 뒤 `/onboarding`에서 회사를 등록하거나(배출 기업/처리 업체, 이름, 지역, 주소·사업자등록번호는 선택 → `POST /orgs`) 받은 초대 링크(`/invite/<토큰>` → `POST /invites/{token}/accept`)로 들어간다. 소유자는 설정의 멤버 화면에서 초대 링크를 만든다(`POST /orgs/{orgId}/invites`).
 - **활성 회사:** 화면과 통로는 세션의 활성 회사로만 일한다. 소속이 둘 이상이면 사이드바 아래에서 바꾼다(서버 액션이 세션을 고치고, 소속은 백엔드 `GET /accounts/me`에서 다시 읽는다).
 - **체험하기(`/demo`):** 로그인 없이 시연 회사(백엔드 `GET /demo/orgs`의 배출 기업)를 읽기 전용으로 둘러본다. 화면 위에 "체험 중 · 시연 회사의 가상 데이터입니다"와 가입하기가 있고, 저장·찾기·승인·업로드는 숨기거나 끈다.
-- 세션을 읽는 컴포넌트는 Cache Components 때문에 반드시 `<Suspense>` 안에 둔다. `src/proxy.ts`는 `/app`, `/settings`, `/onboarding`을 쿠키로 먼저 거른다.
+- 세션을 읽는 컴포넌트는 Cache Components 때문에 반드시 `<Suspense>` 안에 둔다. `src/proxy.ts`는 `/app`, `/settings`, `/onboarding`을 세션 쿠키가 있는지로만 거르고 쿠키를 다시 쓰지 않는다(Auth.js 미들웨어는 요청마다 쿠키를 다시 써서, 회사를 바꾸는 동안 늦게 온 옛 응답이 바꾼 세션을 덮을 수 있다). 그래서 세션은 로그인한 때부터 30일이 지나면 다시 로그인해야 한다.
+- 다른 창에서 회사를 바꾸면 화면이 보던 회사(`X-Expected-Org`)와 세션이 어긋나 통로가 409 `ORG_CHANGED`로 답하고, 화면은 새로 고친다. 회사에서 빠져 백엔드가 403 `NOT_A_MEMBER`로 답하면 소속을 다시 읽고 찾기 화면(소속이 없으면 회사 등록)으로 간다.
 
 ## 백엔드 통로
 
@@ -34,7 +35,7 @@ http://localhost:3000 에서 확인한다. 로그인 화면의 "개발용 빠른
 | `header` | `X-Org-Id`만 | 백엔드 로컬 서버로 개발·E2E |
 | `token` | 회사별 토큰(`V3_ORG_TOKENS`) | 예전 방식 |
 
-- 회사는 세션에서만 정한다. 브라우저가 보낸 `X-Org-Id`는 버리고, 주소의 회사(`/orgs/{id}/…`, 쓰기 `/vendors/{id}`)가 활성 회사와 다르면 403 `ORG_MISMATCH`.
+- 회사는 세션에서만 정한다. 브라우저가 보낸 `X-Org-Id`는 버리고, 주소의 회사(`/orgs/{id}/…`, 쓰기 `/vendors/{id}`)가 활성 회사와 다르면 403 `ORG_MISMATCH`. 경로 조각 안의 `/`·`\`(`%2F` 포함)는 받지 않는다.
 - 체험하기의 쓰기는 백엔드에 닿기 전에 403 `DEMO_READ_ONLY`. 계정·초대 경로는 서버 액션만 부른다(통로로는 403).
 - 사용자에게는 "잠시 연결이 원활하지 않습니다…" 같은 말만 보이고, 원인 코드(`BACKEND_NOT_SET`, `BACKEND_UNREACHABLE` 등)는 응답의 `error.code`와 서버 기록에 남는다. 백엔드 오류 문구는 `src/lib/v3/errors.ts`가 사용자 말로 바꾼다.
 - 서버에 닿지 못하면 예시 데이터를 보여 주지 않고 "다시 시도" 화면을 보인다. 백엔드가 낸 진단 뷰(`src/lib/v3/fixture-data/`, `tests/fixtures/`)는 타입 검사에만 쓴다.
@@ -92,7 +93,7 @@ BACKEND_DIR=../backend npm run test:e2e   # 브라우저로 끝까지: 찾기 �
 - `tests/backend-plan.test.ts`: 통로의 회사 묶기(세션 회사만, 주소의 다른 회사 403), 체험하기 읽기 전용, bff 머리글, 사용자 문구.
 - `tests/auth-account.test.ts`: 로그인 응답과 소속 읽기, 활성 회사 고르기, 돌아갈 주소, 실패 문구, 초대 링크.
 - `tests/v3-errors.test.ts`: 오류 문구에 코드·환경 변수·서비스 이름이 섞이지 않는지.
-- E2E(`e2e/find.spec.ts`, Playwright)는 백엔드 로컬 서버(header 모드, 가상 시연 데이터)와 이 프런트를 띄워 돈다. 처음 한 번 `npx playwright install chromium`이 필요하다. 이미 떠 있는 서버로 돌리려면 `E2E_BASE_URL`과 `E2E_API`를 준다. 이메일 가입 검사는 백엔드 계정 API가 있을 때만 돈다(`E2E_ACCOUNTS=1`).
+- E2E(`e2e/find.spec.ts`, Playwright)는 백엔드 로컬 서버(header 모드, 가상 시연 데이터)와 이 프런트를 띄워 돈다. 처음 한 번 `npx playwright install chromium`이 필요하다. 이미 떠 있는 서버로 돌리려면 `E2E_BASE_URL`과 `E2E_API`를 준다. 백엔드를 FastAPI bff 모드로 띄우고 프런트를 `V3_AUTH=bff`로 띄웠으면 `E2E_ACCOUNTS=1`을 준다: 이메일 가입·체험하기 검사만 돌고, 개발용 로그인 검사는 건너뛴다.
 - CI(`.github/workflows/ci.yml`)의 E2E 작업은 저장소 비밀 `BACKEND_READ_TOKEN`이 있을 때만 돈다.
 
 ## 모의 API
