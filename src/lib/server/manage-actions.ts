@@ -23,6 +23,7 @@ import {
 import { COMPLEXES } from "@/lib/complexes";
 import { BackendError, callBackend } from "./backend";
 import { markUnsupported } from "./capabilities";
+import { rememberOrgNotice } from "./org-notice";
 import { membersOf, type Member } from "./company-data";
 
 /**
@@ -43,6 +44,16 @@ async function sessionUser() {
 
 const ORG_CHANGED = "다른 창에서 회사를 바꿨습니다. 화면을 새로 고쳐 주세요.";
 const DEV_ACCOUNT = "개발용 계정은 비밀번호와 계정을 바꿀 수 없습니다.";
+
+/**
+ * 이 회사에서 이미 빠졌다(403 NOT_A_MEMBER, 다른 사람이 나를 뺐다). 오류 문구 대신 세션의 소속을 다시 읽고(남은 회사로 바꾼다)
+ * 안내를 적어 둔 뒤 찾기 화면으로 간다. 남은 회사가 없으면 회사 등록으로 간다.
+ */
+async function notAMember(orgName: string): Promise<never> {
+  await rememberOrgNotice({ kind: "removed", orgName });
+  await unstable_update({});
+  redirect("/app");
+}
 
 // ── 회사 정보 ─────────────────────────────────────────────
 
@@ -78,6 +89,7 @@ export async function updateCompany(_prev: CompanyEditState, formData: FormData)
       markUnsupported("orgEdit");
       return { unsupported: true, values };
     }
+    if (error.code === "NOT_A_MEMBER") await notAMember(me.orgName);
     return { error: companyFailure(error.status, error.code), values };
   }
   // 회사 이름이 바뀌었을 수 있으므로 소속을 다시 읽는다(사이드바의 회사 이름)
@@ -92,7 +104,7 @@ export type MemberActionState = { error?: string; done?: "remove" | "owner"; uns
 
 /**
  * 구성원 빼기(소유자) 또는 회사에서 나가기(나 자신): DELETE /orgs/{orgId}/members/{userId}.
- * 내가 나갔으면 소속을 다시 읽고 찾기 화면으로 간다(남은 회사가 없으면 회사 등록으로 간다).
+ * 내가 나갔으면 소속을 다시 읽고 찾기 화면으로 간다(남은 회사가 없으면 회사 등록으로 간다). 그 화면에 나왔다는 안내를 한 번 보인다.
  */
 export async function removeMember(_prev: MemberActionState, formData: FormData): Promise<MemberActionState> {
   const session = await sessionUser();
@@ -115,9 +127,12 @@ export async function removeMember(_prev: MemberActionState, formData: FormData)
       markUnsupported("memberRemove");
       return { unsupported: true };
     }
+    if (error.code === "NOT_A_MEMBER") await notAMember(me.orgName);
     return { error: memberFailure(self ? "leave" : "remove", error.status, error.code) };
   }
   if (self) {
+    // 다음 화면(남은 회사의 찾기, 남은 회사가 없으면 회사 등록)에 "(회사)에서 나왔습니다"를 한 번 보인다
+    await rememberOrgNotice({ kind: "left", orgName: me.orgName });
     await unstable_update({});
     redirect("/app");
   }
@@ -149,6 +164,7 @@ export async function makeOwner(_prev: MemberActionState, formData: FormData): P
       markUnsupported("ownerGrant");
       return { unsupported: true };
     }
+    if (error.code === "NOT_A_MEMBER") await notAMember(me.orgName);
     return { error: memberFailure("owner", error.status, error.code) };
   }
   refresh();

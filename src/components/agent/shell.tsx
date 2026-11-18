@@ -118,8 +118,9 @@ function Offline() {
 /**
  * 로그인한 뒤(또는 체험하기)의 틀. 왼쪽에는 화면 몇 개, 맨 아래에 지금 회사와 계정을 둔다.
  * 본문은 가운데 한 줄 폭으로 그린다. 좁은 화면에서는 사이드바가 서랍이 된다.
+ * notice는 본문 위에 한 번 보이는 안내다(회사에서 나왔거나 빠졌을 때).
  */
-export function AgentShell({ account, children }: { account?: ReactNode; children: ReactNode }) {
+export function AgentShell({ account, notice, children }: { account?: ReactNode; notice?: ReactNode; children: ReactNode }) {
   const { mode, org, readOnly, basePath } = useV3();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -222,6 +223,7 @@ export function AgentShell({ account, children }: { account?: ReactNode; childre
             </Link>
           </p>
         ) : null}
+        {readOnly ? null : notice}
         {readOnly ? null : <InstallHint />}
         <main className="flex min-w-0 flex-1 flex-col">{offline ? <Offline /> : children}</main>
       </div>

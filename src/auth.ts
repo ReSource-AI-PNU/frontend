@@ -70,8 +70,11 @@ async function devMemberships(): Promise<Membership[]> {
   }
 }
 
-/** 세션을 바꿀 때(회사 등록, 초대 수락, 회사 바꾸기) 소속을 백엔드에서 다시 읽는다. 실패하면 null(있던 값을 둔다). */
-async function freshAccount(userId: string | undefined): Promise<{ name?: string; memberships: Membership[] } | null> {
+/**
+ * 소속을 백엔드에서 다시 읽는다. 세션을 바꿀 때(회사 등록, 초대 수락, 회사 바꾸기)와 화면을 그릴 때(src/lib/server/workspace.ts)
+ * 쓴다. 실패하면 null(있던 값을 둔다).
+ */
+export async function freshAccount(userId: string | undefined): Promise<{ name?: string; memberships: Membership[] } | null> {
   if (!userId) return null;
   if (userId.startsWith("dev:")) return devLoginEnabled ? { memberships: await devMemberships() } : null;
   try {

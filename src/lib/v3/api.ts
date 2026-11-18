@@ -5,7 +5,7 @@
  * 백엔드 주소를 직접 적으면(로컬 개발) X-Org-Id 머리글로 회사를 밝힌다.
  * 오류 문구는 사용자 말로 바꿔 던지고(src/lib/v3/errors.ts), 원인은 ApiError.code에 남긴다.
  */
-import { refreshMemberships } from "@/lib/server/company-actions";
+import { syncMemberships } from "@/lib/server/company-actions";
 import { UNAVAILABLE, userMessage } from "./errors";
 import type {
   AdminStatus,
@@ -62,21 +62,23 @@ export class ApiError extends Error {
 /** 서버에 닿지 못한 경우(꺼져 있음, 주소 틀림, 네트워크) */
 export class ApiUnreachable extends Error {}
 
-let recovering = false;
+/** 화면을 새로 여는 중이면 그 까닭이 된 오류. 그동안 보내는 요청은 서버에 보내지 않고 같은 오류로 끝낸다(403을 거듭 받지 않게) */
+let recovering: ApiError | null = null;
 
 /**
  * 세션과 화면이 어긋났을 때 바로잡는다.
  *  - ORG_CHANGED: 다른 창에서 회사를 바꿨다 → 지금 세션의 회사로 다시 그린다
- *  - NOT_A_MEMBER: 회사에서 빠졌다 → 소속을 다시 읽고(서버 액션) 찾기 화면으로 간다(소속이 없으면 회사 등록)
+ *  - NOT_A_MEMBER: 회사에서 빠졌다 → 소속을 다시 읽고(서버 액션, 다음 화면에 안내를 적어 둔다) 찾기 화면으로 간다
+ *    (남은 회사가 있으면 그 회사, 없으면 회사 등록)
  */
-function recover(code: string) {
+function recover(error: ApiError) {
   if (recovering || typeof window === "undefined" || inDemo()) return;
-  if (code === "ORG_CHANGED") {
-    recovering = true;
+  if (error.code === "ORG_CHANGED") {
+    recovering = error;
     window.location.reload();
-  } else if (code === "NOT_A_MEMBER") {
-    recovering = true;
-    void refreshMemberships()
+  } else if (error.code === "NOT_A_MEMBER") {
+    recovering = error;
+    void syncMemberships()
       .catch(() => undefined)
       // 세션이 바뀌었으므로 화면 전체를 새로 받는다(클라이언트 이동으로는 서버가 세션을 다시 읽지 않는다)
       .finally(() => window.location.assign(new URL("/app", window.location.origin).href));
@@ -95,6 +97,7 @@ export function scopeHeaders(orgId: string | null): Record<string, string> {
 }
 
 async function request<T>(path: string, orgId: string | null, init: RequestInit = {}): Promise<T> {
+  if (recovering) throw new ApiError(recovering.status, recovering.code, recovering.message);
   const headers = new Headers(init.headers);
   for (const [name, value] of Object.entries(scopeHeaders(orgId))) headers.set(name, value);
   if (typeof init.body === "string") headers.set("Content-Type", "application/json");
@@ -114,8 +117,9 @@ async function request<T>(path: string, orgId: string | null, init: RequestInit 
     } catch {
       // 본문이 JSON이 아니면 상태 코드로만 문구를 고른다
     }
-    recover(code);
-    throw new ApiError(response.status, code, userMessage(response.status, code, serverMessage));
+    const error = new ApiError(response.status, code, userMessage(response.status, code, serverMessage));
+    recover(error);
+    throw error;
   }
   const type = response.headers.get("content-type") ?? "";
   return (type.includes("json") ? await response.json() : await response.text()) as T;
