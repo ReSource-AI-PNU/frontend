@@ -68,6 +68,7 @@ export function DeleteAccount({
   email,
   companies,
   ownedCount,
+  aloneOrgNames,
   canGrant,
 }: {
   email: string | null;
@@ -75,6 +76,8 @@ export function DeleteAccount({
   companies: number;
   /** 내가 소유자인 회사 수 */
   ownedCount: number;
+  /** 구성원이 나 하나뿐이라 함께 지워지는 내 회사 이름 */
+  aloneOrgNames: string[];
   /** 소유자 정하기를 백엔드가 받는지 */
   canGrant: boolean;
 }) {
@@ -86,25 +89,35 @@ export function DeleteAccount({
 
   return (
     <div className="grid gap-4">
-      {/* ── 고칠 때 맞출 곳(계정 지우기의 범위) ──
-          백엔드가 지우는 범위를 확정하면 이 목록과 개인정보처리방침(/privacy)의 "파기 절차"를 함께 고친다. */}
+      {/* ── 계정 지우기의 범위 ──
+          백엔드 docs/v3/CONTRACT.md 9장 "탈퇴"와 개인정보처리방침(/privacy)의 "파기 절차"와 같은 사실이다. 바꾸면 함께 고친다. */}
       <div className="grid gap-3 rounded-lg border border-line bg-surface p-5 text-sm sm:p-6">
         <div>
-          <p className="font-semibold">지워지는 것</p>
+          <p className="font-semibold">바로 지워지는 것</p>
           <ul className="mt-1.5 grid list-disc gap-1 pl-5 text-ink-2 marker:text-muted">
-            <li>이름, 이메일, 비밀번호 같은 계정 정보</li>
-            <li>회사 소속: 속한 회사 {companies}곳에서 모두 빠집니다</li>
+            <li>이름, 이메일, 비밀번호(암호화 값)</li>
+            <li>회사 소속 정보: 속한 회사 {companies}곳에서 모두 빠집니다</li>
+            <li>
+              혼자 관리하던 회사에 다른 구성원이 없으면 그 회사의 폐기물 정보, 진단과 대화 기록, 회사만 볼 수 있던 자료도 함께 지워지고 회사
+              이름·사업자등록번호·주소는 남지 않습니다
+              {aloneOrgNames.length > 0 ? <> (지금은 {aloneOrgNames.join(", ")})</> : null}
+            </li>
           </ul>
         </div>
         <div>
           <p className="font-semibold">남는 것</p>
           <ul className="mt-1.5 grid list-disc gap-1 pl-5 text-ink-2 marker:text-muted">
-            <li>다른 회사와 주고받은 문의, 합의, 서류는 상대 회사에도 필요한 기록이라 남깁니다. 필요하면 내 이름을 알아볼 수 없게 바꿔 남깁니다.</li>
+            <li>다른 사람과 함께 쓰는 회사와 그 자료는 그대로 남고, 나만 빠집니다.</li>
+            <li>
+              거래 상대 회사에 이미 전달된 메시지와 자료(보낸 조건, 허가증·매입 기준, 확정된 거래에 쓰인 업체 조건)는 상대 회사의 기록이라
+              남습니다.
+            </li>
           </ul>
         </div>
         {ownedCount > 0 ? (
           <p className="text-ink-2">
-            다른 구성원이 있는 회사의 소유자가 나 혼자면, 먼저 그 회사의 다른 구성원을 소유자로 정해야 지울 수 있습니다.
+            다른 구성원이 있는 회사의 소유자가 나 혼자면, 먼저 그 회사의 다른 구성원을 소유자로 정해야 지울 수 있습니다. 그 회사가 들어간
+            찾기가 진행 중이면 끝난 뒤에 지울 수 있습니다.
           </p>
         ) : null}
       </div>
@@ -126,6 +139,9 @@ export function DeleteAccount({
                   지울 계정: <span className="font-medium text-ink">{email ?? "이 계정"}</span>
                 </>,
                 `속한 회사 ${companies}곳에서 빠지고, 이 계정으로는 다시 로그인할 수 없습니다.`,
+                ...(aloneOrgNames.length > 0
+                  ? [`${aloneOrgNames.join(", ")}의 폐기물 정보, 진단과 대화 기록, 회사만 볼 수 있던 자료가 함께 지워집니다.`]
+                  : []),
                 "지운 계정은 되돌릴 수 없습니다. 같은 이메일로 다시 가입하면 새 계정이 됩니다.",
               ]}
             >
