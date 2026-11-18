@@ -23,6 +23,7 @@ import {
   type FleetRecord,
   type RouteDraft,
 } from "@/lib/v3/fleet";
+import { BILLING_MODES, billingHint, billingText, initialFields, treatmentInput, type BillingFields } from "@/lib/v3/billing";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import {
   addPending,
@@ -913,6 +914,41 @@ function CostInputs({
   );
 }
 
+const segment =
+  "flex min-h-[38px] cursor-pointer items-center rounded-sm px-4 text-sm text-muted peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-[0_1px_0_var(--color-line-strong)] peer-focus-visible:outline-2 peer-focus-visible:outline-ink";
+
+function AmountField({
+  label,
+  value,
+  onChange,
+  unit,
+  placeholder = "숫자",
+  narrow = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  unit: string;
+  placeholder?: string;
+  narrow?: boolean;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+      {label}
+      <span className="flex items-center gap-2">
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          inputMode="decimal"
+          placeholder={placeholder}
+          className={`${field} ${narrow ? "w-20" : "w-32"} tabular-nums`}
+        />
+        <span className="text-sm font-normal text-ink-2">{unit}</span>
+      </span>
+    </label>
+  );
+}
+
 function StreamCard({
   stream,
   canAct,
@@ -925,36 +961,28 @@ function StreamCard({
   /** 올린 자료로 폐기물 정보가 바뀌었을 때 다시 읽는다 */
   onChanged: () => void;
 }) {
-  const { org } = useV3();
+  const { org, openEvidence } = useV3();
   const [method, setMethod] = useState(stream.currentTreatment?.method ?? "");
-  const [cost, setCost] = useState(
-    stream.currentTreatment?.unitCostKrwPerKg != null
-      ? String(stream.currentTreatment.unitCostKrwPerKg)
-      : "",
-  );
-  const [saved, setSaved] = useState<string | null>(null);
+  const [fields, setFields] = useState<BillingFields>(() => initialFields(stream.currentTreatment));
+  const [saved, setSaved] = useState<{ ok: boolean; text: string } | null>(null);
   const csv = useUpload<CsvUploadResult>(canAct);
+  const setField = (patch: Partial<BillingFields>) => {
+    setFields((before) => ({ ...before, ...patch }));
+    setSaved(null);
+  };
+  const stored = stream.currentTreatment;
 
   const save = async () => {
-    const parsed = cost.trim() === "" ? null : Number(cost);
-    if (parsed !== null && !Number.isFinite(parsed)) {
-      setSaved("단가는 숫자로 입력하세요.");
+    const input = treatmentInput(method, fields, stream);
+    if (!input.ok) {
+      setSaved({ ok: false, text: input.message });
       return;
     }
     try {
-      await onSave({
-        ...stream,
-        currentTreatment: method.trim()
-          ? {
-              method: method.trim(),
-              unitCostKrwPerKg: parsed,
-              evidence: stream.currentTreatment?.evidence ?? [],
-            }
-          : null,
-      });
-      setSaved("저장했습니다.");
+      await onSave({ ...stream, currentTreatment: input.currentTreatment });
+      setSaved({ ok: true, text: "저장했습니다." });
     } catch (error) {
-      setSaved(error instanceof Error ? error.message : "저장하지 못했습니다.");
+      setSaved({ ok: false, text: error instanceof Error ? error.message : "저장하지 못했습니다." });
     }
   };
 
@@ -987,42 +1015,100 @@ function StreamCard({
       </p>
 
       <form
-        className="mt-5 flex flex-wrap items-end gap-3"
+        className="mt-5 space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
           void save();
         }}
       >
-        <label className="flex min-w-[12rem] flex-1 flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+        <label className="flex max-w-md flex-col gap-1.5 text-[13px] font-medium text-ink-2">
           지금 어떻게 처리하나요
           <input
             value={method}
-            onChange={(event) => setMethod(event.target.value)}
+            onChange={(event) => {
+              setMethod(event.target.value);
+              setSaved(null);
+            }}
             placeholder="예: 혼합 소각, 위탁 재활용"
             className={field}
             disabled={!canAct}
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
-          kg당 내는 돈
-          <span className="flex items-center gap-2">
-            <input
-              value={cost}
-              onChange={(event) => setCost(event.target.value)}
-              inputMode="decimal"
-              placeholder="숫자"
-              className={`${field} w-28 tabular-nums`}
-              disabled={!canAct}
-            />
-            <span className="text-sm font-normal text-ink-2">원</span>
-          </span>
-        </label>
-        <Button type="submit" variant="secondary" disabled={!canAct}>
-          저장
-        </Button>
-        <p className={`basis-full text-[13px] ${saved && saved !== "저장했습니다." ? "text-loss" : "text-muted"}`}>
-          {saved ?? "비워 두면 혼합 소각으로 가정하고, 결과에 ‘가정’이라고 표시합니다."}
-        </p>
+        <fieldset className="space-y-2" disabled={!canAct}>
+          <legend className="text-[13px] font-medium text-ink-2">처리비는 어떻게 내나요</legend>
+          <div className="mt-1.5 inline-flex rounded-md bg-sunken p-[3px]">
+            {BILLING_MODES.map((item) => (
+              <label key={item.mode}>
+                <input
+                  type="radio"
+                  name={`billing-${stream.id}`}
+                  value={item.mode}
+                  checked={fields.mode === item.mode}
+                  onChange={() => setField({ mode: item.mode })}
+                  className="peer sr-only"
+                />
+                <span className={segment}>{item.label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            {fields.mode === "per_kg" ? (
+              <AmountField label="kg당 내는 돈" value={fields.perKg} onChange={(perKg) => setField({ perKg })} unit="원" />
+            ) : null}
+            {fields.mode === "per_trip" ? (
+              <>
+                <AmountField
+                  label="한 번 수거할 때"
+                  value={fields.perTrip}
+                  onChange={(perTrip) => setField({ perTrip })}
+                  unit="원"
+                  placeholder="예: 30만"
+                />
+                <AmountField
+                  label="한 달 수거 횟수"
+                  value={fields.trips}
+                  onChange={(trips) => setField({ trips })}
+                  unit="번"
+                  placeholder="예: 2"
+                  narrow
+                />
+              </>
+            ) : null}
+            {fields.mode === "monthly" ? (
+              <AmountField
+                label="한 달에 내는 돈"
+                value={fields.monthly}
+                onChange={(monthly) => setField({ monthly })}
+                unit="원"
+                placeholder="예: 60만"
+              />
+            ) : null}
+            <Button type="submit" variant="secondary" disabled={!canAct}>
+              저장
+            </Button>
+          </div>
+        </fieldset>
+        {saved ? (
+          <p role="status" className={`text-[13px] ${saved.ok ? "text-muted" : "text-loss"}`}>
+            {saved.text}
+          </p>
+        ) : (
+          <p className="text-[13px] text-muted">{billingHint(fields.mode)}</p>
+        )}
+        {stored?.billing && stored.unitCostKrwPerKg != null ? (
+          <p className="text-[13px] text-ink-2">
+            저장한 계약: {billingText(stored.billing)}. 한 달 발생량으로 나누면{" "}
+            <button
+              type="button"
+              onClick={() => openEvidence(stored.evidence, `${stream.name} 현행 처리비 kg당 환산`)}
+              title="근거 보기"
+              className="font-semibold tabular-nums underline decoration-current/40 decoration-dotted underline-offset-4 hover:decoration-solid"
+            >
+              kg당 {formatNumber(stored.unitCostKrwPerKg)}원
+            </button>
+            이고, 결과의 현행 처리비는 이 값으로 계산합니다.
+          </p>
+        ) : null}
       </form>
 
       <div className="mt-4">

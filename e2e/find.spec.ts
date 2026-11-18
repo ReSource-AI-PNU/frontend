@@ -64,7 +64,7 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await pickOrg(page, "org_hanbit");
   await expect(page.getByRole("heading", { name: "받아 줄 곳을 찾아볼까요?" })).toBeVisible();
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
-  await expect(page.getByRole("heading", { name: /가지만 여쭤볼게요/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /가지를 여쭙겠습니다/ })).toBeVisible();
   await answerQuestions(page);
 
   const result = page.getByRole("region", { name: "결과" });
@@ -92,6 +92,15 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   const evidence = page.getByRole("dialog", { name: "근거" });
   await expect(evidence).toBeVisible();
   await expect(evidence.getByRole("heading", { name: "매입 단가" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // 분리 개선 안내: 더 받는 기준과 한 달 차이(근거가 열린다), 섞인 재질을 나누면 받는 곳
+  const improve = page.getByRole("region", { name: "분리 개선 안내" });
+  await expect(improve.getByRole("heading", { level: 2 })).toContainText("한 달 손익이 나아지는 폐기물");
+  await expect(improve.getByText("더 받는 길 있음").first()).toBeVisible();
+  await expect(improve.getByText("재질별로 따로 모으면 이렇게 받습니다.")).toBeVisible();
+  await improve.getByRole("button", { name: /^\+[\d,]+원/ }).first().click();
+  await expect(evidence.getByRole("heading", { name: /분리 개선 뒤 한 달 차이 계산/ })).toBeVisible();
 });
 
 test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 계획서가 만들어진다", async ({ page }) => {
@@ -120,6 +129,11 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 
   await expect(documents.getByRole("article").first()).toBeVisible();
   await expect(documents.getByText("근거 확인됨").first()).toBeVisible();
   await expect(documents.getByText("근거 확인에 실패한 문서입니다")).toHaveCount(0);
+
+  // 확정한 합의는 실적 화면에 한 달 예상으로 보인다(검수 기록 전이라 합계는 없다)
+  await page.getByRole("link", { name: "실적" }).click();
+  await expect(page.getByRole("heading", { name: "재활용 실적" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "확정한 합의 · 한 달 예상" })).toBeVisible();
 });
 
 test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 조건이 보이지 않는다", async ({ page, request }) => {

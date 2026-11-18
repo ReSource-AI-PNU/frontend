@@ -50,6 +50,12 @@ export type ReferencePrice = z.infer<typeof s.referencePriceSchema>;
 export type Result = z.infer<typeof s.resultSchema>;
 export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
 export type OutsideCandidate = z.infer<typeof s.outsideCandidateSchema>;
+export type Billing = z.infer<typeof s.billingSchema>;
+export type Improvement = z.infer<typeof s.improvementSchema>;
+export type ImprovementActionKey = z.infer<typeof s.improvementActionKeySchema>;
+export type Report = z.infer<typeof s.reportSchema>;
+export type ReportRecord = z.infer<typeof s.reportRecordSchema>;
+export type ReportPlanned = z.infer<typeof s.reportPlannedSchema>;
 export type Question = z.infer<typeof s.questionSchema>;
 export type Approval = z.infer<typeof s.approvalSchema>;
 export type ViewDocument = z.infer<typeof s.viewDocumentSchema>;
@@ -101,6 +107,8 @@ export type StreamRecord = {
   currentTreatment?: {
     method: string;
     unitCostKrwPerKg: number | null;
+    /** 회당·월 정액으로 적은 계약. 보내면 백엔드가 월 발생량으로 kg당 처리비를 다시 계산한다(unitCostKrwPerKg는 무시) */
+    billing?: Billing | null;
     evidence: string[];
   } | null;
   /** 순비용 계산에 넣는 배출 기업만의 값. 업체에는 가지 않는다 */

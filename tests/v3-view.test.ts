@@ -14,7 +14,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { z } from "zod";
-import { checkKeySchema, diagnosisViewSchema, evidenceSchema, orgSchema, rejectionSchema } from "../src/lib/v3/schema.ts";
+import {
+  checkKeySchema,
+  diagnosisViewSchema,
+  evidenceSchema,
+  orgSchema,
+  rejectionSchema,
+  reportSchema,
+} from "../src/lib/v3/schema.ts";
 import {
   BLOCK_CODE_LABEL,
   CHECK_KEY_LABEL,
@@ -50,6 +57,38 @@ for (const [name, file] of [
     assert.deepEqual(problems(diagnosisViewSchema.safeParse(read(file))), []);
   });
 }
+
+test("실적 리포트(확정 뒤 검수 한 건)가 스키마에 맞고, 합계는 실적만 더한다", () => {
+  const report = reportSchema.parse(read("./fixtures/v3-report.json"));
+  assert.ok(report.records.length > 0);
+  assert.equal(report.totals?.count, report.records.length);
+  const kg = report.records.reduce((sum, item) => sum + Number(item.kg?.value ?? 0), 0);
+  assert.equal(report.totals?.kg?.value, kg);
+  // 처리비 합계는 낸 금액의 크기(양수)다
+  if (report.totals?.fee) assert.ok(Number(report.totals.fee.value) > 0);
+  assert.ok(report.planned.length > 0, "확정한 합의는 예상으로 보인다");
+});
+
+test("분리 개선 안내: 더 받는 길은 지금보다 단가가 높고, 한 달 차이는 계산 근거가 맨 앞이다", () => {
+  const view = diagnosisViewSchema.parse(read("../src/lib/v3/fixture-data/view.json"));
+  const items = view.result?.improvements ?? [];
+  assert.ok(items.length > 0);
+  for (const item of items) {
+    const option = item.option;
+    if (!option) continue;
+    const assigned = view.result?.assignments.find((a) => a.streamId === item.streamId);
+    if (assigned?.unitPrice && typeof assigned.unitPrice.value === "number") {
+      assert.ok(Number(option.unitPrice?.value) > assigned.unitPrice.value);
+    }
+    if (option.monthlyGain) assert.match(option.monthlyGain.evidence[0], /^calc:improve_gain:/);
+  }
+});
+
+test("업체가 본 뷰에는 분리 개선 안내와 현행 처리(계약 포함)가 없다", () => {
+  const view = diagnosisViewSchema.parse(read("./fixtures/v3-view-vendor-confirmed.json"));
+  assert.equal(view.result?.improvements, undefined);
+  assert.ok(view.streams.every((stream) => stream.currentTreatment === null));
+});
 
 test("확정 뒤 뷰에는 요청서와 이행 계획서가 있고 모두 검증을 통과했다", () => {
   const view = diagnosisViewSchema.parse(read("./fixtures/v3-view-confirmed.json"));

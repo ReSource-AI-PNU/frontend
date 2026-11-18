@@ -11,6 +11,7 @@ import {
   InboxIcon,
   MenuIcon,
   PlusIcon,
+  ReportIcon,
   SearchIcon,
   StampIcon,
   TalkIcon,
@@ -40,6 +41,8 @@ function navItems(role: "emitter" | "vendor" | "admin", base: string, demo: bool
     { href: base, label: "찾기", icon: SearchIcon, exact: true },
     ...(role === "emitter" ? [{ href: `${base}/materials`, label: "자료", icon: FolderIcon, exact: false }] : []),
     { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
+    // 원청·고객사에 낼 재활용·탄소 실적(2026-11-19 배출 사업장 설문)
+    ...(role === "emitter" ? [{ href: `${base}/report`, label: "실적", icon: ReportIcon, exact: false }] : []),
     ...(role === "admin" && !demo ? [{ href: `${base}/admin`, label: "운영", icon: GearIcon, exact: false }] : []),
   ];
 }
@@ -188,7 +191,7 @@ export function AgentShell({ account, notice, children }: { account?: ReactNode;
 
   return (
     <div className="flex min-h-dvh flex-1 bg-bg" data-active-org={org.id}>
-      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 bg-ground lg:block">{sidebar}</aside>
+      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 bg-ground lg:block print:!hidden">{sidebar}</aside>
 
       {open ? (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -198,7 +201,7 @@ export function AgentShell({ account, notice, children }: { account?: ReactNode;
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-20 flex h-13 items-center gap-1 bg-bg px-2 lg:hidden">
+        <div className="sticky top-0 z-20 flex h-13 items-center gap-1 bg-bg px-2 lg:hidden print:!hidden">
           <button
             type="button"
             aria-label="메뉴 열기"

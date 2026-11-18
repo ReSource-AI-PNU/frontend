@@ -266,6 +266,10 @@ export function StreamTable({
                         <p className="text-[13px] whitespace-nowrap text-muted">
                           내는 돈 <ClaimValue claim={stream.currentTreatment.unitCost} price={false} />
                         </p>
+                        {stream.currentTreatment.billing?.text ? (
+                          // 회당·월 정액 계약을 한 달 발생량으로 나눠 kg당으로 바꾼 값이다
+                          <p className="text-[12px] text-muted">계약: {stream.currentTreatment.billing.text}</p>
+                        ) : null}
                       </>
                     ) : (
                       <span className="text-muted">-</span>

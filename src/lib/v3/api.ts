@@ -25,6 +25,7 @@ import type {
   OutcomeInput,
   OutcomeResult,
   QuoteRequest,
+  Report,
   RetrainExport,
   RunStarted,
   SessionSummary,
@@ -141,6 +142,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(stream),
     }),
+
+  /** 재활용·탄소 실적 리포트(배출 기업 본인만). 기간(YYYY-MM-DD)을 주지 않으면 모든 검수 기록이다. 읽기라서 체험하기에서도 열린다 */
+  getReport: (orgId: string, from?: string | null, to?: string | null) => {
+    const query = new URLSearchParams();
+    if (from) query.set("from", from);
+    if (to) query.set("to", to);
+    const tail = query.size > 0 ? `?${query.toString()}` : "";
+    return request<Report>(`/orgs/${enc(orgId)}/report${tail}`, orgId);
+  },
 
   getVendor: (orgId: string) => request<VendorProfile>(`/vendors/${enc(orgId)}`, orgId),
   putVendor: (orgId: string, profile: VendorProfile) =>

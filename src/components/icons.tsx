@@ -146,6 +146,15 @@ export function StampIcon(props: IconProps) {
   );
 }
 
+export function ReportIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3.25 1.75h6.5l3 3v9.5h-9.5z" />
+      <path d="M5.75 11.75v-2M8 11.75v-4M10.25 11.75v-3" />
+    </Icon>
+  );
+}
+
 export function GearIcon(props: IconProps) {
   return (
     <Icon {...props}>

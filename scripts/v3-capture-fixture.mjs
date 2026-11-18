@@ -8,7 +8,7 @@
  * 시연 데이터를 처음 상태로 되돌린 뒤(관리자 조직으로 부른다), 진단을 만들고 승인 전(awaiting_approval)까지 돌린다.
  * 담당자 질문에는 포장 필름 수분만 답하고 나머지는 "모름"으로 답한다. 여기까지가 화면의 예시 데이터다.
  * 이어서 같은 진단에 사람 교정 한 건을 기록하고, 양쪽 승인으로 확정한 뒤 업체가 실제 결과 한 건을 기록해
- * 확정 뒤 뷰(배출 기업, 업체)를 tests/fixtures/에 받는다. 스키마 검사(tests/v3-view.test.ts)가 이 세 뷰를 읽는다.
+ * 확정 뒤 뷰(배출 기업, 업체)와 실적 리포트를 tests/fixtures/에 받는다. 스키마 검사(tests/v3-view.test.ts)가 이 세 뷰와 리포트를 읽는다.
  * 근거는 뷰와 업체 프로필이 직접 가리키는 것과 그 계산 사슬의 바로 아래 단계까지만 담는다(법령 원문 등으로 파일이 커지지 않게).
  * 화면이 쓰는 값은 전부 이 서버가 실제로 낸 응답이다. 손으로 고치지 않는다.
  */
@@ -139,7 +139,9 @@ await post(`/sessions/${id}/outcomes`, OUTCOME_VENDOR, {
 const confirmed = await call(`/sessions/${id}`, EMITTER);
 if (confirmed.session.status !== "confirmed") throw new Error(`확정 상태가 아닙니다: ${confirmed.session.status}`);
 const vendorView = await call(`/sessions/${id}`, OUTCOME_VENDOR);
+const report = await call(`/orgs/${EMITTER}/report`, EMITTER);
 await mkdir(fixtures, { recursive: true });
+await writeFile(path.join(fixtures, "v3-report.json"), `${JSON.stringify(report)}\n`);
 await writeFile(path.join(fixtures, "v3-view-confirmed.json"), `${JSON.stringify(confirmed)}\n`);
 await writeFile(path.join(fixtures, "v3-view-vendor-confirmed.json"), `${JSON.stringify(vendorView)}\n`);
 console.log(

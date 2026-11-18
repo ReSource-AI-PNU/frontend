@@ -222,6 +222,15 @@ export const stageSchema = obj({
 /** 오염도·수분 값의 출처: 측정 | 담당자가 질문에 답한 값 | 사진 추정 */
 export const valueBasisSchema = z.enum(["measured", "answered", "photo_estimate"]);
 
+/**
+ * 차량·횟수 단위나 월 정액으로 받은 현행 처리비 계약(백엔드가 월 발생량으로 kg당 처리비로 바꾼 원래 꼴).
+ * 뷰에는 사람이 읽는 꼴(text, 예: "회당 300,000원 × 월 2회(월 600,000원)")이 붙어 온다. 흐름 기록(GET streams)에는 text가 없다.
+ */
+export const billingSchema = z.discriminatedUnion("kind", [
+  obj({ kind: z.literal("per_trip"), krwPerTrip: z.number(), tripsPerMonth: z.number(), text: z.string().optional() }),
+  obj({ kind: z.literal("monthly"), krwPerMonth: z.number(), text: z.string().optional() }),
+]);
+
 export const viewStreamSchema = obj({
   id: z.string(),
   orgId: z.string(),
@@ -258,6 +267,8 @@ export const viewStreamSchema = obj({
     method: z.string(),
     unitCost: claimOrNull,
     assumed: z.boolean(),
+    /** 회당·월 정액으로 적은 계약이면 그 꼴. kg당으로 적었거나 가정값이면 null(이 기능 전 뷰에는 없다) */
+    billing: billingSchema.nullable().optional(),
   }).nullable(),
   /** 순비용에 쓰는 배출 기업만의 입력. 배출 기업이 보는 뷰에만 온다 */
   costInputs: obj({
@@ -423,6 +434,49 @@ export const outsideVendorsSchema = obj({
   ),
 });
 
+/**
+ * 분리 개선 안내(배출 기업만). 폐기물마다 할 일, 더 받는 길(지금보다 단가가 높은데 오염도·수분 상한만 넘는 매입 기준),
+ * 섞인 재질을 나누면 받는 곳. 실제로 그 등급을 받을지는 반입 검수가 정한다.
+ */
+export const improvementActionKeySchema = z.enum([
+  "remove_contaminants",
+  "separate_material",
+  "lower_contamination",
+  "lower_moisture",
+  "measure",
+  "weigh",
+]);
+
+export const improvementSchema = obj({
+  streamId: z.string(),
+  actions: z.array(obj({ key: improvementActionKeySchema, text: z.string() })),
+  option: obj({
+    vendorOrgId: z.string(),
+    vendorName: z.string().nullable(),
+    grade: z.string().nullable(),
+    /** 낮춰야 할 것("오염도", "수분") */
+    needs: z.array(z.string()),
+    unitPrice: claimOrNull,
+    maxContamination: claimOrNull,
+    maxMoisture: claimOrNull,
+    /** (그 기준 단가 − 지금 kg당 손익) × 월 발생량. 월 발생량을 모르면 null */
+    monthlyGain: claimOrNull,
+  }).nullable(),
+  /** 재질이 섞인 폐기물(예: PP+ABS)을 재질별로 나누면 받는 곳. 받는 곳이 없는 재질은 업체가 null이다 */
+  split: z.array(
+    obj({
+      material: z.string(),
+      vendorOrgId: z.string().nullable(),
+      vendorName: z.string().nullable(),
+      grade: z.string().nullable(),
+      unitPrice: claimOrNull,
+      maxContamination: claimOrNull,
+      /** 지금 오염도로도 그 기준 안이라 나누기만 하면 되는지 */
+      meetsNow: z.boolean(),
+    }),
+  ),
+});
+
 export const resultSchema = obj({
   status: triStatusSchema,
   assignments: z.array(assignmentSchema),
@@ -451,6 +505,8 @@ export const resultSchema = obj({
   evidence: z.array(z.string()).optional(),
   /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
   outsideVendors: outsideVendorsSchema.nullable().optional(),
+  /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
+  improvements: z.array(improvementSchema).optional(),
 });
 
 export const questionSchema = obj({
@@ -640,6 +696,8 @@ export const orgSchema = obj({
   location: z.tuple([z.number(), z.number()]).nullable().optional(),
   order: z.number().optional(),
   synthetic: z.boolean().optional(),
+  /** 시연 조직(체험하기에서 읽기 전용으로 보이는 회사) */
+  demo: z.boolean().optional(),
   note: z.string().optional(),
 });
 
@@ -665,4 +723,58 @@ export const evidenceSchema = obj({
   /** 근거를 만든 판단 도구의 기계 ID(기술 정보에만)와 화면 이름 */
   tool: z.string().optional(),
   toolLabel: z.string().nullable().optional(),
+});
+
+/**
+ * GET /orgs/{orgId}/report?from=&to=: 재활용·탄소 실적 리포트(배출 기업 본인만).
+ * 실적(records)은 업체가 기록한 검수 결과, 예상(planned)은 양쪽이 확정한 합의의 한 달 예상이다. 숫자는 모두 근거가 붙은 claim이다.
+ */
+export const reportRecordSchema = obj({
+  id: z.string(),
+  inspectedOn: z.string(),
+  streamId: z.string(),
+  streamLabel: z.string(),
+  streamName: z.string().nullable(),
+  vendorOrgId: z.string(),
+  vendorName: z.string(),
+  /** 받은 곳의 처리 방식(재활용, 열분해(화학적 재활용) 등). 업체가 밝히지 않았으면 null */
+  process: z.string().nullable(),
+  grade: z.string().nullable(),
+  kg: claimOrNull,
+  /** +는 매입(받은 돈), −는 처리비(낸 돈) */
+  unitPrice: claimOrNull,
+  amount: claimOrNull,
+  /** 배출계수가 없는 처리 방식(열분해 등)이면 null */
+  carbon: claimOrNull,
+  currentMethod: z.string(),
+  currentMethodAssumed: z.boolean(),
+});
+
+export const reportPlannedSchema = obj({
+  sessionId: z.string(),
+  streamId: z.string(),
+  streamLabel: z.string(),
+  streamName: z.string().nullable(),
+  vendorOrgId: z.string(),
+  vendorName: z.string(),
+  route: z.string().nullable(),
+  unitPrice: claimOrNull,
+  monthlyAfter: claimOrNull,
+  carbon: claimOrNull,
+});
+
+export const reportSchema = obj({
+  orgId: z.string(),
+  period: obj({ from: z.string().nullable(), to: z.string().nullable() }),
+  generatedOn: z.string(),
+  records: z.array(reportRecordSchema),
+  /** 실적이 한 건도 없으면 null. 처리비(fee)는 낸 금액의 크기(양수)다 */
+  totals: obj({
+    kg: claimOrNull,
+    revenue: claimOrNull,
+    fee: claimOrNull,
+    carbon: claimOrNull,
+    count: z.number(),
+  }).nullable(),
+  planned: z.array(reportPlannedSchema),
 });
