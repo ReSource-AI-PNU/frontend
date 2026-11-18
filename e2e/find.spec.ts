@@ -134,6 +134,10 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 
   await page.getByRole("link", { name: "실적" }).click();
   await expect(page.getByRole("heading", { name: "재활용 실적" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "확정한 합의 · 한 달 예상" })).toBeVisible();
+  // 합의의 이행 계획서에는 단가 조정 조항이 있다
+  await page.getByRole("button", { name: "합의 조건과 이행 계획서 보기" }).click();
+  await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
+  await expect(page.getByText(/단가를 다시 협의합니다/).first()).toBeVisible();
 });
 
 test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 조건이 보이지 않는다", async ({ page, request }) => {

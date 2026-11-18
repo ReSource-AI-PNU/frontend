@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
@@ -148,7 +149,8 @@ function Planned({ report }: { report: Report }) {
 
 /** 배출 기업의 재활용·탄소 실적. 원청·고객사에 낼 수 있게 인쇄와 CSV를 둔다 */
 export function ReportView() {
-  const { org, mode, basePath } = useV3();
+  const { org, mode, basePath, setSessionId } = useV3();
+  const router = useRouter();
   const [period, setPeriod] = useState<PeriodKey>("all");
   const [today, setToday] = useState<string | null>(null);
   const range = today ? periodRange(period, today) : { from: null, to: null };
@@ -173,6 +175,8 @@ export function ReportView() {
   const baseline = report ? baselineNote(report.records) : null;
   const revenue = report?.totals?.revenue ?? null;
   const fee = report?.totals?.fee ?? null;
+  // 확정한 합의가 있는 찾기. 승인·서류 화면에서 그 합의의 이행 계획서(단가 조정 조항 포함)를 연다
+  const deals = report ? [...new Set(report.planned.map((item) => item.sessionId))] : [];
 
   return (
     <div className="mx-auto w-full max-w-[960px] px-5 pt-10 pb-16 print:max-w-none print:px-0 print:pt-0">
@@ -277,6 +281,21 @@ export function ReportView() {
               <h2 className="text-[17px] font-semibold tracking-[-0.02em]">확정한 합의 · 한 달 예상</h2>
               <p className="mt-1 mb-3 text-[13px] text-muted">{PLANNED_LEAD}</p>
               <Planned report={report} />
+              <div className="mt-2 flex flex-wrap gap-1 print:hidden">
+                {deals.map((id, index) => (
+                  <Button
+                    key={id}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSessionId(id);
+                      router.push(`${basePath}/approval`);
+                    }}
+                  >
+                    {deals.length > 1 ? `합의 ${index + 1}의 조건과 이행 계획서 보기` : "합의 조건과 이행 계획서 보기"}
+                  </Button>
+                ))}
+              </div>
             </section>
           ) : null}
 
