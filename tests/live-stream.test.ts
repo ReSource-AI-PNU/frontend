@@ -399,6 +399,10 @@ test("저장된 대화로 다시 보기: 메시지마다 작성 → 근거 확�
   const second = events.filter((item) => item.type === "activity" && item.kind === "rejected")[1];
   assert.ok(second && second.type === "activity");
   assert.deepEqual(second.reasons, ["검사를 통과하지 못함"]);
+  // 활동 문장은 쉬운 말로 쓴다: 거부 사유·초안·에이전트 대신 "근거를 다시 확인해 고쳐 쓰고 있습니다"
+  const rewriting = events.filter((item) => item.type === "activity" && item.kind === "rewriting");
+  assert.ok(rewriting.every((item) => item.type === "activity" && item.text.endsWith("근거를 다시 확인해 고쳐 쓰고 있습니다.")));
+  for (const item of events) if (item.type === "activity") assert.doesNotMatch(item.text, /거부|초안|에이전트/);
   let state = initialLive();
   for (const event of events) state = reduceLive(state, event);
   assert.equal(state.threads.th_1.messages.length, 2);

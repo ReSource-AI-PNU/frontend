@@ -287,7 +287,7 @@ export const REJECTION_LABEL: Record<string, string> = {
   TOO_MANY_TOOL_ROUNDS: "판단 도구를 정해진 횟수보다 많이 부르려 했습니다",
   INVALID_OUTPUT: "응답 형식이 맞지 않았습니다",
   MODEL_ERROR: "모델 호출에 실패했습니다",
-  REJECTED: "초안이 검사를 통과하지 못했습니다",
+  REJECTED: "메시지가 근거 확인을 통과하지 못했습니다",
 };
 
 /** 거부 코드 하나의 풀이. 가드레일과 다른 배출 기업 관련 코드는 앞머리로 묶어 푼다. */

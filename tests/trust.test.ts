@@ -17,6 +17,7 @@ import {
   kindOf,
   plain,
   plainNote,
+  reviewOf,
   toTrustView,
   type TrustView,
 } from "../src/lib/trust.ts";
@@ -39,6 +40,7 @@ function shownText(view: TrustView): string[] {
     ...view.pending.flatMap((item) => [item.title, item.why]),
     ...view.retired.map((item) => item.reason),
     view.aiVersion,
+    view.reviewState ?? "",
   ];
 }
 
@@ -256,4 +258,18 @@ test("구간의 아래·위가 같으면(예: n=25 모두 0) 맨 '0–0' 대신 
   metric.value = null;
   const unmeasured = toTrustView(raw, TODAY)!.layers.find((layer) => layer.id === "L5")!.all.find((item) => item.key === "normalizedRegret")!;
   assert.equal(unmeasured.intervalNote, null);
+});
+
+test("'초안'·'에이전트'를 쓰지 않는다: 메시지와 AI로 적고, 기대값 검토 상태도 쉬운 말로", () => {
+  const view = toTrustView(latest, TODAY)!;
+  const grounded = view.layers.find((layer) => layer.id === "L3")!;
+  const first = grounded.all.find((item) => item.key === "firstTry")!;
+  assert.equal(first.label, "처음 쓴 메시지가 그대로 근거 확인을 통과한 비율");
+  assert.doesNotMatch(JSON.stringify(view), /초안|에이전트/);
+  assert.equal(view.reviewState, "기대값 전문가 검토 전");
+  assert.equal(reviewOf("초안 기대값 기준(전문가 검토 전)"), "기대값 전문가 검토 전");
+  assert.equal(reviewOf("초안 기대값 기준"), "기대값 검토 전");
+  assert.equal(reviewOf(null), null);
+  assert.equal(plain("첫 초안이 근거 확인을 통과한 비율"), "처음 쓴 메시지가 근거 확인을 통과한 비율");
+  assert.equal(plain("에이전트 과업 성공"), "AI 과업 성공");
 });

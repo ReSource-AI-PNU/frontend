@@ -828,7 +828,7 @@ export function replayFromView(view: ReplayView): LiveEvent[] {
         const reasons = [...new Set((codes.length > 0 ? codes : rejections.map((item) => item.code)).map(reasonOfCode))];
         const shown = reasons.length > 0 ? reasons : ["검사를 통과하지 못함"];
         out.push({ ...base, seq: next(), actor: "validator", kind: "rejected", reasons: shown, text: `근거 확인에서 돌려보냈습니다: ${shown.join(", ")}.`, attempt });
-        out.push({ ...base, seq: next(), actor, kind: "rewriting", text: `${josa(label, "이/가")} 거부 사유를 고쳐 다시 쓰고 있습니다.`, attempt: attempt + 1 });
+        out.push({ ...base, seq: next(), actor, kind: "rewriting", text: `${josa(label, "이/가")} 근거를 다시 확인해 고쳐 쓰고 있습니다.`, attempt: attempt + 1 });
       }
     }
     const handoff = message.type === "handoff";

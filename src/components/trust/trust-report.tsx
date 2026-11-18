@@ -191,7 +191,7 @@ function Report({ view }: { view: TrustView }) {
     view.scenarios !== null ? `시나리오 ${view.scenarios}건` : null,
     view.repeats !== null ? `시나리오마다 ${view.repeats}번 실행` : null,
     "가상 사례",
-    view.reviewState ? `기대값 ${view.reviewState.replace(/^초안 기대값 기준/, "초안")}` : null,
+    view.reviewState,
   ].filter((item): item is string => Boolean(item));
   return (
     <>

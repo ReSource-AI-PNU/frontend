@@ -74,6 +74,7 @@ export type TrustView = {
   /** "시험셋 test-v1" */
   split: string;
   repeats: number | null;
+  /** "기대값 전문가 검토 전" */
   reviewState: string | null;
   scenarios: number | null;
   headline: TrustMetric[];
@@ -189,7 +190,7 @@ export const SMALL_SAMPLE = 30;
 /* ── 쉬운 말 ──────────────────────────────────────────────────────── */
 
 /** 화면에 남으면 안 되는 평가 용어(tests/trust.test.ts가 화면 모양 전체에서 찾는다) */
-export const JARGON = /Shields|ASR|\bL\d|카나리아|spotlighting|탐침|정규식|조건 \(i+\)|nDCG|Recall|MRR|pass\^|Cohen|BM25|RRF|루브릭|프롬프트|쌍둥이|게이트|스레드|handoff/i;
+export const JARGON = /초안|에이전트|Shields|ASR|\bL\d|카나리아|spotlighting|탐침|정규식|조건 \(i+\)|nDCG|Recall|MRR|pass\^|Cohen|BM25|RRF|루브릭|프롬프트|쌍둥이|게이트|스레드|handoff/i;
 
 type MetricText = { label: string; explain: string };
 
@@ -203,11 +204,11 @@ export const METRICS: Record<string, MetricText> = {
   no_answer_accuracy: { label: "답이 없는 질문에 없다고 답한 비율", explain: "근거 문서에 답이 없는 질문에 지어내지 않고 없다고 한 몫입니다." },
   answer_rate: { label: "답이 있는 질문에 답을 낸 비율(참고)", explain: "답이 있는 질문에서 기준 점수를 넘는 조항을 찾아 답을 낸 몫입니다." },
   // 근거 있는 생성
-  firstTry: { label: "첫 초안이 근거 확인을 통과한 비율", explain: "AI가 처음 쓴 글이 고치지 않고 근거 확인을 통과한 몫입니다." },
+  firstTry: { label: "처음 쓴 메시지가 그대로 근거 확인을 통과한 비율", explain: "AI가 처음 쓴 메시지가 고치지 않고 근거 확인을 통과한 몫입니다." },
   afterRewrite: { label: "고쳐 쓴 뒤까지 근거 확인을 통과한 비율", explain: "돌려보낸 글을 고쳐 쓴 뒤까지 합쳐 근거 확인을 통과한 몫입니다." },
   handoff: { label: "끝내 통과하지 못해 담당자에게 넘긴 비율", explain: "고쳐 써도 근거 확인을 통과하지 못해 사람에게 넘긴 몫입니다." },
-  numberHallucination: { label: "초안에 근거 없는 숫자가 섞인 비율", explain: "보내기 전 초안에 근거에 없는 숫자가 섞인 몫입니다. 이런 초안은 나가지 않습니다." },
-  evidenceHallucination: { label: "초안이 없는 근거를 댄 비율", explain: "보내기 전 초안이 근거 저장소에 없는 근거를 가리킨 몫입니다. 이런 초안은 나가지 않습니다." },
+  numberHallucination: { label: "보내기 전 메시지에 근거 없는 숫자가 섞인 비율", explain: "보내기 전 메시지에 근거에 없는 숫자가 섞인 몫입니다. 이런 메시지는 나가지 않습니다." },
+  evidenceHallucination: { label: "보내기 전 메시지가 없는 근거를 댄 비율", explain: "보내기 전 메시지가 근거 저장소에 없는 근거를 가리킨 몫입니다. 이런 메시지는 나가지 않습니다." },
   quoteMismatch: { label: "조항 인용이 원문과 다른 비율", explain: "인용한 조항 문장이 원문과 글자 그대로 같지 않은 몫입니다." },
   recheckRejected: { label: "받은 쪽이 다시 확인해 돌려보낸 비율", explain: "상대 AI가 받은 글을 다시 확인했을 때 근거와 맞지 않아 돌려보낸 몫입니다." },
   outgoingHallucination: { label: "근거 없는 숫자가 상대에게 나간 횟수", explain: "근거 확인을 지나 상대에게 실제로 보낸 글에서 근거 없는 숫자가 나온 횟수입니다." },
@@ -319,6 +320,12 @@ export function plain(text: string): string | null {
     .replace(/카나리아/g, "심어 둔 표식")
     .replace(/탐침/g, "시험 질문")
     .replace(/정규식 오탐/g, "잘못 잡은 건수")
+    // "초안"은 보내기 전 메시지다. 받침이 달라지므로 조사도 바꾼다(초안이 → 메시지가)
+    .replace(/(첫 )?초안(이|은|을|과)?/g, (_, first: string | undefined, josa: string | undefined) => {
+      const after = josa ? { 이: "가", 은: "는", 을: "를", 과: "와" }[josa] : "";
+      return `${first ? "처음 쓴" : "보내기 전"} 메시지${after}`;
+    })
+    .replace(/에이전트/g, "AI")
     .replace(/\s*\(test-v\d+\)/g, "")
     .replace(/없다(?=[.)]|$)/g, "없습니다")
     .replace(/않았다(?=[.)]|$)/g, "않았습니다")
@@ -391,7 +398,7 @@ export const LAYERS: LayerSpec[] = [
     id: "L3",
     sources: ["L3"],
     title: "근거 있는 생성",
-    explain: "AI가 쓴 글의 숫자와 조항이 근거와 맞는지 보내기 전에 검사합니다. 통과하지 못한 초안은 상대에게 나가지 않습니다.",
+    explain: "AI가 쓴 글의 숫자와 조항이 근거와 맞는지 보내기 전에 검사합니다. 통과하지 못한 메시지는 상대에게 나가지 않습니다.",
     key: "firstTry",
     more: ["outgoingHallucination", "handoff"],
   },
@@ -508,6 +515,19 @@ function versionDate(aiVersion: string | null, date: string): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(tail) ? tail : date;
 }
 
+/**
+ * 기대값을 사람이 검토했는지. "초안 기대값 기준(전문가 검토 전)"처럼 오면 "기대값 전문가 검토 전"으로 적는다
+ * ("초안"은 화면에 쓰지 않는다).
+ */
+export function reviewOf(raw: string | null): string | null {
+  if (!raw) return null;
+  const inner = /\(([^)]+)\)/.exec(raw)?.[1]?.trim();
+  if (/초안/.test(raw)) return `기대값 ${inner || "검토 전"}`;
+  const shown = plain(raw);
+  if (!shown) return null;
+  return shown.startsWith("기대값") ? shown : `기대값 ${shown}`;
+}
+
 /** 오래된 결과인지: 평가일에서 days일이 지났다 */
 export function isStale(date: string, days: number, today: Date): boolean {
   const at = Date.parse(`${date}T00:00:00Z`);
@@ -595,7 +615,7 @@ export function toTrustView(raw: unknown, today: Date = new Date()): TrustView |
     isModel,
     split,
     repeats: num(run.repeats),
-    reviewState: str(run.reviewState),
+    reviewState: reviewOf(str(run.reviewState)),
     scenarios: measured(layers.L4) ? num(perLayer.L4) : null,
     headline,
     layers: LAYERS.map((spec) => layerOf(spec, layers)).filter((item): item is TrustLayer => item !== null),
