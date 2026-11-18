@@ -35,11 +35,17 @@ export async function membersOf(userId: string, orgId: string): Promise<Member[]
   }
 }
 
-export type CompanyDetail = { region: string | null; address: string | null; bizNo: string | null };
+export type CompanyDetail = {
+  region: string | null;
+  address: string | null;
+  bizNo: string | null;
+  /** 조직 목록에서 이 회사를 읽었는지. 읽지 못했으면 고치기 폼을 열지 않는다(빈 값으로 저장해 지우지 않게) */
+  loaded: boolean;
+};
 
 /** 회사의 지역·주소·사업자등록번호. 조직 목록(GET /orgs)에서 이 회사를 찾는다. 없거나 읽지 못하면 빈 값 */
 export async function companyDetail(workspace: Workspace & { active: NonNullable<Workspace["active"]> }): Promise<CompanyDetail> {
-  const empty = { region: null, address: null, bizNo: null };
+  const empty = { region: null, address: null, bizNo: null, loaded: false };
   await connection();
   try {
     const orgs = await callBackend<unknown>("/orgs", { userId: workspace.user.id, orgId: workspace.active.orgId });
@@ -47,7 +53,7 @@ export async function companyDetail(workspace: Workspace & { active: NonNullable
     const org = orgs.find((item) => (item as { id?: unknown }).id === workspace.active.orgId) as Record<string, unknown> | undefined;
     if (!org) return empty;
     const str = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
-    return { region: str(org.region), address: str(org.address), bizNo: str(org.bizNo) };
+    return { region: str(org.region), address: str(org.address), bizNo: str(org.bizNo), loaded: true };
   } catch {
     return empty;
   }

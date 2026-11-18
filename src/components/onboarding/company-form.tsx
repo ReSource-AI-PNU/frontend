@@ -5,6 +5,7 @@ import { FactoryIcon, TruckIcon } from "@/components/icons";
 import { buttonClass } from "@/components/ui/button";
 import type { IndustrialComplex } from "@/lib/domain";
 import { createCompany, openInviteLink } from "@/lib/server/company-actions";
+import { ComplexSelect } from "./complex-select";
 
 const input =
   "min-h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss";
@@ -80,19 +81,13 @@ export function CompanyForm({ complexes }: { complexes: IndustrialComplex[] }) {
         <label htmlFor="company-complex" className="text-sm font-medium">
           지역
         </label>
-        <select
+        <ComplexSelect
           id="company-complex"
           name="complexId"
+          complexes={complexes}
           defaultValue={values.complexId ?? complexes[0]?.id ?? ""}
           className={`${input} mt-2`}
-        >
-          {complexes.map((complex) => (
-            <option key={complex.id} value={complex.id}>
-              {complex.region} · {complex.name}
-            </option>
-          ))}
-          <option value="">산업단지 밖</option>
-        </select>
+        />
         <p className="mt-1.5 text-[13px] text-muted">가까운 업체를 고르는 데 씁니다.</p>
       </div>
 

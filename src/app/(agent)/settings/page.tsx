@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { CompanyEditForm } from "@/components/settings/company-form";
 import { DefinitionTable, SettingsSection } from "@/components/settings/section";
 import { ButtonLink } from "@/components/ui/button";
 import { KIND_LABEL, MEMBER_ROLE_LABEL } from "@/lib/auth/account";
+import { complexIdFor, KEEP_REGION } from "@/lib/auth/manage";
 import { formatBizNo } from "@/lib/bizno";
+import { COMPLEXES } from "@/lib/complexes";
+import { capabilities } from "@/lib/server/capabilities";
 import { companyDetail } from "@/lib/server/company-data";
 import { requireWorkspace } from "@/lib/server/workspace";
 
@@ -13,25 +17,57 @@ const EMPTY = <span className="text-muted">등록하지 않았습니다</span>;
 export default async function CompanySettingsPage() {
   const workspace = await requireWorkspace();
   const { active, memberships } = workspace;
-  const detail = await companyDetail(workspace);
+  const [detail, can] = await Promise.all([companyDetail(workspace), capabilities()]);
+  const owner = active.memberRole === "owner";
+  // 지금 값을 읽지 못했으면 고치기 폼을 열지 않는다(빈 칸으로 저장해 지우지 않게)
+  const editable = owner && can.orgEdit && detail.loaded;
+  const complexId = complexIdFor(detail.region, COMPLEXES);
+
+  const table = (
+    <DefinitionTable
+      rows={[
+        { label: "회사 이름", value: active.orgName },
+        { label: "하는 일", value: KIND_LABEL[active.kind] },
+        { label: "내 역할", value: MEMBER_ROLE_LABEL[active.memberRole] },
+        { label: "지역", value: detail.region ?? EMPTY },
+        { label: "주소", value: detail.address ?? EMPTY },
+        {
+          label: "사업자등록번호",
+          value: detail.bizNo ? formatBizNo(detail.bizNo) : EMPTY,
+          numeric: Boolean(detail.bizNo),
+        },
+      ]}
+    />
+  );
 
   return (
     <>
-      <SettingsSection id="company" title="회사 정보" description="회사를 등록할 때 적은 정보입니다.">
-        <DefinitionTable
-          rows={[
-            { label: "회사 이름", value: active.orgName },
-            { label: "하는 일", value: KIND_LABEL[active.kind] },
-            { label: "내 역할", value: MEMBER_ROLE_LABEL[active.memberRole] },
-            { label: "지역", value: detail.region ?? EMPTY },
-            { label: "주소", value: detail.address ?? EMPTY },
-            {
-              label: "사업자등록번호",
-              value: detail.bizNo ? formatBizNo(detail.bizNo) : EMPTY,
-              numeric: Boolean(detail.bizNo),
-            },
-          ]}
-        />
+      <SettingsSection
+        id="company"
+        title="회사 정보"
+        description={
+          editable
+            ? "고친 내용은 저장하면 바로 반영됩니다."
+            : owner
+              ? detail.loaded
+                ? undefined
+                : "잠시 연결이 원활하지 않아 회사 정보를 모두 불러오지 못했습니다. 잠시 후 다시 열면 고칠 수 있습니다."
+              : "회사 정보는 소유자가 고칩니다. 바꿀 것이 있으면 소유자에게 알려 주세요."
+        }
+      >
+        {editable ? (
+          <CompanyEditForm
+            key={active.orgId}
+            orgId={active.orgId}
+            kindLabel={KIND_LABEL[active.kind]}
+            initial={{ name: active.orgName, bizNo: detail.bizNo ?? "", address: detail.address ?? "", complexId }}
+            keepRegion={complexId === KEEP_REGION ? detail.region : null}
+            complexes={COMPLEXES}
+            readOnly={table}
+          />
+        ) : (
+          table
+        )}
       </SettingsSection>
 
       <SettingsSection
