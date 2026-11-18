@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { placedHeadline } from "../src/lib/v3/format.ts";
 import { previewOf } from "../src/lib/v3/preview.ts";
 
 const view = JSON.parse(readFileSync(new URL("./fixtures/v3-view-confirmed.json", import.meta.url), "utf8"));
@@ -45,4 +46,15 @@ test("옮길 곳이 없거나 값이 없는 줄은 '지금 방식 그대로', �
   assert.equal(preview.rows[0].state, null);
   assert.equal(preview.rows[0].diff, null);
   assert.equal(preview.rows[0].sign, 0);
+});
+
+test("결과 머리 한 줄은 폐기물 수에 맞춘다: 한 가지면 '모두'를 쓰지 않는다", () => {
+  assert.equal(placedHeadline(1, 1), "1가지 폐기물의 보낼 곳을 찾았습니다.");
+  assert.equal(placedHeadline(2, 2), "2가지 모두 보낼 곳을 찾았습니다.");
+  assert.equal(placedHeadline(3, 1), "3가지 가운데 1가지는 보낼 곳을 찾았습니다.");
+  assert.equal(placedHeadline(2, 0), "지금보다 나은 곳을 찾지 못했습니다.");
+  // 미리보기도 같은 문장을 쓴다(첫 줄은 업체에 배정된 폐기물)
+  const one = { ...view, result: { ...view.result, assignments: view.result.assignments.slice(0, 1) } };
+  assert.ok(one.result.assignments[0].vendorOrgId);
+  assert.equal(previewOf(one)?.headline, "1가지 폐기물의 보낼 곳을 찾았습니다.");
 });

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
-import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, isAssumed } from "@/lib/v3/format";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
 import type { Assignment, OrgRole, Result, ViewStream } from "@/lib/v3/types";
 
@@ -344,11 +344,7 @@ export function ResultCard({
       <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em] sm:text-[24px]">
         {!isEmitter
           ? `${counterpart}에서 폐기물 ${count}가지를 문의했습니다.`
-          : placed === 0
-            ? "지금보다 나은 곳을 찾지 못했습니다."
-            : placed === count
-              ? `${count}가지 모두 보낼 곳을 찾았습니다.`
-              : `${count}가지 가운데 ${placed}가지는 보낼 곳을 찾았습니다.`}
+          : placedHeadline(count, placed)}
       </h2>
       {isEmitter ? <MoneySentence totals={totals} conditional={conditional} /> : null}
 

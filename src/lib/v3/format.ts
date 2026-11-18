@@ -144,6 +144,16 @@ export const THREAD_LABEL: Record<string, string> = {
   confirmed: "확정",
 };
 
+/**
+ * 결과 머리 한 줄(배출 기업). 폐기물 count가지 가운데 placed가지에 보낼 곳(업체 또는 공정 재투입)을 찾았을 때.
+ * 한 가지뿐이면 "모두"를 쓰지 않는다: "1가지 폐기물의 보낼 곳을 찾았습니다." 두 가지 이상이면 "n가지 모두 …".
+ */
+export function placedHeadline(count: number, placed: number): string {
+  if (placed <= 0) return "지금보다 나은 곳을 찾지 못했습니다.";
+  if (placed >= count) return count === 1 ? "1가지 폐기물의 보낼 곳을 찾았습니다." : `${count}가지 모두 보낼 곳을 찾았습니다.`;
+  return `${count}가지 가운데 ${placed}가지는 보낼 곳을 찾았습니다.`;
+}
+
 /** 지금 보여 줄 질문 묶음: 답하지 않은 질문이 남은 가장 앞 묶음(batch)의 질문 전부. batch가 없으면 답하지 않은 질문 전부 */
 export function currentBundle<T extends { answered: boolean; batch?: number | null }>(questions: T[]): T[] {
   const open = questions.filter((item) => !item.answered);

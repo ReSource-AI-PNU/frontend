@@ -3,7 +3,7 @@
  * 화면에 손으로 적은 숫자를 두지 않기 위함이다(숫자는 체험하기의 실제 결과와 같아야 한다).
  * 네트워크도 React도 부르지 않는 순수 함수다(tests/preview.test.ts).
  */
-import { formatNumber } from "./format.ts";
+import { formatNumber, placedHeadline } from "./format.ts";
 import { numberOf, priceText, signedWon, won } from "./money.ts";
 import type { Claim } from "./types";
 
@@ -99,12 +99,7 @@ export function previewOf(view: ViewLike | null | undefined): DemoPreview | null
   const placed = result.assignments.filter((item) => item.vendorOrgId || item.route === "reuse").length;
   return {
     request: `폐기물 ${view.streams.length}가지를 받아 줄 곳을 찾아 주세요.`,
-    headline:
-      placed === 0
-        ? "지금보다 나은 곳을 찾지 못했습니다."
-        : placed === count
-          ? `${count}가지 모두 보낼 곳을 찾았습니다.`
-          : `${count}가지 가운데 ${placed}가지는 보낼 곳을 찾았습니다.`,
+    headline: placedHeadline(count, placed),
     money: moneySentence(result.totals, result.status === "conditional"),
     rows,
     total: signedWon(result.totals.difference) ?? null,
