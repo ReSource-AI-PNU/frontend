@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
+import { particle } from "@/lib/josa";
 import { startTraining } from "@/lib/server/learning-actions";
 import type { TrainingRun } from "@/lib/session/types";
 import { buttonClass } from "../ui/button";
@@ -78,7 +79,9 @@ export function TrainingPanel({
         <div className="text-sm">
           {canStart ? (
             <p>
-              <span className="num font-semibold">{nextDataset}</span>로 운영 모델 <span className="num font-semibold">{baseModel}</span>을 이어서 학습합니다.
+              <span className="num font-semibold">{nextDataset}</span>
+              {particle(nextDataset ?? "", "으로/로")} 운영 모델 <span className="num font-semibold">{baseModel}</span>
+              {particle(baseModel ?? "", "을/를")} 이어서 학습합니다.
               <span className="block text-[13px] text-muted">시연에서는 실제 학습 대신 약 {Math.round(durationMs / 1000)}초 뒤 후보 모델이 생깁니다.</span>
             </p>
           ) : (

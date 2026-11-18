@@ -1,4 +1,5 @@
 import "server-only";
+import { josa } from "@/lib/josa";
 import type { DatasetVersion, LabelTask, ModelVersion, TrainingRun } from "@/lib/session/types";
 import { collection, nowIso } from "./db";
 
@@ -129,7 +130,7 @@ export function compareModels(prod: ModelVersion, cand: ModelVersion) {
   const latencyOk = cand.metrics.latencyMs <= prod.metrics.latencyMs * (1 + LATENCY_TOLERANCE);
   const blockers: string[] = [];
   for (const m of METRICS.filter((x) => x.core)) {
-    if (!diffs.find((d) => d.key === m.key)?.improved) blockers.push(`${m.label}가 운영 모델보다 나아지지 않았습니다.`);
+    if (!diffs.find((d) => d.key === m.key)?.improved) blockers.push(`${josa(m.label, "이/가")} 운영 모델보다 나아지지 않았습니다.`);
   }
   if (!latencyOk) blockers.push(`지연 시간이 운영 모델보다 ${Math.round(LATENCY_TOLERANCE * 100)}% 넘게 늘었습니다.`);
   return { diffs, passed: coreOk && latencyOk, blockers };

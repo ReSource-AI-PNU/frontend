@@ -1,4 +1,5 @@
 import { formatNumber, formatSigned } from "@/lib/format";
+import { josa } from "@/lib/josa";
 import { CONSENT_LABEL, CONSENT_TONE, type ConsentState } from "@/lib/bundle-consent";
 import type { Approval, Outcome, StreamRoute } from "@/lib/session/types";
 import { CheckIcon } from "../icons";
@@ -91,7 +92,7 @@ export function ProposalSent({
       </p>
       <p className="text-[12.5px] text-muted">
         묶음 참여 동의는 위 표와 업체·묶음 매칭 화면에 바로 반영됩니다. 시연에서는 메뉴의 &ldquo;이웃 기업 화면으로 보기&rdquo;에서 그 기업 시점으로 회신해 볼 수 있습니다.
-        {internalDocs.length ? ` ${internalDocs.join(", ")}은(는) 내부용으로 저장했습니다.` : ""}
+        {internalDocs.length ? ` ${josa(internalDocs.join(", "), "은/는")} 내부용으로 저장했습니다.` : ""}
       </p>
     </section>
   );

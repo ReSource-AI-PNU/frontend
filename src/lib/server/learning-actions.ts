@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { josa } from "@/lib/josa";
 import { nowIso } from "./mock/db";
 import {
   compareModels,
@@ -55,7 +56,7 @@ export async function createDatasetVersion(_prev: Result, formData: FormData): P
     createdBy: user.name,
   });
   revalidatePath(PATH);
-  return { ok: true, message: `${id}를 만들었습니다. 이제 이 버전으로 재학습을 시작할 수 있습니다.` };
+  return { ok: true, message: `${josa(id, "을/를")} 만들었습니다. 이제 이 버전으로 재학습을 시작할 수 있습니다.` };
 }
 
 /** 가장 최근 데이터셋 버전으로 재학습을 시작한다(모의: 시간이 지나면 끝나고 후보 모델이 생긴다). */
@@ -99,5 +100,5 @@ export async function deployCandidate(modelId: string, _prev: Result, formData: 
   await models.update(production.id, (m) => ({ ...m, status: "archived" }));
   await models.update(candidate.id, (m) => ({ ...m, status: "production" }));
   revalidatePath(PATH);
-  return { ok: true, message: `${candidate.version}을 운영 모델로 배포했습니다.` };
+  return { ok: true, message: `${josa(candidate.version, "을/를")} 운영 모델로 배포했습니다.` };
 }

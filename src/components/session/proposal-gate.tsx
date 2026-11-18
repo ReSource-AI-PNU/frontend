@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { josa } from "@/lib/josa";
 import { approveAndSend } from "@/lib/server/session-actions";
 import { Badge } from "../ui/badge";
 import { buttonClass } from "../ui/button";
@@ -35,7 +36,7 @@ export function ProposalGate({
   const [confirmed, setConfirmed] = useState(false);
   const [state, action, pending] = useActionState<GateState, FormData>((_prev, formData) => approveAndSend(sessionId, formData), undefined);
   const places = new Set(targets.map((t) => t.name)).size;
-  const internalLine = internalDocs.length ? <p className="text-[13px] text-muted">{internalDocs.join(", ")}은(는) 내부용이라 발송하지 않습니다.</p> : null;
+  const internalLine = internalDocs.length ? <p className="text-[13px] text-muted">{josa(internalDocs.join(", "), "은/는")} 내부용이라 발송하지 않습니다.</p> : null;
 
   if (targets.length === 0) {
     return (

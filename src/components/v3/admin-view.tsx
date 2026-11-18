@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { particle } from "@/lib/josa";
 import { api, API_BASE } from "@/lib/v3/api";
 import { MoreDetails } from "@/components/ui/more-details";
 import {
@@ -670,7 +671,8 @@ export function AdminView() {
         <section role="status" className="rounded-xl border border-ink p-5">
           <h2 className="text-h2">운영 계정으로 들어와 주세요</h2>
           <p className="mt-1 text-sm text-ink-2">
-            지금은 <span className="font-semibold">{org.name}</span>으로 보고 있습니다. 운영 화면에는 여러 회사의 기록이 섞여 있어
+            지금은 <span className="font-semibold">{org.name}</span>
+            {particle(org.name, "으로/로")} 보고 있습니다. 운영 화면에는 여러 회사의 기록이 섞여 있어
             운영 회사의 구성원만 볼 수 있습니다.
           </p>
           <div className="mt-4">

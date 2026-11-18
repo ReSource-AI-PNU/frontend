@@ -1,3 +1,4 @@
+import { josa, particle } from "@/lib/josa";
 import { compareModels, LATENCY_TOLERANCE, METRICS, type MetricKey } from "@/lib/server/mock/learning";
 import type { ModelVersion } from "@/lib/session/types";
 import { Badge } from "../ui/badge";
@@ -32,7 +33,7 @@ export function ModelCompare({ production, candidate }: { production: ModelVersi
   }
   const { diffs, passed } = compareModels(production, candidate);
   const checks = [
-    ...METRICS.filter((m) => m.core).map((m) => ({ label: `${m.label}가 나아졌습니다`, ok: diffs.find((d) => d.key === m.key)!.improved })),
+    ...METRICS.filter((m) => m.core).map((m) => ({ label: `${josa(m.label, "이/가")} 나아졌습니다`, ok: diffs.find((d) => d.key === m.key)!.improved })),
     {
       label: "지연 시간 증가가 10% 이내입니다",
       ok: candidate.metrics.latencyMs <= production.metrics.latencyMs * (1 + LATENCY_TOLERANCE),
@@ -83,7 +84,9 @@ export function ModelCompare({ production, candidate }: { production: ModelVersi
           </tbody>
         </table>
         <p className="mt-2 text-[12px] text-muted">
-          후보 <span className="num">{candidate.version}</span>은 데이터셋 <span className="num">{candidate.datasetVersion}</span>로 학습했습니다. 판정 일치율은 처리업체가 기록한 실제 결과와 AI 판정이 같은 비율입니다.
+          후보 <span className="num">{candidate.version}</span>
+          {particle(candidate.version, "은/는")} 데이터셋 <span className="num">{candidate.datasetVersion}</span>
+          {particle(candidate.datasetVersion, "으로/로")} 학습했습니다. 판정 일치율은 처리업체가 기록한 실제 결과와 AI 판정이 같은 비율입니다.
         </p>
       </div>
       <div className="lg:col-span-5">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CONTACT_PENDING, LEGAL_EFFECTIVE_DATE, OPERATOR_NAME, SUPPORT_EMAIL } from "@/components/legal/contact";
 import { Callout, Clauses, LegalDocument, Pending, SubItems, type LegalSection } from "@/components/legal/legal-document";
+import { particle } from "@/lib/josa";
 
 export const metadata: Metadata = {
   title: "서비스 이용약관",
@@ -16,7 +17,7 @@ const SECTIONS: LegalSection[] = [
     title: "목적",
     body: (
       <p>
-        이 약관은 {OPERATOR_NAME}(이하 &ldquo;운영자&rdquo;)가 제공하는 Re:Source AI 서비스(이하 &ldquo;서비스&rdquo;)를 이용하는 데
+        이 약관은 {OPERATOR_NAME}(이하 &ldquo;운영자&rdquo;){particle(OPERATOR_NAME, "이/가")} 제공하는 Re:Source AI 서비스(이하 &ldquo;서비스&rdquo;)를 이용하는 데
         필요한 운영자와 회원 사이의 권리, 의무, 책임 사항과 이용 절차를 정하는 것을 목적으로 합니다.
       </p>
     ),
@@ -308,7 +309,8 @@ const SECTIONS: LegalSection[] = [
         items={[
           <p key="1">
             운영자는 회원의 의견이나 불만을 받아 처리합니다. 문의는 {SUPPORT_EMAIL}
-            {CONTACT_PENDING ? <Pending>확정 전</Pending> : null}로 보내 주십시오.
+            {CONTACT_PENDING ? <Pending>확정 전</Pending> : null}
+            {particle(SUPPORT_EMAIL, "으로/로")} 보내 주십시오.
           </p>,
           <p key="2">이 약관과 서비스 이용에 관한 분쟁에는 대한민국 법을 적용합니다.</p>,
           <p key="3">운영자와 회원 사이에 소송이 생기면 민사소송법에 따른 관할 법원에서 다룹니다.</p>,
@@ -328,7 +330,8 @@ export default function TermsPage() {
       intro={
         <>
           <p>
-            이 약관은 {OPERATOR_NAME}이 대회 출품작으로 운영하는 Re:Source AI의 이용 조건을 정합니다. 가입하기 전에 특히 제6조(AI 판정 결과의
+            이 약관은 {OPERATOR_NAME}
+            {particle(OPERATOR_NAME, "이/가")} 대회 출품작으로 운영하는 Re:Source AI의 이용 조건을 정합니다. 가입하기 전에 특히 제6조(AI 판정 결과의
             성격과 한계)와 제8조(외부 발송과 승인)를 읽어 주십시오.
           </p>
           <p className="text-sm text-muted">

@@ -1,4 +1,5 @@
 import "server-only";
+import { josa } from "@/lib/josa";
 import type { BundleGroup, Guardrails, Negotiation, NegotiationRound, PickupTerms } from "@/lib/session/types";
 import { newId } from "./db";
 
@@ -43,7 +44,7 @@ export function negotiate(b: BundleGroup, g: Guardrails, start = Date.now()): Ne
   push({
     by: "theirs",
     terms: counter,
-    message: `${theirDay === requested.day ? "" : `${requested.day}요일은 다른 단지 순회가 있어 어렵습니다. `}${termsText(counter)}을 제안합니다.`,
+    message: `${theirDay === requested.day ? "" : `${requested.day}요일은 다른 단지 순회가 있어 어렵습니다. `}${josa(termsText(counter), "을/를")} 제안합니다.`,
   });
 
   if (!g.days.includes(counter.day)) {
@@ -70,7 +71,7 @@ export function negotiate(b: BundleGroup, g: Guardrails, start = Date.now()): Ne
           : `${ours}원/kg까지 내릴 수 있습니다. 이보다 낮으면 담당자 확인이 필요합니다.`,
     });
     if (ours <= COLLECTOR_TERMS.maxPerKg) {
-      push({ by: "theirs", terms: { ...counter, perKg: ours }, message: `${ours}원/kg에 동의합니다. ${termsText({ ...counter, perKg: ours })}로 계약하겠습니다.`, accept: true });
+      push({ by: "theirs", terms: { ...counter, perKg: ours }, message: `${ours}원/kg에 동의합니다. ${josa(termsText({ ...counter, perKg: ours }), "으로/로")} 계약하겠습니다.`, accept: true });
       return { ...base, rounds, status: "agreed", agreed: { ...counter, perKg: ours } };
     }
     theirs = down5(COLLECTOR_TERMS.maxPerKg);

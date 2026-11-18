@@ -10,6 +10,7 @@
  * - 계산에는 depot·capacityKg·capacityM3·costPerKm만 쓰고, vehicleCount와 routes는 저장해 보여 주기만 한다.
  * - 노선의 운행 요일(routes[].days)과 업체 측 AI가 지킬 수거 요일(guardrails.days)은 따로다.
  */
+import { josa } from "../josa.ts";
 
 export const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
@@ -104,7 +105,7 @@ export function fleetErrors(draft: FleetDraft): FleetErrors {
     if (value === null) return;
     const above = inclusive ? value >= min : value > min;
     if (!Number.isFinite(value) || !above || value > max) {
-      errors[key] = `${label}은 ${inclusive ? `${min} 이상` : `${min}보다 크고`} ${max.toLocaleString("ko-KR")} 이하의 숫자로 적어 주세요.`;
+      errors[key] = `${josa(label, "은/는")} ${inclusive ? `${min} 이상` : `${min}보다 크고`} ${max.toLocaleString("ko-KR")} 이하의 숫자로 적어 주세요.`;
     }
   };
   range("capacityKg", "적재 무게", 0, false, 100_000);

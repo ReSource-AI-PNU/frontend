@@ -1,6 +1,7 @@
 import "server-only";
 import { KAU_PER_T, kauOf } from "@/lib/carbon";
 import { findComplex } from "@/lib/complexes";
+import { josa } from "@/lib/josa";
 import { MIN_KG } from "@/lib/pickup";
 import type { Company, Organization, WasteItem } from "@/lib/domain";
 import type {
@@ -305,9 +306,9 @@ function perKgFor(route: StreamRoute, s: Stream) {
 function actionFor(route: StreamRoute, s: Stream): StreamDecision["action"] {
   const dets = s.classify.detections.filter((d) => d.kind === "contaminant" && !d.removed && !/혼입|혼합/.test(d.label));
   if (route === "sell" && dets.length) {
-    return { title: `${dets.map((d) => d.label).join("·")}을 떼고 따로 모으세요`, laborHours: 2, laborCost: 2 * LABOR_PER_HOUR };
+    return { title: `${josa(dets.map((d) => d.label).join("·"), "을/를")} 떼고 따로 모으세요`, laborHours: 2, laborCost: 2 * LABOR_PER_HOUR };
   }
-  if (route === "bundle") return { title: `${s.name}을 마대에 따로 모으세요`, laborHours: 1, laborCost: LABOR_PER_HOUR };
+  if (route === "bundle") return { title: `${josa(s.name, "을/를")} 마대에 따로 모으세요`, laborHours: 1, laborCost: LABOR_PER_HOUR };
   if (route === "reuse") return { title: "색별로 분리해 분쇄기에 넣으세요", laborHours: 2, laborCost: 2 * LABOR_PER_HOUR };
   return undefined;
 }
@@ -356,7 +357,7 @@ function decide(s: Stream, override?: StreamRoute): StreamDecision {
   return {
     streamId: s.id,
     route,
-    reason: override && override !== ai.route ? `담당자가 ${STREAM_ROUTE_LABEL[override]}을(를) 골랐습니다. AI 추천은 ${STREAM_ROUTE_LABEL[ai.route]}입니다.` : ai.reason,
+    reason: override && override !== ai.route ? `담당자가 ${josa(STREAM_ROUTE_LABEL[override], "을/를")} 골랐습니다. AI 추천은 ${STREAM_ROUTE_LABEL[ai.route]}입니다.` : ai.reason,
     currentPerKg: now,
     afterPerKg: route === "bundle" ? after - BUNDLE_TRANSPORT_PER_KG : after,
     monthlyNow: Math.round(now * kg),
@@ -678,7 +679,7 @@ export function buildProposal(session: Session, org: Organization): ProposalResu
         { label: "준비", value: "흐름별 분리 보관 구역 4곳 표시, 분쇄기 가동 일정, 포장 필름 전용 마대" },
         { label: "일정", value: "1주차 분리 보관 시작 · 2주차 매입처 견적 · 4주차 첫 순회 수거" },
       ],
-      body: `${org.name}은(는) 지금 폐플라스틱 ${session.streams.length}개 흐름을 모두 혼합 사업장폐기물로 소각 위탁하고 있다. 흐름별로 나눠 재투입·매각·단지 묶음 매각·열분해로 보내면 월 ${won(diff)}, 연 ${won(diff * 12)}이 개선된다. 이 계획은 AI 진단 결과이며, 단가는 견적 회신으로 확정한다.`,
+      body: `${josa(org.name, "은/는")} 지금 폐플라스틱 ${session.streams.length}개 흐름을 모두 혼합 사업장폐기물로 소각 위탁하고 있다. 흐름별로 나눠 재투입·매각·단지 묶음 매각·열분해로 보내면 월 ${won(diff)}, 연 ${won(diff * 12)}이 개선된다. 이 계획은 AI 진단 결과이며, 단가는 견적 회신으로 확정한다.`,
     },
     {
       id: "grant",
@@ -736,7 +737,7 @@ export function buildProposal(session: Session, org: Organization): ProposalResu
         { label: "상태", value: "이물(라벨·인서트) 제거 후 마대 포장" },
         { label: "첨부", value: "AI 식별 결과, 사진" },
       ],
-      body: `${p.name} 담당자님께. ${s?.classify.detail}을(를) 매월 ${s?.monthlyKg}kg 내놓으려 합니다. 이물 제거 후 상태 기준 매입 단가와 수거 주기를 회신해 주시기 바랍니다.`,
+      body: `${p.name} 담당자님께. ${josa(s?.classify.detail ?? "", "을/를")} 매월 ${s?.monthlyKg}kg 내놓으려 합니다. 이물 제거 후 상태 기준 매입 단가와 수거 주기를 회신해 주시기 바랍니다.`,
     });
   }
   for (const p of m?.partners.filter((x) => x.route === "pyrolysis") ?? []) {
@@ -755,7 +756,7 @@ export function buildProposal(session: Session, org: Organization): ProposalResu
         { label: "희망 조건", value: "반입비 kg당 80원 이하, 운반 포함 여부 회신" },
         { label: "첨부", value: "AI 식별 결과, 사진" },
       ],
-      body: `${p.name} 담당자님께. ${s?.classify.detail}을(를) 매월 ${s?.monthlyKg}kg 열분해로 위탁하려 합니다. 반입 기준(재질·이물·염소 함량)과 kg당 반입비, 수거 주기를 회신해 주시기 바랍니다.`,
+      body: `${p.name} 담당자님께. ${josa(s?.classify.detail ?? "", "을/를")} 매월 ${s?.monthlyKg}kg 열분해로 위탁하려 합니다. 반입 기준(재질·이물·염소 함량)과 kg당 반입비, 수거 주기를 회신해 주시기 바랍니다.`,
     });
   }
   if (m?.bundles.length) {

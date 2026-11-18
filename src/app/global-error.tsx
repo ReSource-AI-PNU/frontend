@@ -1,6 +1,7 @@
 "use client";
 
 import { SUPPORT_EMAIL } from "@/components/legal/contact";
+import { particle } from "@/lib/josa";
 
 /**
  * 루트 레이아웃까지 실패했을 때만 보인다. globals.css와 글꼴이 없을 수 있으므로 스타일을 이 파일 안에 둔다.
@@ -67,7 +68,7 @@ export default function GlobalError({ error, retry }: { error: unknown; retry: (
           </div>
           <p className="rs-ge-foot">
             계속 같은 화면이 나오면 {digest ? "위 오류 코드와 함께 " : ""}
-            <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>(연락처 확정 전)로 알려 주세요.
+            <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>(연락처 확정 전){particle(SUPPORT_EMAIL, "으로/로")} 알려 주세요.
           </p>
         </main>
       </body>

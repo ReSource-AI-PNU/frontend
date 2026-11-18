@@ -67,6 +67,14 @@ test("백엔드와 같은 범위로 검사한다: 무게 0<x≤100,000, 부피 0
   assert.equal(hasFleetErrors({}), false);
 });
 
+test("QA: 범위 안내의 조사는 칸 이름의 받침을 따른다(\"적재 무게은\", \"운송비은\"이 아니다)", () => {
+  const errors = fleetErrors({ ...fleetDraft(null, COMPLEXES), capacityKg: "0", capacityM3: "0", costPerKm: "-1" });
+  assert.equal(errors.capacityKg, "적재 무게는 0보다 크고 100,000 이하의 숫자로 적어 주세요.");
+  assert.equal(errors.capacityM3, "적재 부피는 0보다 크고 1,000 이하의 숫자로 적어 주세요.");
+  assert.equal(errors.costPerKm, "운송비는 0 이상 1,000,000 이하의 숫자로 적어 주세요.");
+  for (const message of Object.values(errors)) assert.doesNotMatch(String(message), /[가-힣]은 \d/);
+});
+
 test("노선마다 이름(겹치지 않게), 요일 하나 이상, 수거 지역이나 산업단지 하나 이상이 있어야 한다", () => {
   const ok = { ...emptyRoute("a"), name: "강서 화목", days: ["화"], complexes: ["녹산국가산업단지"] };
   const base = fleetDraft(null, COMPLEXES);
