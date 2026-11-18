@@ -15,7 +15,7 @@ test("결과 카드와 같은 문장과 숫자: 합계는 뷰의 totals.differen
   assert.ok(preview);
   assert.equal(preview.request, `폐기물 ${view.streams.length}가지를 받아 줄 곳을 찾아 주세요.`);
   assert.equal(preview.headline, "4가지 모두 보낼 곳을 찾았습니다.");
-  assert.equal(preview.money, "지금은 한 달에 387,500원을 내고 있습니다. 조건이 확인되면 한 달에 267,000원을 받게 됩니다.");
+  assert.equal(preview.money, "지금은 한 달에 387,500원을 내고 있습니다. 조건이 확인되면 한 달에 293,500원을 받게 됩니다.");
   assert.equal(preview.total, `+${new Intl.NumberFormat("ko-KR").format(view.result.totals.difference.value)}원`);
   assert.equal(preview.totalSign, 1);
   const purge = preview.rows.find((row) => row.streamId === "st_purge");
@@ -25,8 +25,9 @@ test("결과 카드와 같은 문장과 숫자: 합계는 뷰의 totals.differen
     amount: "한 달 250 kg",
     vendor: "(주)남해열분해",
     state: "조건 확인 뒤 확정",
-    price: "처리비 kg당 80원",
-    diff: "+12,500원",
+    // 합의 전 단가 협상(⑥)으로 처리비 80원이 72원이 됐다
+    price: "처리비 kg당 72원",
+    diff: "+14,500원",
     sign: 1,
   });
 });
