@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { useInView, useMediaQuery } from "@/components/use-media";
 import { BlockedNotice } from "@/components/v3/blocked-notice";
 import { useV3 } from "@/components/v3/context";
 import { JudgementGraph } from "@/components/v3/judgement-graph";
@@ -14,8 +15,19 @@ import { api } from "@/lib/v3/api";
 import { THREAD_LABEL, clearedApprovalsText, currentBundle, questionIntro } from "@/lib/v3/format";
 import { AI_NAME } from "@/lib/v3/labels";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
+import {
+  NARROW_QUERY,
+  NO_NOTICE,
+  noticeChange,
+  noticePlacement,
+  noticeText,
+  pendingQuestionIds,
+  sameMark,
+  shouldCloseTalk,
+  type NoticeMark,
+} from "@/lib/v3/question-notice";
 import type { DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
-import { AgentTalk } from "./agent-talk";
+import { AgentTalk, QuestionNotice } from "./agent-talk";
 import { Dots } from "./dots";
 import { ResultCard } from "./result-card";
 
@@ -176,7 +188,10 @@ function Questions({
   const head = questionIntro(bundle, summary);
   return (
     <div>
-      <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">{head.intro}</h2>
+      {/* 답하기가 꺼져 있을 때(진행 중) "답하러 가기"는 이 머리말에 초점을 둔다 */}
+      <h2 tabIndex={-1} data-question-head="" className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">
+        {head.intro}
+      </h2>
       <p className="mt-1.5 text-[15px] text-ink-2">
         모르면 ‘모름’을 누르세요. 다시 묻지 않고 그대로 진행합니다.
         {head.note ? <span className="mt-0.5 block text-[13px] text-muted">{head.note}</span> : null}
@@ -457,8 +472,51 @@ export function Conversation({ d }: { d: Diagnosis }) {
     d.replay();
   };
 
+  // 담당자 답이 필요한 질문이 대화 패널 뒤에 가리지 않게 한다(src/lib/v3/question-notice.ts).
+  // 새 질문이 오거나 남은 질문에 이제 답할 수 있게 되면, 좁은 화면에서는 패널을 닫는다. 렌더 중에 앞서 알린 것과 견주어 고친다
+  const narrow = useMediaQuery(NARROW_QUERY);
+  const pendingIds = pendingQuestionIds(questions, { isEmitter, replaying, readOnly });
+  const answerable = !working && d.canAct && !d.busy;
+  const mark: NoticeMark = { ids: pendingIds, answerable };
+  const [noticed, setNoticed] = useState<NoticeMark>(NO_NOTICE);
+  if (!sameMark(noticed, mark)) {
+    setNoticed(mark);
+    if (shouldCloseTalk(noticeChange(noticed, mark), { talkOpen, narrow })) setTalkOpen(false);
+  }
+  const [questionsNode, setQuestionsNode] = useState<HTMLDivElement | null>(null);
+  // 휴대폰 머리줄(52px)과 화면 아래 대화 단추 자리를 뺀 곳에 질문 칸이 보이는지
+  const formInView = useInView(questionsNode, pendingIds.length > 0 && !talkOpen, "-60px 0px -96px 0px");
+  const placement = noticePlacement({ pending: pendingIds.length, talkOpen, formInView });
+  const goToQuestions = () => {
+    setTalkOpen(false);
+    // 패널이 닫힌 뒤에 질문 칸으로 내려가 첫 입력 칸(답하기가 꺼져 있으면 머리말)에 초점을 둔다
+    requestAnimationFrame(() => {
+      if (!questionsNode) return;
+      const target =
+        questionsNode.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled)") ??
+        questionsNode.querySelector<HTMLElement>("[data-question-head]");
+      target?.focus({ preventScroll: true });
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      questionsNode.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+    });
+  };
+  const notice = pendingIds.length > 0 ? { count: pendingIds.length, answerable, onGo: goToQuestions } : null;
+  const noticeWords = notice ? noticeText(notice.count, notice.answerable) : null;
+
   return (
     <div className="flex flex-1 flex-col">
+      {/* 화면 읽기 프로그램에는 질문이 오는 대로 알린다(패널이 열려 있으면 패널 안에서 알린다) */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {noticeWords && !talkOpen ? `${noticeWords.title}. ${noticeWords.detail}.` : ""}
+      </p>
+      {notice && placement.page ? (
+        // 질문 칸이 화면 밖이면 본문 맨 위에 붙여 둔다. 높이 0인 자리에 띄워 본문을 밀지 않는다
+        <div className="pointer-events-none sticky top-13 z-10 h-0 lg:top-0">
+          <div className="pointer-events-auto mx-auto w-full max-w-[760px] px-5 pt-3 [animation:rs-rise_240ms_var(--ease-out)_both]">
+            <QuestionNotice {...notice} />
+          </div>
+        </div>
+      ) : null}
       {!isEmitter && !readOnly ? (
         <div className="flex justify-end px-3 pt-3">
           <Link
@@ -533,7 +591,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
         ) : null}
 
         {isEmitter && !replaying ? (
-          <div>
+          <div ref={setQuestionsNode} id="questions" className="scroll-mt-20">
             <Questions
               questions={questions}
               summary={holding ? null : view.questionBatch}
@@ -542,7 +600,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
               onAnswer={d.answerAndContinue}
             />
             {working && openQuestions.length > 0 ? (
-              <p className="mt-3 text-[13px] text-muted">AI가 지금 하던 일을 마치면 답할 수 있습니다.</p>
+              <p className="mt-3 text-[13px] text-muted">진행이 끝나면 답할 수 있습니다.</p>
             ) : null}
           </div>
         ) : null}
@@ -658,6 +716,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
         liveLine={liveLine}
         freshIds={freshIds}
         replay={{ can: d.canReplay, active: replaying, start: replay, skip: stream.skip }}
+        notice={placement.panel ? notice : null}
       />
     </div>
   );

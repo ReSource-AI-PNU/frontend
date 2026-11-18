@@ -10,6 +10,7 @@ import { josa } from "@/lib/josa";
 import { evidenceOf, threadLabel, typingText, withinVendorRange, type TalkThread, type Typing } from "@/lib/v3/live";
 import { MESSAGE_LABEL, formatDateTime } from "@/lib/v3/format";
 import { AI_NAME, eventSummary } from "@/lib/v3/labels";
+import { noticeText } from "@/lib/v3/question-notice";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
 import { Dots } from "./dots";
 
@@ -92,6 +93,29 @@ function TypingBubble({ typing, left }: { typing: Typing; left: boolean }) {
   );
 }
 
+/**
+ * 담당자 답이 필요한 질문 알림 한 줄("담당자 답이 필요합니다 · 답하러 가기"). 대화 패널 맨 위와, 패널이 닫혀 있고
+ * 질문 칸이 화면 밖일 때 본문 맨 위에 둔다. 누르면 패널을 닫고 질문 칸으로 간다.
+ */
+export function QuestionNotice({ count, answerable, onGo }: { count: number; answerable: boolean; onGo: () => void }) {
+  const text = noticeText(count, answerable);
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 rounded-xl bg-warn-bg py-1 pr-2 pl-4 shadow-[0_6px_20px_-12px_rgb(0_0_0/0.35)]">
+      <p className="min-w-0 flex-1 py-1.5 text-[14px] leading-snug">
+        <span className="font-semibold text-warn">{text.title}</span>
+        <span className="text-ink-2"> · {text.detail}</span>
+      </p>
+      <button
+        type="button"
+        onClick={onGo}
+        className="min-h-11 shrink-0 rounded-lg px-2.5 text-[14px] font-semibold text-ink underline underline-offset-4 hover:bg-surface"
+      >
+        {text.action}
+      </button>
+    </div>
+  );
+}
+
 /** 두 AI의 이름. 백엔드 작성자 표시(author.label, vendorAuthor.label)가 있으면 그 낱말을 쓴다 */
 function sideNames(thread: TalkThread, vendorAuthor?: { label: string } | null): { company: string; vendor: string } {
   const agent = (side: "company" | "vendor") =>
@@ -136,6 +160,7 @@ export function AgentTalk({
   liveLine,
   freshIds,
   replay,
+  notice,
 }: {
   view: DiagnosisView;
   /** 뷰의 대화와 스트림으로 받은 것을 합친 것(src/lib/v3/live.ts presentThreads) */
@@ -160,6 +185,8 @@ export function AgentTalk({
   /** 스트림으로 막 받은 메시지(들어올 때 살짝 떠오른다) */
   freshIds: Set<string>;
   replay: { can: boolean; active: boolean; start: () => void; skip: () => void };
+  /** 담당자 답이 필요한 질문이 남았으면 패널 맨 위에 알린다(src/lib/v3/question-notice.ts) */
+  notice?: { count: number; answerable: boolean; onGo: () => void } | null;
 }) {
   const [showEvents, setShowEvents] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -228,6 +255,11 @@ export function AgentTalk({
                 <CloseIcon />
               </button>
             </header>
+
+            {/* 질문은 본문에 있어 패널 뒤에 가린다. 맨 위에 알리고 누르면 패널을 닫고 질문 칸으로 간다 */}
+            <div role="status" aria-live="polite" className={notice ? "px-5 pb-2" : undefined}>
+              {notice ? <QuestionNotice {...notice} /> : null}
+            </div>
 
             {working || replay.can ? (
               <div className="flex min-h-10 items-center gap-2 px-5 pb-2 text-[13px]">
