@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useV3 } from "@/components/v3/context";
+import { loadVendorProfile } from "@/components/v3/materials-view";
 import { useRemote } from "@/components/v3/use-remote";
 import { api } from "@/lib/v3/api";
 import { formatDateTime } from "@/lib/v3/format";
+import { vendorEmptyCopy } from "@/lib/v3/vendor-empty";
 import { Dots } from "./dots";
 
 const STATUS_WORD: Record<string, string> = {
@@ -27,6 +29,9 @@ export function Inquiries() {
   const router = useRouter();
   const vendor = org.role === "vendor";
   const list = useRemote(`sessions:${org.id}`, mode === "live", () => api.listSessions(org.id));
+  // 빈 화면 글은 업체 프로필로 정한다: 허가 품목·매입 기준을 올렸으면 다시 올리라고 하지 않는다
+  const profile = useRemote(`vendor:${org.id}`, mode === "live" && vendor, () => loadVendorProfile(org.id, org.name));
+  const empty = vendor ? vendorEmptyCopy(profile.error ? undefined : profile.data, "inquiries") : null;
   const open = (id: string) => {
     setSessionId(id);
     router.push(basePath);
@@ -42,7 +47,7 @@ export function Inquiries() {
             : "지금까지 받아 줄 곳을 찾은 기록입니다. 누르면 결과와 대화를 다시 볼 수 있습니다."}
         </p>
       </header>
-      {list.loading ? (
+      {list.loading || (vendor && profile.loading) ? (
         <div className="py-10">
           <Dots label="불러오는 중" />
         </div>
@@ -55,15 +60,14 @@ export function Inquiries() {
         </p>
       ) : !list.data || list.data.length === 0 ? (
         <EmptyState
-          title={vendor ? "아직 들어온 문의가 없습니다" : "아직 찾은 기록이 없습니다"}
-          description={
-            vendor
-              ? "허가증과 매입 기준표를 올려 두면 맞는 물량 문의가 이곳에 모입니다."
-              : "폐기물을 등록하고 받아 줄 곳을 찾으면 이곳에 기록이 남습니다."
-          }
+          title={empty ? empty.title : "아직 찾은 기록이 없습니다"}
+          description={empty ? empty.description : "폐기물을 등록하고 받아 줄 곳을 찾으면 이곳에 기록이 남습니다."}
           action={
-            <Link href={vendor ? `${basePath}/materials` : basePath} className={buttonClass("secondary")}>
-              {vendor ? "허가증·매입 기준표 올리기" : "찾기 화면으로"}
+            <Link
+              href={empty ? `${basePath}/materials` : basePath}
+              className={buttonClass(empty?.action.upload ? "primary" : "secondary")}
+            >
+              {empty ? empty.action.label : "찾기 화면으로"}
             </Link>
           }
         />

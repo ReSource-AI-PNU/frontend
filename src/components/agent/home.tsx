@@ -8,6 +8,7 @@ import { useRemote } from "@/components/v3/use-remote";
 import { api } from "@/lib/v3/api";
 import { loadVendorProfile } from "@/components/v3/materials-view";
 import { useDiagnosis } from "@/components/v3/use-diagnosis";
+import { vendorEmptyCopy } from "@/lib/v3/vendor-empty";
 import { Conversation } from "./conversation";
 import { Dots } from "./dots";
 import { Start } from "./start";
@@ -21,11 +22,10 @@ function Centered({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-/** 처리 업체가 아직 받은 문의가 없을 때. 허가증과 매입 기준표가 없으면 그것부터 올리게 한다. */
+/** 처리 업체가 아직 받은 문의가 없을 때. 허가 품목과 매입 기준이 없으면 그것부터 올리게 한다(src/lib/v3/vendor-empty.ts) */
 function VendorEmpty({ error }: { error: string | null }) {
   const { org, mode, readOnly, basePath } = useV3();
   const profile = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
-  const ready = Boolean(profile.data && (profile.data.permits.length > 0 || profile.data.criteria.length > 0));
   if (profile.loading) {
     return (
       <div className="flex flex-1 items-center justify-center px-5 py-16">
@@ -33,13 +33,10 @@ function VendorEmpty({ error }: { error: string | null }) {
       </div>
     );
   }
+  const copy = vendorEmptyCopy(profile.error ? undefined : profile.data, "home");
   return (
-    <Centered title={ready ? "아직 들어온 문의가 없습니다" : "허가증과 매입 기준표를 올려 주세요"}>
-      <p>
-        {ready
-          ? "배출 기업이 찾기를 시작하면, 허가 품목과 매입 기준에 맞는 물량이 여기에 나타납니다. AI가 매입 기준표의 조건으로 먼저 답하고, 확정은 담당자가 합니다."
-          : "허가 품목과 매입 기준이 있어야 맞는 물량 문의가 들어옵니다. 문서를 올리면 값을 뽑아 드리고, 담당자가 확인한 값만 씁니다."}
-      </p>
+    <Centered title={copy.title}>
+      <p>{copy.description}</p>
       {error ? (
         <p role="alert" className="mt-4 rounded-lg bg-loss-bg px-4 py-3 text-sm text-loss">
           {error}
@@ -47,9 +44,9 @@ function VendorEmpty({ error }: { error: string | null }) {
       ) : null}
       <Link
         href={`${basePath}/materials`}
-        className={buttonClass(ready || readOnly ? "secondary" : "primary", "md", "mt-6 !min-h-12")}
+        className={buttonClass(copy.action.upload && !readOnly ? "primary" : "secondary", "md", "mt-6 !min-h-12")}
       >
-        {ready ? "업체 정보 보기" : "허가증·매입 기준표 올리기"}
+        {copy.action.label}
       </Link>
     </Centered>
   );
