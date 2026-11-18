@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import { BrandLink } from "@/components/brand";
+import { AccountNotice } from "@/components/landing/account-notice";
 import { DemoPreview } from "@/components/landing/demo-preview";
 import { ButtonLink } from "@/components/ui/button";
 import { AI_NAME } from "@/lib/v3/labels";
@@ -122,6 +124,9 @@ export default function LandingPage() {
           </ButtonLink>
         </nav>
       </header>
+      <Suspense fallback={null}>
+        <AccountNotice />
+      </Suspense>
 
       {/* 첫 화면: 한 문장과 단추 하나, 그리고 실제 사출 공장 사진 */}
       <section className="pt-14 sm:pt-20">
