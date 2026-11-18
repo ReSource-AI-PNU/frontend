@@ -98,7 +98,7 @@ async function Invite({ params }: { params: PageProps<"/invite/[token]">["params
 
 export default function InvitePage({ params }: PageProps<"/invite/[token]">) {
   return (
-    <AuthShell title="회사 초대" description="초대한 회사를 확인한 뒤 수락하면 그 회사의 멤버가 되어 함께 일할 수 있습니다.">
+    <AuthShell title="회사 초대" description="초대한 회사를 확인한 뒤 수락하면 그 회사의 구성원이 되어 함께 일할 수 있습니다.">
       <Suspense fallback={<Skeleton className="h-28" />}>
         <Invite params={params} />
       </Suspense>

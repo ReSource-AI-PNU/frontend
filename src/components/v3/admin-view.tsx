@@ -671,7 +671,7 @@ export function AdminView() {
           <h2 className="text-h2">운영 계정으로 들어와 주세요</h2>
           <p className="mt-1 text-sm text-ink-2">
             지금은 <span className="font-semibold">{org.name}</span>으로 보고 있습니다. 운영 화면에는 여러 회사의 기록이 섞여 있어
-            운영 회사의 멤버만 볼 수 있습니다.
+            운영 회사의 구성원만 볼 수 있습니다.
           </p>
           <div className="mt-4">
             {adminOrg ? (

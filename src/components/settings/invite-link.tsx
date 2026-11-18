@@ -28,7 +28,7 @@ export function InviteLink() {
       <div>
         <p className="text-sm font-semibold">함께 일할 사람 초대</p>
         <p className="mt-1 text-[13px] text-muted">
-          초대 링크를 만들어 메신저나 메일로 전해 주세요. 받은 사람이 가입하거나 로그인한 뒤 수락하면 이 회사의 멤버가 됩니다.
+          초대 링크를 만들어 메신저나 메일로 전해 주세요. 받은 사람이 가입하거나 로그인한 뒤 수락하면 이 회사의 구성원이 됩니다.
         </p>
       </div>
       {state?.link ? (

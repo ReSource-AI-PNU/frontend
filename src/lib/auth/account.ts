@@ -24,7 +24,7 @@ export const KIND_LABEL: Record<MemberKind, string> = {
 
 export const MEMBER_ROLE_LABEL: Record<MemberRole, string> = {
   owner: "소유자",
-  member: "멤버",
+  member: "구성원",
 };
 
 const KINDS = new Set<string>(["emitter", "vendor", "admin"]);
