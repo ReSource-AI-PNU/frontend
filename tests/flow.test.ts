@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bandPath, gradeKey, layoutFlow, MIN_BAND, NODE_W, type FlowInput } from "../src/lib/v3/flow.ts";
+import { bandPath, gradeKey, layoutFlow, MIN_BAND, NODE_W, processLabel, type FlowInput } from "../src/lib/v3/flow.ts";
 
 const items: FlowInput[] = [
   {
@@ -72,4 +72,23 @@ test("띠는 노드 오른쪽 가장자리에서 다음 노드 왼쪽 가장자�
   }
   assert.match(bandPath(flow.bands[0]), /^M[\d.]+,[\d.]+ C/);
   assert.equal(gradeKey("Z"), "확인 필요");
+});
+
+test("처리 방식 열은 경로에 처리 방식을 붙이고, 열분해는 따로 나눈다", () => {
+  assert.equal(processLabel("sell", "재활용"), "재활용(매각)");
+  assert.equal(processLabel("treat", "열분해"), "열분해(화학적 재활용)");
+  assert.equal(processLabel("treat", "재활용"), "재활용(위탁 처리)");
+  assert.equal(processLabel("keep", "혼합 소각"), "지금 방식(혼합 소각)");
+  assert.equal(processLabel("sell", null), "매각");
+  assert.equal(processLabel("reuse", "재활용"), "공정 재투입");
+  const layout = layoutFlow(
+    [
+      { id: "a", name: "가", kg: 100, grade: "B", route: "treat", receiver: "남해", process: "열분해" },
+      { id: "b", name: "나", kg: 100, grade: "B", route: "treat", receiver: "새길", process: "재활용" },
+    ],
+    680,
+    320,
+  );
+  const labels = layout.nodes.filter((node) => node.column === 2).map((node) => node.label);
+  assert.deepEqual(labels.sort(), ["열분해(화학적 재활용)", "재활용(위탁 처리)"]);
 });

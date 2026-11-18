@@ -51,6 +51,7 @@ export type Result = z.infer<typeof s.resultSchema>;
 export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
 export type OutsideCandidate = z.infer<typeof s.outsideCandidateSchema>;
 export type Billing = z.infer<typeof s.billingSchema>;
+export type Regulation = z.infer<typeof s.regulationSchema>;
 export type Improvement = z.infer<typeof s.improvementSchema>;
 export type ImprovementActionKey = z.infer<typeof s.improvementActionKeySchema>;
 export type Report = z.infer<typeof s.reportSchema>;

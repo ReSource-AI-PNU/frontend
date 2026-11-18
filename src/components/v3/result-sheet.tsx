@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { CHECK_KEY_LABEL, FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL, formatValue } from "@/lib/v3/format";
+import { processLabel } from "@/lib/v3/flow";
 import type { Assignment, Check, CheckStatus, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
 import { useV3 } from "./context";
@@ -123,7 +124,9 @@ function AssignmentRows({
           ) : (
             <NeedsCheck />
           )}
-          <p className="text-[13px] text-muted">{item.route ? (ROUTE_LABEL[item.route] ?? item.route) : "경로 미정"}</p>
+          <p className="text-[13px] text-muted">
+            {item.route ? (item.process ? processLabel(item.route, item.process) : (ROUTE_LABEL[item.route] ?? item.route)) : "경로 미정"}
+          </p>
         </td>
         <td className="py-3 pr-3 text-right whitespace-nowrap">
           <ClaimValue claim={item.unitPrice} price />

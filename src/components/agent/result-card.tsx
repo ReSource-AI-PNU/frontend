@@ -6,6 +6,7 @@ import { ChevronDownIcon } from "@/components/icons";
 import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
+import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
 import type { Assignment, OrgRole, Result, ViewStream } from "@/lib/v3/types";
 
@@ -75,7 +76,12 @@ function Row({
           {reused ? (
             <p className="font-medium">사내 공정에 다시 넣기</p>
           ) : isEmitter || !placed ? (
-            <p className={placed ? "font-medium" : "text-ink-2"}>{placed ? assignment.vendorName : "지금 방식 그대로"}</p>
+            <p className={placed ? "font-medium" : "text-ink-2"}>
+              {placed ? assignment.vendorName : "지금 방식 그대로"}
+              {placed && assignment.process ? (
+                <span className="ml-1.5 text-[13px] font-normal text-muted">{processLabel(assignment.route, assignment.process)}</span>
+              ) : null}
+            </p>
           ) : null}
           {(placed || reused || reuseCandidate) && hasDetail ? (
             <button
@@ -260,6 +266,12 @@ function Row({
               {isEmitter && assignment.carbon ? (
                 <p className="mt-4 border-t border-line pt-3 text-ink-2">
                   탄소 배출 변화 <ClaimValue claim={assignment.carbon} className="!font-normal" />
+                  {assignment.carbonValue ? (
+                    <span className="text-muted">
+                      {" "}
+                      · 배출권 시세로 환산하면 <ClaimValue claim={assignment.carbonValue} display={`월 ${formatNumber(Math.round(Number(assignment.carbonValue.value)))}원`} className="!font-normal" />
+                    </span>
+                  ) : null}
                 </p>
               ) : null}
 

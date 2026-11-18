@@ -24,6 +24,8 @@ export type FlowInput = {
   grade: string | null;
   route: string | null;
   receiver: string | null;
+  /** 처리 방식(재활용, 열분해, 지금 방식이면 현행 처리). 있으면 처리 방식 열을 이것으로 나눈다 */
+  process?: string | null;
 };
 
 export type FlowNode = {
@@ -71,6 +73,15 @@ function routeKey(route: string | null): string {
   return route && route in ROUTE_NAME ? route : "none";
 }
 
+/** 처리 방식 열의 이름. 경로(매각·위탁 처리)에 처리 방식(재활용·열분해·현행 처리)을 붙인다 */
+export function processLabel(route: string | null, process: string | null | undefined): string {
+  const key = routeKey(route);
+  if (!process || key === "reuse" || key === "none") return ROUTE_NAME[key];
+  if (process.includes("열분해")) return "열분해(화학적 재활용)";
+  if (key === "keep") return `지금 방식(${process})`;
+  return `${process}(${ROUTE_NAME[key]})`;
+}
+
 function receiverLabel(item: FlowInput): string {
   if (item.route === "reuse") return "우리 공장";
   if (item.route === "keep" || !item.route) return item.receiver ?? "지금 처리하는 곳";
@@ -97,13 +108,13 @@ export function layoutFlow(items: FlowInput[], width: number, height: number): F
   const keyOf = (item: FlowInput, column: number): string => {
     if (column === 0) return `s:${item.id}`;
     if (column === 1) return `g:${gradeKey(item.grade)}`;
-    if (column === 2) return `r:${routeKey(item.route)}`;
+    if (column === 2) return `r:${routeKey(item.route)}:${processLabel(item.route, item.process)}`;
     return `v:${receiverLabel(item)}`;
   };
   const labelOf = (item: FlowInput, column: number): string => {
     if (column === 0) return item.name;
     if (column === 1) return gradeLabel(gradeKey(item.grade));
-    if (column === 2) return ROUTE_NAME[routeKey(item.route)];
+    if (column === 2) return processLabel(item.route, item.process);
     return receiverLabel(item);
   };
 

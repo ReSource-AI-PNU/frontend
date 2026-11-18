@@ -52,6 +52,7 @@ function rowsOf(result: Result, streams: ViewStream[]): Row[] {
       kg,
       grade: stream.grade.value,
       route: assignment?.route ?? null,
+      process: assignment?.process ?? null,
       receiver: assignment?.vendorName ?? null,
       stream,
       kgText: kg != null ? `한 달 ${formatNumber(kg)} kg` : "발생량 확인 필요",

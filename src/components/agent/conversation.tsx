@@ -31,6 +31,7 @@ import { AgentStage } from "./agent-stage";
 import { AgentTalk, QuestionNotice } from "./agent-talk";
 import { FlowChart } from "./flow-chart";
 import { ImprovementsSection } from "./improvements";
+import { RegulationSection } from "./regulation";
 import { OutsideVendorsSection } from "./outside-vendors";
 import { Dots } from "./dots";
 import { ResultCard } from "./result-card";
@@ -665,6 +666,10 @@ export function Conversation({ d }: { d: Diagnosis }) {
         ) : null}
 
         {result && isEmitter && !holding && view.streams.length > 0 ? <FlowChart result={result} streams={view.streams} /> : null}
+
+        {result && isEmitter && !holding && result.regulation && result.regulation.length > 0 ? (
+          <RegulationSection sections={result.regulation} streams={view.streams} />
+        ) : null}
 
         {result && isEmitter && !holding && result.improvements && result.improvements.length > 0 ? (
           <ImprovementsSection items={result.improvements} streams={view.streams} />

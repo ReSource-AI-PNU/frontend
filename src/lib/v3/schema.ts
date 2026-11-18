@@ -324,6 +324,8 @@ export const checkKeySchema = z.enum([
   "min_volume",
   "loading",
   "loading_volume",
+  /** 업체가 밝힌 수거 노선이 공장 지역을 지나는지(2026-11-19) */
+  "pickup_route",
 ]);
 
 export const checkSchema = obj({
@@ -362,6 +364,8 @@ export const assignmentSchema = obj({
   vendorName: z.string().nullable(),
   threadId: z.string().nullable(),
   route: z.string().nullable(),
+  /** 처리 방식: 업체면 프로필의 처리 방식(재활용, 열분해), 지금 방식 그대로면 현행 처리. 이 기능 전 결과에는 없다 */
+  process: z.string().nullable().optional(),
   status: triStatusSchema,
   /** 배출 기업이 받으면 양수(매입), 내면 음수(처리비) */
   unitPrice: claimOrNull,
@@ -432,6 +436,44 @@ export const outsideVendorsSchema = obj({
       reason: z.string().nullable(),
     }),
   ),
+});
+
+/** ③ 규정 확인의 법령 조항 인용. 조문 원문의 부분 문자열이고 label은 조항 이름이다 */
+const clauseClaimSchema = obj({
+  id: z.string(),
+  kind: z.literal("clause"),
+  value: z.string(),
+  unit: z.null(),
+  evidence: z.array(z.string()),
+  label: z.string().optional(),
+});
+
+const regulationSectionSchema = obj({
+  route: z.string().nullable(),
+  status: triStatusSchema,
+  items: z.array(
+    obj({
+      key: z.string(),
+      title: z.string(),
+      applies: z.string().nullable(),
+      action: z.string(),
+      /** met·unmet·needs_information은 허가 대조 결과, conditional은 확인이 필요하거나 담당자 할 일 */
+      status: z.enum(["met", "conditional", "unmet", "needs_information"]),
+      note: z.string(),
+      /** check: 서비스가 판정한 요건(업체 허가) · todo: 서비스가 확인할 수 없는 담당자 할 일 */
+      kind: z.enum(["check", "todo"]),
+      clauses: z.array(clauseClaimSchema),
+    }),
+  ),
+  /** 폐기물과 경로로 찾은 관련 조항(체크리스트에 없는 것) */
+  related: z.array(clauseClaimSchema),
+});
+
+/** ③ 규정 확인(배출 기업만). 폐기물마다 경로 요건 체크리스트, 공정 재투입 후보면 자가 재활용 요건(reuse) */
+export const regulationSchema = obj({
+  streamId: z.string(),
+  ...regulationSectionSchema.shape,
+  reuse: regulationSectionSchema.nullable(),
 });
 
 /**
@@ -507,6 +549,8 @@ export const resultSchema = obj({
   outsideVendors: outsideVendorsSchema.nullable().optional(),
   /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
   improvements: z.array(improvementSchema).optional(),
+  /** ③ 규정 확인. 배출 기업이 보는 뷰에만 온다(2026-11-19 전 결과에는 없다) */
+  regulation: z.array(regulationSchema).optional(),
 });
 
 export const questionSchema = obj({
