@@ -24,6 +24,7 @@ import type {
   Org,
   OutcomeInput,
   OutcomeResult,
+  QuoteRequest,
   RetrainExport,
   RunStarted,
   SessionSummary,
@@ -154,6 +155,12 @@ export const api = {
     request<DiagnosisView>("/sessions", emitterOrgId, json({ emitterOrgId })),
   getView: (sessionId: string, orgId: string) =>
     request<DiagnosisView>(`/sessions/${enc(sessionId)}`, orgId),
+  /** 가입하지 않은 업체에 보낼 견적 요청서 초안. 읽기라서 체험하기에서도 열린다 */
+  quoteRequest: (sessionId: string, orgId: string, streamId: string, vendorId: string) =>
+    request<QuoteRequest>(
+      `/sessions/${enc(sessionId)}/quote-request?streamId=${enc(streamId)}&vendorId=${enc(vendorId)}`,
+      orgId,
+    ),
   run: (sessionId: string, orgId: string) =>
     request<DiagnosisView>(`/sessions/${enc(sessionId)}/run`, orgId, { method: "POST" }),
   /**

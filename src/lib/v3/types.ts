@@ -48,6 +48,8 @@ export type Outcome = z.infer<typeof s.outcomeSchema>;
 export type Assignment = z.infer<typeof s.assignmentSchema>;
 export type ReferencePrice = z.infer<typeof s.referencePriceSchema>;
 export type Result = z.infer<typeof s.resultSchema>;
+export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
+export type OutsideCandidate = z.infer<typeof s.outsideCandidateSchema>;
 export type Question = z.infer<typeof s.questionSchema>;
 export type Approval = z.infer<typeof s.approvalSchema>;
 export type ViewDocument = z.infer<typeof s.viewDocumentSchema>;
@@ -390,3 +392,24 @@ export type EvalResult = {
     results: EvalCaseResult[];
   };
 } & Record<string, unknown>;
+
+/** GET /sessions/{id}/quote-request: 가입하지 않은 업체에 보낼 견적 요청서 초안(저장하지 않음) */
+export type QuoteRequest = {
+  kind: "quote_request";
+  title: string;
+  streamId: string;
+  recipient: {
+    id: string;
+    name: string;
+    business: string;
+    address: string;
+    phone: string | null;
+    agency: string | null;
+    asOf: string | null;
+    evidence: string[];
+  };
+  text: string;
+  claims: Claim[];
+  rendered: string;
+  validation: Validation;
+};

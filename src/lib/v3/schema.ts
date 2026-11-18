@@ -382,6 +382,47 @@ export const referencePriceSchema = obj({
   note: z.string(),
 });
 
+const wasteCodeSchema = obj({ code: z.string(), name: z.string().nullable() });
+
+/** 가입하지 않은 처리 업체 후보(공공데이터 허가 명부). AI가 대화하지 않고, 손익 계산에도 넣지 않는다 */
+export const outsideCandidateSchema = obj({
+  id: z.string(),
+  name: z.string(),
+  address: z.string(),
+  business: z.string(),
+  /** confirmed: 허가받은 처리 폐기물이 맞음 · check: 원본의 처리 폐기물을 믿기 어려워 상호로 고름 */
+  match: z.enum(["confirmed", "check"]),
+  distance: claimOrNull,
+  matchedCodes: z.array(wasteCodeSchema),
+  codes: z.array(wasteCodeSchema),
+  permitDate: z.string().nullable(),
+  phone: z.string().nullable(),
+  agency: z.string().nullable(),
+  asOf: z.string().nullable(),
+  evidence: z.array(z.string()),
+  note: z.string().nullable(),
+});
+
+export const outsideVendorsSchema = obj({
+  source: obj({
+    name: z.string(),
+    url: z.string(),
+    asOfRange: z.array(z.string()).nullable(),
+    note: z.string(),
+    radiusKm: z.number(),
+  }),
+  streams: z.array(
+    obj({
+      streamId: z.string(),
+      codes: z.array(wasteCodeSchema),
+      candidates: z.array(outsideCandidateSchema),
+      total: z.number(),
+      confirmedTotal: z.number(),
+      reason: z.string().nullable(),
+    }),
+  ),
+});
+
 export const resultSchema = obj({
   status: triStatusSchema,
   assignments: z.array(assignmentSchema),
@@ -408,6 +449,8 @@ export const resultSchema = obj({
   /** 아래 둘은 배출 기업이 보는 뷰에만 온다 */
   carbonInObjective: z.boolean().optional(),
   evidence: z.array(z.string()).optional(),
+  /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
+  outsideVendors: outsideVendorsSchema.nullable().optional(),
 });
 
 export const questionSchema = obj({
