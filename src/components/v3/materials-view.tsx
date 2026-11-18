@@ -3,8 +3,23 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronDownIcon } from "@/components/icons";
+import { ComplexSelect } from "@/components/onboarding/complex-select";
 import { Button, buttonClass } from "@/components/ui/button";
+import { COMPLEXES } from "@/lib/complexes";
 import { ApiError, api } from "@/lib/v3/api";
+import {
+  depotChoice,
+  fleetBody,
+  fleetDraft,
+  fleetErrors,
+  fleetExtrasKept,
+  KEEP_DEPOT,
+  toggleDay,
+  WEEKDAYS,
+  type FleetDraft,
+  type FleetErrors,
+  type FleetRecord,
+} from "@/lib/v3/fleet";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import {
   addPending,
@@ -1115,18 +1130,33 @@ function VendorForm({
   canAct,
   onSave,
   onConfirmed,
+  note,
+  setNote,
+  fleetExtras,
+  setFleetExtras,
 }: {
   profile: VendorProfile;
   canAct: boolean;
-  onSave: (profile: VendorProfile) => Promise<void>;
+  /** 저장하고 저장된 프로필을 돌려준다 */
+  onSave: (profile: VendorProfile) => Promise<VendorProfile>;
   /** 문서에서 확인한 값이 업체 정보에 들어갔다 */
   onConfirmed: (result: DocumentConfirmResult) => void;
+  /** 저장 결과 한 줄. 처음 저장하면 폼을 새로 그리므로(key) 위에서 들고 있는다 */
+  note: string | null;
+  setNote: (note: string | null) => void;
+  /** 차량 대수·다니는 산업단지를 백엔드가 받는지(받지 않으면 그 칸을 숨긴다) */
+  fleetExtras: boolean;
+  setFleetExtras: (on: boolean) => void;
 }) {
   const { openEvidence } = useV3();
   const [floor, setFloor] = useState(
     profile.guardrails.floorPriceKrwPerKg != null ? String(profile.guardrails.floorPriceKrwPerKg) : "",
   );
-  const [days, setDays] = useState(profile.guardrails.days.join(", "));
+  const [fleet, setFleet] = useState<FleetDraft>(() => fleetDraft(profile.fleet, profile.guardrails.days, COMPLEXES));
+  const [fleetIssues, setFleetIssues] = useState<FleetErrors>({});
+  // 저장된 차고지가 산업단지 가운데가 아니면(시연 업체처럼 좌표로 넣은 경우) "그대로"를 고를 수 있게 둔다.
+  // 저장된 차고지는 비울 수 없다(백엔드가 fleet을 합쳐 저장한다)
+  const depotKept = depotChoice(profile.fleet?.depot, COMPLEXES) === KEEP_DEPOT;
   const [pickups, setPickups] = useState(
     profile.guardrails.minPickupsPerMonth != null ? String(profile.guardrails.minPickupsPerMonth) : "",
   );
@@ -1134,7 +1164,6 @@ function VendorForm({
   const [ceiling, setCeiling] = useState(
     profile.guardrails.ceilingPriceKrwPerKg != null ? String(profile.guardrails.ceilingPriceKrwPerKg) : "",
   );
-  const [note, setNote] = useState<string | null>(null);
   // 매입 기준표의 단가(기준 ID → 입력한 글자). 배출 기업 기준이라 양수는 매입, 음수는 처리비다
   const [prices, setPrices] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -1162,19 +1191,44 @@ function VendorForm({
       setNote("숫자 칸에는 숫자만 입력하세요.");
       return;
     }
+    const issues = fleetErrors(fleet);
+    setFleetIssues(issues);
+    if (Object.keys(issues).length > 0) {
+      setNote("노선·차량의 숫자 칸을 확인해 주세요.");
+      return;
+    }
+    const next = (fleetValue: FleetRecord | null): VendorProfile => ({
+      ...profile,
+      criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
+      guardrails: {
+        ...profile.guardrails,
+        floorPriceKrwPerKg: floorValue,
+        ceilingPriceKrwPerKg: ceilingValue,
+        days: fleet.days,
+        minPickupsPerMonth: pickupValue,
+        autoDecline: list(decline),
+      },
+      fleet: fleetValue,
+    });
+    const sent = fleetBody(fleet, profile.fleet, COMPLEXES, fleetExtras);
+    const sentExtras = sent !== null && (sent.count !== undefined || sent.complexes !== undefined);
     try {
-      await onSave({
-        ...profile,
-        criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
-        guardrails: {
-          ...profile.guardrails,
-          floorPriceKrwPerKg: floorValue,
-          ceilingPriceKrwPerKg: ceilingValue,
-          days: list(days),
-          minPickupsPerMonth: pickupValue,
-          autoDecline: list(decline),
-        },
-      });
+      let saved: VendorProfile;
+      try {
+        saved = await onSave(next(sent));
+      } catch (error) {
+        // 차량 대수·다니는 산업단지를 받지 않는 백엔드면(400·422) 그 둘을 빼고 한 번 더 저장한다
+        if (!(sentExtras && error instanceof ApiError && (error.status === 400 || error.status === 422))) throw error;
+        saved = await onSave(next(fleetBody(fleet, profile.fleet, COMPLEXES, false)));
+        setFleetExtras(false);
+        setNote("저장했습니다. 차량 대수와 다니는 산업단지는 지금 저장할 수 없어 뺐습니다.");
+        return;
+      }
+      if (sentExtras && !fleetExtrasKept(sent, saved.fleet)) {
+        setFleetExtras(false);
+        setNote("저장했습니다. 차량 대수와 다니는 산업단지는 지금 저장할 수 없어 뺐습니다.");
+        return;
+      }
       setNote("저장했습니다.");
     } catch (error) {
       setNote(error instanceof Error ? error.message : "저장하지 못했습니다.");
@@ -1314,45 +1368,158 @@ function VendorForm({
             한 달 최소 수거 횟수
             <input value={pickups} onChange={(event) => setPickups(event.target.value)} inputMode="numeric" className={`${field} tabular-nums`} disabled={!canAct} />
           </label>
-          <label className={fieldLabel}>
-            수거할 수 있는 요일 (쉼표로 구분)
-            <input value={days} onChange={(event) => setDays(event.target.value)} className={field} disabled={!canAct} />
-          </label>
           <label className={`${fieldLabel} sm:col-span-2`}>
             받지 않는 조건 (쉼표로 구분)
             <input value={decline} onChange={(event) => setDecline(event.target.value)} className={field} disabled={!canAct} />
           </label>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button disabled={!canAct} onClick={save}>
-            저장
-          </Button>
-          <span role="status" className={`text-sm ${note && note !== "저장했습니다." ? "text-loss" : "text-muted"}`}>
-            {note ?? (canAct ? "매입 기준표의 단가와 위 범위를 함께 저장합니다." : "체험 중에는 저장할 수 없습니다.")}
-          </span>
+      </section>
+
+      <section className="py-8">
+        <h2 className={sectionTitle}>노선·차량</h2>
+        <p className="mt-1 text-sm text-muted">
+          {AI_NAME.vendor}는 이 차량과 요일로 수거 횟수와 운반비를 계산합니다. 모르는 칸은 비워 두면 &lsquo;확인 필요&rsquo;로 남습니다.
+        </p>
+        <div className="mt-4 grid gap-x-4 gap-y-4 sm:grid-cols-2">
+          <label className={`${fieldLabel} sm:col-span-2`}>
+            차고지가 있는 산업단지
+            <ComplexSelect
+              complexes={COMPLEXES}
+              keep={depotKept ? { value: KEEP_DEPOT, label: "지금 차고지 그대로" } : null}
+              outsideLabel={profile.fleet?.depot ? null : "고르지 않음"}
+              value={fleet.depot}
+              onChange={(event) => setFleet({ ...fleet, depot: event.target.value })}
+              className={field}
+              disabled={!canAct}
+            />
+            <span className="font-normal text-muted">운반 거리는 고른 산업단지의 가운데에서 잽니다.</span>
+          </label>
+          <FleetNumber label="한 번에 싣는 무게 (kg)" value={fleet.capacityKg} error={fleetIssues.capacityKg} disabled={!canAct} onChange={(value) => setFleet({ ...fleet, capacityKg: value })} />
+          <FleetNumber label="한 번에 싣는 부피 (m³)" value={fleet.capacityM3} error={fleetIssues.capacityM3} disabled={!canAct} onChange={(value) => setFleet({ ...fleet, capacityM3: value })} />
+          <FleetNumber
+            label="km당 운송비 (원)"
+            hint="상대 회사에는 보이지 않습니다."
+            value={fleet.costPerKm}
+            error={fleetIssues.costPerKm}
+            disabled={!canAct}
+            onChange={(value) => setFleet({ ...fleet, costPerKm: value })}
+          />
+          {fleetExtras ? (
+            <FleetNumber label="차량 대수" inputMode="numeric" value={fleet.count} error={fleetIssues.count} disabled={!canAct} onChange={(value) => setFleet({ ...fleet, count: value })} />
+          ) : null}
         </div>
+
+        <fieldset className="mt-6">
+          <legend className="text-[13px] font-medium text-ink-2">수거하는 요일</legend>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[...WEEKDAYS, ...fleet.days.filter((day) => !(WEEKDAYS as readonly string[]).includes(day))].map((day) => {
+              const on = fleet.days.includes(day);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={!canAct}
+                  onClick={() => setFleet({ ...fleet, days: toggleDay(fleet.days, day) })}
+                  className={`min-h-11 min-w-11 rounded-full border px-3.5 text-sm transition-colors duration-0 hover:duration-180 disabled:cursor-not-allowed disabled:opacity-60 ${on ? "border-ink bg-ink font-semibold text-on-ink" : "border-line-strong bg-surface text-ink-2 hover:border-ink"}`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-[13px] text-muted">{AI_NAME.vendor}는 고른 요일에만 수거를 약속합니다.</p>
+        </fieldset>
+
+        {fleetExtras ? (
+          <fieldset className="mt-6">
+            <legend className="text-[13px] font-medium text-ink-2">다니는 산업단지</legend>
+            <div className="mt-2 grid gap-1.5 sm:grid-cols-4">
+              {COMPLEXES.map((complex) => {
+                const on = fleet.complexes.includes(complex.id);
+                return (
+                  <label
+                    key={complex.id}
+                    className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[10px] border border-line-strong bg-surface px-3 text-sm has-[:checked]:border-ink has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-sunken"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={!canAct}
+                      onChange={() =>
+                        setFleet({
+                          ...fleet,
+                          complexes: on ? fleet.complexes.filter((id) => id !== complex.id) : [...fleet.complexes, complex.id],
+                        })
+                      }
+                      className="size-4 accent-ink"
+                    />
+                    <span>
+                      {complex.shortName}
+                      <span className="ml-1 text-[12px] text-muted">{complex.region}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        ) : null}
+        <p className="mt-4 text-[13px] leading-relaxed text-muted">
+          적재 무게와 부피는 한 달 수거 횟수를 정합니다. 이미 합의한 조건에 쓰인 값을 바꾸면 그 승인이 지워지고, 배출 기업이 다시
+          찾아 새 조건으로 합의해야 합니다.
+        </p>
       </section>
 
-      <section className="pt-8">
-        <h2 className={sectionTitle}>수거 차량</h2>
-        {profile.fleet ? (
-          <dl className="mt-3 grid grid-cols-[8rem_1fr] gap-y-1.5 text-[15px] tabular-nums">
-            <dt className="text-muted">한 번에 싣는 무게</dt>
-            <dd>{formatNumber(profile.fleet.capacityKg)} kg</dd>
-            <dt className="text-muted">한 번에 싣는 부피</dt>
-            <dd>{formatNumber(profile.fleet.capacityM3)} m³</dd>
-            <dt className="text-muted">km당 운송비</dt>
-            <dd>{formatNumber(profile.fleet.costPerKm)}원</dd>
-            <dt className="text-muted">차고지 좌표</dt>
-            <dd className="text-ink-2">{profile.fleet.depot.join(", ")}</dd>
-          </dl>
-        ) : (
-          <p className="mt-3 text-sm text-ink-2">아직 등록된 차량 정보가 없습니다.</p>
-        )}
-      </section>
-
+      <div className="flex flex-wrap items-center gap-3 pt-6">
+        <Button disabled={!canAct} onClick={save}>
+          저장
+        </Button>
+        <span role="status" className={`text-sm ${note && !note.startsWith("저장했습니다.") ? "text-loss" : "text-muted"}`}>
+          {note ?? (canAct ? "매입 기준표의 단가, AI가 지킬 범위, 노선·차량을 함께 저장합니다." : "체험 중에는 저장할 수 없습니다.")}
+        </span>
+      </div>
     </div>
+  );
+}
+
+/** 노선·차량의 숫자 칸 하나 */
+function FleetNumber({
+  label,
+  hint,
+  value,
+  error,
+  disabled,
+  inputMode = "decimal",
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  error?: string;
+  disabled: boolean;
+  inputMode?: "decimal" | "numeric";
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-2">
+      {label}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        inputMode={inputMode}
+        aria-invalid={error ? true : undefined}
+        className={`${field} tabular-nums aria-invalid:border-loss`}
+        disabled={disabled}
+      />
+      {error ? (
+        <span role="alert" className="font-normal text-loss">
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="font-normal text-muted">{hint}</span>
+      ) : null}
+    </label>
   );
 }
 
@@ -1371,24 +1538,20 @@ function emptyProfile(orgId: string, name: string): VendorProfile {
 
 /**
  * 받은 프로필의 빈 칸을 채운다. 새로 가입한 업체의 프로필은 {permits: [], criteria: [], fleet: {}, guardrails: {}}처럼
- * 비어 있고 모델 설정도 없다. 차량은 차고지와 적재량이 다 있을 때만 있는 것으로 본다.
+ * 비어 있고 모델 설정도 없다. 차량은 한 칸이라도 채웠으면 있는 것으로 본다.
  */
 function normalizeProfile(raw: VendorProfile, orgId: string, name: string): VendorProfile {
   const empty = emptyProfile(orgId, name);
-  const fleet = raw.fleet as Partial<NonNullable<VendorProfile["fleet"]>> | null | undefined;
-  const fleetOk =
-    fleet != null &&
-    Array.isArray(fleet.depot) &&
-    typeof fleet.capacityKg === "number" &&
-    typeof fleet.capacityM3 === "number" &&
-    typeof fleet.costPerKm === "number";
+  // 차량은 칸마다 따로 채우므로 일부만 있어도 둔다(빈 객체 {}면 없는 것으로 본다)
+  const fleet = raw.fleet && typeof raw.fleet === "object" && !Array.isArray(raw.fleet) ? (raw.fleet as FleetRecord) : null;
+  const fleetOk = fleet !== null && Object.keys(fleet).some((key) => key !== "evidence");
   const guardrails = (raw.guardrails ?? {}) as Partial<VendorProfile["guardrails"]>;
   return {
     ...empty,
     ...raw,
     permits: Array.isArray(raw.permits) ? raw.permits.map((item) => ({ ...item, evidence: item.evidence ?? [] })) : [],
     criteria: Array.isArray(raw.criteria) ? raw.criteria.map((item) => ({ ...item, evidence: item.evidence ?? [] })) : [],
-    fleet: fleetOk ? (fleet as NonNullable<VendorProfile["fleet"]>) : null,
+    fleet: fleetOk ? { ...fleet, evidence: Array.isArray(fleet.evidence) ? fleet.evidence : [] } : null,
     guardrails: {
       ...empty.guardrails,
       ...guardrails,
@@ -1412,6 +1575,8 @@ export function loadVendorProfile(orgId: string, name = "") {
 function VendorMaterials() {
   const { mode, canWrite, org } = useV3();
   const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
+  const [note, setNote] = useState<string | null>(null);
+  const [fleetExtras, setFleetExtras] = useState(true);
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   const profile = remote.data ?? emptyProfile(org.id, org.name);
@@ -1420,13 +1585,18 @@ function VendorMaterials() {
       key={`${profile.orgId}:${remote.data ? "saved" : "new"}`}
       profile={profile}
       canAct={canWrite}
+      note={note}
+      setNote={setNote}
+      fleetExtras={fleetExtras}
+      setFleetExtras={setFleetExtras}
       onSave={async (next) => {
         // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다.
         // 차량 정보가 없으면 보내지 않는다(빈 값을 근거로 등록하지 않게)
         const { model, fleet, ...rest } = next;
         const body = { ...rest, ...(model?.provider ? { model } : {}), ...(fleet ? { fleet } : {}) };
-        const saved = await api.putVendor(org.id, body as VendorProfile);
-        remote.set(normalizeProfile(saved, org.id, org.name));
+        const saved = normalizeProfile(await api.putVendor(org.id, body as VendorProfile), org.id, org.name);
+        remote.set(saved);
+        return saved;
       }}
       onConfirmed={(result) => {
         // 응답의 허가 품목·매입 기준으로 바로 다시 그리고, 프로필 전체는 다시 읽는다

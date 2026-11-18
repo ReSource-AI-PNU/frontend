@@ -3,6 +3,7 @@
  * 도메인 레코드와 그 밖의 API 응답은 백엔드 docs/v3/CONTRACT.md 6·8장과 devserver의 실제 응답에 맞춰 적는다.
  */
 import type { z } from "zod";
+import type { FleetRecord } from "./fleet";
 import type * as s from "./schema";
 
 export type Evidence = z.infer<typeof s.evidenceSchema>;
@@ -189,13 +190,8 @@ export type VendorProfile = {
     minMonthlyKg: number | null;
     evidence: string[];
   }[];
-  fleet: {
-    depot: [number, number];
-    capacityKg: number;
-    capacityM3: number;
-    costPerKm: number;
-    evidence: string[];
-  } | null;
+  /** 노선·차량. 새 업체는 {}로 시작하고 칸마다 따로 채우므로 일부만 있을 수 있다(src/lib/v3/fleet.ts) */
+  fleet: FleetRecord | null;
   guardrails: {
     floorPriceKrwPerKg: number | null;
     ceilingPriceKrwPerKg?: number | null;
