@@ -337,6 +337,8 @@ export function ResultCard({
   const placed = result.assignments.filter((item) => item.vendorOrgId || item.route === "reuse").length;
   const assumptionIds = result.assumptions.map((item) => item.id);
   const isEmitter = role === "emitter";
+  // 받는 곳은 정해졌는데 탄소를 계산하지 못한 폐기물(배출계수가 없는 처리 방식). 합계에서 빠졌다는 것을 숨기지 않는다
+  const carbonGap = result.assignments.filter((item) => item.vendorOrgId && item.carbon === null).length;
   const conditional = result.status === "conditional";
 
   return (
@@ -400,6 +402,7 @@ export function ResultCard({
               <ClaimValue claim={totals.carbon} className="!font-normal" />
               입니다.
             </Glue>
+            {carbonGap > 0 ? ` 공인된 배출계수가 없는 처리(열분해 등)로 보내는 ${carbonGap}가지는 탄소 합계에 넣지 않았습니다.` : null}
           </>
         ) : null}
       </p>
