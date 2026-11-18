@@ -1368,7 +1368,7 @@ function VendorForm({
             한 달 최소 수거 횟수
             <input value={pickups} onChange={(event) => setPickups(event.target.value)} inputMode="numeric" className={`${field} tabular-nums`} disabled={!canAct} />
           </label>
-          <label className={`${fieldLabel} sm:col-span-2`}>
+          <label className={fieldLabel}>
             받지 않는 조건 (쉼표로 구분)
             <input value={decline} onChange={(event) => setDecline(event.target.value)} className={field} disabled={!canAct} />
           </label>
