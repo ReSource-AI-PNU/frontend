@@ -40,14 +40,17 @@ function Bubble({
   tone = "plain",
 }: {
   text: string;
-  align?: "center" | "left" | "right";
+  align?: "center" | "left" | "right" | "side";
   tone?: "plain" | "dark";
 }) {
-  const place = align === "center" ? "left-1/2 -translate-x-1/2" : align === "left" ? "right-0" : "left-0";
+  const place =
+    align === "side"
+      ? "right-full top-1 mr-2"
+      : `bottom-full mb-2 ${align === "center" ? "left-1/2 -translate-x-1/2" : align === "left" ? "right-0" : "left-0"}`;
   return (
     <span
       key={text}
-      className={`pointer-events-none absolute bottom-full mb-2 w-max max-w-[200px] rounded-[14px] px-3 py-1.5 text-[12.5px] leading-snug shadow-[0_6px_18px_rgb(0_0_0/0.08)] [animation:rs-rise_240ms_var(--ease-out)_both] ${place} ${
+      className={`pointer-events-none absolute w-max max-w-[200px] rounded-[14px] px-3 py-1.5 text-[12.5px] leading-snug shadow-[0_6px_18px_rgb(0_0_0/0.08)] [animation:rs-rise_240ms_var(--ease-out)_both] ${place} ${
         tone === "dark" ? "bg-ink text-bg" : "border border-line bg-surface text-ink-2"
       }`}
     >
@@ -74,7 +77,7 @@ function Actor({
   name: string;
   sub?: string | null;
   line?: string | null;
-  bubbleAlign?: "center" | "left" | "right";
+  bubbleAlign?: "center" | "left" | "right" | "side";
   /** 누르면 이 캐릭터의 대화를 연다(업체 측 AI) */
   onClick?: () => void;
 }) {
@@ -233,7 +236,7 @@ export function AgentStage({ live, onOpen }: { live: LiveState; onOpen?: (thread
             name={vendor.name}
             sub={vendor.outcome}
             line={vendor.line}
-            bubbleAlign="left"
+            bubbleAlign="side"
             onClick={onOpen ? () => onOpen(vendor.id) : undefined}
           />
         ))}
