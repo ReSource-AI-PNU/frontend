@@ -32,8 +32,10 @@ export type TrustMetric = {
   value: number | null;
   /** 화면에 쓸 값. 값이 없으면 "미측정" */
   display: string;
-  /** "95% 신뢰구간 97.1–100%". 받은 구간 그대로(비율은 Wilson) */
+  /** "95% 신뢰구간 97.1–100%". 받은 구간 그대로(비율은 Wilson). 구간의 아래·위가 같으면 null이고 intervalNote로 풀어 쓴다 */
   ci: string | null;
+  /** 구간의 아래·위가 같을 때(예: 25건 모두 0) 맨 "0–0" 대신 적는 말. 그 밖에는 null */
+  intervalNote: string | null;
   /** 구간을 구한 방법(wilson | bootstrap 등). 화면은 바꾸지 않고 그대로 적는다 */
   ciMethod: string | null;
   n: number | null;
@@ -139,13 +141,29 @@ export function formatValue(value: number, kind: MetricKind): string {
   return trim(value, 2);
 }
 
-/** 구간은 받은 그대로 적는다(비율 지표는 백엔드가 Wilson 구간을 준다) */
-function formatCi(ci: unknown, kind: MetricKind): string | null {
+function ciBounds(ci: unknown): [number, number] | null {
   if (!Array.isArray(ci) || ci.length !== 2) return null;
   const [low, high] = ci.map(num);
-  if (low === null || high === null) return null;
+  return low === null || high === null ? null : [low, high];
+}
+
+/** 구간은 받은 그대로 적는다(비율 지표는 백엔드가 Wilson 구간을 준다). 아래·위가 같으면 적지 않는다(intervalNoteOf) */
+function formatCi(ci: unknown, kind: MetricKind): string | null {
+  const bounds = ciBounds(ci);
+  if (!bounds) return null;
+  const [low, high] = bounds;
+  if (low === high) return null;
   if (kind === "rate") return `95% 신뢰구간 ${trim(low * 100, 1)}–${trim(high * 100, 1)}%`;
   return `95% 신뢰구간 ${formatValue(low, kind)}–${formatValue(high, kind)}`;
+}
+
+/** 구간의 폭이 0일 때 적는 말. 평균 낸 점수(예: 가장 좋은 조건과의 차이)가 모든 사례에서 같은 값이면 이렇게 된다 */
+export const FLAT_INTERVAL_NOTE = "모든 사례에서 같은 값이 나와 구간의 폭이 0입니다";
+
+/** 구간의 아래·위가 같으면 맨 "0–0"을 보이지 않고 까닭을 한 줄로 적는다 */
+export function intervalNoteOf(ci: unknown): string | null {
+  const bounds = ciBounds(ci);
+  return bounds && bounds[0] === bounds[1] ? FLAT_INTERVAL_NOTE : null;
 }
 
 const OPS: Record<string, string> = { ">=": "≥", "<=": "≤", "==": "=", ">": ">", "<": "<" };
@@ -336,6 +354,7 @@ function metricOf(raw: unknown, layer: string | null = null): TrustMetric | null
     value,
     display: value === null ? "미측정" : formatValue(value, kind),
     ci: value === null ? null : formatCi(raw.ci, kind),
+    intervalNote: value === null ? null : intervalNoteOf(raw.ci),
     ciMethod: str(raw.ciMethod),
     n,
     target: formatTarget(raw.target, kind),

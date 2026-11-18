@@ -28,14 +28,14 @@ function Value({ metric, size }: { metric: TrustMetric; size: "lg" | "md" | "sm"
 /** 표본이 작은 비율 지표에 붙이는 말 */
 const SMALL_NOTE = "표본이 작아 구간이 넓습니다";
 
-/** n · 신뢰구간 · 목표를 한 줄로. 표본이 작은 비율이면 그 아래에 한 줄 더 */
+/** n · 신뢰구간 · 목표를 한 줄로. 표본이 작은 비율이거나 구간의 폭이 0이면 그 아래에 한 줄 더 */
 function Facts({ metric }: { metric: TrustMetric }) {
   const parts = [
     metric.n !== null ? <span key="n">n = <span className="num">{metric.n}</span></span> : null,
     metric.ci ? <span key="ci">{metric.ci}</span> : null,
     metric.target ? <span key="t">{metric.target}</span> : null,
   ].filter(Boolean);
-  if (parts.length === 0 && !metric.smallSample) return null;
+  if (parts.length === 0 && !metric.smallSample && !metric.intervalNote) return null;
   return (
     <div className="text-[12px] text-muted">
       {parts.length > 0 ? (
@@ -48,6 +48,7 @@ function Facts({ metric }: { metric: TrustMetric }) {
           ))}
         </p>
       ) : null}
+      {metric.intervalNote ? <p className="mt-0.5">{metric.intervalNote}</p> : null}
       {metric.smallSample ? <p className="mt-0.5">{SMALL_NOTE}</p> : null}
     </div>
   );
@@ -97,7 +98,13 @@ function MetricTable({ metrics }: { metrics: TrustMetric[] }) {
               </td>
               <td className="px-3 py-2 whitespace-nowrap">{metric.value === null ? <span className="text-muted">미측정</span> : <span className="num">{metric.display}</span>}</td>
               <td className="px-3 py-2 text-muted">
-                <span className="whitespace-nowrap">{metric.ci?.replace("95% 신뢰구간 ", "") ?? "—"}</span>
+                {metric.ci ? (
+                  <span className="whitespace-nowrap">{metric.ci.replace("95% 신뢰구간 ", "")}</span>
+                ) : metric.intervalNote ? (
+                  <span className="block text-[12px] leading-snug">{metric.intervalNote}</span>
+                ) : (
+                  "—"
+                )}
                 {metric.smallSample ? <span className="mt-0.5 block text-[12px]">{SMALL_NOTE}</span> : null}
               </td>
               <td className="px-3 py-2 text-muted">{metric.n !== null ? <span className="num">{metric.n}</span> : "—"}</td>

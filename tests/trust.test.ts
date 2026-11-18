@@ -5,7 +5,21 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { JARGON, LAYERS, METRICS, SMALL_SAMPLE, formatValue, isStale, kindOf, plain, plainNote, toTrustView, type TrustView } from "../src/lib/trust.ts";
+import {
+  FLAT_INTERVAL_NOTE,
+  JARGON,
+  LAYERS,
+  METRICS,
+  SMALL_SAMPLE,
+  formatValue,
+  intervalNoteOf,
+  isStale,
+  kindOf,
+  plain,
+  plainNote,
+  toTrustView,
+  type TrustView,
+} from "../src/lib/trust.ts";
 
 const latest: unknown = JSON.parse(readFileSync(new URL("./fixtures/eval-latest.json", import.meta.url), "utf8"));
 const TODAY = new Date("2026-11-20T00:00:00Z");
@@ -20,7 +34,7 @@ const clone = (): Latest => structuredClone(latest) as Latest;
 function shownText(view: TrustView): string[] {
   const metrics = [...view.headline, ...view.layers.flatMap((layer) => [...layer.all, ...(layer.key ? [layer.key] : []), ...layer.more])];
   return [
-    ...metrics.flatMap((metric) => [metric.label, metric.explain ?? "", metric.ci ?? "", metric.target ?? ""]),
+    ...metrics.flatMap((metric) => [metric.label, metric.explain ?? "", metric.ci ?? "", metric.intervalNote ?? "", metric.target ?? ""]),
     ...view.layers.flatMap((layer) => [layer.title, layer.explain, layer.size ?? "", ...layer.notes]),
     ...view.pending.flatMap((item) => [item.title, item.why]),
     ...view.retired.map((item) => item.reason),
@@ -212,4 +226,34 @@ test("오래된 결과, 값의 종류, 모양이 맞지 않는 응답", () => {
   assert.equal(added?.label, "찾아야 할 조항이 위쪽 20개 안에 든 비율");
   assert.equal(added?.explain, "1이면 모두 찾았습니다.");
   assert.doesNotMatch(all.find((item) => item.key === "old_shape")?.label ?? "", JARGON);
+});
+
+test("구간의 아래·위가 같으면(예: n=25 모두 0) 맨 '0–0' 대신 까닭을 한 줄로 적는다", () => {
+  const view = toTrustView(latest, TODAY)!;
+  const negotiation = view.layers.find((layer) => layer.id === "L5")!;
+  const regret = negotiation.all.find((item) => item.key === "normalizedRegret")!;
+  assert.equal(regret.n, 25);
+  assert.equal(regret.display, "0");
+  assert.equal(regret.ci, null, "0–0을 적지 않는다");
+  assert.equal(regret.intervalNote, FLAT_INTERVAL_NOTE);
+  assert.equal(regret.intervalNote, "모든 사례에서 같은 값이 나와 구간의 폭이 0입니다");
+  // 화면 어디에도 아래·위가 같은 구간이 그대로 나가지 않는다
+  const all = view.layers.flatMap((layer) => [...layer.all, ...(layer.key ? [layer.key] : []), ...layer.more]);
+  for (const metric of [...view.headline, ...all]) assert.doesNotMatch(metric.ci ?? "", /(?<![\d.])(\d+(?:\.\d+)?)%?–\1%?$/, metric.key);
+  // 폭이 있는 구간에는 붙이지 않는다
+  const search = view.layers[0].key!;
+  assert.ok(search.ci);
+  assert.equal(search.intervalNote, null);
+  // 비율·건수·점수 모두 같은 규칙. 구간이 없거나 모양이 틀리면 아무것도 적지 않는다
+  assert.equal(intervalNoteOf([1, 1]), FLAT_INTERVAL_NOTE);
+  assert.equal(intervalNoteOf([0.2, 0.2]), FLAT_INTERVAL_NOTE);
+  assert.equal(intervalNoteOf([0, 0.1]), null);
+  assert.equal(intervalNoteOf(null), null);
+  assert.equal(intervalNoteOf([0]), null);
+  // 값이 없으면(미측정) 구간 말도 없다
+  const raw = clone();
+  const metric = raw.runs.test.layers.L5.metrics.find((item: Metric) => item.key === "normalizedRegret")!;
+  metric.value = null;
+  const unmeasured = toTrustView(raw, TODAY)!.layers.find((layer) => layer.id === "L5")!.all.find((item) => item.key === "normalizedRegret")!;
+  assert.equal(unmeasured.intervalNote, null);
 });
