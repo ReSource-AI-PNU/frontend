@@ -105,13 +105,16 @@ export function companyFailure(status: number, code: string | null): string {
 
 export type MemberRow = { userId: string; memberRole: MemberRole };
 
-/** 회사에서 나갈 수 있는지. 소유자가 나 혼자이고 다른 구성원이 있으면 먼저 소유자를 정해야 한다. */
-export function leaveBlock(userId: string, members: MemberRow[]): "last_owner" | null {
+/**
+ * 회사에서 나갈 수 있는지. 마지막 소유자는 빠질 수 없다(백엔드 409).
+ *  - last_owner: 다른 구성원이 있는데 소유자가 나 혼자다. 먼저 다른 구성원을 소유자로 정해야 한다.
+ *  - alone: 회사에 나 혼자다.
+ */
+export function leaveBlock(userId: string, members: MemberRow[]): "last_owner" | "alone" | null {
   const me = members.find((item) => item.userId === userId);
   if (!me || me.memberRole !== "owner") return null;
-  const otherOwners = members.some((item) => item.userId !== userId && item.memberRole === "owner");
-  const others = members.some((item) => item.userId !== userId);
-  return others && !otherOwners ? "last_owner" : null;
+  if (members.some((item) => item.userId !== userId && item.memberRole === "owner")) return null;
+  return members.some((item) => item.userId !== userId) ? "last_owner" : "alone";
 }
 
 export type MemberAction = "remove" | "leave" | "owner";

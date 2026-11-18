@@ -116,10 +116,10 @@ test("아직 열리지 않은 기능(404·405)과 업무상 404를 가른다", (
   assert.equal(isUnsupported(500, "500"), false);
 });
 
-test("구성원: 다른 구성원이 있는데 소유자가 나 혼자면 나갈 수 없다", () => {
+test("구성원: 소유자가 나 혼자면 나갈 수 없다(다른 구성원이 있으면 먼저 소유자를 정한다)", () => {
   assert.equal(leaveBlock("u1", [{ userId: "u1", memberRole: "owner" }, { userId: "u2", memberRole: "member" }]), "last_owner");
   assert.equal(leaveBlock("u1", [{ userId: "u1", memberRole: "owner" }, { userId: "u2", memberRole: "owner" }]), null);
-  assert.equal(leaveBlock("u1", [{ userId: "u1", memberRole: "owner" }]), null, "혼자인 회사는 막지 않는다");
+  assert.equal(leaveBlock("u1", [{ userId: "u1", memberRole: "owner" }]), "alone", "혼자인 회사의 소유자도 마지막 소유자다");
   assert.equal(leaveBlock("u2", [{ userId: "u1", memberRole: "owner" }, { userId: "u2", memberRole: "member" }]), null);
   assert.match(memberFailure("leave", 409, "LAST_OWNER"), /소유자로 정해/);
   assert.match(memberFailure("remove", 403, "FORBIDDEN"), /소유자만/);
