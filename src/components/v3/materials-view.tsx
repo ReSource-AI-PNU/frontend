@@ -9,16 +9,19 @@ import { COMPLEXES } from "@/lib/complexes";
 import { ApiError, api } from "@/lib/v3/api";
 import {
   depotChoice,
+  emptyRoute,
   fleetBody,
   fleetDraft,
   fleetErrors,
-  fleetExtrasKept,
+  hasFleetErrors,
   KEEP_DEPOT,
+  MAX_ROUTES,
   toggleDay,
   WEEKDAYS,
   type FleetDraft,
   type FleetErrors,
   type FleetRecord,
+  type RouteDraft,
 } from "@/lib/v3/fleet";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import {
@@ -1132,8 +1135,6 @@ function VendorForm({
   onConfirmed,
   note,
   setNote,
-  fleetExtras,
-  setFleetExtras,
 }: {
   profile: VendorProfile;
   canAct: boolean;
@@ -1144,19 +1145,20 @@ function VendorForm({
   /** 저장 결과 한 줄. 처음 저장하면 폼을 새로 그리므로(key) 위에서 들고 있는다 */
   note: string | null;
   setNote: (note: string | null) => void;
-  /** 차량 대수·다니는 산업단지를 백엔드가 받는지(받지 않으면 그 칸을 숨긴다) */
-  fleetExtras: boolean;
-  setFleetExtras: (on: boolean) => void;
 }) {
   const { openEvidence } = useV3();
   const [floor, setFloor] = useState(
     profile.guardrails.floorPriceKrwPerKg != null ? String(profile.guardrails.floorPriceKrwPerKg) : "",
   );
-  const [fleet, setFleet] = useState<FleetDraft>(() => fleetDraft(profile.fleet, profile.guardrails.days, COMPLEXES));
+  const [days, setDays] = useState(profile.guardrails.days.join(", "));
+  const [fleet, setFleet] = useState<FleetDraft>(() => fleetDraft(profile.fleet, COMPLEXES));
   const [fleetIssues, setFleetIssues] = useState<FleetErrors>({});
-  // 저장된 차고지가 산업단지 가운데가 아니면(시연 업체처럼 좌표로 넣은 경우) "그대로"를 고를 수 있게 둔다.
-  // 저장된 차고지는 비울 수 없다(백엔드가 fleet을 합쳐 저장한다)
+  // 새로 더한 노선의 목록 열쇠
+  const [routeSeq, setRouteSeq] = useState(0);
+  // 저장된 차고지가 산업단지 가운데가 아니면(시연 업체처럼 좌표로 넣은 경우) "그대로"를 고를 수 있게 둔다
   const depotKept = depotChoice(profile.fleet?.depot, COMPLEXES) === KEEP_DEPOT;
+  const setRoute = (index: number, patch: Partial<RouteDraft>) =>
+    setFleet({ ...fleet, routes: fleet.routes.map((route, at) => (at === index ? { ...route, ...patch } : route)) });
   const [pickups, setPickups] = useState(
     profile.guardrails.minPickupsPerMonth != null ? String(profile.guardrails.minPickupsPerMonth) : "",
   );
@@ -1193,45 +1195,30 @@ function VendorForm({
     }
     const issues = fleetErrors(fleet);
     setFleetIssues(issues);
-    if (Object.keys(issues).length > 0) {
-      setNote("노선·차량의 숫자 칸을 확인해 주세요.");
+    if (hasFleetErrors(issues)) {
+      setNote("노선·차량에서 고칠 칸을 확인해 주세요.");
       return;
     }
-    const next = (fleetValue: FleetRecord | null): VendorProfile => ({
-      ...profile,
-      criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
-      guardrails: {
-        ...profile.guardrails,
-        floorPriceKrwPerKg: floorValue,
-        ceilingPriceKrwPerKg: ceilingValue,
-        days: fleet.days,
-        minPickupsPerMonth: pickupValue,
-        autoDecline: list(decline),
-      },
-      fleet: fleetValue,
-    });
-    const sent = fleetBody(fleet, profile.fleet, COMPLEXES, fleetExtras);
-    const sentExtras = sent !== null && (sent.count !== undefined || sent.complexes !== undefined);
     try {
-      let saved: VendorProfile;
-      try {
-        saved = await onSave(next(sent));
-      } catch (error) {
-        // 차량 대수·다니는 산업단지를 받지 않는 백엔드면(400·422) 그 둘을 빼고 한 번 더 저장한다
-        if (!(sentExtras && error instanceof ApiError && (error.status === 400 || error.status === 422))) throw error;
-        saved = await onSave(next(fleetBody(fleet, profile.fleet, COMPLEXES, false)));
-        setFleetExtras(false);
-        setNote("저장했습니다. 차량 대수와 다니는 산업단지는 지금 저장할 수 없어 뺐습니다.");
-        return;
-      }
-      if (sentExtras && !fleetExtrasKept(sent, saved.fleet)) {
-        setFleetExtras(false);
-        setNote("저장했습니다. 차량 대수와 다니는 산업단지는 지금 저장할 수 없어 뺐습니다.");
-        return;
-      }
+      await onSave({
+        ...profile,
+        criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
+        guardrails: {
+          ...profile.guardrails,
+          floorPriceKrwPerKg: floorValue,
+          ceilingPriceKrwPerKg: ceilingValue,
+          days: list(days),
+          minPickupsPerMonth: pickupValue,
+          autoDecline: list(decline),
+        },
+        // 계약의 항목만 담는다(evidence는 서버가 정한다). 모르는 항목이나 범위 밖의 값은 요청 전체가 422다
+        fleet: fleetBody(fleet, profile.fleet, COMPLEXES),
+      });
       setNote("저장했습니다.");
     } catch (error) {
-      setNote(error instanceof Error ? error.message : "저장하지 못했습니다.");
+      // 백엔드 문장이 항목 이름(예: vehicleCount)을 괄호로 덧붙이므로 그 부분만 뺀다
+      const message = error instanceof Error ? error.message.replace(/\s*\([A-Za-z_.]+\)/g, "") : "";
+      setNote(message || "저장하지 못했습니다.");
     }
   };
   const EvidenceLink = ({ ids }: { ids: string[] }) =>
@@ -1369,6 +1356,10 @@ function VendorForm({
             <input value={pickups} onChange={(event) => setPickups(event.target.value)} inputMode="numeric" className={`${field} tabular-nums`} disabled={!canAct} />
           </label>
           <label className={fieldLabel}>
+            수거할 수 있는 요일 (쉼표로 구분)
+            <input value={days} onChange={(event) => setDays(event.target.value)} className={field} disabled={!canAct} />
+          </label>
+          <label className={`${fieldLabel} sm:col-span-2`}>
             받지 않는 조건 (쉼표로 구분)
             <input value={decline} onChange={(event) => setDecline(event.target.value)} className={field} disabled={!canAct} />
           </label>
@@ -1379,7 +1370,8 @@ function VendorForm({
       <section className="py-8">
         <h2 className={sectionTitle}>노선·차량</h2>
         <p className="mt-1 text-sm text-muted">
-          {AI_NAME.vendor}는 이 차량과 요일로 수거 횟수와 운반비를 계산합니다. 모르는 칸은 비워 두면 &lsquo;확인 필요&rsquo;로 남습니다.
+          차고지와 차량 적재량, km당 운송비로 {AI_NAME.vendor}가 수거 횟수와 운반비를 계산합니다. 모르는 칸은 비워 두면
+          &lsquo;확인 필요&rsquo;로 남습니다.
         </p>
         <div className="mt-4 grid gap-x-4 gap-y-4 sm:grid-cols-2">
           <label className={`${fieldLabel} sm:col-span-2`}>
@@ -1387,7 +1379,7 @@ function VendorForm({
             <ComplexSelect
               complexes={COMPLEXES}
               keep={depotKept ? { value: KEEP_DEPOT, label: "지금 차고지 그대로" } : null}
-              outsideLabel={profile.fleet?.depot ? null : "고르지 않음"}
+              outsideLabel="고르지 않음"
               value={fleet.depot}
               onChange={(event) => setFleet({ ...fleet, depot: event.target.value })}
               className={field}
@@ -1405,70 +1397,143 @@ function VendorForm({
             disabled={!canAct}
             onChange={(value) => setFleet({ ...fleet, costPerKm: value })}
           />
-          {fleetExtras ? (
-            <FleetNumber label="차량 대수" inputMode="numeric" value={fleet.count} error={fleetIssues.count} disabled={!canAct} onChange={(value) => setFleet({ ...fleet, count: value })} />
-          ) : null}
+          <FleetNumber
+            label="차량 대수"
+            inputMode="numeric"
+            value={fleet.vehicleCount}
+            error={fleetIssues.vehicleCount}
+            disabled={!canAct}
+            onChange={(value) => setFleet({ ...fleet, vehicleCount: value })}
+          />
         </div>
-
-        <fieldset className="mt-6">
-          <legend className="text-[13px] font-medium text-ink-2">수거하는 요일</legend>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {[...WEEKDAYS, ...fleet.days.filter((day) => !(WEEKDAYS as readonly string[]).includes(day))].map((day) => {
-              const on = fleet.days.includes(day);
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  aria-pressed={on}
-                  disabled={!canAct}
-                  onClick={() => setFleet({ ...fleet, days: toggleDay(fleet.days, day) })}
-                  className={`min-h-11 min-w-11 rounded-full border px-3.5 text-sm transition-colors duration-0 hover:duration-180 disabled:cursor-not-allowed disabled:opacity-60 ${on ? "border-ink bg-ink font-semibold text-on-ink" : "border-line-strong bg-surface text-ink-2 hover:border-ink"}`}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1.5 text-[13px] text-muted">{AI_NAME.vendor}는 고른 요일에만 수거를 약속합니다.</p>
-        </fieldset>
-
-        {fleetExtras ? (
-          <fieldset className="mt-6">
-            <legend className="text-[13px] font-medium text-ink-2">다니는 산업단지</legend>
-            <div className="mt-2 grid gap-1.5 sm:grid-cols-4">
-              {COMPLEXES.map((complex) => {
-                const on = fleet.complexes.includes(complex.id);
-                return (
-                  <label
-                    key={complex.id}
-                    className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[10px] border border-line-strong bg-surface px-3 text-sm has-[:checked]:border-ink has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-sunken"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={!canAct}
-                      onChange={() =>
-                        setFleet({
-                          ...fleet,
-                          complexes: on ? fleet.complexes.filter((id) => id !== complex.id) : [...fleet.complexes, complex.id],
-                        })
-                      }
-                      className="size-4 accent-ink"
-                    />
-                    <span>
-                      {complex.shortName}
-                      <span className="ml-1 text-[12px] text-muted">{complex.region}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </fieldset>
-        ) : null}
         <p className="mt-4 text-[13px] leading-relaxed text-muted">
           적재 무게와 부피는 한 달 수거 횟수를 정합니다. 이미 합의한 조건에 쓰인 값을 바꾸면 그 승인이 지워지고, 배출 기업이 다시
           찾아 새 조건으로 합의해야 합니다.
         </p>
+
+        <h3 className="mt-8 text-[15px] font-semibold">노선</h3>
+        <p className="mt-1 text-[13px] text-muted">
+          노선마다 다니는 요일과 수거하는 곳을 적습니다. 업체 정보에 보여 주는 값이고, 업체 측 AI가 약속하는 수거 요일은 위
+          &lsquo;수거할 수 있는 요일&rsquo;을 따릅니다.
+        </p>
+        {fleetIssues.routes ? (
+          <p role="alert" className="mt-2 text-[13px] text-loss">
+            {fleetIssues.routes}
+          </p>
+        ) : null}
+        {fleet.routes.length > 0 ? (
+          <ul className="mt-3 grid gap-3">
+            {fleet.routes.map((route, index) => {
+              const issue = fleetIssues.route?.[index];
+              const known = new Set(COMPLEXES.map((complex) => complex.name));
+              const extra = route.complexes.filter((name) => !known.has(name));
+              return (
+                <li key={route.key} className="grid gap-4 rounded-lg border border-line-strong bg-surface p-4">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className={`${fieldLabel} min-w-0 flex-1`}>
+                      노선 이름
+                      <input
+                        value={route.name}
+                        onChange={(event) => setRoute(index, { name: event.target.value })}
+                        placeholder="예: 강서 화목 노선"
+                        maxLength={50}
+                        className={field}
+                        disabled={!canAct}
+                      />
+                    </label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!canAct}
+                      onClick={() => setFleet({ ...fleet, routes: fleet.routes.filter((_, at) => at !== index) })}
+                    >
+                      노선 빼기
+                    </Button>
+                  </div>
+                  <fieldset>
+                    <legend className="text-[13px] font-medium text-ink-2">다니는 요일</legend>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {WEEKDAYS.map((day) => {
+                        const on = route.days.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            aria-pressed={on}
+                            disabled={!canAct}
+                            onClick={() => setRoute(index, { days: toggleDay(route.days, day) })}
+                            className={`min-h-11 min-w-11 rounded-full border px-3.5 text-sm transition-colors duration-0 hover:duration-180 disabled:cursor-not-allowed disabled:opacity-60 ${on ? "border-ink bg-ink font-semibold text-on-ink" : "border-line-strong bg-surface text-ink-2 hover:border-ink"}`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                  <fieldset>
+                    <legend className="text-[13px] font-medium text-ink-2">수거하는 산업단지</legend>
+                    <div className="mt-2 grid gap-1.5 sm:grid-cols-4">
+                      {[...COMPLEXES.map((complex) => ({ name: complex.name, label: complex.shortName, region: complex.region })), ...extra.map((name) => ({ name, label: name, region: "" }))].map((item) => {
+                        const on = route.complexes.includes(item.name);
+                        return (
+                          <label
+                            key={item.name}
+                            className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[10px] border border-line-strong bg-surface px-3 text-sm has-[:checked]:border-ink has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-sunken"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              disabled={!canAct}
+                              onChange={() =>
+                                setRoute(index, {
+                                  complexes: on ? route.complexes.filter((name) => name !== item.name) : [...route.complexes, item.name],
+                                })
+                              }
+                              className="size-4 accent-ink"
+                            />
+                            <span>
+                              {item.label}
+                              {item.region ? <span className="ml-1 text-[12px] text-muted">{item.region}</span> : null}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                  <label className={fieldLabel}>
+                    수거 지역 (쉼표로 구분, 산업단지 밖이면)
+                    <input
+                      value={route.regions}
+                      onChange={(event) => setRoute(index, { regions: event.target.value })}
+                      placeholder="예: 부산 강서구, 김해시 주촌면"
+                      className={field}
+                      disabled={!canAct}
+                    />
+                  </label>
+                  {issue ? (
+                    <p role="alert" className="text-[13px] text-loss">
+                      {issue}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-ink-2">아직 적은 노선이 없습니다.</p>
+        )}
+        {canAct && fleet.routes.length < MAX_ROUTES ? (
+          <Button
+            variant="secondary"
+            className="mt-3"
+            onClick={() => {
+              setFleet({ ...fleet, routes: [...fleet.routes, emptyRoute(`n${routeSeq}`)] });
+              setRouteSeq(routeSeq + 1);
+            }}
+          >
+            노선 추가
+          </Button>
+        ) : null}
       </section>
 
       <div className="flex flex-wrap items-center gap-3 pt-6">
@@ -1576,7 +1641,6 @@ function VendorMaterials() {
   const { mode, canWrite, org } = useV3();
   const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
   const [note, setNote] = useState<string | null>(null);
-  const [fleetExtras, setFleetExtras] = useState(true);
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   const profile = remote.data ?? emptyProfile(org.id, org.name);
@@ -1587,8 +1651,6 @@ function VendorMaterials() {
       canAct={canWrite}
       note={note}
       setNote={setNote}
-      fleetExtras={fleetExtras}
-      setFleetExtras={setFleetExtras}
       onSave={async (next) => {
         // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다.
         // 차량 정보가 없으면 보내지 않는다(빈 값을 근거로 등록하지 않게)
