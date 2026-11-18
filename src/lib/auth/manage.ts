@@ -2,12 +2,16 @@
  * 회사 정보 고치기, 구성원 관리, 비밀번호 바꾸기, 계정 지우기의 입력 검사와 오류 해석.
  * 네트워크를 부르지 않으므로 node --test로 검사한다(tests/manage.test.ts).
  *
- * 백엔드 계약(계정·조직 관리):
+ * 백엔드 계약(계정·조직 관리, backend docs/v3/CONTRACT.md 9장):
  *   PATCH  /orgs/{orgId}                    {name?, bizNo?, region?, address?, location?: [lng, lat]} → 조직 (소유자)
- *   DELETE /orgs/{orgId}/members/{userId}   → 204 (소유자, 또는 자기 자신이 나갈 때). 마지막 소유자는 빼지 못한다 → 409
- *   POST   /orgs/{orgId}/owners/{userId}    → 구성원을 소유자로 정한다 (소유자)
- *   POST   /accounts/password               {currentPassword, newPassword} → 204. 401 INVALID_CREDENTIALS, 429
- *   DELETE /accounts/me                     {password} → 204. 다른 구성원이 있는 회사의 유일한 소유자면 409 TRANSFER_OWNERSHIP_FIRST
+ *                                           null이나 빈 글은 그 항목을 지운다. 403 OWNER_ONLY, 시연·운영 회사는 403 DEMO_READ_ONLY
+ *   DELETE /orgs/{orgId}/members/{userId}   → 204 (소유자, 또는 자기 자신이 나갈 때). 403 OWNER_ONLY, 404 MEMBER_NOT_FOUND,
+ *                                           마지막 소유자는 409 LAST_OWNER
+ *   POST   /orgs/{orgId}/owners/{userId}    → 200 {userId, name, email, memberRole: "owner"} (소유자)
+ *   POST   /accounts/password               {currentPassword, newPassword} → 204. 401 INVALID_CREDENTIALS,
+ *                                           422 INVALID_VALUE(8자 미만이거나 지금과 같음), 429 TOO_MANY_ATTEMPTS
+ *   DELETE /accounts/me                     {password} → 204. 409 TRANSFER_OWNERSHIP_FIRST(다른 구성원이 있는 회사의 유일한 소유자)
+ *                                           또는 409 RUN_IN_PROGRESS(지울 회사가 들어간 찾기가 진행 중). 409면 아무것도 지우지 않는다
  * 오류 본문은 {error: {code, message}}다.
  */
 import { isValidBizNo, normalizeBizNo } from "../bizno.ts";
@@ -95,9 +99,12 @@ export function companyPatch(input: CompanyInput, complexes: ComplexRef[]): Comp
 }
 
 export function companyFailure(status: number, code: string | null): string {
+  if (code === "DEMO_READ_ONLY") return "시연 회사와 운영 회사의 정보는 고칠 수 없습니다.";
+  if (code === "NOT_A_MEMBER") return "이 회사의 구성원이 아닙니다. 화면을 새로 고쳐 주세요.";
   if (status === 403) return "회사 정보는 소유자만 고칠 수 있습니다.";
   if (status === 409 || code === "BIZNO_TAKEN") return "이미 다른 회사가 쓰는 사업자등록번호입니다. 번호를 다시 확인해 주세요.";
   if (status === 400 || status === 422) return "입력한 내용을 다시 확인해 주세요.";
+  if (status === 429) return "요청이 많았습니다. 잠시 후 다시 시도해 주세요.";
   return UNAVAILABLE_MESSAGE;
 }
 
@@ -120,20 +127,23 @@ export function leaveBlock(userId: string, members: MemberRow[]): "last_owner" |
 export type MemberAction = "remove" | "leave" | "owner";
 
 export function memberFailure(action: MemberAction, status: number, code: string | null): string {
-  if (status === 409) {
-    return action === "owner"
-      ? "이미 소유자입니다. 화면을 새로 고쳐 주세요."
+  if (code === "LAST_OWNER" || (status === 409 && action !== "owner")) {
+    return action === "leave"
+      ? "회사의 마지막 소유자는 나갈 수 없습니다. 다른 구성원을 먼저 소유자로 정해 주세요."
       : "회사에는 소유자가 한 명은 있어야 합니다. 다른 구성원을 먼저 소유자로 정해 주세요.";
   }
-  if (status === 403) return "회사 소유자만 할 수 있습니다.";
-  if (status === 404) return "이미 회사에서 빠진 사람입니다. 화면을 새로 고쳐 주세요.";
-  if (status === 429 || code === "RATE_LIMITED") return "요청이 많았습니다. 잠시 후 다시 시도해 주세요.";
+  if (code === "NOT_A_MEMBER") return "이 회사의 구성원이 아닙니다. 화면을 새로 고쳐 주세요.";
+  if (code === "OWNER_ONLY" || status === 403) return "회사 소유자만 할 수 있습니다.";
+  if (code === "MEMBER_NOT_FOUND" || status === 404) return "이미 회사에서 빠진 사람입니다. 화면을 새로 고쳐 주세요.";
+  if (status === 409) return "이미 소유자입니다. 화면을 새로 고쳐 주세요.";
+  if (status === 429) return "요청이 많았습니다. 잠시 후 다시 시도해 주세요.";
   return UNAVAILABLE_MESSAGE;
 }
 
 // ── 비밀번호 ─────────────────────────────────────────────
 
 export const PASSWORD_MIN = 8;
+/** 가입 화면과 같다(백엔드는 256자까지 받는다) */
 export const PASSWORD_MAX = 200;
 
 /** 새 비밀번호 규칙: 가입과 같다(8자 이상, 200자까지). 빈 칸만 이어진 비밀번호는 받지 않는다. */
@@ -160,19 +170,22 @@ export function passwordErrors(input: PasswordInput): PasswordErrors {
 /** 비밀번호를 바꾸지 못했을 때. 지금 비밀번호가 틀리면 그 칸에 적는다. */
 export function passwordFailure(status: number, code: string | null): { field?: "current" | "next"; message: string } {
   if (status === 401 || code === "INVALID_CREDENTIALS") return { field: "current", message: "지금 쓰는 비밀번호가 맞지 않습니다." };
-  if (status === 429) return { message: "시도가 많았습니다. 잠시 후 다시 시도해 주세요." };
+  if (status === 429 || code === "TOO_MANY_ATTEMPTS") {
+    return { message: "비밀번호를 여러 번 틀렸습니다. 잠시 후 다시 시도해 주세요." };
+  }
   if (status === 400 || status === 422) {
-    return { field: "next", message: `새 비밀번호를 다시 확인해 주세요. ${PASSWORD_MIN}자 이상이어야 합니다.` };
+    return { field: "next", message: `새 비밀번호는 ${PASSWORD_MIN}자 이상이고 지금 쓰는 비밀번호와 달라야 합니다.` };
   }
   return { message: UNAVAILABLE_MESSAGE };
 }
 
 // ── 계정 지우기 ──────────────────────────────────────────
 
-export type DeleteFailure = "transfer" | "password" | "rate_limited" | "unsupported" | "unavailable";
+export type DeleteFailure = "transfer" | "running" | "password" | "rate_limited" | "unsupported" | "unavailable";
 
 export function deleteFailure(status: number, code: string | null): DeleteFailure {
   if (code === "TRANSFER_OWNERSHIP_FIRST") return "transfer";
+  if (code === "RUN_IN_PROGRESS") return "running";
   if (status === 401 || code === "INVALID_CREDENTIALS" || status === 400 || status === 422) return "password";
   if (status === 429) return "rate_limited";
   if (isUnsupported(status, code)) return "unsupported";
@@ -180,8 +193,9 @@ export function deleteFailure(status: number, code: string | null): DeleteFailur
 }
 
 export const DELETE_MESSAGE: Record<Exclude<DeleteFailure, "transfer">, string> = {
+  running: "진행 중인 찾기가 끝난 뒤 다시 시도해 주세요. 지운 것은 없습니다.",
   password: "비밀번호가 맞지 않습니다. 다시 입력해 주세요.",
-  rate_limited: "시도가 많았습니다. 잠시 후 다시 시도해 주세요.",
+  rate_limited: "비밀번호를 여러 번 틀렸습니다. 잠시 후 다시 시도해 주세요.",
   unsupported: "지금은 계정을 지울 수 없습니다. 잠시 후 다시 시도해 주세요.",
   unavailable: UNAVAILABLE_MESSAGE,
 };
@@ -192,8 +206,9 @@ export type Blocker = { orgId: string; orgName: string };
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 /**
- * 409 TRANSFER_OWNERSHIP_FIRST 본문에서 막는 회사를 읽는다. 백엔드가 회사를 어떻게 싣는지 아직 정해지지 않아
- * error.orgs([{orgId|id, orgName|name}]), error.orgIds, error.orgId, error.details 아래 같은 이름을 모두 받는다.
+ * 409 TRANSFER_OWNERSHIP_FIRST 본문에서 막는 회사를 읽는다. 지금 백엔드는 회사 이름을 문장(message)에만 싣으므로
+ * 보통 빈 목록이고 soleOwnerOrgs로 직접 찾는다. 나중에 구조로 실어 주면 쓰도록
+ * error.orgs([{orgId|id, orgName|name}]), error.orgIds, error.orgId, error.details 아래 같은 이름을 받는다.
  * 이름이 없으면 내 소속에서 찾는다. 회사를 싣지 않았으면 빈 목록이다(그때는 soleOwnerOrgs로 직접 찾는다).
  */
 export function blockersFromError(body: unknown, memberships: Membership[]): Blocker[] {
@@ -238,6 +253,24 @@ export function soleOwnerOrgs(
     .filter((item) => {
       const members = membersByOrg[item.orgId];
       return members === null || members === undefined ? true : leaveBlock(userId, members) === "last_owner";
+    })
+    .map((item) => ({ orgId: item.orgId, orgName: item.orgName }));
+}
+
+/**
+ * 탈퇴하면 함께 지워지는 회사: 내가 소유자이고 구성원이 나 하나뿐인 회사(백엔드가 회사와 그 자료를 지운다).
+ * 구성원 목록을 읽지 못한 회사는 넣지 않는다(확인한 것만 적는다).
+ */
+export function aloneOrgs(
+  userId: string,
+  memberships: Membership[],
+  membersByOrg: Record<string, MemberRow[] | null>,
+): Blocker[] {
+  return memberships
+    .filter((item) => item.memberRole === "owner")
+    .filter((item) => {
+      const members = membersByOrg[item.orgId];
+      return Array.isArray(members) && leaveBlock(userId, members) === "alone";
     })
     .map((item) => ({ orgId: item.orgId, orgName: item.orgName }));
 }

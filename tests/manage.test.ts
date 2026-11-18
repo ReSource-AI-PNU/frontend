@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Membership } from "../src/lib/auth/account.ts";
 import {
+  aloneOrgs,
   bizNoError,
   blockersFromError,
   companyErrors,
@@ -101,6 +102,8 @@ test("비밀번호: 지금 비밀번호가 틀리면(401) 그 칸에, 시도가 
   assert.equal(passwordFailure(429, "RATE_LIMITED").field, undefined);
   assert.match(passwordFailure(429, "RATE_LIMITED").message, /잠시 후/);
   assert.equal(passwordFailure(422, "INVALID_VALUE").field, "next");
+  assert.match(passwordFailure(422, "INVALID_VALUE").message, /8자 이상이고 지금 쓰는 비밀번호와 달라야/, "8자 미만이거나 지금과 같으면 422다");
+  assert.match(passwordFailure(429, "TOO_MANY_ATTEMPTS").message, /잠시 후/);
   for (const [status, code] of [[401, "INVALID_CREDENTIALS"], [429, null], [422, null], [500, "500"], [503, "BACKEND_UNREACHABLE"]] as const) {
     assert.doesNotMatch(passwordFailure(status, code).message, JARGON);
   }
@@ -121,13 +124,20 @@ test("구성원: 소유자가 나 혼자면 나갈 수 없다(다른 구성원�
   assert.equal(leaveBlock("u1", [{ userId: "u1", memberRole: "owner" }, { userId: "u2", memberRole: "owner" }]), null);
   assert.equal(leaveBlock("u1", [{ userId: "u1", memberRole: "owner" }]), "alone", "혼자인 회사의 소유자도 마지막 소유자다");
   assert.equal(leaveBlock("u2", [{ userId: "u1", memberRole: "owner" }, { userId: "u2", memberRole: "member" }]), null);
-  assert.match(memberFailure("leave", 409, "LAST_OWNER"), /소유자로 정해/);
-  assert.match(memberFailure("remove", 403, "FORBIDDEN"), /소유자만/);
+  assert.match(memberFailure("leave", 409, "LAST_OWNER"), /마지막 소유자는 나갈 수 없습니다/);
+  assert.match(memberFailure("remove", 409, "LAST_OWNER"), /소유자로 정해/);
+  assert.match(memberFailure("remove", 403, "OWNER_ONLY"), /소유자만/);
+  assert.match(memberFailure("remove", 404, "MEMBER_NOT_FOUND"), /이미 회사에서 빠진/);
+  assert.match(memberFailure("owner", 403, "NOT_A_MEMBER"), /구성원이 아닙니다/);
   for (const action of ["remove", "leave", "owner"] as const) {
     for (const status of [403, 404, 409, 429, 500]) assert.doesNotMatch(memberFailure(action, status, null), JARGON);
   }
   assert.match(companyFailure(422, "INVALID_VALUE"), /다시 확인/);
-  assert.match(companyFailure(403, "FORBIDDEN"), /소유자만/);
+  assert.match(companyFailure(403, "OWNER_ONLY"), /소유자만/);
+  assert.match(companyFailure(403, "DEMO_READ_ONLY"), /시연 회사/);
+  for (const [status, code] of [[403, "DEMO_READ_ONLY"], [403, "NOT_A_MEMBER"], [422, "INVALID_VALUE"], [429, null], [500, null]] as const) {
+    assert.doesNotMatch(companyFailure(status, code), JARGON);
+  }
 });
 
 const MEMBERSHIPS: Membership[] = [
@@ -138,6 +148,9 @@ const MEMBERSHIPS: Membership[] = [
 
 test("계정 지우기: 409 TRANSFER_OWNERSHIP_FIRST는 소유자를 넘기라는 뜻이고, 나머지 실패도 쉬운 말로 적는다", () => {
   assert.equal(deleteFailure(409, "TRANSFER_OWNERSHIP_FIRST"), "transfer");
+  assert.equal(deleteFailure(409, "RUN_IN_PROGRESS"), "running", "진행 중인 찾기가 있으면 아무것도 지우지 않는다");
+  assert.match(DELETE_MESSAGE.running, /진행 중인 찾기가 끝난 뒤 다시 시도해 주세요/);
+  assert.equal(deleteFailure(429, "TOO_MANY_ATTEMPTS"), "rate_limited");
   assert.equal(deleteFailure(401, "INVALID_CREDENTIALS"), "password");
   assert.equal(deleteFailure(422, "INVALID_BODY"), "password");
   assert.equal(deleteFailure(429, "RATE_LIMITED"), "rate_limited");
@@ -180,4 +193,19 @@ test("계정 지우기: 본문에 회사가 없으면 구성원 목록으로 소
     [{ orgId: "org_a", orgName: "(주)가나" }],
     "구성원을 읽지 못한 회사는 막는 것으로 본다",
   );
+});
+
+test("계정 지우기: 구성원이 나 하나뿐인 내 회사는 함께 지워지는 회사로 적는다(읽지 못한 회사는 적지 않는다)", () => {
+  assert.deepEqual(
+    aloneOrgs("u1", MEMBERSHIPS, {
+      org_a: [
+        { userId: "u1", memberRole: "owner" },
+        { userId: "u2", memberRole: "member" },
+      ],
+      org_b: [{ userId: "u1", memberRole: "owner" }],
+      org_c: [{ userId: "u1", memberRole: "member" }],
+    }),
+    [{ orgId: "org_b", orgName: "(주)다라" }],
+  );
+  assert.deepEqual(aloneOrgs("u1", MEMBERSHIPS, { org_a: null, org_b: null }), []);
 });
