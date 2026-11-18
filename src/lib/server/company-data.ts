@@ -6,15 +6,17 @@ import type { Workspace } from "./workspace";
 
 export type Member = { userId: string; name: string; email: string; memberRole: MemberRole };
 
-/** 회사 멤버(GET /orgs/{orgId}/members). 읽지 못하면 null */
+/** 회사 구성원(GET /orgs/{orgId}/members). 읽지 못하면 null */
 export async function listMembers(workspace: Workspace & { active: NonNullable<Workspace["active"]> }): Promise<Member[] | null> {
   // 요청 때만 부른다(미리 그리기에서는 부르지 않는다)
   await connection();
+  return membersOf(workspace.user.id, workspace.active.orgId);
+}
+
+/** 한 회사의 구성원. 지금 보는 회사가 아니어도 내가 속한 회사면 읽는다(계정 지우기에서 소유자를 넘길 때). 읽지 못하면 null */
+export async function membersOf(userId: string, orgId: string): Promise<Member[] | null> {
   try {
-    const rows = await callBackend<unknown>(`/orgs/${encodeURIComponent(workspace.active.orgId)}/members`, {
-      userId: workspace.user.id,
-      orgId: workspace.active.orgId,
-    });
+    const rows = await callBackend<unknown>(`/orgs/${encodeURIComponent(orgId)}/members`, { userId, orgId });
     if (!Array.isArray(rows)) return null;
     return rows.flatMap((row) => {
       const item = row as Record<string, unknown>;

@@ -5,12 +5,13 @@
  */
 import { backendHeaders, errorCodeOf, readBackendConfig, type Caller } from "@/lib/v3/backend-plan";
 
-/** 백엔드가 오류로 답했거나 닿지 못한 경우. message는 기록용이고 화면에는 쓰지 않는다. */
+/** 백엔드가 오류로 답했거나 닿지 못한 경우. message는 기록용이고 화면에는 쓰지 않는다. body는 받은 오류 본문이다. */
 export class BackendError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     message: string,
+    readonly body: unknown = null,
   ) {
     super(message);
   }
@@ -63,7 +64,7 @@ export async function callBackend<T>(
   if (!response.ok) {
     const code = errorCodeOf(parsed) ?? String(response.status);
     if (response.status >= 500) console.error("[backend] error", path, response.status, code);
-    throw new BackendError(response.status, code, `backend ${response.status} ${code}`);
+    throw new BackendError(response.status, code, `backend ${response.status} ${code}`, parsed);
   }
   return parsed as T;
 }
