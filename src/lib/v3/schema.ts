@@ -465,6 +465,10 @@ export const outsideVendorsSchema = obj({
       total: z.number(),
       confirmedTotal: z.number(),
       reason: z.string().nullable(),
+      /** 후보를 찾은 뒤 바뀐 폐기물 칸(재질, 품목 등). 찾을 때 자료를 남기지 않은 이전 찾기에는 없다 */
+      changed: z.array(obj({ field: z.string(), label: z.string(), before: z.string(), after: z.string() })).optional(),
+      /** 후보를 찾은 뒤 폐기물이 지워졌다 */
+      removed: z.boolean().optional(),
     }),
   ),
 });

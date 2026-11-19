@@ -19,6 +19,8 @@ const KEEP_SERVER_MESSAGE = new Set([
   "FILE_REQUIRED",
   // 매입 기준표 검토 화면: 몇 번째 줄의 무엇을 고치면 되는지 서버가 적는다
   "INVALID_CRITERIA",
+  // 견적 요청서: 후보를 찾은 뒤 무엇이 바뀌어 요청서를 만들지 않았는지 서버가 적는다
+  "OUTSIDE_STALE",
   // 프런트 통로(src/lib/v3/backend-plan.ts)가 쓴 문구는 이미 사용자 말이다
   "DEMO_READ_ONLY",
   "DEMO_UNAVAILABLE",

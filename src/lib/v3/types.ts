@@ -474,11 +474,39 @@ export type EvalResult = {
   };
 } & Record<string, unknown>;
 
-/** GET /sessions/{id}/quote-request: 가입하지 않은 업체에 보낼 견적 요청서 초안(저장하지 않음) */
+/** 견적 요청서에 적은 값 하나와 그 출처. status: known(잰 값·담당자가 적은 값) · estimated(사진 추정·추정) · unknown(미확인) */
+export type QuoteFact = {
+  key: string;
+  label: string;
+  /** 본문에 들어간 글. 숫자는 {{claimId}} 자리표시자다. 모르면 null */
+  value: string | null;
+  basis: string;
+  status: "known" | "estimated" | "unknown";
+};
+
+/** 후보를 찾은 뒤 바뀐 폐기물 칸 */
+export type OutsideChange = { field: string; label: string; before: string; after: string };
+
+/** 미리보기 조각(서버 split_text). 글자 조각과 claim의 display를 이으면 rendered와 같다 */
+export type QuotePart =
+  | { type: "text"; text: string }
+  | { type: "claim"; claimId: string; display: string; evidence?: string[]; missing: boolean; kind?: string; value?: unknown; unit?: string | null };
+
+/**
+ * GET /sessions/{id}/quote-request: 가입하지 않은 업체에 보낼 견적 요청서 초안(저장하지 않음).
+ * 업체에 연락하거나 견적을 확정하거나 한 달 손익을 바꾸지 않는다. 지금 자료로 그 업체가 후보가 아니면 409 OUTSIDE_STALE이다.
+ */
 export type QuoteRequest = {
   kind: "quote_request";
   title: string;
   streamId: string;
+  vendorId: string;
+  /** 시연 회사의 가상 자료. 본문 첫 줄에도 시연 표시가 있다 */
+  demo: boolean;
+  item: { name: string; material: string | null; form: string | null; monthlyKg: Claim | null };
+  facts: QuoteFact[];
+  /** 후보를 찾은 뒤 바뀌었지만 지금 자료로도 후보가 맞는 칸(요청서는 지금 자료로 만들었다) */
+  changes: OutsideChange[];
   recipient: {
     id: string;
     name: string;
@@ -492,5 +520,6 @@ export type QuoteRequest = {
   text: string;
   claims: Claim[];
   rendered: string;
+  parts: QuotePart[];
   validation: Validation;
 };

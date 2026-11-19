@@ -702,7 +702,13 @@ export function Conversation({ d }: { d: Diagnosis }) {
         ) : null}
 
         {result && isEmitter && !holding && result.outsideVendors ? (
-          <OutsideVendorsSection outside={result.outsideVendors} streams={view.streams} sessionId={view.session.id} orgId={d.org.id} />
+          <OutsideVendorsSection
+            outside={result.outsideVendors}
+            streams={view.streams}
+            sessionId={view.session.id}
+            orgId={d.org.id}
+            onSearchAgain={d.canAct ? d.forget : undefined}
+          />
         ) : null}
 
         {result ? <Approvals view={view} d={d} nameOf={nameOf} /> : null}

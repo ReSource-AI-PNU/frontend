@@ -18,6 +18,8 @@ test("닿지 못했거나 서버 오류면 다시 시도하라고만 말한다",
 test("업무 상태를 설명하는 서버 문장은 그대로 둔다", () => {
   assert.equal(userMessage(409, "APPROVAL_BLOCKED", "업체가 조건을 바꿔 승인이 막혔습니다."), "업체가 조건을 바꿔 승인이 막혔습니다.");
   assert.equal(userMessage(403, "DEMO_READ_ONLY", "체험 중에는 둘러보기만 할 수 있습니다."), "체험 중에는 둘러보기만 할 수 있습니다.");
+  const stale = "후보를 찾은 뒤 재질이 PP에서 알루미늄으로 바뀌었습니다. 바뀐 자료로 받아 줄 곳을 다시 찾아 주세요.";
+  assert.equal(userMessage(409, "OUTSIDE_STALE", stale), stale);
 });
 
 test("서비스 이름이 들어간 서버 문장은 다음 행동을 알려 주는 말로 바꾼다", () => {
