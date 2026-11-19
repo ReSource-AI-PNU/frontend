@@ -1,0 +1,323 @@
+{
+  "kind": "purchase_criteria",
+  "filename": "05_footnote_units.pdf",
+  "extraction": "document_intelligence",
+  "shield": {
+    "attackDetected": false,
+    "shieldUnavailable": false,
+    "checkedChunks": 1,
+    "attackChunks": [],
+    "note": "지시문 주입이 탐지되지 않았습니다."
+  },
+  "shieldUnavailable": false,
+  "blocked": false,
+  "handoff": false,
+  "threadIds": [],
+  "fields": [],
+  "draft": {
+    "outcome": "ready",
+    "description": "매입 단가 안내, 새길자원(가상) · 적용일 2026-11-01, 표(품목·등급·단가·최소 물량·이물·수분) 및 각주",
+    "rows": [
+      {
+        "id": "r1",
+        "quote": "PP 사출 스크랩 | A | 320,000 | 1 | 3 | 5",
+        "page": 1,
+        "material": {
+          "raw": "PP 사출 스크랩",
+          "value": "PP",
+          "review": []
+        },
+        "form": {
+          "raw": "사출 스크랩",
+          "value": "사출 스크랩",
+          "review": []
+        },
+        "grade": {
+          "raw": "A",
+          "value": "A",
+          "review": []
+        },
+        "price": {
+          "raw": "320,000",
+          "quote": "320,000",
+          "page": null,
+          "common": 1,
+          "amount": 320.0,
+          "direction": "buy",
+          "unitRaw": "원/톤",
+          "unitQuote": "단가 단위: 원/톤(매입, 부가세 별도)",
+          "unitPage": 1,
+          "directionQuote": "단가 단위: 원/톤(매입, 부가세 별도)",
+          "candidates": null,
+          "note": "320,000 원/톤 → kg당 320원",
+          "review": []
+        },
+        "minMonthlyKg": {
+          "raw": "1",
+          "quote": "1",
+          "page": null,
+          "common": 2,
+          "value": 1000.0,
+          "unitRaw": "톤/월",
+          "unitQuote": "최소 물량 단위: 톤/월",
+          "per": "month",
+          "note": "1 톤/월 → 월 1,000kg",
+          "review": []
+        },
+        "maxContaminationPct": {
+          "raw": "3",
+          "quote": "3",
+          "page": null,
+          "common": 3,
+          "value": 3.0,
+          "review": []
+        },
+        "maxMoisturePct": {
+          "raw": "5",
+          "quote": "5",
+          "page": null,
+          "common": 4,
+          "value": 5.0,
+          "review": []
+        },
+        "collectionFee": {
+          "raw": null,
+          "quote": "수거 운반비는 매입 단가에 포함합니다.",
+          "page": 1,
+          "common": 5,
+          "value": "included",
+          "feeText": null,
+          "feePerPickupKrw": null,
+          "review": []
+        },
+        "review": [],
+        "needsReview": false,
+        "ready": true
+      },
+      {
+        "id": "r2",
+        "quote": "PP 사출 스크랩 | B | 250,000 | 1 | 8 | 10",
+        "page": 1,
+        "material": {
+          "raw": "PP 사출 스크랩",
+          "value": "PP",
+          "review": []
+        },
+        "form": {
+          "raw": "사출 스크랩",
+          "value": "사출 스크랩",
+          "review": []
+        },
+        "grade": {
+          "raw": "B",
+          "value": "B",
+          "review": []
+        },
+        "price": {
+          "raw": "250,000",
+          "quote": "250,000",
+          "page": null,
+          "common": 1,
+          "amount": 250.0,
+          "direction": "buy",
+          "unitRaw": "원/톤",
+          "unitQuote": "단가 단위: 원/톤(매입, 부가세 별도)",
+          "unitPage": 1,
+          "directionQuote": "단가 단위: 원/톤(매입, 부가세 별도)",
+          "candidates": null,
+          "note": "250,000 원/톤 → kg당 250원",
+          "review": []
+        },
+        "minMonthlyKg": {
+          "raw": "1",
+          "quote": "1",
+          "page": null,
+          "common": 2,
+          "value": 1000.0,
+          "unitRaw": "톤/월",
+          "unitQuote": "최소 물량 단위: 톤/월",
+          "per": "month",
+          "note": "1 톤/월 → 월 1,000kg",
+          "review": []
+        },
+        "maxContaminationPct": {
+          "raw": "8",
+          "quote": "8",
+          "page": null,
+          "common": 3,
+          "value": 8.0,
+          "review": []
+        },
+        "maxMoisturePct": {
+          "raw": "10",
+          "quote": "10",
+          "page": null,
+          "common": 4,
+          "value": 10.0,
+          "review": []
+        },
+        "collectionFee": {
+          "raw": null,
+          "quote": "수거 운반비는 매입 단가에 포함합니다.",
+          "page": 1,
+          "common": 5,
+          "value": "included",
+          "feeText": null,
+          "feePerPickupKrw": null,
+          "review": []
+        },
+        "review": [],
+        "needsReview": false,
+        "ready": true
+      },
+      {
+        "id": "r3",
+        "quote": "HDPE 분쇄품 | A | 280,000 | 0.5 | 3 | 5",
+        "page": 1,
+        "material": {
+          "raw": "HDPE 분쇄품",
+          "value": "HDPE",
+          "review": []
+        },
+        "form": {
+          "raw": "분쇄품",
+          "value": "분쇄품",
+          "review": []
+        },
+        "grade": {
+          "raw": "A",
+          "value": "A",
+          "review": []
+        },
+        "price": {
+          "raw": "280,000",
+          "quote": "280,000",
+          "page": null,
+          "common": 1,
+          "amount": 280.0,
+          "direction": "buy",
+          "unitRaw": "원/톤",
+          "unitQuote": "단가 단위: 원/톤(매입, 부가세 별도)",
+          "unitPage": 1,
+          "directionQuote": "단가 단위: 원/톤(매입, 부가세 별도)",
+          "candidates": null,
+          "note": "280,000 원/톤 → kg당 280원",
+          "review": []
+        },
+        "minMonthlyKg": {
+          "raw": "0.5",
+          "quote": "0.5",
+          "page": null,
+          "common": 2,
+          "value": 500.0,
+          "unitRaw": "톤/월",
+          "unitQuote": "최소 물량 단위: 톤/월",
+          "per": "month",
+          "note": "0.5 톤/월 → 월 500kg",
+          "review": []
+        },
+        "maxContaminationPct": {
+          "raw": "3",
+          "quote": "3",
+          "page": null,
+          "common": 3,
+          "value": 3.0,
+          "review": []
+        },
+        "maxMoisturePct": {
+          "raw": "5",
+          "quote": "5",
+          "page": null,
+          "common": 4,
+          "value": 5.0,
+          "review": []
+        },
+        "collectionFee": {
+          "raw": null,
+          "quote": "수거 운반비는 매입 단가에 포함합니다.",
+          "page": 1,
+          "common": 5,
+          "value": "included",
+          "feeText": null,
+          "feePerPickupKrw": null,
+          "review": []
+        },
+        "review": [],
+        "needsReview": false,
+        "ready": true
+      }
+    ],
+    "common": [
+      {
+        "number": 1,
+        "field": "price",
+        "quote": "단가 단위: 원/톤(매입, 부가세 별도)",
+        "page": 1,
+        "rows": [
+          "r1",
+          "r2",
+          "r3"
+        ],
+        "scope": null
+      },
+      {
+        "number": 2,
+        "field": "minQuantity",
+        "quote": "최소 물량 단위: 톤/월",
+        "page": 1,
+        "rows": [
+          "r1",
+          "r2",
+          "r3"
+        ],
+        "scope": null
+      },
+      {
+        "number": 3,
+        "field": "maxContamination",
+        "quote": "이물·수분: %, 이하",
+        "page": 1,
+        "rows": [
+          "r1",
+          "r2",
+          "r3"
+        ],
+        "scope": null
+      },
+      {
+        "number": 4,
+        "field": "maxMoisture",
+        "quote": "이물·수분: %, 이하",
+        "page": 1,
+        "rows": [
+          "r1",
+          "r2",
+          "r3"
+        ],
+        "scope": null
+      },
+      {
+        "number": 5,
+        "field": "collectionFee",
+        "quote": "수거 운반비는 매입 단가에 포함합니다.",
+        "page": 1,
+        "rows": [
+          "r1",
+          "r2",
+          "r3"
+        ],
+        "scope": null
+      }
+    ],
+    "notes": [],
+    "reviewCount": 0,
+    "reader": {
+      "by": "ai",
+      "input": "page_images",
+      "pages": 1,
+      "pagesRead": 1
+    }
+  },
+  "needsReview": false,
+  "note": "AI가 읽은 값은 담당자가 확인하고 저장하기 전에는 업체 탐색에 쓰지 않습니다."
+}

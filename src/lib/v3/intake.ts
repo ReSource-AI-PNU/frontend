@@ -4,6 +4,7 @@
  *  - 사진 분석 결과에 찾은 것이 하나도 없는지.
  *  - 수치를 직접 적으면 측정값 CSV 한 줄로 만들어 같은 길(POST /intake/csv)로 올린다.
  */
+import { emptyRow, rowsFromDraft, type CriteriaRowState } from "./criteria.ts";
 import type { DocumentProfileSummary, DocumentUploadResult, MediaUploadResult } from "./types";
 
 /* ── 확인하지 않은 문서 추출값 ─────────────────────────────────────── */
@@ -15,6 +16,8 @@ export type PendingDocument = {
   result: DocumentUploadResult;
   /** 담당자가 확인 표시한 항목(field → 표시) */
   checked: Record<string, boolean>;
+  /** 매입 기준표: 검토 화면에서 고치는 줄(AI가 읽은 초안에서 시작하거나 직접 적는다) */
+  rows?: CriteriaRowState[];
 };
 
 /** 한 화면에 남겨 두는 최대 개수(오래된 것부터 버린다) */
@@ -45,16 +48,44 @@ export function parsePending(raw: string | null): PendingDocument[] {
         isObj(item.result) &&
         typeof item.result.filename === "string" &&
         Array.isArray(item.result.fields) &&
-        isObj(item.checked),
+        isObj(item.checked) &&
+        (item.rows === undefined || Array.isArray(item.rows)),
     )
     .slice(0, PENDING_LIMIT);
 }
 
-/** 새로 올린 문서를 맨 위에 더한다. 뽑은 값이 없거나 쓰지 않는 문서(숨은 지시문)는 남기지 않는다 */
+/**
+ * 새로 올린 문서를 맨 위에 더한다. 뽑은 값이 없거나 쓰지 않는 문서(숨은 지시문)는 남기지 않는다.
+ * 매입 기준표 초안은 읽은 줄이 있을 때만 남는다(매입 조건을 찾지 못했거나 AI가 읽지 못한 결과는 화면에만 보인다).
+ */
 export function addPending(list: PendingDocument[], result: DocumentUploadResult, now: Date): PendingDocument[] {
-  if (result.fields.length === 0 || result.blocked) return list;
+  if (result.blocked) return list;
+  const rows = result.draft ? rowsFromDraft(result.draft) : undefined;
+  if (rows ? rows.length === 0 : result.fields.length === 0) return list;
   const id = `${now.getTime().toString(36)}-${result.filename}`;
-  return [{ id, uploadedAt: now.toISOString(), result, checked: {} }, ...list.filter((item) => item.id !== id)].slice(0, PENDING_LIMIT);
+  const item: PendingDocument = { id, uploadedAt: now.toISOString(), result, checked: {}, ...(rows ? { rows } : {}) };
+  return [item, ...list.filter((other) => other.id !== id)].slice(0, PENDING_LIMIT);
+}
+
+/** 매입 기준을 직접 적는 빈 검토 줄(문서를 읽지 못했거나 매입 조건을 찾지 못했을 때) */
+export function addManual(list: PendingDocument[], documentName: string, now: Date): PendingDocument[] {
+  const id = `${now.getTime().toString(36)}-직접-${documentName}`;
+  const result: DocumentUploadResult = {
+    kind: "purchase_criteria",
+    filename: documentName,
+    extraction: "manual",
+    shieldUnavailable: false,
+    blocked: false,
+    handoff: false,
+    threadIds: [],
+    fields: [],
+  };
+  return [{ id, uploadedAt: now.toISOString(), result, checked: {}, rows: [emptyRow("n1")] }, ...list].slice(0, PENDING_LIMIT);
+}
+
+/** 검토 줄을 바꾼다(고친 값, 고른 줄, 저장한 줄) */
+export function setRows(list: PendingDocument[], id: string, rows: CriteriaRowState[]): PendingDocument[] {
+  return list.map((item) => (item.id === id ? { ...item, rows } : item));
 }
 
 export function checkPending(list: PendingDocument[], id: string, field: string, value: boolean): PendingDocument[] {
@@ -126,6 +157,7 @@ export function profileSummaryText(profile: DocumentProfileSummary): string {
     profile.permitsUpdated > 0 ? `허가 품목 ${profile.permitsUpdated}개 수정` : null,
     profile.criteriaAdded > 0 ? `매입 기준 ${profile.criteriaAdded}개 추가` : null,
     profile.criteriaUpdated > 0 ? `매입 기준 ${profile.criteriaUpdated}개 수정` : null,
+    profile.transportUpdated ? "운반 조건 수정" : null,
   ].filter(Boolean);
   return parts.length > 0 ? `업체 정보에 반영했습니다(${parts.join(", ")}).` : "업체 정보에는 이미 같은 값이 있어 그대로 두었습니다.";
 }

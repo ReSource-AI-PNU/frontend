@@ -202,8 +202,12 @@ export type VendorProfile = {
     /** 배출 기업이 받으면 양수(매입), 내면 음수(처리비) */
     unitPriceKrwPerKg: number | null;
     minMonthlyKg: number | null;
+    /** 수거비: 단가에 포함 | 따로 받음. 매입 기준표 검토 화면에서 저장한 값이다 */
+    collectionFee?: "included" | "separate" | null;
     evidence: string[];
   }[];
+  /** 운반 조건. 업체 부담(수거 포함)이면 vendor, 배출 기업이 1회 운반비를 따로 내면 emitter */
+  transport?: { paidBy: "vendor" | "emitter"; feePerPickupKrw?: number | null; evidence: string[] } | null;
   /** 노선·차량. 새 업체는 {}로 시작하고 칸마다 따로 채우므로 일부만 있을 수 있다(src/lib/v3/fleet.ts) */
   fleet: FleetRecord | null;
   guardrails: {
@@ -258,8 +262,71 @@ export type DocumentUploadResult = {
   threadIds: string[];
   fields: ExtractedField[];
   extracted?: Record<string, unknown>;
+  /** 매입 기준표를 AI가 읽은 행 단위 초안(POST /intake/criteria/confirm으로 저장하기 전에는 근거가 아니다) */
+  draft?: CriteriaDraft;
   needsReview?: boolean;
   note?: string;
+};
+
+/** 초안의 칸 하나. raw는 문서에 적힌 글자, quote는 칸 밖(각주·문장)에서 왔을 때의 그 글, review는 확인 사유 */
+type DraftCell = { raw: string | null; quote?: string | null; page?: number | null; common?: number | null; review: string[] };
+
+export type CriteriaDraftRow = {
+  id: string;
+  /** 문서에 적힌 그 행(칸은 " | "로 나눔) */
+  quote: string | null;
+  page: number | null;
+  material: { raw: string | null; value: string | null; review: string[] };
+  form: { raw: string | null; value: string | null; review: string[] };
+  grade: { raw: string | null; value: string | null; review: string[] };
+  price: DraftCell & {
+    /** kg당 원(양수). 범위·협의·단위 미상이면 null */
+    amount: number | null;
+    direction: "buy" | "fee" | null;
+    unitRaw: string | null;
+    unitQuote: string | null;
+    unitPage: number | null;
+    directionQuote: string | null;
+    candidates: number[] | null;
+    note: string | null;
+  };
+  minMonthlyKg: DraftCell & { value: number | null; unitRaw: string | null; per: string | null; note: string | null; perPickupKg?: number };
+  maxContaminationPct: DraftCell & { value: number | null; note?: string | null };
+  maxMoisturePct: DraftCell & { value: number | null; note?: string | null };
+  collectionFee: DraftCell & { value: "included" | "separate" | null; feeText: string | null; feePerPickupKrw: number | null };
+  review: string[];
+  needsReview: boolean;
+  ready: boolean;
+};
+
+export type CriteriaDraft = {
+  /** ready 모두 읽음 | needs_review 일부 값이 애매함 | not_found 매입 조건 없음 | model_failed AI가 읽지 못함 */
+  outcome: "ready" | "needs_review" | "not_found" | "model_failed";
+  description?: string | null;
+  rows: CriteriaDraftRow[];
+  /** 표 밖에서 여러 행에 걸리는 조건(각주 등)과 적용되는 행 ID */
+  common: { number: number | null; field: string | null; quote: string | null; page: number | null; rows: string[]; scope: string | null }[];
+  notes: string[];
+  reviewCount: number;
+  reader?: { by: string; input?: string; pages?: number; pagesRead?: number };
+  /** 화면 문장: 무엇이 안 됐는지와 다음 행동 */
+  failure?: { code: string; message: string; action: string } | null;
+};
+
+/** POST /intake/criteria/confirm의 행 하나(단가는 매입 +, 처리비 −) */
+export type CriteriaRowInput = {
+  material: string;
+  grade: string | null;
+  form: string | null;
+  unitPriceKrwPerKg: number;
+  minMonthlyKg: number | null;
+  maxContaminationPct: number | null;
+  maxMoisturePct: number | null;
+  collectionFee: "included" | "separate" | null;
+  collectionFeePerPickupKrw: number | null;
+  source: { quote: string | null; page: number | null; quotes: Record<string, string> };
+  edited: string[];
+  manual: boolean;
 };
 
 /** 업체가 확인한 허가증·매입 기준표 값이 업체 프로필에 들어간 요약(업체가 아니면 null) */
@@ -272,6 +339,8 @@ export type DocumentProfileSummary = {
   criteria: VendorProfile["criteria"];
   /** 넣지 못한 것과 까닭(예: 단가를 확인하지 않아 매입 기준을 만들지 않았습니다) */
   skipped: string[];
+  /** 매입 기준표 검토 화면에서 저장할 때만: 수거비 조건으로 운반 조건을 바꿨는지 */
+  transportUpdated?: boolean;
 };
 
 /** POST /intake/documents/confirm */

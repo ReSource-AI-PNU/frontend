@@ -35,6 +35,7 @@ import {
 } from "@/lib/v3/billing";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import {
+  addManual,
   addPending,
   checkPending,
   dropPending,
@@ -44,6 +45,7 @@ import {
   parsePending,
   pendingKey,
   profileSummaryText,
+  setRows,
   type PendingDocument,
 } from "@/lib/v3/intake";
 import { AI_NAME } from "@/lib/v3/labels";
@@ -58,8 +60,10 @@ import type {
   StreamRecord,
   VendorProfile,
 } from "@/lib/v3/types";
+import { Dots } from "@/components/agent/dots";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
+import { CriteriaReview } from "./criteria-review";
 import { useRemote } from "./use-remote";
 
 const field =
@@ -86,8 +90,17 @@ function useUpload<T>(canAct: boolean) {
   return { state, send };
 }
 
-function UploadStatus({ state }: { state: UploadState<unknown> }) {
-  if (state.busy) return <p className="mt-2 text-sm text-muted">올리는 중입니다.</p>;
+function UploadStatus({ state, busyText }: { state: UploadState<unknown>; busyText?: string }) {
+  if (state.busy) {
+    return busyText ? (
+      <p className="mt-2 flex items-center gap-2.5 text-sm text-ink-2">
+        <Dots label={busyText} />
+        {busyText}
+      </p>
+    ) : (
+      <p className="mt-2 text-sm text-muted">올리는 중입니다.</p>
+    );
+  }
   if (state.error) {
     return (
       <p role="alert" className="mt-2 text-sm text-loss">
@@ -328,7 +341,21 @@ function DocumentUpload({
   const [kind, setKind] = useState<DocumentKind>(kinds[0]);
   const [pending, update] = usePending(pendingKey(org.id, label));
   const [registered, setRegistered] = useState<{ filename: string; evidence: string[]; profile: DocumentProfileSummary | null } | null>(null);
+  // AI가 읽지 못했을 때 "다시 읽기"로 같은 파일을 다시 보낸다(새로 고치면 잃는다)
+  const [lastFile, setLastFile] = useState<{ file: File; kind: DocumentKind } | null>(null);
   const latest = upload.state.result;
+  const draft = latest && !latest.blocked ? latest.draft : undefined;
+
+  const send = (file: File, sendKind: DocumentKind) => {
+    setRegistered(null);
+    setLastFile({ file, kind: sendKind });
+    void upload.send(async () => {
+      const result = await api.uploadDocument(org.id, file, sendKind);
+      update((list) => addPending(list, result, new Date()));
+      return result;
+    });
+  };
+  const writeByHand = (name: string) => update((list) => addManual(list, name, new Date()));
 
   return (
     <div className="space-y-2 text-sm">
@@ -345,48 +372,89 @@ function DocumentUpload({
             </option>
           ))}
         </select>
-        <FileButton
-          text="파일 올리기"
-          label={label}
-          disabled={!canAct || upload.state.busy}
-          onFile={(file) => {
-            setRegistered(null);
-            void upload.send(async () => {
-              const result = await api.uploadDocument(org.id, file, kind);
-              update((list) => addPending(list, result, new Date()));
-              return result;
-            });
-          }}
-        />
+        <FileButton text="파일 올리기" label={label} disabled={!canAct || upload.state.busy} onFile={(file) => send(file, kind)} />
+        {kind === "purchase_criteria" ? (
+          <Button size="sm" variant="ghost" className="!text-ink-2" disabled={!canAct || upload.state.busy} onClick={() => writeByHand("직접 적은 매입 기준")}>
+            직접 적기
+          </Button>
+        ) : null}
       </div>
-      <UploadStatus state={upload.state} />
+      <UploadStatus
+        state={upload.state}
+        busyText={kind === "purchase_criteria" ? "AI가 문서를 읽고 있습니다. 표가 길면 1분 넘게 걸릴 수 있습니다." : undefined}
+      />
       {latest && (latest.blocked || latest.handoff) ? (
         <p role="alert" className="rounded-xl bg-loss-bg px-4 py-3 text-sm font-medium text-loss">
           {latest.filename}: 이 문서에서 AI에게 내리는 숨은 지시문이 발견되어 이 문서를 쓰지 않습니다.
           {latest.threadIds.length > 0 ? ` 진행 중인 대화 ${latest.threadIds.length}건은 담당자가 직접 이어 가도록 넘겼습니다.` : ""}
         </p>
       ) : null}
-      {latest && !latest.blocked && latest.fields.length === 0 ? (
+      {draft?.outcome === "model_failed" ? (
+        <div role="alert" className="rounded-xl bg-warn-bg px-4 py-3 text-[13px] text-ink-2">
+          <p className="font-medium text-ink">
+            <span className="tabular-nums">{latest?.filename}</span>: {draft.failure?.message ?? "AI가 문서를 읽지 못했습니다."}
+          </p>
+          <p className="mt-0.5">{draft.failure?.action ?? "다시 읽기를 누르거나 직접 적어 주세요."}</p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {lastFile ? (
+              <Button size="sm" variant="secondary" disabled={!canAct || upload.state.busy} onClick={() => send(lastFile.file, lastFile.kind)}>
+                다시 읽기
+              </Button>
+            ) : null}
+            <Button size="sm" variant="secondary" disabled={!canAct} onClick={() => writeByHand(latest?.filename ?? "직접 적은 매입 기준")}>
+              직접 적기
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {draft?.outcome === "not_found" ? (
+        <div role="status" className="rounded-xl bg-ground px-4 py-3 text-[13px] text-ink-2">
+          <p className="font-medium text-ink">
+            <span className="tabular-nums">{latest?.filename}</span>에서 매입 단가나 처리비 조건을 찾지 못했습니다.
+          </p>
+          <p className="mt-0.5">매입 기준표가 맞는지 확인하거나, 원본을 보고 직접 적어 주세요.</p>
+          <Button size="sm" variant="secondary" className="mt-2.5" disabled={!canAct} onClick={() => writeByHand(latest?.filename ?? "직접 적은 매입 기준")}>
+            직접 적기
+          </Button>
+        </div>
+      ) : null}
+      {latest && !latest.blocked && !latest.draft && latest.fields.length === 0 ? (
         <p className="rounded-xl bg-ground px-4 py-3 text-[13px] text-ink-2">
           <span className="tabular-nums">{latest.filename}</span>에서 뽑은 값이 없습니다. 값이 표나 사진에 있으면 원본을 보고 직접 적어
           주세요.
         </p>
       ) : null}
       {pending.length > 1 ? <p className="pt-1 text-[13px] text-muted">확인을 기다리는 문서 {pending.length}건</p> : null}
-      {pending.map((item) => (
-        <PendingExtraction
-          key={item.id}
-          item={item}
-          canAct={canAct}
-          onCheck={(name, value) => update((list) => checkPending(list, item.id, name, value))}
-          onDone={(result) => {
-            update((list) => dropPending(list, item.id));
-            setRegistered({ filename: item.result.filename, evidence: result.evidence, profile: result.profile ?? null });
-            onConfirmed?.(result);
-          }}
-          onDiscard={() => update((list) => dropPending(list, item.id))}
-        />
-      ))}
+      {pending.map((item) =>
+        item.rows ? (
+          <CriteriaReview
+            key={item.id}
+            item={item}
+            canAct={canAct}
+            onRows={(rows) => update((list) => setRows(list, item.id, rows))}
+            onSaved={(result, rows) => {
+              // 모든 줄을 저장했으면 검토를 닫는다. 확인할 값이 남은 줄이 있으면 남겨 둔다
+              if (rows.every((row) => row.saved)) update((list) => dropPending(list, item.id));
+              setRegistered({ filename: item.result.filename, evidence: result.evidence, profile: result.profile ?? null });
+              onConfirmed?.(result);
+            }}
+            onDiscard={() => update((list) => dropPending(list, item.id))}
+          />
+        ) : (
+          <PendingExtraction
+            key={item.id}
+            item={item}
+            canAct={canAct}
+            onCheck={(name, value) => update((list) => checkPending(list, item.id, name, value))}
+            onDone={(result) => {
+              update((list) => dropPending(list, item.id));
+              setRegistered({ filename: item.result.filename, evidence: result.evidence, profile: result.profile ?? null });
+              onConfirmed?.(result);
+            }}
+            onDiscard={() => update((list) => dropPending(list, item.id))}
+          />
+        ),
+      )}
       {registered ? (
         <p role="status" className="text-[13px]">
           {registered.evidence.length === 0 ? (
@@ -1393,7 +1461,7 @@ function VendorForm({
           <p className="mt-3 text-sm text-ink-2">아직 등록된 매입 기준이 없습니다. 위에서 매입 기준표를 올려 주세요.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-[15px]">
+            <table className="w-full min-w-[720px] text-[15px]">
               <thead>
                 <tr className="border-b border-line text-left text-[13px] font-normal text-muted">
                   <th className="py-2 pr-3 font-normal">재질</th>
@@ -1403,6 +1471,7 @@ function VendorForm({
                   <th className="py-2 pr-3 text-right font-normal">수분 상한</th>
                   <th className="py-2 pr-3 text-right font-normal">kg당 단가 (원)</th>
                   <th className="py-2 pr-3 text-right font-normal">한 달 최소 (kg)</th>
+                  <th className="py-2 pr-3 font-normal">수거비</th>
                   <th className="py-2 font-normal">근거</th>
                 </tr>
               </thead>
@@ -1439,6 +1508,9 @@ function VendorForm({
                       )}
                     </td>
                     <td className="py-2.5 pr-3 text-right">{row.minMonthlyKg != null ? formatNumber(row.minMonthlyKg) : "-"}</td>
+                    <td className="py-2.5 pr-3 text-[13px]">
+                      {row.collectionFee === "included" ? "단가에 포함" : row.collectionFee === "separate" ? "따로 받음" : "-"}
+                    </td>
                     <td className="py-2.5 text-[13px] text-muted">
                       <EvidenceLink ids={row.evidence} />
                     </td>

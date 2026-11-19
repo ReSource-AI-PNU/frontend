@@ -17,6 +17,8 @@ const KEEP_SERVER_MESSAGE = new Set([
   "NO_CHANGE",
   "STREAM_NOT_IN_THREAD",
   "FILE_REQUIRED",
+  // 매입 기준표 검토 화면: 몇 번째 줄의 무엇을 고치면 되는지 서버가 적는다
+  "INVALID_CRITERIA",
   // 프런트 통로(src/lib/v3/backend-plan.ts)가 쓴 문구는 이미 사용자 말이다
   "DEMO_READ_ONLY",
   "DEMO_UNAVAILABLE",
