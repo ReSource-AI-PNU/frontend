@@ -1,9 +1,10 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { auth, freshAccount } from "@/auth";
+import { freshAccount } from "@/auth";
 import type { Membership } from "@/lib/auth/account";
 import { checkMemberships } from "@/lib/auth/membership-sync";
+import { readSession } from "./session";
 
 export type Workspace = {
   user: { id: string; name: string; email: string | null };
@@ -29,7 +30,7 @@ export type Workspace = {
  * 다른 사람이 회사 이름을 바꾸거나 나를 회사에서 빼도 쿠키에는 남아 있다. 한 요청 안(레이아웃과 화면)에서는 한 번만 읽는다.
  */
 export const getWorkspace = cache(async (): Promise<Workspace | null> => {
-  const session = await auth();
+  const session = await readSession();
   if (!session?.user?.id) return null;
   const saved = session.memberships ?? [];
   const activeOrgId = session.activeOrgId ?? null;

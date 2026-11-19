@@ -353,6 +353,8 @@ export type RetrainGate = {
   minRealLabels: number;
   minAccuracy: number;
   realLabelCount: number;
+  /** 시연(가상) 회사 사이의 등급 행. 게이트 판정과 평가에는 넣지 않는다 */
+  demoLabelCount?: number;
   evaluated: { model: string; n: number; accuracy: number | null; label: string } | null;
 };
 
@@ -380,6 +382,8 @@ export type RetrainTable = {
       }[];
     }[];
   };
+  /** 시연(가상) 회사 사이에서 쌓인 기록. 수집 과정을 보이려고 세기만 하고 위 건수와 게이트에는 넣지 않는다 */
+  demo?: { outcomes: number; gradeLabels: number; corrections: number; note: string };
   /** POST /admin/retrain/runs로 등록된 실행만. 없으면 빈 목록 */
   modelVersions: {
     model: string;
@@ -399,9 +403,12 @@ export type RetrainTable = {
 
 /** GET /admin/retrain/export */
 export type RetrainExport = {
+  /** 실제 회사의 기록만. 재학습 작업은 이 둘만 읽는다 */
   gradeLabels: Record<string, unknown>[];
   detectionCorrections: Record<string, unknown>[];
   gate: RetrainGate;
+  /** 시연(가상) 회사의 기록(synthetic=true, data_origin=demo). 학습에 쓰지 않는다 */
+  demo?: { gradeLabels: Record<string, unknown>[]; detectionCorrections: Record<string, unknown>[]; note: string };
 };
 
 /** GET /admin/status. 관리자 조직(org_admin)만 부를 수 있다 */

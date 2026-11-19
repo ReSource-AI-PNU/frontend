@@ -387,7 +387,7 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
               <span className="block text-muted">{retrain.gradeLabels.note}</span>
             </td>
           </tr>
-          <tr className="align-top">
+          <tr className={`align-top ${retrain.demo ? "border-b border-line" : ""}`}>
             <td className="py-1.5 pr-3 font-semibold">사람 교정</td>
             <td className="py-1.5 pr-3 text-right tabular-nums">{retrain.corrections.count}</td>
             <td className="py-1.5">
@@ -400,6 +400,18 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
               ) : null}
             </td>
           </tr>
+          {retrain.demo ? (
+            <tr className="align-top text-muted">
+              <td className="py-1.5 pr-3 font-semibold">시연 기록</td>
+              <td className="py-1.5 pr-3 text-right tabular-nums">{retrain.demo.outcomes + retrain.demo.corrections}</td>
+              <td className="py-1.5">
+                실제 결과 <span className="tabular-nums">{retrain.demo.outcomes}</span> · 등급 행{" "}
+                <span className="tabular-nums">{retrain.demo.gradeLabels}</span> · 교정{" "}
+                <span className="tabular-nums">{retrain.demo.corrections}</span>
+                <span className="block">{retrain.demo.note}</span>
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
 
@@ -423,6 +435,14 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
             )}{" "}
             <span>(기준 <span className="tabular-nums">{gate.minRealLabels}</span>건 이상)</span>
           </dd>
+          {gate.demoLabelCount ? (
+            <>
+              <dt className="text-muted">시연 등급 행</dt>
+              <dd>
+                <span className="tabular-nums">{gate.demoLabelCount}</span>건 <span className="text-muted">(가상 회사 기록이라 세지 않음)</span>
+              </dd>
+            </>
+          ) : null}
           <dt className="text-muted">평가한 것</dt>
           <dd>
             {gate.evaluated ? (
@@ -555,9 +575,15 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
             <span className="text-loss">{exported.error}</span>
           ) : exported.data ? (
             <>
-              JSON 파일로 받았습니다: 등급 학습 행{" "}
+              JSON 파일로 받았습니다: 실제 등급 학습 행{" "}
               <span className="font-medium tabular-nums text-ink">{exported.data.gradeLabels.length}</span> · 탐지 교정{" "}
               <span className="font-medium tabular-nums text-ink">{exported.data.detectionCorrections.length}</span>
+              {exported.data.demo ? (
+                <>
+                  {" "}
+                  · 시연 행 <span className="tabular-nums">{exported.data.demo.gradeLabels.length}</span>(따로 표시, 학습 제외)
+                </>
+              ) : null}
             </>
           ) : (
             "실제 등급 학습 행과 탐지 교정을 JSON 파일로 받습니다(GET /admin/retrain/export). 여러 조직의 기록이 들어 있습니다."

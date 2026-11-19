@@ -152,20 +152,33 @@ export function inviteLookupFailure(status: number, code: string | null): "inval
   return "unknown";
 }
 
-const kstExpiry = new Intl.DateTimeFormat("ko-KR", {
+/**
+ * 한국 시각의 월·일·시(0~23)·분을 숫자로만 받는다. "오전/오후"와 "월·일"은 직접 붙인다: ko-KR 서식을 그대로 쓰면 런타임의 ICU 자료에
+ * 따라 오후가 "PM"으로 나오기도 한다(서버와 브라우저, 시험 환경마다 글이 달라진다).
+ */
+const kstParts = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",
-  month: "long",
+  month: "numeric",
   day: "numeric",
   hour: "numeric",
   minute: "2-digit",
+  hourCycle: "h23",
 });
+
+/** "11월 25일 오후 6:00"(한국 시각, 12시간제. 자정은 오전 12:00, 정오는 오후 12:00) */
+function kstExpiryText(at: Date): string {
+  const parts = kstParts.formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  const hour = Number(part("hour")) % 24;
+  return `${Number(part("month"))}월 ${Number(part("day"))}일 ${hour < 12 ? "오전" : "오후"} ${hour % 12 || 12}:${part("minute").padStart(2, "0")}`;
+}
 
 /** 유효 기한: 지났는지와 "11월 25일 오후 6:00까지"(한국 시각). 읽을 수 없으면 text는 null */
 export function inviteExpiry(expiresAt: string | null, now: Date): { expired: boolean; text: string | null } {
   if (!expiresAt) return { expired: false, text: null };
   const at = new Date(expiresAt);
   if (Number.isNaN(at.getTime())) return { expired: false, text: null };
-  return { expired: at.getTime() <= now.getTime(), text: `${kstExpiry.format(at)}까지` };
+  return { expired: at.getTime() <= now.getTime(), text: `${kstExpiryText(at)}까지` };
 }
 
 /** 붙여 넣은 초대 링크나 코드에서 토큰만 뽑는다. 토큰으로 쓸 수 없는 글자가 있으면 null. */

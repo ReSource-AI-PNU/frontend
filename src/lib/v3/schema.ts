@@ -698,6 +698,8 @@ export const correctionFieldSchema = z.enum([
 ]);
 
 /** 배출 기업 담당자가 고친 값(기록만 남는다. 흐름의 값은 바뀌지 않는다) */
+export const dataOriginSchema = z.enum(["real", "demo", "unknown"]);
+
 export const correctionSchema = obj({
   type: z.literal("correction"),
   id: z.string(),
@@ -712,6 +714,8 @@ export const correctionSchema = obj({
   target: z.enum(["detector", "grade"]),
   photoEvidence: z.array(z.string()),
   recordedOn: z.string(),
+  /** 기록 출처. demo는 시연(가상) 회사 사이의 기록이라 실제 학습·배포 게이트에 세지 않는다 */
+  dataOrigin: dataOriginSchema.optional(),
 });
 
 /** 업체가 확정 뒤 기록한 실제 결과 */
@@ -747,6 +751,7 @@ export const outcomeSchema = obj({
   /** 실제 단가에서 매입 기준표 단가를 뺀 값 */
   deviation: claimOrNull,
   recordedOn: z.string(),
+  dataOrigin: dataOriginSchema.optional(),
 });
 
 export const diagnosisViewSchema = obj({
@@ -844,10 +849,20 @@ export const reportRecordSchema = obj({
   /** +는 매입(받은 돈), −는 처리비(낸 돈) */
   unitPrice: claimOrNull,
   amount: claimOrNull,
-  /** 배출계수가 없는 처리 방식(열분해 등)이면 null */
+  /** 배출계수가 없는 처리 방식(열분해 등)이거나 검수 당시 계산 기준이 없는 예전 기록이면 null */
   carbon: claimOrNull,
-  currentMethod: z.string(),
+  /** 탄소 변화를 내지 않은 이유. 계산했으면 null */
+  carbonNote: z.string().nullable(),
+  /** 검수 기록 당시의 현행 처리 방식. 계산 기준이 없는 예전 기록이면 null */
+  currentMethod: z.string().nullable(),
   currentMethodAssumed: z.boolean(),
+  /** 검수 기록 당시의 탄소 계산 기준(판과 배출계수 판). 예전 기록이면 null */
+  carbonBasis: obj({
+    capturedOn: z.string(),
+    version: z.number(),
+    evidenceId: z.string(),
+    factors: z.array(obj({ id: z.string(), version: z.number() })),
+  }).nullable(),
 });
 
 export const reportPlannedSchema = obj({

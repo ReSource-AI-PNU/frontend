@@ -63,16 +63,26 @@ export const PLANNED_LEAD =
 export function carbonGapNote(records: ReportRecord[]): string | null {
   const missing = records.filter((item) => item.carbon === null && item.kg !== null);
   if (missing.length === 0) return null;
-  const ways = [...new Set(missing.map((item) => item.process ?? "처리 방식을 모르는 곳"))].join(", ");
-  return `${josa(ways, "으로/로")} 보낸 ${missing.length}건은 공인된 배출계수가 없어 탄소 합계에 넣지 않았습니다.`;
+  // 검수 당시 계산 기준이 남지 않은 예전 기록은 배출계수 문제가 아니므로 따로 밝힌다
+  const old = missing.filter((item) => item.carbonBasis === null);
+  const noFactor = missing.filter((item) => item.carbonBasis !== null);
+  const lines: string[] = [];
+  if (noFactor.length > 0) {
+    const ways = [...new Set(noFactor.map((item) => item.process ?? "처리 방식을 모르는 곳"))].join(", ");
+    lines.push(`${josa(ways, "으로/로")} 보낸 ${noFactor.length}건은 공인된 배출계수가 없어 탄소 합계에 넣지 않았습니다.`);
+  }
+  if (old.length > 0) {
+    lines.push(`검수 당시의 탄소 계산 기준이 남아 있지 않은 예전 기록 ${old.length}건은 탄소 합계에 넣지 않았습니다.`);
+  }
+  return lines.join(" ");
 }
 
 /** 비교 기준이 된 현행 처리. 담당자가 적지 않았으면 가정임을 밝힌다 */
 export function baselineNote(records: ReportRecord[]): string | null {
   const assumed = records.filter((item) => item.currentMethodAssumed);
   if (assumed.length === 0) return null;
-  const method = assumed[0].currentMethod;
-  return `탄소 변화는 지금 처리 방식과 견준 값입니다. 처리 방식을 적지 않은 ${assumed.length}건은 ${josa(method, "으로/로")} 가정했습니다. 자료 화면에서 처리 방식을 적으면 더 정확해집니다.`;
+  const method = assumed[0].currentMethod ?? "혼합 소각";
+  return `탄소 변화는 검수를 기록할 때의 처리 방식과 견준 값입니다. 처리 방식을 적지 않았던 ${assumed.length}건은 ${josa(method, "으로/로")} 가정했습니다. 자료 화면에서 처리 방식을 적으면 다음 검수 기록부터 반영됩니다.`;
 }
 
 function numberOf(claim: Claim | null): string {
@@ -112,7 +122,8 @@ export function reportCsv(report: Report): string {
       numberOf(item.unitPrice),
       numberOf(item.amount),
       numberOf(item.carbon),
-      item.currentMethodAssumed ? `${item.currentMethod}(가정)` : item.currentMethod,
+      // 검수 당시 계산 기준이 없는 예전 기록은 비교한 현행 처리를 모른다(빈 칸)
+      item.currentMethod === null ? "" : item.currentMethodAssumed ? `${item.currentMethod}(가정)` : item.currentMethod,
     ]);
   }
   if (report.totals) {

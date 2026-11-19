@@ -68,6 +68,10 @@ test("탄소를 계산하지 못한 실적과 가정한 현행 처리를 숨기�
   const sample = report.records[0];
   assert.match(baselineNote([{ ...sample, currentMethod: "혼합 소각", currentMethodAssumed: true }]) ?? "", /혼합 소각으로 가정/);
   assert.match(carbonGapNote([{ ...sample, carbon: null, process: "열분해(화학적 재활용)" }]) ?? "", /^열분해\(화학적 재활용\)로 보낸 1건/);
+  // 검수 당시 계산 기준이 없는 예전 기록은 배출계수 문제로 적지 않는다
+  const old = { ...sample, carbon: null, carbonBasis: null, currentMethod: null, currentMethodAssumed: false };
+  assert.equal(carbonGapNote([old]), "검수 당시의 탄소 계산 기준이 남아 있지 않은 예전 기록 1건은 탄소 합계에 넣지 않았습니다.");
+  assert.equal(baselineNote([old]), null);
 });
 
 test("제목과 안내 문구에 개발자 말이 없다", () => {
