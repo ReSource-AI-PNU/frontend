@@ -986,6 +986,13 @@ const outcomeEvidenceSchema = obj({
   kg: z.string().nullable().optional(),
 });
 
+/** 업체가 실제로 적용한 처리 방식(탄소 계산에 쓴 값)과 출처: 검수 기록에 적음, 기록 당시 업체 정보, 매입이라 재활용으로 봄, 모름 */
+export const appliedProcessSchema = obj({
+  value: z.string().nullable(),
+  source: z.enum(["vendor_input", "vendor_profile", "price", "unknown"]),
+  assumed: z.boolean(),
+});
+
 /** 정정되기 전 판 하나(그때 업체가 적은 값과 그 근거). reason은 그 판을 만든 정정의 사유(처음 판이면 null) */
 export const outcomeRevisionSchema = obj({
   revision: z.number(),
@@ -1002,6 +1009,9 @@ export const outcomeRevisionSchema = obj({
   evidenceKind: z.enum(["human", "doc"]),
   evidence: outcomeEvidenceSchema,
   deviation: claimOrNull,
+  /** 업체가 적은 실제 처리 방식(재활용·열분해·소각·매립). 적지 않았거나 이 필드 전의 기록이면 null·없음 */
+  actualProcess: z.string().nullable().optional(),
+  appliedProcess: appliedProcessSchema.nullable().optional(),
 });
 
 /**
@@ -1036,6 +1046,10 @@ export const outcomeSchema = obj({
   actualGrade: z.string().nullable(),
   actualUnitPriceKrwPerKg: z.number().nullable(),
   actualKg: z.number().nullable(),
+  /** 업체가 검수 기록에 적은 실제 처리 방식(재활용·열분해·소각·매립). 적지 않았거나 이 필드 전의 기록이면 null·없음 */
+  actualProcess: z.string().nullable().optional(),
+  /** 탄소 계산에 쓴 처리 방식과 출처(검수 기록에 적음, 기록 당시 업체 정보 등). 이 필드 전의 기록에는 없다 */
+  appliedProcess: appliedProcessSchema.optional(),
   note: z.string().nullable(),
   evidenceKind: z.enum(["human", "doc"]),
   evidence: outcomeEvidenceSchema,
@@ -1148,6 +1162,65 @@ export const reportRevisionSchema = obj({
   evidence: outcomeEvidenceSchema,
 });
 
+/** 탄소 변화의 계산 범위. 지금은 처리 방식 배출 차이만이다(수거 운송 배출과 신재 대체 효과는 넣지 않는다) */
+export const carbonScopeSchema = obj({
+  key: z.string(),
+  label: z.string(),
+  includes: z.array(z.string()),
+  excludes: z.array(z.string()),
+  text: z.string(),
+});
+
+/** 검수를 기록할 때 옮겨 적은 배출계수(값·단위·판·기준일). 지금 레지스트리의 값이 아니다 */
+const carbonFactorSchema = obj({
+  evidenceId: z.string(),
+  label: z.string(),
+  value: z.number(),
+  unit: z.string(),
+  version: z.number(),
+  asOf: z.string(),
+  source: z.string(),
+}).nullable();
+
+/**
+ * 검수 기록 한 건의 탄소 계산 기준(백엔드 outcome_carbon). 검수를 기록할 때 고정하고, 지금 자료를 고쳐도 바뀌지 않는다.
+ * recorded: 기록 당시 기준, not_computed: 기록했지만 계수·처리 방식이 없어 계산하지 않음,
+ * reconstructed: 이 기능 전의 기록을 합의 당시 계산으로 재구성(계수 일치 확인), unverified: 당시 기준을 확인할 수 없어 계산하지 않음
+ */
+export const carbonBasisSchema = obj({
+  status: z.enum(["recorded", "not_computed", "reconstructed", "unverified"]),
+  statusLabel: z.string(),
+  /** 고정한 기준 근거(배출 기업만 본다). 근거 패널에서 연다 */
+  evidenceId: z.string().nullable(),
+  capturedOn: z.string().nullable(),
+  capturedBy: z.string().nullable(),
+  revision: z.number().nullable(),
+  baseline: obj({
+    method: z.string().nullable(),
+    assumed: z.boolean().nullable(),
+    source: z.string().nullable(),
+    sourceLabel: z.string().nullable(),
+  }),
+  applied: obj({
+    process: z.string().nullable(),
+    source: z.string().nullable(),
+    sourceLabel: z.string().nullable(),
+    assumed: z.boolean().nullable(),
+  }),
+  factors: obj({ baseline: carbonFactorSchema, applied: carbonFactorSchema }),
+  /** kg당 배출 차이(보낸 곳 계수 − 현행 계수) */
+  perKg: z.number().nullable(),
+  perKgUnit: z.string(),
+  scope: carbonScopeSchema,
+  reason: z.string().nullable(),
+  notes: z.array(z.string()),
+  deal: obj({
+    computedOn: z.string().nullable(),
+    monthlyKg: z.number().nullable(),
+    carbonPerMonth: z.number().nullable(),
+  }).nullable(),
+});
+
 export const reportRecordSchema = obj({
   id: z.string(),
   /** 검수(계량) 한 건의 ID. 같은 날 같은 폐기물을 두 번 받았으면 두 줄이다 */
@@ -1164,27 +1237,23 @@ export const reportRecordSchema = obj({
   streamName: z.string().nullable(),
   vendorOrgId: z.string(),
   vendorName: z.string(),
-  /** 받은 곳의 처리 방식(재활용, 열분해(화학적 재활용) 등). 업체가 밝히지 않았으면 null */
+  /** 업체가 실제로 적용한 처리 방식(검수를 기록할 때 고정). 확인할 수 없으면 null */
   process: z.string().nullable(),
   grade: z.string().nullable(),
   kg: claimOrNull,
   /** +는 매입(받은 돈), −는 처리비(낸 돈) */
   unitPrice: claimOrNull,
   amount: claimOrNull,
-  /** 배출계수가 없는 처리 방식(열분해 등)이거나 검수 당시 계산 기준이 없는 예전 기록이면 null */
+  /** 배출계수를 적용한 추정값. 계수가 없거나 당시 기준을 확인할 수 없으면 null(carbonBasis.status) */
   carbon: claimOrNull,
-  /** 탄소 변화를 내지 않은 이유. 계산했으면 null */
+  /** 탄소 변화를 내지 않은 이유(계수 없음, 당시 기준 확인 불가 등). 계산했으면 null */
   carbonNote: z.string().nullable(),
-  /** 검수 기록 당시의 현행 처리 방식. 계산 기준이 없는 예전 기록이면 null */
+  /** 비교한 현행 처리(검수를 기록할 때 고정). 당시 기준을 확인할 수 없으면 null */
   currentMethod: z.string().nullable(),
   currentMethodAssumed: z.boolean(),
-  /** 검수 기록 당시의 탄소 계산 기준(판과 배출계수 판). 예전 기록이면 null */
-  carbonBasis: obj({
-    capturedOn: z.string(),
-    version: z.number(),
-    evidenceId: z.string(),
-    factors: z.array(obj({ id: z.string(), version: z.number() })),
-  }).nullable(),
+  carbonBasis: carbonBasisSchema,
+  /** 실제 무게·단가·등급을 남긴 방식: 검수 문서(doc) 또는 업체 담당자 입력(human) */
+  measuredBy: z.enum(["doc", "human"]).nullable(),
 });
 
 export const reportPlannedSchema = obj({
@@ -1212,6 +1281,14 @@ export const reportSchema = obj({
     fee: claimOrNull,
     carbon: claimOrNull,
     count: z.number(),
+    /** 탄소 기준 상태별 건수. 합계에는 recorded와 reconstructed만 넣는다 */
+    carbonStatus: obj({
+      recorded: z.number(),
+      not_computed: z.number(),
+      reconstructed: z.number(),
+      unverified: z.number(),
+    }),
   }).nullable(),
   planned: z.array(reportPlannedSchema),
+  carbonScope: carbonScopeSchema,
 });

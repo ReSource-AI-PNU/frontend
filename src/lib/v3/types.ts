@@ -71,6 +71,8 @@ export type ImprovementActionKey = z.infer<typeof s.improvementActionKeySchema>;
 export type Report = z.infer<typeof s.reportSchema>;
 export type ReportRecord = z.infer<typeof s.reportRecordSchema>;
 export type ReportPlanned = z.infer<typeof s.reportPlannedSchema>;
+export type CarbonBasis = z.infer<typeof s.carbonBasisSchema>;
+export type CarbonScope = z.infer<typeof s.carbonScopeSchema>;
 export type Question = z.infer<typeof s.questionSchema>;
 export type Approval = z.infer<typeof s.approvalSchema>;
 export type ContractReview = z.infer<typeof s.contractReviewSchema>;
@@ -197,6 +199,8 @@ export type OutcomeValues = {
   inspectedOn: string;
   weighTicket?: string | null;
   note?: string;
+  /** 업체가 실제로 적용한 처리 방식(재활용·열분해·소각·매립). null이면 처음 기록은 업체 정보대로, 정정은 앞 판대로 */
+  actualProcess?: string | null;
 };
 /**
  * POST /sessions/{id}/outcomes: 새 반입 한 건. requestId는 등록 한 번마다 만들고, 응답을 받기 전에 다시 보낼 때는

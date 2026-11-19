@@ -11,6 +11,7 @@ import {
   PLANNED_LEAD,
   REPORT_LEAD,
   baselineNote,
+  basisTag,
   carbonGapNote,
   correctionNote,
   correctionText,
@@ -18,9 +19,13 @@ import {
   csvName,
   periodRange,
   periodText,
+  reconstructedNote,
   reportCsv,
   reportHeadline,
+  scopeNote,
+  unverifiedNote,
 } from "../src/lib/v3/report.ts";
+import { carbonText } from "../src/lib/v3/format.ts";
 import type { Report } from "../src/lib/v3/types.ts";
 
 const JARGON = /env|API|백엔드|Foundry|Ollama|규칙 정책|연결되지 않았습니다|예시 데이터|calc|claim|null/;
@@ -92,11 +97,59 @@ test("탄소를 계산하지 못한 실적과 가정한 현행 처리를 숨기�
   // 조사는 받침에 맞춘다("혼합 소각으로", "열분해(화학적 재활용)로")
   const sample = report.records[0];
   assert.match(baselineNote([{ ...sample, currentMethod: "혼합 소각", currentMethodAssumed: true }]) ?? "", /혼합 소각으로 가정/);
-  assert.match(carbonGapNote([{ ...sample, carbon: null, process: "열분해(화학적 재활용)" }]) ?? "", /^열분해\(화학적 재활용\)로 보낸 1건/);
-  // 검수 당시 계산 기준이 없는 예전 기록은 배출계수 문제로 적지 않는다
-  const old = { ...sample, carbon: null, carbonBasis: null, currentMethod: null, currentMethodAssumed: false };
-  assert.equal(carbonGapNote([old]), "검수 당시의 탄소 계산 기준이 남아 있지 않은 예전 기록 1건은 탄소 합계에 넣지 않았습니다.");
-  assert.equal(baselineNote([old]), null);
+  const uncounted = { ...sample, carbon: null, process: "열분해(화학적 재활용)", carbonBasis: { ...sample.carbonBasis, status: "not_computed" as const } };
+  assert.match(carbonGapNote([uncounted]) ?? "", /^열분해\(화학적 재활용\)로 보낸 1건/);
+});
+
+test("탄소는 배출계수 적용 추정이고, 기록할 때 고정한 기준과 계산 범위를 화면·CSV에 밝힌다", () => {
+  const first = report.records[0];
+  assert.equal(first.carbonBasis.status, "recorded");
+  assert.equal(basisTag(first.carbonBasis), "기록 당시 기준");
+  assert.ok(first.carbonBasis.factors.baseline && first.carbonBasis.factors.applied, "옮겨 적은 배출계수 두 개");
+  assert.equal(report.carbonScope.key, "process_only");
+  assert.match(scopeNote(report), /^계산 범위: .*수거 운송 배출과 신재 대체 효과는 넣지 않았습니다/);
+  const csv = reportCsv(report).slice(1).trimEnd().split("\r\n");
+  assert.ok(CSV_HEADER.includes("추정 탄소 변화(tCO2e · −는 감축 · 배출계수 적용)"));
+  assert.ok(CSV_HEADER.includes("실제 중량(kg · 업체 계량)"));
+  const row = csv[1].split(",");
+  assert.equal(row[CSV_HEADER.indexOf("계산 범위")], report.carbonScope.label);
+  assert.match(row[CSV_HEADER.indexOf("탄소 기준")], /^기록 당시 기준\(\d{4}-\d{2}-\d{2} 고정\)$/);
+  assert.match(row[CSV_HEADER.indexOf("현행 처리 배출계수")], /kgCO2e\/kg · .* · 기준일 \d{4}-\d{2}-\d{2} · 판 \d+$/);
+  const total = csv.find((line) => line.startsWith("합계,")) ?? "";
+  assert.ok(total.includes(scopeNote(report)), total);
+  assert.ok(total.includes(`기록 당시 기준 ${report.totals?.carbonStatus.recorded}건`), total);
+});
+
+test("당시 기준을 확인할 수 없는 지난 기록은 숫자 없이 상태와 이유를 적는다", () => {
+  const sample = report.records[0];
+  const unverified = {
+    ...sample,
+    carbon: null,
+    currentMethod: null,
+    process: null,
+    carbonBasis: {
+      ...sample.carbonBasis,
+      status: "unverified" as const,
+      statusLabel: "당시 기준 확인 불가",
+      reason: "합의 기록을 찾지 못해 당시 기준을 확인할 수 없어 탄소를 계산하지 않았습니다.",
+      baseline: { method: null, assumed: false, source: null, sourceLabel: null },
+      applied: { process: null, source: null, sourceLabel: null, assumed: false },
+      factors: { baseline: null, applied: null },
+      perKg: null,
+    },
+  };
+  const rebuilt = { ...sample, carbonBasis: { ...sample.carbonBasis, status: "reconstructed" as const, statusLabel: "합의 당시 기준으로 재구성" } };
+  assert.match(unverifiedNote([unverified]) ?? "", /^1건은 .*오늘 기준으로 다시 계산하지 않았고, 탄소 합계에 넣지 않았습니다/);
+  assert.match(reconstructedNote([rebuilt]) ?? "", /합의 당시 기준/);
+  assert.equal(basisTag(rebuilt.carbonBasis), "합의 당시 기준");
+  assert.equal(unverifiedNote(report.records), null);
+  assert.equal(carbonGapNote([unverified]), null, "확인 불가는 계수 없음과 다른 문장으로 적는다");
+  assert.equal(baselineNote([unverified]), null);
+  const csv = reportCsv({ ...report, records: [unverified], totals: null }).slice(1).trimEnd().split("\r\n");
+  const row = csv[1].split(",");
+  assert.equal(row[CSV_HEADER.indexOf("추정 탄소 변화(tCO2e · −는 감축 · 배출계수 적용)")], "");
+  assert.match(row[CSV_HEADER.indexOf("탄소 기준")], /^당시 기준 확인 불가: 합의 기록을 찾지 못해/);
+  assert.equal(row[CSV_HEADER.indexOf("비교한 현행 처리")], "확인 불가");
 });
 
 test("제목과 안내 문구에 개발자 말이 없다", () => {
@@ -110,8 +163,18 @@ test("제목과 안내 문구에 개발자 말이 없다", () => {
     reportHeadline({ ...empty, planned: report.planned }),
     carbonGapNote(report.records) ?? "",
     baselineNote(report.records) ?? "",
+    scopeNote(report),
+    reconstructedNote([{ ...report.records[0], carbonBasis: { ...report.records[0].carbonBasis, status: "reconstructed" } }]) ?? "",
+    unverifiedNote([{ ...report.records[0], carbonBasis: { ...report.records[0].carbonBasis, status: "unverified" } }]) ?? "",
   ];
   assert.equal(reportHeadline(report), `검수 기록 ${report.records.length}건을 모았습니다`);
   assert.equal(reportHeadline(empty), "아직 실적이 없습니다");
   for (const text of texts) assert.doesNotMatch(text, JARGON, text);
+});
+
+test("검수 한 건의 작은 탄소 값은 kg으로 적는다(0.003 tCO2e → 3.1 kgCO2e)", () => {
+  const claim = { id: "c", kind: "number" as const, value: 0.00313, unit: "tCO2e", evidence: ["calc:x"] };
+  assert.equal(carbonText(claim), "3.1 kgCO2e");
+  assert.equal(carbonText({ ...claim, value: -1.968493 }), "−1.968 tCO2e");
+  assert.equal(carbonText({ ...claim, value: -0.0012, unit: "tCO2e/월" }), "−1.2 kgCO2e/월");
 });

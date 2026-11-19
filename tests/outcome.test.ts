@@ -77,3 +77,19 @@ test("정정 줄은 바뀐 값만 앞 값 → 고친 값으로 적고, 근거가
 test("안내 문구에 개발자 말이 없다", () => {
   for (const text of [ALREADY_SAVED, CORRECTED_MEANWHILE, REPLAYED]) assert.doesNotMatch(text, JARGON, text);
 });
+
+test("정정에서 실제 처리 방식을 바꾸면 바뀐 값에 적는다(탄소 계산 기준이 바뀌는 정정)", () => {
+  const base = {
+    inspectedOn: "2026-11-10",
+    actualGrade: null,
+    actualUnitPriceKrwPerKg: 300,
+    actualKg: 580,
+    weighTicket: null,
+    note: "",
+    actualProcess: null,
+  };
+  assert.deepEqual(changesBetween(base, { ...base, actualProcess: "매립" }), [
+    { label: "실제 처리 방식", before: "기록 없음", after: "매립", part: null },
+  ]);
+  assert.deepEqual(changesBetween(base, { ...base }), []);
+});

@@ -12,13 +12,16 @@ function withUnit(text: string, unit: string | null): string {
 }
 
 /** 값과 단위를 한 줄로. 값이 없으면 null을 돌려주고 화면은 "확인 필요"를 그린다. */
-/** 탄소 claim(tCO2e/월)을 적는다. 0.1톤보다 작으면 kg으로 적어 "0.001"처럼 뭉개지지 않게 한다. */
+const SMALL_CARBON_UNIT: Record<string, string> = { "tCO2e/월": "kgCO2e/월", tCO2e: "kgCO2e" };
+
+/** 탄소 claim(tCO2e/월, 검수 한 건의 tCO2e)을 적는다. 0.1톤보다 작으면 kg으로 적어 "0.001"처럼 뭉개지지 않게 한다. */
 export function carbonText(claim: Claim | null | undefined, signed = false): string | undefined {
   if (!claim || typeof claim.value !== "number") return undefined;
   const value = claim.value;
-  if (Math.abs(value) >= 0.1 || claim.unit !== "tCO2e/월") return formatClaim(claim, signed) ?? undefined;
+  const small = claim.unit ? SMALL_CARBON_UNIT[claim.unit] : undefined;
+  if (Math.abs(value) >= 0.1 || !small) return formatClaim(claim, signed) ?? undefined;
   const sign = value > 0 ? (signed ? "+" : "") : value < 0 ? "−" : "";
-  return `${sign}${formatNumber(Math.round(Math.abs(value) * 10000) / 10)} kgCO2e/월`;
+  return `${sign}${formatNumber(Math.round(Math.abs(value) * 10000) / 10)} ${small}`;
 }
 
 export function formatClaim(claim: Claim | null | undefined, signed = false): string | null {

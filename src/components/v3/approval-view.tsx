@@ -58,7 +58,20 @@ const evidenceLink = "font-medium tabular-nums underline decoration-line-strong 
 
 type PriceSide = "매입" | "처리비";
 /** 입력 칸의 값(글자 그대로). 보낼 때 숫자로 바꾼다 */
-type Draft = { grade: string; side: PriceSide | null; price: string; kg: string; inspectedOn: string; ticket: string; note: string };
+type Draft = {
+  grade: string;
+  side: PriceSide | null;
+  price: string;
+  kg: string;
+  inspectedOn: string;
+  ticket: string;
+  note: string;
+  /** 실제 처리 방식. 빈 글자면 적지 않음(처음 기록은 업체 정보대로, 정정은 앞 판대로) */
+  process: string;
+};
+
+/** 업체가 검수 기록에 적는 실제 처리 방식. 탄소 계산 기준(처리 방식 배출계수)이 된다 */
+const PROCESSES = ["재활용", "열분해", "소각", "매립"];
 
 const emptyDraft = (today: string): Draft => ({
   grade: "",
@@ -68,6 +81,7 @@ const emptyDraft = (today: string): Draft => ({
   inspectedOn: today,
   ticket: "",
   note: "",
+  process: "",
 });
 
 function draftOf(item: Outcome): Draft {
@@ -79,6 +93,7 @@ function draftOf(item: Outcome): Draft {
     kg: item.actualKg === null ? "" : String(item.actualKg),
     inspectedOn: item.inspectedOn,
     ticket: item.weighTicket ?? "",
+    process: item.actualProcess ?? "",
     note: item.note ?? "",
   };
 }
@@ -103,6 +118,7 @@ function valuesOf(draft: Draft, agreed: number | undefined): OutcomeValues | nul
     actualKg: kg,
     inspectedOn: draft.inspectedOn,
     weighTicket: draft.ticket.trim() || null,
+    actualProcess: draft.process || null,
     note: draft.note.trim() || undefined,
   };
 }
@@ -112,10 +128,13 @@ function OutcomeFields({
   draft,
   onChange,
   agreed,
+  processDefault = "업체 정보대로",
 }: {
   draft: Draft;
   onChange: (next: Draft) => void;
   agreed: number | undefined;
+  /** 처리 방식을 적지 않았을 때 쓰는 값의 이름(처음 기록은 업체 정보, 정정은 앞 판) */
+  processDefault?: string;
 }) {
   const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
   const side = draft.side ?? (typeof agreed === "number" && agreed < 0 ? "처리비" : "매입");
@@ -177,6 +196,15 @@ function OutcomeFields({
           inputMode="decimal"
           className={`${field} w-24 tabular-nums`}
         />
+      </label>
+      <label className="flex flex-col gap-1 font-semibold">
+        실제 처리 방식
+        <select value={draft.process} onChange={(event) => set({ process: event.target.value })} className={field}>
+          <option value="">{processDefault}</option>
+          {PROCESSES.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </select>
       </label>
       <label className="flex min-w-[10rem] flex-1 flex-col gap-1 font-semibold">
         메모 (선택)
@@ -288,7 +316,12 @@ function CorrectionForm({
         {inspectionLabel(item)} 정정 <span className="font-normal text-muted">· 지금 {item.revision}판</span>
       </p>
       <div className="mt-2 flex flex-wrap items-end gap-3 text-[13px]">
-        <OutcomeFields draft={draft} onChange={setDraft} agreed={agreed} />
+        <OutcomeFields
+          draft={draft}
+          onChange={setDraft}
+          agreed={agreed}
+          processDefault={item.appliedProcess?.value ? `앞 기록대로(${item.appliedProcess.value})` : "앞 기록대로"}
+        />
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1 font-semibold">
           정정 사유
           <input
@@ -425,6 +458,12 @@ function OutcomeTable({
                     <span aria-hidden="true" className="size-2 rounded-full bg-ink" />
                     {streamName(item.streamId)}
                   </span>
+                  {item.appliedProcess?.value ? (
+                    <span className="block text-muted">
+                      처리 {item.appliedProcess.value}
+                      {item.appliedProcess.source === "vendor_input" ? "" : item.appliedProcess.source === "vendor_profile" ? " · 업체 정보" : " · 가정"}
+                    </span>
+                  ) : null}
                   {item.note ? <span className="text-muted">{item.note}</span> : null}
                 </td>
                 <td className="py-1.5 pr-3 tabular-nums">

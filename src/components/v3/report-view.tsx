@@ -6,21 +6,28 @@ import { useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
 import { api } from "@/lib/v3/api";
-import { ROUTE_LABEL, formatNumber } from "@/lib/v3/format";
+import { ROUTE_LABEL, carbonText, formatNumber } from "@/lib/v3/format";
 import { signedWon, won } from "@/lib/v3/money";
 import {
   EMPTY_LEAD,
   PERIODS,
   PLANNED_LEAD,
   REPORT_LEAD,
+  appliedText,
   baselineNote,
+  baselineText,
+  basisTag,
   carbonGapNote,
   correctionNote,
   csvName,
+  factorText,
   periodRange,
   periodText,
+  reconstructedNote,
   reportCsv,
   reportHeadline,
+  scopeNote,
+  unverifiedNote,
   type PeriodKey,
 } from "@/lib/v3/report";
 import type { Claim, Report, ReportRecord } from "@/lib/v3/types";
@@ -61,12 +68,38 @@ function download(name: string, text: string) {
 /** 정정한 검수의 바로 앞 판(정정하지 않았으면 undefined) */
 const before = (item: ReportRecord) => item.history[item.history.length - 1];
 
+/** 탄소 칸: 배출계수를 적용한 추정값과 그 기준 상태. 기준을 확인할 수 없으면 숫자를 만들지 않는다 */
+function CarbonCell({ item }: { item: ReportRecord }) {
+  const basis = item.carbonBasis;
+  if (item.carbon) {
+    return (
+      <>
+        <ClaimValue claim={item.carbon} display={carbonText(item.carbon)} title={`${item.inspectedOn} 탄소 변화(추정)`} />
+        <span className="block text-[12px] text-muted">{basisTag(basis)}</span>
+      </>
+    );
+  }
+  if (basis.status === "unverified") return <span className="text-[13px] text-warn">당시 기준 확인 불가</span>;
+  return <span className="text-[13px] text-muted">계산하지 않음</span>;
+}
+
 function Records({ report }: { report: Report }) {
+  const group = "px-3 pt-2 pb-0 text-[11px] font-medium whitespace-nowrap text-muted";
   return (
     <div className="overflow-x-auto rounded-xl border border-line print:overflow-visible print:rounded-none">
       <table className="w-full min-w-[720px] text-[14px] tabular-nums print:min-w-0 print:text-[11px]">
-        <caption className="sr-only">검수 기록별 실적</caption>
+        <caption className="sr-only">검수 기록별 실적. 실제 등급·무게·단가는 업체 검수 값이고 탄소 변화는 배출계수를 적용한 추정값입니다</caption>
         <thead className="bg-ground">
+          <tr>
+            <th colSpan={3} aria-hidden="true" />
+            <th colSpan={3} scope="colgroup" className={`${group} border-b border-line-strong text-center`}>
+              업체가 계량·검수한 값
+            </th>
+            <th aria-hidden="true" />
+            <th scope="col" className={`${group} border-b border-line-strong text-right`}>
+              배출계수 적용 추정
+            </th>
+          </tr>
           <tr>
             <th className={th}>검수일</th>
             <th className={th}>폐기물</th>
@@ -109,14 +142,77 @@ function Records({ report }: { report: Report }) {
                 <ClaimValue claim={item.amount} signed display={signedWon(item.amount)} title={`${item.inspectedOn} 금액`} />
               </td>
               <td className={`${td} text-right whitespace-nowrap`}>
-                {item.carbon ? (
-                  <ClaimValue claim={item.carbon} title={`${item.inspectedOn} 탄소 변화`} />
-                ) : (
-                  <span className="text-[13px] text-muted">계산하지 않음</span>
-                )}
+                <CarbonCell item={item} />
               </td>
             </tr>
           ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 검수 기록마다 고정한 탄소 기준(비교한 현행 처리, 적용한 처리 방식, 배출계수 값·판). 상세 보기 안에 둔다 */
+function Basis({ report }: { report: Report }) {
+  const { openEvidence } = useV3();
+  const cell = "py-2 pr-3 align-top";
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] text-[13px]">
+        <caption className="sr-only">검수 기록별 탄소 계산 기준</caption>
+        <thead>
+          <tr className="border-b border-line-strong text-left text-muted">
+            <th className="py-1 pr-3 font-medium">검수</th>
+            <th className="py-1 pr-3 font-medium">비교한 현행 처리</th>
+            <th className="py-1 pr-3 font-medium">적용한 처리 방식</th>
+            <th className="py-1 pr-3 font-medium">배출계수(현행 → 적용)</th>
+            <th className="py-1 font-medium">기준</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {report.records.map((item) => {
+            const basis = item.carbonBasis;
+            return (
+              <tr key={item.id}>
+                <td className={`${cell} whitespace-nowrap`}>
+                  <span className="font-mono tabular-nums">{item.inspectedOn}</span>
+                  <span className="block text-muted">{item.streamName ?? item.streamLabel}</span>
+                  <span className="block text-muted">{item.measuredBy === "doc" ? "검수 문서" : "업체 담당자 입력"}</span>
+                </td>
+                <td className={cell}>{baselineText(basis)}</td>
+                <td className={cell}>{appliedText(basis)}</td>
+                <td className={cell}>
+                  <span className="block">{factorText(basis.factors.baseline)}</span>
+                  <span className="block">→ {factorText(basis.factors.applied)}</span>
+                  {basis.perKg !== null ? (
+                    <span className="block text-muted">
+                      kg당 차이 <span className="font-mono tabular-nums">{String(Math.round(basis.perKg * 1e6) / 1e6).replace("-", "−")}</span> {basis.perKgUnit}
+                    </span>
+                  ) : null}
+                </td>
+                <td className={cell}>
+                  {basis.evidenceId ? (
+                    <button
+                      type="button"
+                      className={`underline decoration-line-strong underline-offset-4 ${basis.status === "unverified" ? "text-warn" : ""}`}
+                      onClick={() => openEvidence([basis.evidenceId as string], `${item.inspectedOn} 탄소 계산 기준`)}
+                    >
+                      {basis.statusLabel}
+                    </button>
+                  ) : (
+                    <span className={basis.status === "unverified" ? "text-warn" : undefined}>{basis.statusLabel}</span>
+                  )}
+                  {basis.capturedOn ? <span className="block text-muted">{basis.capturedOn}에 고정</span> : null}
+                  {basis.reason && basis.status !== "recorded" ? <span className="block text-muted">{basis.reason}</span> : null}
+                  {basis.notes.map((note) => (
+                    <span key={note} className="block text-muted">
+                      {note}
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -189,6 +285,8 @@ export function ReportView() {
   const carbonGap = report ? carbonGapNote(report.records) : null;
   const baseline = report ? baselineNote(report.records) : null;
   const corrected = report ? correctionNote(report.records) : null;
+  const rebuilt = report ? reconstructedNote(report.records) : null;
+  const unverified = report ? unverifiedNote(report.records) : null;
   const revenue = report?.totals?.revenue ?? null;
   const fee = report?.totals?.fee ?? null;
   // 확정한 합의가 있는 찾기. 승인·서류 화면에서 그 합의의 이행 계획서(단가 조정 조항 포함)를 연다
@@ -256,18 +354,22 @@ export function ReportView() {
                   <Stat label="매각 수익(받은 돈)" claim={revenue} display={won(revenue)} />
                   <Stat label="처리비(낸 돈)" claim={fee} display={won(fee)} />
                   <Stat
-                    label="탄소 변화"
+                    label="탄소 변화(추정)"
                     claim={report.totals.carbon}
-                    note={report.totals.carbon && Number(report.totals.carbon.value) < 0 ? "−는 지금 처리보다 줄어든 양" : undefined}
+                    display={carbonText(report.totals.carbon)}
+                    note={`배출계수 적용 · ${report.carbonScope.label}${
+                      report.totals.carbon && Number(report.totals.carbon.value) < 0 ? " · −는 줄어든 양" : ""
+                    }`}
                   />
                 </div>
-                {carbonGap || baseline || corrected ? (
-                  <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-muted">
-                    {carbonGap ? <li>{carbonGap}</li> : null}
-                    {baseline ? <li>{baseline}</li> : null}
-                    {corrected ? <li>{corrected}</li> : null}
-                  </ul>
-                ) : null}
+                <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-muted">
+                  {unverified ? <li className="text-warn">{unverified}</li> : null}
+                  {carbonGap ? <li>{carbonGap}</li> : null}
+                  {rebuilt ? <li>{rebuilt}</li> : null}
+                  {baseline ? <li>{baseline}</li> : null}
+                  {corrected ? <li>{corrected}</li> : null}
+                  <li>{scopeNote(report)}</li>
+                </ul>
               </>
             ) : (
               <div className="mt-3 rounded-xl border border-dashed border-line-strong px-5 py-6 print:hidden">
@@ -283,12 +385,17 @@ export function ReportView() {
             <section aria-label="검수 기록">
               <h2 className="mb-3 text-[17px] font-semibold tracking-[-0.02em]">검수 기록</h2>
               <Records report={report} />
-              <MoreDetails className="mt-1 print:hidden" label="계산 방법 보기" closeLabel="접기">
-                <p className="pb-2 text-[13px] leading-relaxed text-muted">
+              <p className="mt-2 text-[13px] leading-relaxed text-muted">
+                실제 등급·무게·단가는 업체가 반입 검수 뒤 계량·기록한 값이고, 탄소 변화는 그 무게에 배출계수를 적용한 추정값입니다.
+              </p>
+              <MoreDetails className="mt-1 print:hidden" label="탄소 계산 기준 보기" closeLabel="접기">
+                <p className="pb-3 text-[13px] leading-relaxed text-muted">
                   금액은 실제 무게 × 실제 단가입니다(+는 받은 돈, −는 낸 돈). 탄소 변화는 실제 무게 × (보낸 곳의 처리 방식 배출계수 −
-                  지금 처리 방식 배출계수)이고, 배출계수는 환경성적표지 기준값을 씁니다. 실제 무게·단가·등급은 업체가 검수 뒤 기록한
-                  값입니다.
+                  비교한 현행 처리 배출계수) ÷ 1000입니다. 비교한 현행 처리, 적용한 처리 방식, 배출계수 값과 판은 업체가 검수를
+                  기록할 때 고정해 두므로, 지금 자료나 업체 정보를 고쳐도 지난 기록의 값은 바뀌지 않고 그 뒤에 기록하는 검수부터
+                  반영됩니다.
                 </p>
+                <Basis report={report} />
               </MoreDetails>
             </section>
           ) : null}

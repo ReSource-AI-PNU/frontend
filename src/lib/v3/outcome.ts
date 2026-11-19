@@ -41,7 +41,7 @@ export function sameDayOrder(items: Pick<Outcome, "inspectionId" | "streamId" | 
 
 type Values = Pick<
   OutcomeRevision,
-  "inspectedOn" | "actualGrade" | "actualUnitPriceKrwPerKg" | "actualKg" | "weighTicket" | "note"
+  "inspectedOn" | "actualGrade" | "actualUnitPriceKrwPerKg" | "actualKg" | "weighTicket" | "note" | "actualProcess"
 >;
 
 export type Change = { label: string; before: string; after: string; part: "grade" | "unitPrice" | "kg" | null };
@@ -74,6 +74,14 @@ export function changesBetween(before: Values, after: Values): Change[] {
   }
   if ((before.weighTicket ?? null) !== (after.weighTicket ?? null)) {
     changes.push({ label: "계량표 번호", before: show.text(before.weighTicket), after: show.text(after.weighTicket), part: null });
+  }
+  if ((before.actualProcess ?? null) !== (after.actualProcess ?? null)) {
+    changes.push({
+      label: "실제 처리 방식",
+      before: show.text(before.actualProcess ?? null),
+      after: show.text(after.actualProcess ?? null),
+      part: null,
+    });
   }
   if ((before.note || "") !== (after.note || "")) {
     changes.push({ label: "메모", before: show.text(before.note), after: show.text(after.note), part: null });
