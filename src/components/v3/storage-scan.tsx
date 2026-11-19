@@ -357,7 +357,7 @@ function RuleValue({ value, evidence }: { value: number; evidence: string[] }) {
   );
 }
 
-type PileError = { pileId: string; kind: "stream" | "weigh"; message: string };
+type PileError = { pileId: string; kind: "stream" | "weigh" | "exclude"; message: string };
 
 /** 분석이 끝난 스캔: 요약 한 줄, 더미 목록, 정리안 지표와 3D 보기, 접어 둔 배치 기준 */
 function ScanResult({
@@ -381,8 +381,8 @@ function ScanResult({
   const pending = pendingText(view);
   const usedFrames = view.quality?.frames ?? view.frameCount;
 
-  const putPile = async (pile: ScanPile, body: { streamId?: string | null; weighedKg?: number | null }) => {
-    const kind = "weighedKg" in body ? "weigh" : "stream";
+  const putPile = async (pile: ScanPile, body: { streamId?: string | null; weighedKg?: number | null; excluded?: boolean }) => {
+    const kind: PileError["kind"] = "weighedKg" in body ? "weigh" : "excluded" in body ? "exclude" : "stream";
     setBusy(pile.id);
     setError(null);
     try {
@@ -392,6 +392,8 @@ function ScanResult({
         setWeighing(null);
         focusLater(`scan-weigh-${pile.id}`);
       }
+      // 빼거나 다시 넣은 뒤에는 그 줄의 반대 단추로 초점을 옮긴다
+      if (kind === "exclude") focusLater(body.excluded ? `scan-include-${pile.id}` : `scan-exclude-${pile.id}`);
     } catch (failure) {
       setError({ pileId: pile.id, kind, message: friendly(failure) });
     } finally {
@@ -449,6 +451,11 @@ function ScanResult({
           </>
         ) : null}
         {summary.weight && pending ? " · 무게 합계는 무게를 잰 더미만의 합입니다" : null}
+        {summary.excludedCount > 0 ? (
+          <>
+            {" · "}더미 아님 <Num>{summary.excludedCount}</Num>개 뺌
+          </>
+        ) : null}
       </p>
 
       {/* 넓은 화면은 네 칸 표처럼, 휴대폰은 줄마다 세로로 쌓는다(가로로 넘치지 않는다) */}
@@ -473,6 +480,7 @@ function ScanResult({
               weighing={weighing === pile.id}
               error={error?.pileId === pile.id ? error : null}
               onStream={(streamId) => void putPile(pile, { streamId })}
+              onExclude={(excluded) => void putPile(pile, { excluded })}
               onWeigh={() => {
                 setError(null);
                 setWeighing(pile.id);
@@ -566,6 +574,7 @@ function PileRow({
   weighing,
   error,
   onStream,
+  onExclude,
   onWeigh,
   onWeighSave,
   onWeighCancel,
@@ -577,6 +586,7 @@ function PileRow({
   weighing: boolean;
   error: PileError | null;
   onStream: (streamId: string | null) => void;
+  onExclude: (excluded: boolean) => void;
   onWeigh: () => void;
   onWeighSave: (kg: number | null) => void;
   onWeighCancel: () => void;
@@ -588,33 +598,107 @@ function PileRow({
       {m3(pile.volumeRangeM3[0])}~{m3(pile.volumeRangeM3[1])}
     </span>
   );
+  const [zoomed, setZoomed] = useState(false);
+  const exclude = (excluded: boolean) => {
+    if (!busy) onExclude(excluded);
+  };
+  const identity = (
+    <div className="flex min-w-0 items-start gap-2.5">
+      {pile.thumbnail ? (
+        // 썸네일이 "더미 아님"을 가르는 근거라 눌러서 크게 본다
+        <button
+          type="button"
+          aria-expanded={zoomed}
+          aria-label={`${pile.name} 장면 ${zoomed ? "작게" : "크게"} 보기`}
+          className="shrink-0 rounded-md outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink"
+          onClick={() => setZoomed((value) => !value)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 보낸 작은 장면 사진(data URL)이라 최적화가 필요 없다 */}
+          <img src={pile.thumbnail} alt="" width={56} height={56} className={`size-14 rounded-md object-cover ${pile.excluded ? "opacity-50" : ""}`} />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="size-14 shrink-0 rounded-md bg-sunken" />
+      )}
+      <div className="min-w-0">
+        <p className={`font-medium ${pile.excluded ? "text-muted line-through decoration-line-strong" : ""}`}>{pile.name}</p>
+        {/* 크기·높이는 이 더미의 부피 근거(3D 재구성)에 함께 적혀 있다 */}
+        <button
+          type="button"
+          className="text-left text-[12px] text-muted underline-offset-4 hover:underline"
+          onClick={() => openEvidence(pile.volume.evidence, `${pile.name} 크기와 부피`)}
+          disabled={pile.volume.evidence.length === 0}
+        >
+          <Num>
+            {fix2(pile.sizeM[0])} × {fix2(pile.sizeM[1])}
+          </Num>{" "}
+          m · 높이 <Num>{fix2(pile.heightM)}</Num> m
+        </button>
+        {pile.note && !pile.excluded ? <p className="mt-0.5 text-[12px] text-muted">{pile.note}</p> : null}
+        {canAct && !pile.excluded ? (
+          <div>
+            <Button
+              id={`scan-exclude-${pile.id}`}
+              variant="ghost"
+              size="sm"
+              className="-ml-3 text-muted"
+              aria-disabled={busy || undefined}
+              aria-label={`${pile.name} 빼기: 더미가 아님(벽·바닥 자국 등)`}
+              onClick={() => exclude(true)}
+            >
+              더미 아님
+            </Button>
+          </div>
+        ) : null}
+        {error?.kind === "exclude" ? (
+          <p role="alert" className="mt-1 text-[12.5px] text-loss">
+            {error.message}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+  const zoom =
+    zoomed && pile.thumbnail ? (
+      <div className="mt-3">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 서버가 보낸 장면 사진(data URL) */}
+        <img src={pile.thumbnail} alt={`${pile.name} 장면`} width={240} height={240} className="w-60 max-w-full rounded-lg object-contain" />
+      </div>
+    ) : null;
+
+  if (pile.excluded) {
+    return (
+      <li className="border-b border-line py-3 text-muted" aria-busy={busy || undefined}>
+        <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_450px] sm:items-start sm:gap-3">
+          {identity}
+          <p className="flex flex-wrap items-center gap-x-1 text-[13px]">
+            합계와 정리안에서 뺐습니다
+            {canAct ? (
+              <>
+                {" · "}
+                <Button
+                  id={`scan-include-${pile.id}`}
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-1"
+                  aria-disabled={busy || undefined}
+                  aria-label={`${pile.name} 다시 넣기`}
+                  onClick={() => exclude(false)}
+                >
+                  다시 넣기
+                </Button>
+              </>
+            ) : null}
+          </p>
+        </div>
+        {zoom}
+      </li>
+    );
+  }
+
   return (
     <li className="border-b border-line py-3" aria-busy={busy || undefined}>
       <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_170px_110px_170px] sm:items-start sm:gap-3">
-        <div className="flex min-w-0 items-start gap-2.5">
-          {pile.thumbnail ? (
-            // eslint-disable-next-line @next/next/no-img-element -- 서버가 보낸 작은 장면 사진(data URL)이라 최적화가 필요 없다
-            <img src={pile.thumbnail} alt={`${pile.name} 장면`} width={56} height={56} className="size-14 shrink-0 rounded-md object-cover" />
-          ) : (
-            <span aria-hidden="true" className="size-14 shrink-0 rounded-md bg-sunken" />
-          )}
-          <div className="min-w-0">
-            <p className="font-medium">{pile.name}</p>
-            {/* 크기·높이는 이 더미의 부피 근거(3D 재구성)에 함께 적혀 있다 */}
-            <button
-              type="button"
-              className="text-left text-[12px] text-muted underline-offset-4 hover:underline"
-              onClick={() => openEvidence(pile.volume.evidence, `${pile.name} 크기와 부피`)}
-              disabled={pile.volume.evidence.length === 0}
-            >
-              <Num>
-                {fix2(pile.sizeM[0])} × {fix2(pile.sizeM[1])}
-              </Num>{" "}
-              m · 높이 <Num>{fix2(pile.heightM)}</Num> m
-            </button>
-            {pile.note ? <p className="mt-0.5 text-[12px] text-muted">{pile.note}</p> : null}
-          </div>
-        </div>
+        {identity}
         <div className="min-w-0">
           {canAct ? (
             <>
@@ -668,6 +752,7 @@ function PileRow({
           <WeightCell pile={pile} canAct={canAct} busy={busy} onWeigh={onWeigh} />
         </div>
       </div>
+      {zoom}
       {weighing ? (
         <div className="mt-3">
           <WeighForm

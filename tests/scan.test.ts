@@ -1,8 +1,9 @@
 /**
  * 보관장 3D 스캔(src/lib/v3/scan.ts)의 순수 로직과 ScanView 계약(schema.ts).
- *  - tests/fixtures/v3-scan.json: 백엔드 devserver(backend work/scan a8a1eab, 가짜 재구성 서버)가 실제로 낸 목록.
+ *  - tests/fixtures/v3-scan.json: 백엔드 devserver(backend work/scan c431323, 가짜 재구성 서버)가 실제로 낸 목록.
  *    진행 중(scan_2)과 끝남(scan_1: 더미 다섯, 폐기물 셋 지정, 더미 2는 230 kg 계량, 더미 4는 미지정)
  *  - tests/fixtures/v3-scan-unassigned.json: 같은 스캔을 폐기물 지정 전에 본 뷰(정리안 없음)
+ *  - tests/fixtures/v3-scan-excluded.json: 같은 스캔에서 더미 4를 "더미 아님"으로 뺀 뷰
  * 실행: node --test tests/scan.test.ts
  */
 import assert from "node:assert/strict";
@@ -44,6 +45,7 @@ type List = z.infer<typeof scanListSchema>;
 const read = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8")) as unknown;
 const list = read("v3-scan.json") as List;
 const unassigned = read("v3-scan-unassigned.json") as List["scans"][number];
+const excluded = read("v3-scan-excluded.json") as List["scans"][number];
 const failed = { ...structuredClone(list.scans[0]), id: "scan_0", status: "failed" as const, progress: null, failure: { message: "바닥이 충분히 보이지 않아 더미를 나누지 못했습니다." } };
 
 function problems(result: { success: boolean; error?: { issues: { path: PropertyKey[]; message: string }[] } }) {
@@ -55,6 +57,18 @@ test("스캔 목록 예시가 스키마에 맞는다", () => {
   assert.deepEqual(problems(scanListSchema.safeParse(list)), []);
   assert.deepEqual(problems(scanViewSchema.safeParse(unassigned)), []);
   assert.deepEqual(problems(scanViewSchema.safeParse(failed)), []);
+  assert.deepEqual(problems(scanViewSchema.safeParse(excluded)), []);
+});
+
+test("더미 아님으로 뺀 더미는 합계와 무게 안내에서 빠진다", () => {
+  const pile = excluded.piles.find((item) => item.excluded)!;
+  assert.equal(pile.streamId, null);
+  assert.equal(pile.weight, null);
+  assert.equal(excluded.summary?.excludedCount, 1);
+  assert.equal(excluded.summary?.pileCount, excluded.piles.length - 1);
+  // 남은 더미는 모두 폐기물과 무게가 있어 안내가 없다(뺀 더미를 "폐기물 지정 필요"로 세지 않는다)
+  assert.equal(pendingText(excluded), null);
+  assert.ok(!excluded.layout?.proposal?.piles.some((item) => item.id === pile.id));
 });
 
 test("계량한 더미는 계량값 그대로이고(하한 = 상한), 폐기물을 고르지 않은 더미는 무게를 산정 보류한다", () => {

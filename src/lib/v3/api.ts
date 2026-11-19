@@ -309,9 +309,15 @@ export const api = {
   /**
    * 더미의 폐기물(streamId, null이면 지정 해제)이나 계량한 무게(weighedKg, null이면 지움)를 바꾼다.
    * 계량값은 폐기물을 먼저 골라야 하고(422 STREAM_REQUIRED), 부피에 견줘 밀도가 맞지 않으면 422 INVALID_VALUE.
-   * 분석이 끝나기 전이면 409 SCAN_NOT_READY
+   * 분석이 끝나기 전이면 409 SCAN_NOT_READY. excluded: true는 "더미 아님"(폐기물·계량값도 지우고 합계·정리안에서 뺀다),
+   * false는 다시 넣기. 뺀 더미에 폐기물·계량값을 보내면 409 PILE_EXCLUDED
    */
-  putScanPile: (orgId: string, scanId: string, pileId: string, body: { streamId?: string | null; weighedKg?: number | null }) =>
+  putScanPile: (
+    orgId: string,
+    scanId: string,
+    pileId: string,
+    body: { streamId?: string | null; weighedKg?: number | null; excluded?: boolean },
+  ) =>
     checked(
       request<unknown>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/piles/${enc(pileId)}`, orgId, {
         method: "PUT",

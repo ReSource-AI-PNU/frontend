@@ -56,7 +56,10 @@ function zoneTokens(view: ScanView): Map<string, string> {
 function placed(view: ScanView, mode: Mode) {
   const proposal = mode === "proposal" ? view.layout?.proposal : null;
   const kept = new Set(proposal?.kept ?? []);
-  return view.piles.map((pile) => {
+  // "더미 아님"으로 뺀 더미는 정리안에 그리지 않고, 지금 배치에서는 회색 점선으로만 그린다
+  return view.piles
+    .filter((pile) => !(mode === "proposal" && pile.excluded))
+    .map((pile) => {
     const moved = kept.has(pile.id) ? undefined : proposal?.piles.find((item) => item.id === pile.id);
     return {
       pile,
@@ -64,8 +67,9 @@ function placed(view: ScanView, mode: Mode) {
       center: (moved?.center ?? pile.center) as XY,
       zone: moved ? moved.zone : pile.streamId,
       kept: kept.has(pile.id),
+      excluded: pile.excluded,
     };
-  });
+    });
 }
 
 type Engine = {
@@ -352,6 +356,17 @@ function Scene3D({
       if (item.footprint.length < 3) continue;
       const height = Math.max(0.05, item.pile.heightM);
       const geometry = new THREE.ExtrudeGeometry(shapeOf(item.footprint), { depth: height, bevelEnabled: false });
+      if (item.excluded) {
+        const edges = new THREE.LineSegments(
+          new THREE.EdgesGeometry(geometry),
+          new THREE.LineDashedMaterial({ color: UNASSIGNED_COLOR, dashSize: 0.1, gapSize: 0.1 }),
+        );
+        edges.computeLineDistances();
+        geometry.dispose();
+        engine.overlay.add(edges);
+        addLabel(`${item.pile.name} 아님`, item.center[0], item.center[1], height + 0.08);
+        continue;
+      }
       const color = mode === "proposal" ? colorOf(item.zone) : marker;
       const faces = new THREE.Mesh(
         geometry,
@@ -576,14 +591,15 @@ function TopView({ view, mode, picking, draft, onPick, onNudge, onConfirm }: { v
         const text = full ? item.pile.name : item.pile.name.replace(/^\D+/, "");
         const fontSize = Math.max(14, Math.min(30, side * 45));
         const kept = mode === "proposal" && item.kept;
+        const off = item.excluded;
         return (
           <g key={item.pile.id}>
             <polygon
               points={item.footprint.map(toSvg).join(" ")}
-              fill={mode === "proposal" ? fillOf(item.zone) : "var(--color-marker)"}
+              fill={off ? "none" : mode === "proposal" ? fillOf(item.zone) : "var(--color-marker)"}
               fillOpacity={mode === "proposal" ? (kept ? 0.25 : 0.6) : 0.5}
-              stroke={mode === "proposal" ? fillOf(item.zone) : "var(--color-marker-ink)"}
-              strokeDasharray={kept ? "12 8" : undefined}
+              stroke={off ? UNASSIGNED_COLOR : mode === "proposal" ? fillOf(item.zone) : "var(--color-marker-ink)"}
+              strokeDasharray={kept || off ? "12 8" : undefined}
               strokeWidth={4}
             />
             <text x={cx} y={cy} fontSize={fontSize} textAnchor="middle" dominantBaseline="middle" className="fill-ink">
@@ -689,7 +705,7 @@ export function ScanViewer({
 
   const current = points?.id === view.id ? points : null;
   const tokens = zoneTokens(view);
-  const unassigned = view.piles.some((pile) => !pile.streamId);
+  const unassigned = view.piles.some((pile) => !pile.streamId && !pile.excluded);
   const kept = view.piles.filter((pile) => proposal?.kept?.includes(pile.id));
   const legendZones = [
     ...(proposal?.zones ?? []).map((zone) => ({ id: zone.streamId, name: zone.name })),
@@ -831,6 +847,12 @@ export function ScanViewer({
               <Swatch color="var(--color-muted)" />
               찍으며 걸은 길
             </li>
+            {view.piles.some((pile) => pile.excluded) ? (
+              <li className="flex items-center gap-1.5">
+                <Swatch color={UNASSIGNED_COLOR} dashed />
+                회색 점선: 더미 아님으로 뺀 것
+              </li>
+            ) : null}
           </>
         ) : (
           <>

@@ -178,11 +178,12 @@ export function currentScan(list: ScanList | null | undefined): ScanView | null 
  * 폐기물을 고르지 않은 더미(밀도를 정할 수 없음)와, 골랐지만 밀도가 없어 계량값이 필요한 더미를 따로 센다.
  */
 export function pendingText(view: ScanView): string | null {
-  if (!view.summary || view.piles.length === 0) return null;
-  const unassigned = view.piles.filter((pile) => !pile.streamId).length;
-  const needWeigh = view.piles.filter((pile) => pile.streamId && !pile.weight).length;
+  if (!view.summary || view.piles.every((pile) => pile.excluded)) return null;
+  const piles = view.piles.filter((pile) => !pile.excluded);
+  const unassigned = piles.filter((pile) => !pile.streamId).length;
+  const needWeigh = piles.filter((pile) => pile.streamId && !pile.weight).length;
   if (unassigned === 0 && needWeigh === 0) return null;
-  if (unassigned === view.piles.length) return "더미마다 폐기물을 고르면 무게를 계산합니다";
+  if (unassigned === piles.length) return "더미마다 폐기물을 고르면 무게를 계산합니다";
   const parts: string[] = [];
   if (unassigned > 0) parts.push(`${unassigned}개는 폐기물 지정 필요`);
   if (needWeigh > 0) parts.push(`${needWeigh}개는 계량값 필요`);

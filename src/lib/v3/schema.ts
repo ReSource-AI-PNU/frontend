@@ -1332,6 +1332,8 @@ export const scanPileSchema = obj({
   weight: scanWeightSchema.nullable(),
   weighedKg: claimOrNull,
   note: z.string().nullable(),
+  /** 담당자가 "더미 아님"으로 뺀 더미(벽·바닥 자국 등). 합계·무게·정리안에서 빠지고 폐기물·계량값이 없다 */
+  excluded: z.boolean(),
 });
 
 export const scanLayoutMetricsSchema = obj({
@@ -1375,6 +1377,8 @@ export const scanViewSchema = obj({
     weight: scanWeightSchema.nullable(),
     /** 무게를 산정 보류한 더미 수(계량값이나 밀도가 없음) */
     weightPending: z.number(),
+    /** "더미 아님"으로 뺀 더미 수(pileCount에는 들지 않는다) */
+    excludedCount: z.number(),
     floorAreaM2: z.number().nullable(),
     /** 보인 바닥 넓이(m², 재구성 근거). 바닥을 찾지 못했으면 null */
     floorArea: claimOrNull,

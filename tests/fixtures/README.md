@@ -14,8 +14,9 @@
 | `v3-view-vendor-renegotiated.json` | 재합의한 진단을 (주)새길자원이 본 뷰(판단 그래프에 자기 매입 기준 노드) | 위와 같은 스크립트 |
 | `v3-circular.json` | 승인 전 진단의 결과 한 장 `circular`(자원순환 효과)와 폐기물만 떼어 둔 것(2026-11-19) | `node scripts/v3-capture-fixture.mjs`로 받은 `view.json`에서 `streams`와 `result.circular`를 옮김 |
 | `eval-latest.json` | 평가 결과 요약(AI 신뢰도 화면 `/trust`가 읽는 모양). 규칙 정책 회귀 시험(dev, test-v1) | 백엔드 `docs/v3/eval/latest.json`(origin/main)을 그대로 복사 |
-| `v3-scan.json` | 보관장 3D 스캔 목록(`GET /orgs/org_hanbit/scans`): 진행 중 한 건과 끝난 한 건(더미 다섯, 폐기물 셋 지정, 더미 2는 230 kg 계량, 더미 4는 미지정). 백엔드 work/scan(a8a1eab) devserver와 가짜 재구성 서버(GET마다 한 단계)로 받은 실제 응답(2026-11-20) | 장면 사진 24장을 `POST /intake/scan`으로 올리고 `PUT /orgs/org_hanbit/scans/{id}/piles/{pileId}`로 지정·계량 |
+| `v3-scan.json` | 보관장 3D 스캔 목록(`GET /orgs/org_hanbit/scans`): 진행 중 한 건과 끝난 한 건(더미 다섯, 폐기물 셋 지정, 더미 2는 230 kg 계량, 더미 4는 미지정). 백엔드 work/scan(c431323) devserver와 가짜 재구성 서버(GET마다 한 단계)로 받은 실제 응답(2026-11-20) | 장면 사진 24장을 `POST /intake/scan`으로 올리고 `PUT /orgs/org_hanbit/scans/{id}/piles/{pileId}`로 지정·계량 |
 | `v3-scan-unassigned.json` | 같은 스캔을 폐기물 지정 전에 본 뷰(정리안 없음, 까닭 한 줄) | 위와 같음 |
+| `v3-scan-excluded.json` | 같은 스캔에서 더미 4를 "더미 아님"으로 뺀 뷰(`PUT …/piles/p4 {"excluded": true}`) | 위와 같음 |
 | `v3-view-handoff.json` | 담당자 인계: 배출 기업이 지시문이 든 문서를 올려 대화가 모두 넘어가고 진단이 `idle`·`done`으로 끝남 | 아래 |
 
 ## 담당자 인계 뷰
