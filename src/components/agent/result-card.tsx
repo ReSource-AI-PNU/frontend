@@ -58,6 +58,10 @@ function Row({
     reused ||
     Boolean(permit);
   const facts = [stream?.material, stream?.form].filter(Boolean).join(" · ");
+  // 수거 불가라고 밝혀 배정에서 빠진 업체(옮길 곳이 없어진 까닭을 접지 않고 한 줄로 보인다)
+  const noPickup = placed
+    ? []
+    : assignment.alternatives.filter((item) => item.note.startsWith("수거 불가")).map((item) => item.vendorName ?? "업체");
   const panelId = `route-${assignment.streamId}`;
   const isEmitter = role === "emitter";
 
@@ -106,7 +110,7 @@ function Row({
               ) : null}
             </p>
           ) : null}
-          {(placed || reused || reuseCandidate) && hasDetail ? (
+          {hasDetail ? (
             <button
               type="button"
               aria-expanded={open}
@@ -114,7 +118,7 @@ function Row({
               onClick={() => setOpen((before) => !before)}
               className="-my-2 -ml-1 flex min-h-11 items-center gap-0.5 rounded-md px-1 text-left text-[13px] text-muted hover:bg-sunken hover:text-ink"
             >
-              {placed ? STATUS_WORD[assignment.status] : reused ? "계산 내역" : "재투입 후보"}
+              {placed ? STATUS_WORD[assignment.status] : reused ? "계산 내역" : reuseCandidate ? "재투입 후보" : "옮기지 않은 까닭"}
               {todo.length > 0 ? ` · 확인할 것 ${todo.length}개` : ""}
               <ChevronDownIcon className={`size-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
@@ -133,6 +137,9 @@ function Row({
           ) : (
             <span className="text-muted">옮길 곳이 정해지지 않았습니다</span>
           )}
+          {noPickup.length > 0 ? (
+            <span className="block text-[13px] text-warn">{noPickup.join(", ")} · 수거 불가</span>
+          ) : null}
           {placed && assignment.pickup ? (
             <PickupBrief pickup={assignment.pickup} committed={committed} />
           ) : isEmitter && placed && assignment.transportPaidBy ? (
