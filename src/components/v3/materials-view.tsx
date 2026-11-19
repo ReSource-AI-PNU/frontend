@@ -35,6 +35,15 @@ import {
 } from "@/lib/v3/billing";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import {
+  hasOffRouteErrors,
+  offRouteDraft,
+  offRouteErrors,
+  transportBody,
+  type OffRouteDraft,
+  type OffRouteErrors,
+  type TransportTerms,
+} from "@/lib/v3/transport-terms";
+import {
   addManual,
   addPending,
   checkPending,
@@ -64,6 +73,7 @@ import { Dots } from "@/components/agent/dots";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { CriteriaReview } from "./criteria-review";
+import { OffRouteTerms } from "./off-route-terms";
 import { useRemote } from "./use-remote";
 
 const field =
@@ -1344,6 +1354,10 @@ function VendorForm({
   const depotKept = depotChoice(profile.fleet?.depot, COMPLEXES) === KEEP_DEPOT;
   const setRoute = (index: number, patch: Partial<RouteDraft>) =>
     setFleet({ ...fleet, routes: fleet.routes.map((route, at) => (at === index ? { ...route, ...patch } : route)) });
+  // 노선 밖 공장 수거 조건(transport.offRoute). 노선 수거의 운반 조건은 저장된 그대로 돌려보낸다
+  const savedTransport = (profile as VendorProfile & { transport?: TransportTerms | null }).transport;
+  const [offRoute, setOffRoute] = useState<OffRouteDraft>(() => offRouteDraft(savedTransport));
+  const [offRouteIssues, setOffRouteIssues] = useState<OffRouteErrors>({});
   const [pickups, setPickups] = useState(
     profile.guardrails.minPickupsPerMonth != null ? String(profile.guardrails.minPickupsPerMonth) : "",
   );
@@ -1384,6 +1398,13 @@ function VendorForm({
       setNote("노선·차량에서 고칠 칸을 확인해 주세요.");
       return;
     }
+    const offIssues = offRouteErrors(offRoute);
+    setOffRouteIssues(offIssues);
+    if (hasOffRouteErrors(offIssues)) {
+      setNote("노선 밖 공장 수거에서 고칠 칸을 확인해 주세요.");
+      return;
+    }
+    const transport = transportBody(savedTransport, offRoute);
     try {
       await onSave({
         ...profile,
@@ -1398,6 +1419,8 @@ function VendorForm({
         },
         // 계약의 항목만 담는다(evidence는 서버가 정한다). 모르는 항목이나 범위 밖의 값은 요청 전체가 422다
         fleet: fleetBody(fleet, profile.fleet, COMPLEXES),
+        // 운반 조건도 계약의 항목만 담는다(근거는 서버가 정한다). 보낼 것이 없으면 키를 빼서 바꾸지 않는다
+        transport: transport as VendorProfile["transport"],
       });
       setNote("저장했습니다.");
     } catch (error) {
@@ -1759,6 +1782,7 @@ function VendorForm({
             노선 추가
           </Button>
         ) : null}
+        <OffRouteTerms saved={savedTransport} draft={offRoute} onChange={setOffRoute} errors={offRouteIssues} canAct={canAct} />
       </section>
 
       <div className="flex flex-wrap items-center gap-3 pt-6">
@@ -1766,7 +1790,7 @@ function VendorForm({
           저장
         </Button>
         <span role="status" className={`text-sm ${note && !note.startsWith("저장했습니다.") ? "text-loss" : "text-muted"}`}>
-          {note ?? (canAct ? "매입 기준표의 단가, AI가 지킬 범위, 노선·차량을 함께 저장합니다." : "체험 중에는 저장할 수 없습니다.")}
+          {note ?? (canAct ? "매입 기준표의 단가, AI가 지킬 범위, 노선·차량, 노선 밖 공장 수거 조건을 함께 저장합니다." : "체험 중에는 저장할 수 없습니다.")}
         </span>
       </div>
     </div>
