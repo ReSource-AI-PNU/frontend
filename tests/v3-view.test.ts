@@ -30,6 +30,7 @@ import {
   blockCodeLabel,
   blockNotice,
   calledByLabel,
+  fieldLabel,
   formatUnitPrice,
   isUnitPriceClaim,
   modelLabel,
@@ -82,6 +83,28 @@ test("분리 개선 안내: 더 받는 길은 지금보다 단가가 높고, 한
     }
     if (option.monthlyGain) assert.match(option.monthlyGain.evidence[0], /^calc:improve_gain:/);
   }
+});
+
+test("지금 팔고 있는 흐름: 현행 판매 단가(받는 돈)가 오고, 현행 월 손익은 판매 수입(+)이다", () => {
+  // 실제 백엔드 응답: 스프루·런너를 지금 kg당 300원에 팔고 있다(2026-11-19 설문 사례)
+  const parsed = diagnosisViewSchema.safeParse(read("./fixtures/v3-view-sale.json"));
+  assert.deepEqual(problems(parsed), []);
+  const view = parsed.data as View;
+  const stream = view.streams.find((item) => item.id === "st_sprue");
+  const current = stream?.currentTreatment;
+  assert.ok(current?.sale && current.unitCost === null);
+  assert.equal(current.unitPrice?.role, "currentUnitPrice");
+  assert.equal(current.unitPrice?.value, 300);
+  assert.equal(isUnitPriceClaim(current.unitPrice), false); // 업체 단가와 섞지 않는다
+  const sprue = view.result?.assignments.find((item) => item.streamId === "st_sprue");
+  assert.ok(typeof sprue?.monthlyNow?.value === "number" && sprue.monthlyNow.value > 0);
+});
+
+test("모르는 값에 나오는 항목은 모두 화면 이름이 있고, 모르는 항목도 영문 이름을 보이지 않는다", () => {
+  for (const field of ["currentCost", "moisturePct", "contaminationPct", "monthlyKg", "origin", "form", "material", "lotSame"]) {
+    assert.doesNotMatch(fieldLabel(field), /[A-Za-z]/);
+  }
+  assert.equal(fieldLabel("somethingNew"), "그 밖의 값");
 });
 
 test("업체가 본 뷰에는 분리 개선 안내와 현행 처리(계약 포함)가 없다", () => {

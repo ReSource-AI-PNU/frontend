@@ -22,7 +22,8 @@ export function formatClaim(claim: Claim | null | undefined, signed = false): st
 /**
  * 업체가 내는 단가인지. 백엔드가 claim에 붙이는 role로 가린다(계약 7장 "사람이 읽는 이름").
  * unitPrice는 배출 기업이 받는 매입 단가, treatmentFee는 배출 기업이 내는 처리비다.
- * 현행 처리 단가(currentUnitCost, 내는 돈을 양수로 적는다)와 참고 시세(referencePrice)는 여기에 들지 않는다.
+ * 현행 처리 단가(currentUnitCost, 내는 돈을 양수로 적는다), 현행 판매 단가(currentUnitPrice, 받는 돈), 참고 시세(referencePrice)는
+ * 여기에 들지 않는다.
  */
 export function isUnitPriceClaim(claim: Claim | null | undefined): boolean {
   return claim?.role === "unitPrice" || claim?.role === "treatmentFee";
@@ -208,7 +209,13 @@ export const FIELD_LABEL: Record<string, string> = {
   material: "재질",
   lotSame: "같은 로트 여부",
   terms: "받는 조건",
+  currentCost: "지금 내는 돈(또는 받는 돈)",
 };
+
+/** "모르는 값"·질문 항목 이름. 표에 없는 항목도 영문 이름을 그대로 보이지 않는다 */
+export function fieldLabel(field: string): string {
+  return FIELD_LABEL[field] ?? "그 밖의 값";
+}
 
 /** 교정할 수 있는 항목(POST /sessions/{id}/corrections의 field) */
 export const CORRECTION_FIELD_LABEL: Record<string, string> = {

@@ -12,6 +12,8 @@ export const claimRoleSchema = z.enum([
   "unitPrice",
   "treatmentFee",
   "currentUnitCost",
+  /** 지금 재활용 업체에 팔고 있을 때 받는 kg당 금액(양수) */
+  "currentUnitPrice",
   "referencePrice",
   "monthlyKg",
   "totalKg",
@@ -265,7 +267,12 @@ export const viewStreamSchema = obj({
   /** 업체가 보는 뷰에서는 null이다 */
   currentTreatment: obj({
     method: z.string(),
+    /** 내는 돈(현행 처리 단가). 지금 팔고 있으면 null이다 */
     unitCost: claimOrNull,
+    /** 지금 재활용 업체에 팔고 돈을 받는다. 이 기능 전 뷰에는 없다 */
+    sale: z.boolean().optional(),
+    /** 받는 kg당 금액(현행 판매 단가, role currentUnitPrice). 팔지 않으면 null */
+    unitPrice: claimOrNull.optional(),
     assumed: z.boolean(),
     /** 회당·월 정액으로 적은 계약이면 그 꼴. kg당으로 적었거나 가정값이면 null(이 기능 전 뷰에는 없다) */
     billing: billingSchema.nullable().optional(),

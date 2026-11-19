@@ -23,7 +23,16 @@ import {
   type FleetRecord,
   type RouteDraft,
 } from "@/lib/v3/fleet";
-import { BILLING_MODES, billingHint, billingText, initialFields, treatmentInput, type BillingFields } from "@/lib/v3/billing";
+import {
+  BILLING_MODES,
+  SALE_METHOD,
+  billingHint,
+  billingText,
+  initialFields,
+  saleMethod,
+  treatmentInput,
+  type BillingFields,
+} from "@/lib/v3/billing";
 import { formatNumber, priceSide } from "@/lib/v3/format";
 import {
   addPending,
@@ -1029,13 +1038,13 @@ function StreamCard({
               setMethod(event.target.value);
               setSaved(null);
             }}
-            placeholder="예: 혼합 소각, 위탁 재활용"
+            placeholder={fields.mode === "sale" ? SALE_METHOD : "예: 혼합 소각, 위탁 재활용"}
             className={field}
             disabled={!canAct}
           />
         </label>
         <fieldset className="space-y-2" disabled={!canAct}>
-          <legend className="text-[13px] font-medium text-ink-2">처리비는 어떻게 내나요</legend>
+          <legend className="text-[13px] font-medium text-ink-2">처리비를 내나요, 팔고 받나요</legend>
           <div className="mt-1.5 inline-flex rounded-md bg-sunken p-[3px]">
             {BILLING_MODES.map((item) => (
               <label key={item.mode}>
@@ -1044,7 +1053,12 @@ function StreamCard({
                   name={`billing-${stream.id}`}
                   value={item.mode}
                   checked={fields.mode === item.mode}
-                  onChange={() => setField({ mode: item.mode })}
+                  onChange={() => {
+                    setField({ mode: item.mode });
+                    // 판다면 소각·매립 같은 방법 이름을 판매로 바꾸고, 판매를 그만 고르면 그 이름을 지운다
+                    if (item.mode === "sale") setMethod(saleMethod(method));
+                    else if (method === SALE_METHOD) setMethod("");
+                  }}
                   className="peer sr-only"
                 />
                 <span className={segment}>{item.label}</span>
@@ -1083,6 +1097,9 @@ function StreamCard({
                 placeholder="예: 60만"
               />
             ) : null}
+            {fields.mode === "sale" ? (
+              <AmountField label="kg당 받는 돈" value={fields.sale} onChange={(sale) => setField({ sale })} unit="원" />
+            ) : null}
             <Button type="submit" variant="secondary" disabled={!canAct}>
               저장
             </Button>
@@ -1095,6 +1112,20 @@ function StreamCard({
         ) : (
           <p className="text-[13px] text-muted">{billingHint(fields.mode)}</p>
         )}
+        {stored?.sale && stored.salePriceKrwPerKg != null ? (
+          <p className="text-[13px] text-ink-2">
+            저장한 현행: 지금 팔아서{" "}
+            <button
+              type="button"
+              onClick={() => openEvidence(stored.evidence, `${stream.name} 현행 판매 단가`)}
+              title="근거 보기"
+              className="font-semibold tabular-nums underline decoration-current/40 decoration-dotted underline-offset-4 hover:decoration-solid"
+            >
+              kg당 {formatNumber(stored.salePriceKrwPerKg)}원
+            </button>
+            을 받습니다. 결과의 현행 월 손익은 이 판매 수입으로 계산합니다.
+          </p>
+        ) : null}
         {stored?.billing && stored.unitCostKrwPerKg != null ? (
           <p className="text-[13px] text-ink-2">
             저장한 계약: {billingText(stored.billing)}. 한 달 발생량으로 나누면{" "}

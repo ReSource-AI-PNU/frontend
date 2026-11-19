@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CORRECTION_FIELD_LABEL, FIELD_LABEL, basisNote } from "@/lib/v3/format";
+import { CORRECTION_FIELD_LABEL, basisNote, fieldLabel } from "@/lib/v3/format";
 import type { Claim, Correction, CorrectionField, CorrectionInput, DiagnosisView, ViewStream } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
@@ -248,7 +248,7 @@ export function StreamTable({
                       모르는 값:{" "}
                       {[...unknown]
                         .filter((item) => item !== "moisturePct")
-                        .map((item) => FIELD_LABEL[item] ?? item)
+                        .map((item) => fieldLabel(item))
                         .join(", ")}
                     </p>
                   ) : null}
@@ -263,9 +263,16 @@ export function StreamTable({
                             가정값
                           </span>
                         ) : null}
-                        <p className="text-[13px] whitespace-nowrap text-muted">
-                          내는 돈 <ClaimValue claim={stream.currentTreatment.unitCost} price={false} />
-                        </p>
+                        {stream.currentTreatment.sale ? (
+                          // 지금 재활용 업체에 팔고 받는 돈(현행 판매 단가)
+                          <p className="text-[13px] whitespace-nowrap text-muted">
+                            받는 돈 <ClaimValue claim={stream.currentTreatment.unitPrice ?? null} price={false} />
+                          </p>
+                        ) : (
+                          <p className="text-[13px] whitespace-nowrap text-muted">
+                            내는 돈 <ClaimValue claim={stream.currentTreatment.unitCost} price={false} />
+                          </p>
+                        )}
                         {stream.currentTreatment.billing?.text ? (
                           // 회당·월 정액 계약을 한 달 발생량으로 나눠 kg당으로 바꾼 값이다
                           <p className="text-[12px] text-muted">계약: {stream.currentTreatment.billing.text}</p>

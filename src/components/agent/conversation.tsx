@@ -170,6 +170,8 @@ function LiveThreads({ threads, onOpen }: { threads: TalkThread[]; onOpen: (id: 
 
 const field =
   "min-h-11 min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken";
+const segment =
+  "flex min-h-[38px] cursor-pointer items-center rounded-sm px-3 text-sm text-muted peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-[0_1px_0_var(--color-line-strong)] peer-focus-visible:outline-2 peer-focus-visible:outline-ink";
 
 function Questions({
   questions,
@@ -186,6 +188,8 @@ function Questions({
   onAnswer: (questionId: string, value: string | number) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // 현행 처리비 질문: 지금 팔고 돈을 받으면 "판매"로 고른다(백엔드가 '판매'가 붙은 답을 판매 단가로 읽는다)
+  const [selling, setSelling] = useState<Record<string, boolean>>({});
   // 묶음 하나(답한 것 포함)를 기준으로 머리말을 쓰고, 그 가운데 답하지 않은 질문만 그린다
   const bundle = currentBundle(questions);
   const current = bundle.filter((item) => !item.answered);
@@ -208,6 +212,8 @@ function Questions({
           const setDraft = (value: string) => setDrafts((before) => ({ ...before, [question.id]: value }));
           const parsed = question.answerType === "number" ? Number(draft) : draft.trim();
           const valid = draft.trim() !== "" && (question.answerType !== "number" || Number.isFinite(parsed as number));
+          const isCost = question.field === "currentCost";
+          const sold = isCost && Boolean(selling[question.id]);
           return (
             <li key={question.id}>
               <label htmlFor={`q-${question.id}`} className="block text-[15px] font-medium">
@@ -220,9 +226,29 @@ function Questions({
                 className="mt-2 flex flex-wrap items-center gap-2"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (valid && !disabled) onAnswer(question.id, parsed);
+                  if (valid && !disabled) onAnswer(question.id, sold ? `판매 kg당 ${parsed}원` : parsed);
                 }}
               >
+                {isCost ? (
+                  <div role="radiogroup" aria-label="돈을 내나요, 받나요" className="inline-flex rounded-md bg-sunken p-[3px]">
+                    {[
+                      { sell: false, label: "내는 돈" },
+                      { sell: true, label: "판매(받는 돈)" },
+                    ].map((item) => (
+                      <label key={item.label}>
+                        <input
+                          type="radio"
+                          name={`cost-${question.id}`}
+                          checked={sold === item.sell}
+                          disabled={disabled}
+                          onChange={() => setSelling((before) => ({ ...before, [question.id]: item.sell }))}
+                          className="peer sr-only"
+                        />
+                        <span className={segment}>{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
                 {question.answerType === "choice" && question.choices ? (
                   <select
                     id={`q-${question.id}`}

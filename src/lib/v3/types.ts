@@ -108,6 +108,9 @@ export type StreamRecord = {
   currentTreatment?: {
     method: string;
     unitCostKrwPerKg: number | null;
+    /** 지금 재활용 업체에 팔고 돈을 받는다. 그때 받는 kg당 금액이 salePriceKrwPerKg다 */
+    sale?: boolean;
+    salePriceKrwPerKg?: number | null;
     /** 회당·월 정액으로 적은 계약. 보내면 백엔드가 월 발생량으로 kg당 처리비를 다시 계산한다(unitCostKrwPerKg는 무시) */
     billing?: Billing | null;
     evidence: string[];

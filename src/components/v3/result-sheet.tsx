@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { CHECK_KEY_LABEL, FIELD_LABEL, ROUTE_LABEL, STATUS_LABEL, formatValue } from "@/lib/v3/format";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, fieldLabel, formatValue } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import type { Assignment, Check, CheckStatus, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
@@ -330,7 +330,7 @@ export function ResultSheet({
         <p className="rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
           <span className="font-semibold">확인 필요로 남은 값</span> · 질문 한도를 다 쓰고도 모르는 값입니다:{" "}
           {unresolved
-            .map((item) => `${stream(item.streamId)?.name ?? item.streamId} ${FIELD_LABEL[item.field] ?? item.field}`)
+            .map((item) => `${stream(item.streamId)?.name ?? item.streamId} ${fieldLabel(item.field)}`)
             .join(", ")}
         </p>
       ) : null}
