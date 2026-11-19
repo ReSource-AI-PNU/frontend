@@ -1292,3 +1292,98 @@ export const reportSchema = obj({
   planned: z.array(reportPlannedSchema),
   carbonScope: carbonScopeSchema,
 });
+
+// ── 보관장 3D 스캔 (2026-11-20, ~/rs-work/scan/CONTRACT.md 3장) ─────────────────────
+// 좌표는 모두 바닥 좌표계(원점은 보인 바닥의 중심, x·y는 바닥 위, z는 위쪽, 단위 m)다.
+
+const xy = z.tuple([z.number(), z.number()]);
+const xyz = z.tuple([z.number(), z.number(), z.number()]);
+
+export const scanStatusSchema = z.enum(["processing", "done", "failed"]);
+/** 재구성 서버의 단계. 차례를 기다리는 동안은 null이다 */
+export const scanStageSchema = z.enum(["geometry", "scale", "floor", "piles", "done"]);
+
+/** 무게를 낸 밀도. weighed: 담당자가 계량한 무게로 보정, stream: 회사가 적은 겉보기 밀도, ref: 문헌값(필름) */
+export const scanDensitySchema = obj({
+  basis: z.enum(["weighed", "stream", "ref"]),
+  lowKgM3: z.number(),
+  highKgM3: z.number(),
+  label: z.string(),
+  evidence: z.array(z.string()),
+});
+
+export const scanWeightSchema = obj({ low: claimSchema, high: claimSchema });
+
+export const scanPileSchema = obj({
+  id: z.string(),
+  name: z.string(),
+  center: xy,
+  footprint: z.array(xy),
+  sizeM: xy,
+  yawDeg: z.number(),
+  heightM: z.number(),
+  volume: claimSchema,
+  volumeRangeM3: xy,
+  coverage: z.number(),
+  thumbnail: z.string().nullable(),
+  streamId: z.string().nullable(),
+  streamName: z.string().nullable(),
+  density: scanDensitySchema.nullable(),
+  weight: scanWeightSchema.nullable(),
+  weighedKg: claimOrNull,
+  note: z.string().nullable(),
+});
+
+export const scanLayoutMetricsSchema = obj({
+  /** 서로 다른 폐기물이면서 간격이 gapM보다 좁은 더미 쌍 */
+  mixedPairs: z.number(),
+  minMixedGapM: z.number().nullable(),
+  /** Σ부피×상차 거리 ÷ Σ부피 */
+  weightedDistanceM: z.number().nullable(),
+  footprintM2: z.number(),
+});
+
+export const scanLayoutSchema = obj({
+  pickup: obj({ x: z.number(), y: z.number(), source: z.enum(["start", "manual"]) }),
+  rules: obj({ gapM: z.number(), wallM: z.number(), pickupClearM: z.number(), evidence: z.array(z.string()) }),
+  current: scanLayoutMetricsSchema,
+  proposal: obj({
+    piles: z.array(obj({ id: z.string(), center: xy, footprint: z.array(xy), yawDeg: z.number(), zone: z.string().nullable() })),
+    zones: z.array(obj({ streamId: z.string(), name: z.string(), polygon: z.array(xy) })),
+    metrics: scanLayoutMetricsSchema,
+    moved: z.number(),
+  }).nullable(),
+  unavailable: z.string().nullable(),
+});
+
+export const scanViewSchema = obj({
+  id: z.string(),
+  orgId: z.string(),
+  createdAt: z.string(),
+  source: z.enum(["video", "photos"]),
+  frameCount: z.number(),
+  status: scanStatusSchema,
+  progress: obj({ stage: scanStageSchema.nullable(), ratio: z.number() }).nullable(),
+  failure: obj({ message: z.string() }).nullable(),
+  summary: obj({
+    pileCount: z.number(),
+    volume: claimSchema,
+    weight: scanWeightSchema.nullable(),
+    /** 무게를 산정 보류한 더미 수(계량값이나 밀도가 없음) */
+    weightPending: z.number(),
+    floorAreaM2: z.number().nullable(),
+  }).nullable(),
+  piles: z.array(scanPileSchema),
+  layout: scanLayoutSchema.nullable(),
+  floor: obj({ polygon: z.array(xy), areaM2: z.number() }).nullable(),
+  camera: obj({ path: z.array(xyz) }).nullable(),
+  bounds: obj({ min: xyz, max: xyz }).nullable(),
+  pointsCount: z.number(),
+  quality: obj({ frames: z.number(), scaleSpreadPct: z.number().nullable(), notes: z.array(z.string()) }).nullable(),
+});
+
+export const scanListSchema = obj({
+  /** 지금 3D 분석을 받을 수 있는지(재구성 서버가 답하는지). false면 올리기를 숨긴다 */
+  canScan: z.boolean(),
+  scans: z.array(scanViewSchema),
+});

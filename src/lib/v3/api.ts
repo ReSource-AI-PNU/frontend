@@ -29,6 +29,8 @@ import type {
   OutcomeResult,
   QuoteRequest,
   Report,
+  ScanList,
+  ScanView,
   RetrainExport,
   RunStarted,
   SessionSummary,
@@ -128,6 +130,32 @@ async function request<T>(path: string, orgId: string | null, init: RequestInit 
   }
   const type = response.headers.get("content-type") ?? "";
   return (type.includes("json") ? await response.json() : await response.text()) as T;
+}
+
+/** 바이트로 받는 GET(보관장 3D 스캔의 점군). 오류는 request와 같은 방식으로 사용자 말로 바꾼다 */
+async function requestBytes(path: string, orgId: string | null): Promise<ArrayBuffer> {
+  if (recovering) throw new ApiError(recovering.status, recovering.code, recovering.message);
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase()}${path}`, { headers: scopeHeaders(orgId), cache: "no-store" });
+  } catch {
+    throw new ApiUnreachable(UNAVAILABLE);
+  }
+  if (!response.ok) {
+    let code = String(response.status);
+    let serverMessage: string | null = null;
+    try {
+      const body = (await response.json()) as { error?: { code?: string; message?: string } };
+      if (body.error?.code) code = body.error.code;
+      if (body.error?.message) serverMessage = body.error.message;
+    } catch {
+      // 본문이 JSON이 아니면 상태 코드로만 문구를 고른다
+    }
+    const error = new ApiError(response.status, code, userMessage(response.status, code, serverMessage));
+    recover(error);
+    throw error;
+  }
+  return response.arrayBuffer();
 }
 
 const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
@@ -242,6 +270,38 @@ export const api = {
     form.set("streamId", streamId);
     return request<MediaUploadResult>("/intake/media", orgId, { method: "POST", body: form });
   },
+
+  /**
+   * 보관장 3D 스캔(~/rs-work/scan/CONTRACT.md 3장). 브라우저가 영상에서 고른 장면 사진(frames 여러 개)을 올린다.
+   * 진행 중인 ScanView가 온다(운영 202, 로컬 devserver 200. 둘 다 성공). 화면은 getScan으로 2초마다 다시 읽는다.
+   * 재구성 서버에 닿지 않으면 503 SCAN_UNAVAILABLE, 장면이 모자라면 422 TOO_FEW_FRAMES.
+   */
+  uploadScan: (orgId: string, frames: Blob[], source: "video" | "photos", durationSec: number | null) => {
+    const form = new FormData();
+    form.set("orgId", orgId);
+    form.set("source", source);
+    if (durationSec !== null) form.set("durationSec", String(durationSec));
+    frames.forEach((frame, index) => form.append("frames", frame, `f${String(index).padStart(3, "0")}.jpg`));
+    return request<ScanView>("/intake/scan", orgId, { method: "POST", body: form });
+  },
+  /** 스캔 목록(최근 것이 먼저)과 지금 분석을 받을 수 있는지. 읽기라서 체험하기에서도 열린다 */
+  listScans: (orgId: string) => request<ScanList>(`/orgs/${enc(orgId)}/scans`, orgId),
+  /** 스캔 하나. 진행 중이면 서버가 이때 진행을 갱신한다 */
+  getScan: (orgId: string, scanId: string) => request<ScanView>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}`, orgId),
+  /** 점군 바이트(RSPC). 진행 중이면 409 SCAN_NOT_READY */
+  getScanPoints: (orgId: string, scanId: string) => requestBytes(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/points`, orgId),
+  /** 더미의 폐기물(streamId, null이면 지정 해제)이나 계량한 무게(weighedKg, null이면 지움)를 바꾼다. 계량값은 폐기물을 먼저 골라야 한다(422 STREAM_REQUIRED) */
+  putScanPile: (orgId: string, scanId: string, pileId: string, body: { streamId?: string | null; weighedKg?: number | null }) =>
+    request<ScanView>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/piles/${enc(pileId)}`, orgId, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  /** 상차 지점(바닥 좌표, m). null이면 영상을 찍기 시작한 곳으로 되돌린다 */
+  putScanLayout: (orgId: string, scanId: string, pickup: { x: number; y: number } | null) =>
+    request<ScanView>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/layout`, orgId, {
+      method: "PUT",
+      body: JSON.stringify({ pickup }),
+    }),
 
   /** 배출 기업 담당자가 고친 값을 기록한다. 기록만 남고 흐름의 값은 바뀌지 않는다. */
   recordCorrection: (sessionId: string, orgId: string, body: CorrectionInput) =>

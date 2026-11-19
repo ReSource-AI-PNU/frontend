@@ -576,3 +576,11 @@ export type QuoteRequest = {
   parts: QuotePart[];
   validation: Validation;
 };
+
+// 보관장 3D 스캔 (2026-11-20)
+export type ScanView = z.infer<typeof s.scanViewSchema>;
+export type ScanList = z.infer<typeof s.scanListSchema>;
+export type ScanPile = z.infer<typeof s.scanPileSchema>;
+export type ScanLayout = z.infer<typeof s.scanLayoutSchema>;
+export type ScanLayoutMetrics = z.infer<typeof s.scanLayoutMetricsSchema>;
+export type ScanStage = z.infer<typeof s.scanStageSchema>;

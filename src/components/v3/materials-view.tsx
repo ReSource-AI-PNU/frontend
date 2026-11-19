@@ -74,6 +74,7 @@ import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { CriteriaReview } from "./criteria-review";
 import { OffRouteTerms } from "./off-route-terms";
+import { StorageScan } from "./storage-scan";
 import { useRemote } from "./use-remote";
 
 const field =
@@ -1317,20 +1318,23 @@ function EmitterMaterials() {
     );
   }
   return (
-    <div className="divide-y divide-line">
-      {streams.map((stream) => (
-        <StreamCard
-          key={stream.id}
-          stream={stream}
-          canAct={canWrite}
-          onChanged={remote.reload}
-          onSave={async (next) => {
-            await api.putStream(org.id, next);
-            remote.reload();
-          }}
-        />
-      ))}
-    </div>
+    <>
+      <div className="divide-y divide-line">
+        {streams.map((stream) => (
+          <StreamCard
+            key={stream.id}
+            stream={stream}
+            canAct={canWrite}
+            onChanged={remote.reload}
+            onSave={async (next) => {
+              await api.putStream(org.id, next);
+              remote.reload();
+            }}
+          />
+        ))}
+      </div>
+      <StorageScan streams={streams} />
+    </>
   );
 }
 

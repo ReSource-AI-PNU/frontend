@@ -33,6 +33,11 @@ const KEEP_SERVER_MESSAGE = new Set([
   "OUTSIDE_STALE",
   // 실제 결과: 같은 날 같은 계량표 번호를 이미 기록했다(어느 날 무슨 번호인지와 정정하라는 말을 서버가 적는다)
   "DUPLICATE_TICKET",
+  // 보관장 3D 스캔: 장면 수, 폐기물을 먼저 골라야 하는 계량값, 분석을 받을 수 없음을 서버가 적는다
+  "TOO_FEW_FRAMES",
+  "STREAM_REQUIRED",
+  "SCAN_UNAVAILABLE",
+  "SCAN_NOT_READY",
   // 프런트 통로(src/lib/v3/backend-plan.ts)가 쓴 문구는 이미 사용자 말이다
   "DEMO_READ_ONLY",
   "DEMO_UNAVAILABLE",
@@ -55,6 +60,11 @@ const BY_CODE: Record<string, string> = {
   DOCUMENT_FAILED: "지금 문서를 읽지 못했습니다. 잠시 후 같은 파일을 다시 올리거나 값을 직접 적어 주세요.",
   DETECTOR_FAILED: "이 파일은 분석하지 못했습니다. 다른 사진을 올리거나 수치를 직접 적어 주세요.",
   SHIELD_FAILED: "이 문서는 지금 확인하지 못했습니다. 잠시 후 다시 올려 주세요.",
+  // 보관장 3D 스캔(2026-11-20)
+  SCAN_UNAVAILABLE: "지금은 3D 분석을 할 수 없습니다. 잠시 뒤 다시 올려 주세요.",
+  TOO_FEW_FRAMES: "장면이 너무 적습니다. 보관장을 천천히 한 바퀴 돌며 다시 찍어 주세요.",
+  STREAM_REQUIRED: "먼저 이 더미의 폐기물을 골라 주세요.",
+  SCAN_NOT_READY: "3D 장면이 아직 준비되지 않았습니다. 분석이 끝난 뒤 다시 열어 주세요.",
 };
 
 export function userMessage(status: number, code: string, serverMessage: string | null): string {
