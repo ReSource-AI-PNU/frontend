@@ -91,7 +91,8 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await sprue.getByRole("button", { name: /매입 kg당/ }).first().click();
   const evidence = page.getByRole("dialog", { name: "근거" });
   await expect(evidence).toBeVisible();
-  await expect(evidence.getByRole("heading", { name: "매입 단가" })).toBeVisible();
+  // 패널 제목(값 이름). 계산 사슬의 "… 매입 단가 계산" 제목과 가르려고 이름을 정확히 맞춘다
+  await expect(evidence.getByRole("heading", { name: "매입 단가", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // 분리 개선 안내: 더 받는 기준과 한 달 차이(근거가 열린다), 섞인 재질을 나누면 받는 곳
@@ -103,13 +104,19 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await expect(evidence.getByRole("heading", { name: /분리 개선 뒤 한 달 차이 계산/ })).toBeVisible();
 });
 
-test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 계획서가 만들어진다", async ({ page }) => {
+test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 계획서, 위탁 계약서 초안이 만들어진다", async ({ page }) => {
   test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
   await answerQuestions(page);
-  await page.getByRole("button", { name: "승인하고 진행" }).click();
+  // 계약 검토 담당이 합의 조건을 대조했고, 확인할 것을 읽고 확인해야 승인 단추가 켜진다(안전장치)
+  const approveAll = page.getByRole("button", { name: "승인하고 진행" });
+  await expect(page.getByText(/승인 전에 두 AI가 합의한 조건을 항목마다 다시 대조했습니다/)).toBeVisible();
+  await expect(approveAll).toBeDisabled();
+  await page.getByLabel("계약 검토의 확인할 것을 읽고 확인했습니다").check();
+  // 허가증 원문 대조가 끝나지 않은 합의(시연 시드의 남해열분해·미소환경)는 이 단추로 승인하지 않고 보류로 남는다
+  await approveAll.click();
   await expect(page.getByRole("heading", { name: /승인을 기다리고 있습니다/ })).toBeVisible();
 
   for (const vendor of ["org_saegil", "org_namhae", "org_miso"]) {
@@ -119,16 +126,23 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서와 이행 
     const approve = page.getByRole("button", { name: "승인", exact: true });
     await expect(approve.first()).toBeVisible();
     while ((await approve.count()) > 0) {
+      // 업체 쪽도 계약 검토의 확인할 것을 확인해야 승인할 수 있다
+      const ack = page.getByLabel(/확인할 것 \d+가지를 읽고 확인했습니다/).first();
+      if (await ack.isVisible().catch(() => false)) await ack.check();
+      await expect(approve.first()).toBeEnabled();
       await approve.first().click();
       await page.waitForTimeout(800);
     }
   }
 
   await pickOrg(page, "org_hanbit");
-  const documents = page.locator("section").filter({ has: page.getByRole("heading", { name: "요청서와 이행 계획서" }) });
+  const documents = page.locator("section").filter({ has: page.getByRole("heading", { name: "요청서 · 이행 계획서 · 계약서 초안" }) });
   await expect(documents.getByRole("article").first()).toBeVisible();
   await expect(documents.getByText("근거 확인됨").first()).toBeVisible();
   await expect(documents.getByText("근거 확인에 실패한 문서입니다")).toHaveCount(0);
+  // 계약 검토 담당이 쓴 계약서 초안: 서명 전에 법무 검토가 필요하다고 적는다
+  await expect(documents.getByRole("heading", { name: /^위탁 계약서 초안/ }).first()).toBeVisible();
+  await expect(documents.getByText(/서명하기 전에 양쪽의 법무 검토/).first()).toBeVisible();
 
   // 확정한 합의는 실적 화면에 한 달 예상으로 보인다(검수 기록 전이라 합계는 없다)
   await page.getByRole("link", { name: "실적" }).click();
