@@ -261,6 +261,7 @@ export function rowPayload(row: CriteriaRowState): CriteriaRowInput | null {
   if (quotes.collectionFee && v.collectionFee === "separate") quotes.collectionFeePerPickupKrw = quotes.collectionFee;
   const edited = [...new Set(editedKeys(row).map((key) => SERVER_KEY[key]).filter((key): key is string => Boolean(key)))];
   return {
+    draftRow: row.origin === "ai" ? row.key : null,
     material: v.material,
     grade: v.grade || null,
     form: v.form.trim() || null,
@@ -317,12 +318,13 @@ export function commonLine(common: CriteriaDraft["common"][number], rows: Criter
   return `${common.page ? `${common.page}쪽 · ` : ""}“${common.quote ?? ""}” → ${target}`;
 }
 
-/** 초안의 결과 한 줄(요약 먼저) */
-export function draftHeadline(rows: CriteriaRowState[]): string {
+/** 초안의 결과 한 줄(요약 먼저). by는 초안을 읽은 방법(ai | rules) */
+export function draftHeadline(rows: CriteriaRowState[], by?: string): string {
   const left = rows.filter((row) => !row.saved);
   const flagged = left.filter((row) => reviewReasons(row).length > 0).length;
   const read = rows.filter((row) => row.origin === "ai").length;
-  const head = read > 0 ? `AI가 매입 기준 ${read}줄을 읽었습니다.` : "매입 기준을 직접 적습니다.";
+  const reader = by === "rules" ? "문서의 표에서" : "AI가";
+  const head = read > 0 ? `${reader} 매입 기준 ${read}줄을 읽었습니다.` : "매입 기준을 직접 적습니다.";
   if (left.length === 0) return `${head} 모두 저장했습니다.`;
   return flagged > 0
     ? `${head} 값이 애매해 확인할 줄이 ${flagged}개 있습니다. 확인한 줄만 저장됩니다.`

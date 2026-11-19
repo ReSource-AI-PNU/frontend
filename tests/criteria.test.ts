@@ -49,10 +49,12 @@ test("각주 단위(원/톤, 톤/월)로 적힌 문서도 kg당 320원·월 1,00
   assert.equal(payload.unitPriceKrwPerKg, 320);
   assert.equal(payload.minMonthlyKg, 1000);
   assert.equal(payload.manual, false);
+  assert.equal(payload.draftRow, pp.key, "읽은 줄은 초안의 행 ID를 보낸다(서버가 보관한 초안과 대조한다)");
   assert.deepEqual(payload.edited, []);
   assert.match(payload.source.quotes.unitPriceKrwPerKg, /320,000/);
   assert.equal(savable(rows).length, 3);
-  assert.match(draftHeadline(rows), /3줄을 읽었습니다/);
+  assert.match(draftHeadline(rows), /AI가 매입 기준 3줄을 읽었습니다/);
+  assert.match(draftHeadline(rows, "rules"), /^문서의 표에서 매입 기준 3줄을 읽었습니다/);
 });
 
 test("범위 단가·협의·단위 미상·방향 불명은 고르지 않은 채 펼쳐 두고, 값을 정하기 전에는 저장하지 않는다", () => {
@@ -94,6 +96,7 @@ test("직접 적은 줄은 재질·단가·방향이 있어야 하고, 같은 �
   const filled = edit(blank, { material: "PP", price: "1,000", direction: "buy", minMonthlyKg: "1,000" });
   assert.deepEqual(rowProblems(filled), []);
   assert.equal(rowPayload(filled)!.manual, true);
+  assert.equal(rowPayload(filled)!.draftRow, null, "직접 적은 줄은 초안 행을 가리키지 않는다");
   assert.equal(rowPayload(filled)!.minMonthlyKg, 1000);
   assert.ok(rowProblems(edit(filled, { price: "320000" }))[0].includes("1,000으로 나눠"));
   assert.ok(rowProblems(edit(filled, { maxMoisturePct: "120" }))[0].includes("수분 상한"));

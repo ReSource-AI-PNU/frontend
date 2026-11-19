@@ -226,8 +226,9 @@ export const api = {
       json({ orgId, documentName, fields }),
     ),
   /** 매입 기준표 검토 화면에서 담당자가 확인·고친 행을 저장한다. 틀린 줄이 있으면 422(몇 번째 줄의 무엇인지). */
-  confirmCriteria: (orgId: string, documentName: string, rows: CriteriaRowInput[]) =>
-    request<DocumentConfirmResult>("/intake/criteria/confirm", orgId, json({ orgId, documentName, rows })),
+  /** draftId는 올릴 때 받은 draft.id다. 직접 적은 줄만 저장하면 없다 */
+  confirmCriteria: (orgId: string, documentName: string, rows: CriteriaRowInput[], draftId?: string) =>
+    request<DocumentConfirmResult>("/intake/criteria/confirm", orgId, json({ orgId, documentName, rows, ...(draftId ? { draftId } : {}) })),
 
   /**
    * multipart(file, orgId, streamId). 탐지 모델이 연결되지 않았으면 200으로 detectorUnavailable: true가 오고

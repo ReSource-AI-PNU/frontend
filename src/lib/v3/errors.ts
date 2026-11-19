@@ -48,7 +48,9 @@ const BY_CODE: Record<string, string> = {
   UNSUPPORTED_MEDIA: "사진이나 영상 파일만 올릴 수 있습니다.",
   INVALID_MULTIPART: "파일을 올리지 못했습니다. 다시 올려 주세요.",
   DOCUMENT_INTELLIGENCE_UNAVAILABLE: "이 형식의 문서는 지금 읽을 수 없습니다. 글(텍스트) 파일을 올리거나 값을 직접 적어 주세요.",
-  DOCUMENT_FAILED: "이 문서는 읽지 못했습니다. 잠시 후 다시 올리거나 값을 직접 적어 주세요.",
+  // 파일 자체를 열지 못함(깨진 PDF 등)과 문서를 읽는 서비스에 닿지 못함을 가른다
+  DOCUMENT_UNREADABLE: "이 파일을 열지 못했습니다. 손상되지 않은 PDF나 사진(JPG·PNG)으로 다시 올리거나 값을 직접 적어 주세요.",
+  DOCUMENT_FAILED: "지금 문서를 읽지 못했습니다. 잠시 후 같은 파일을 다시 올리거나 값을 직접 적어 주세요.",
   DETECTOR_FAILED: "이 파일은 분석하지 못했습니다. 다른 사진을 올리거나 수치를 직접 적어 주세요.",
   SHIELD_FAILED: "이 문서는 지금 확인하지 못했습니다. 잠시 후 다시 올려 주세요.",
 };

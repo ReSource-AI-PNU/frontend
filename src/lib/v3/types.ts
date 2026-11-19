@@ -322,6 +322,8 @@ export type CriteriaDraftRow = {
 };
 
 export type CriteriaDraft = {
+  /** 서버가 보관한 초안 ID(읽은 줄이 있을 때). 저장할 때 보내면 서버가 읽은 값·원문과 대조한다 */
+  id?: string;
   /** ready 모두 읽음 | needs_review 일부 값이 애매함 | not_found 매입 조건 없음 | model_failed AI가 읽지 못함 */
   outcome: "ready" | "needs_review" | "not_found" | "model_failed";
   description?: string | null;
@@ -330,6 +332,7 @@ export type CriteriaDraft = {
   common: { number: number | null; field: string | null; quote: string | null; page: number | null; rows: string[]; scope: string | null }[];
   notes: string[];
   reviewCount: number;
+  /** by: ai(AI가 쪽 그림과 표 구조로 읽음) | rules(AI 없이 표 머리글로 읽음) */
   reader?: { by: string; input?: string; pages?: number; pagesRead?: number };
   /** 화면 문장: 무엇이 안 됐는지와 다음 행동 */
   failure?: { code: string; message: string; action: string } | null;
@@ -337,6 +340,8 @@ export type CriteriaDraft = {
 
 /** POST /intake/criteria/confirm의 행 하나(단가는 매입 +, 처리비 −) */
 export type CriteriaRowInput = {
+  /** 초안의 행 ID(r1…). 직접 더한 줄은 null. 서버는 이 행을 보관한 초안과 대조해 고친 값과 근거 원문을 정한다 */
+  draftRow: string | null;
   material: string;
   grade: string | null;
   form: string | null;

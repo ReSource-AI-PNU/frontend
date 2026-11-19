@@ -45,7 +45,7 @@ function FieldNotes({ row, keys, show }: { row: CriteriaRowState; keys: Criteria
       {edited.length > 0 && row.ai ? (
         <span className="text-ink-2">
           <span aria-hidden="true" className="mr-1.5 inline-block size-1.5 rounded-full bg-ink align-middle" />
-          담당자가 고침 · AI가 읽은 값 <s className="text-muted">{before ? (show ? show(before) : before) : "없음"}</s>
+          담당자가 고침 · 문서에서 읽은 값 <s className="text-muted">{before ? (show ? show(before) : before) : "없음"}</s>
         </span>
       ) : null}
       {source ? <span className="break-all text-muted">문서 {source}</span> : null}
@@ -258,7 +258,8 @@ export function CriteriaReview({
     if (payload.length === 0) return;
     setState({ busy: true, error: null });
     try {
-      const result = await api.confirmCriteria(org.id, item.result.filename, payload);
+      // 읽은 줄은 서버가 보관한 초안(draft.id)과 대조된다. 고친 값과 근거 원문은 서버가 정한다
+      const result = await api.confirmCriteria(org.id, item.result.filename, payload, draft?.id);
       const keys = new Set(ready.map((row) => row.key));
       const next = rows.map((row) => (keys.has(row.key) ? { ...row, saved: true, include: false, open: false } : row));
       setState({ busy: false, error: null });
@@ -275,7 +276,7 @@ export function CriteriaReview({
         <span className="tabular-nums">{item.result.filename}</span> · 매입 기준표
         <span className="text-muted"> · 확인을 기다립니다</span>
       </p>
-      <p className="text-[15px] font-medium leading-snug">{draftHeadline(rows)}</p>
+      <p className="text-[15px] font-medium leading-snug">{draftHeadline(rows, draft?.reader?.by)}</p>
       {item.result.shieldUnavailable ? (
         <p className="text-[13px] text-warn">이 문서는 안전 검사를 하지 못했습니다. 읽은 값을 한 번 더 확인해 주세요.</p>
       ) : null}

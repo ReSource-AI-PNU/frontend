@@ -26,10 +26,13 @@ test("서비스 이름이 들어간 서버 문장은 다음 행동을 알려 주
   const message = userMessage(503, "DOCUMENT_INTELLIGENCE_UNAVAILABLE", "Document Intelligence가 설정되지 않아 글이 아닌 문서를 읽을 수 없다");
   assert.ok(!JARGON.test(message), message);
   assert.match(userMessage(502, "DETECTOR_FAILED", "탐지 엔드포인트 호출 실패"), /분석하지 못했습니다/);
+  // 깨진 파일은 다른 파일로, 서비스에 닿지 못했으면 같은 파일을 다시 올리라고 알린다
+  assert.match(userMessage(422, "DOCUMENT_UNREADABLE", "파일을 열지 못했습니다"), /손상되지 않은 PDF/);
+  assert.match(userMessage(502, "DOCUMENT_FAILED", "문서 분석 요청이 거부됐습니다(500)."), /같은 파일을 다시/);
 });
 
 test("어떤 코드와 상태에도 개발자 말이 나오지 않는다", () => {
-  const codes = ["ORG_REQUIRED", "TOKEN_REQUIRED", "INVALID_TOKEN", "UNKNOWN_ORG", "FORBIDDEN", "WRONG_ROLE", "NOT_FOUND", "SESSION_NOT_FOUND", "INVALID_JSON", "INVALID_BODY", "TOO_LARGE", "UNSUPPORTED_MEDIA", "SHIELD_FAILED", "DOCUMENT_FAILED", "LOGIN_REQUIRED", "TOKENS_INVALID"];
+  const codes = ["ORG_REQUIRED", "TOKEN_REQUIRED", "INVALID_TOKEN", "UNKNOWN_ORG", "FORBIDDEN", "WRONG_ROLE", "NOT_FOUND", "SESSION_NOT_FOUND", "INVALID_JSON", "INVALID_BODY", "TOO_LARGE", "UNSUPPORTED_MEDIA", "SHIELD_FAILED", "DOCUMENT_FAILED", "DOCUMENT_UNREADABLE", "LOGIN_REQUIRED", "TOKENS_INVALID"];
   for (const code of codes) {
     for (const status of [400, 401, 403, 404, 409, 413, 415, 422, 429, 500, 502, 503]) {
       const message = userMessage(status, code, `${code}: X-Org-Id 헤더 문제 (V3_ORG_TOKENS)`);
