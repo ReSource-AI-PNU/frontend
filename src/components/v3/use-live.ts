@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { api, scopeHeaders } from "@/lib/v3/api";
 import { connectLive, type LiveConnection } from "@/lib/v3/live-client";
 import { initialLive, isHistory, paceMs, reduceLive, replayFromView, type LiveEvent, type LiveState } from "@/lib/v3/live";
@@ -52,6 +52,12 @@ export type LiveRun = {
   holding: boolean;
   /** 다시 보기를 끝까지 건너뛴다 */
   skip: () => void;
+  /** 보여 주기를 잠시 멈춘다(발표 화면). 받은 기록은 그대로 쌓아 두었다가 다시 이어 보인다 */
+  paused: boolean;
+  setPaused: (paused: boolean) => void;
+  /** 보여 주는 빠르기 배수(1이 보통, 2면 두 배 빠르게). 발표 화면에서 고른다 */
+  speed: number;
+  setSpeed: (speed: number) => void;
 };
 
 /**
@@ -71,6 +77,11 @@ export function useLiveRun(
   const [held, dispatch] = useReducer(reducer, null);
   const opts = useRef(options);
   const skipRef = useRef<() => void>(() => undefined);
+  const resumeRef = useRef<() => void>(() => undefined);
+  const pausedRef = useRef(false);
+  const speedRef = useRef(1);
+  const [paused, setPausedState] = useState(false);
+  const [speed, setSpeedState] = useState(1);
   useEffect(() => {
     opts.current = options;
   });
@@ -91,7 +102,7 @@ export function useLiveRun(
 
     const show = () => {
       timer = null;
-      if (closed) return;
+      if (closed || (pausedRef.current && !rushing)) return;
       const event = queue.shift();
       if (!event) return;
       dispatch({ type: "event", id, event });
@@ -101,7 +112,7 @@ export function useLiveRun(
         return;
       }
       const instant = rushing || (reduced && mode !== "replay") || (mode === "attach" && isHistory(event, Date.now()));
-      const wait = instant ? 0 : paceMs(event, pace, queue.length);
+      const wait = instant ? 0 : Math.round(paceMs(event, pace, queue.length) / Math.max(0.25, speedRef.current));
       readyAt = Date.now() + wait;
       if (queue.length > 0) timer = setTimeout(show, wait);
     };
@@ -143,6 +154,10 @@ export function useLiveRun(
       if (mode === "replay") replayStored();
       else enqueue({ type: "done", status: null, lastSeq: null });
     });
+    resumeRef.current = () => {
+      if (closed || timer !== null || queue.length === 0) return;
+      timer = setTimeout(show, 0);
+    };
     skipRef.current = () => {
       rushing = true;
       if (timer !== null) clearTimeout(timer);
@@ -155,6 +170,7 @@ export function useLiveRun(
       if (timer !== null) clearTimeout(timer);
       handle.close();
       skipRef.current = () => undefined;
+      resumeRef.current = () => undefined;
     };
   }, [target, orgId]);
 
@@ -167,5 +183,16 @@ export function useLiveRun(
     active,
     holding: active && Boolean(target?.baseline) && mine?.connection !== "polling",
     skip: () => skipRef.current(),
+    paused,
+    setPaused: (value: boolean) => {
+      pausedRef.current = value;
+      setPausedState(value);
+      if (!value) resumeRef.current();
+    },
+    speed,
+    setSpeed: (value: number) => {
+      speedRef.current = value;
+      setSpeedState(value);
+    },
   };
 }

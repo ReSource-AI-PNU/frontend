@@ -15,7 +15,7 @@
  * 진단 뷰의 threads[].outcome·outcomeText와 같은 값이다.
  */
 import { josa } from "../josa.ts";
-import { AI_NAME, plainIds } from "./labels.ts";
+import { AI_NAME, REVIEWER_NAME as REVIEWER_LABEL, plainIds } from "./labels.ts";
 import type { Question, ThreadMessage, ThreadOutcome, ThreadStatus } from "./types";
 
 /* ── SSE 읽기 ─────────────────────────────────────────────────────── */
@@ -99,7 +99,18 @@ export type ActivityKind =
   | "handoff"
   | "tool"
   | "question"
-  | "status";
+  | "status"
+  | "review";
+
+/**
+ * 계약 검토 담당의 검토 한 번(kind "review", 백엔드 agents/reviewer.py). 두 AI가 합의한 뒤 승인 전에 조건을 다시 대조한
+ * 결과다. summary는 검토 문장, items는 항목마다 상태(block 막힘 · check 확인할 것 · ok 통과)다.
+ */
+export type LiveReview = {
+  status: "blocked" | "needs_check" | "clear";
+  summary: string;
+  items: { key: string; title: string; status: "block" | "check" | "ok"; text: string }[];
+};
 
 export type LiveActivity = {
   type: "activity";
@@ -122,6 +133,8 @@ export type LiveActivity = {
   attempt: number | null;
   /** 이 대화의 끝 상태(실행이 멈출 때 대화마다 온다). 없으면 null */
   threadOutcome: ThreadOutcome | null;
+  /** kind "review"면 계약 검토 담당의 검토. 아니면 없다 */
+  review?: LiveReview | null;
 };
 export type LiveStage = { stage: number; key: string | null; label: string | null; status: string };
 export type LiveStatus = { type: "status"; seq: number | null; status: string | null; phase: string | null; stages: LiveStage[] | null };
@@ -146,6 +159,25 @@ function threadOutcomeOf(data: Json): ThreadOutcome | null {
 }
 
 /** 작성자 표시. 백엔드는 {side, kind, label}을 주고, 계약 초안은 글자("회사 측 AI")만 준다. 둘 다 받는다 */
+const REVIEW_STATUS = new Set(["blocked", "needs_check", "clear"]);
+const ITEM_STATUS = new Set(["block", "check", "ok"]);
+
+/** 검토 기록을 읽는다. 모양이 맞지 않는 항목은 버린다 */
+export function reviewOf(raw: unknown, summary: string): LiveReview | null {
+  if (!isObj(raw)) return null;
+  const status = str(raw.status);
+  if (!status || !REVIEW_STATUS.has(status)) return null;
+  const items = (Array.isArray(raw.items) ? raw.items : []).flatMap((item) => {
+    if (!isObj(item)) return [];
+    const key = str(item.key);
+    const title = str(item.title);
+    const itemStatus = str(item.status);
+    if (!key || !title || !itemStatus || !ITEM_STATUS.has(itemStatus)) return [];
+    return [{ key, title, status: itemStatus as LiveReview["items"][number]["status"], text: str(item.text) ?? "" }];
+  });
+  return { status: status as LiveReview["status"], summary: str(raw.summary) ?? summary, items };
+}
+
 function authorOf(raw: unknown, actor: string): LiveAuthor | null {
   if (isObj(raw)) {
     const side = raw.side === "company" || raw.side === "vendor" ? raw.side : (SIDE_OF_ACTOR[actor] ?? null);
@@ -231,6 +263,7 @@ export function toLiveEvent(raw: RawSse): LiveEvent | null {
         evidenceCount: num(data.evidenceCount),
         attempt: num(data.attempt),
         threadOutcome: threadOutcomeOf(data),
+        review: kind === "review" ? reviewOf(data.review, str(data.text) ?? "") : null,
       };
     }
     case "status":
@@ -266,6 +299,8 @@ export type LiveThread = {
   /** 실행이 멈출 때 받은 이 대화의 끝 상태와 그 문장 */
   outcome: ThreadOutcome | null;
   outcomeText: string | null;
+  /** 계약 검토 담당이 이 대화의 합의 조건을 대조한 마지막 결과 */
+  review: LiveReview | null;
   /** 마지막으로 바뀐 순서(목록 정렬) */
   touched: number;
 };
@@ -427,6 +462,7 @@ function withThread(state: LiveState, event: LiveActivity): { threads: Record<st
         handoff: false,
         outcome: null,
         outcomeText: null,
+        review: null,
         touched: 0,
       };
   const order = before ? state.order : [...state.order, event.threadId];
@@ -504,6 +540,9 @@ export function reduceLive(state: LiveState, event: LiveEvent): LiveState {
         messages: event.message ? addMessage(thread.messages, event.message) : thread.messages,
       };
       break;
+    case "review":
+      if (event.review) thread = { ...thread, typing: null, review: event.review };
+      break;
     default:
       break;
   }
@@ -573,6 +612,8 @@ export type TalkThread = {
   /** 실행이 멈춘 뒤의 끝 상태와 문장(뷰의 threads[].outcome·outcomeText, 없으면 스트림의 threadOutcome) */
   outcome: ThreadOutcome | null;
   outcomeText: string | null;
+  /** 스트림으로 받은 계약 검토 담당의 검토(받지 않았으면 null. 끝난 찾기는 화면이 뷰의 approvals[].review를 쓴다) */
+  review: LiveReview | null;
 };
 
 type ViewThreadLike = {
@@ -620,6 +661,7 @@ export function mergeThreads(viewThreads: ViewThreadLike[], live: LiveState | nu
       lastText: extra?.lastText ?? null,
       outcome: thread.outcome ?? extra?.outcome ?? null,
       outcomeText: thread.outcomeText ?? extra?.outcomeText ?? null,
+      review: extra?.review ?? null,
     };
   });
   if (!live) return out;
@@ -641,6 +683,7 @@ export function mergeThreads(viewThreads: ViewThreadLike[], live: LiveState | nu
       lastText: extra.lastText,
       outcome: extra.outcome,
       outcomeText: extra.outcomeText,
+      review: extra.review,
     });
   }
   return out;
@@ -766,6 +809,8 @@ type ReplayView = {
   session: { emitterOrgId: string; status: string };
   stages: ReplayStage[];
   threads: ViewThreadLike[];
+  /** 승인 상자의 계약 검토. 있으면 그 대화의 마지막 메시지 뒤에 검토 기록을 더한다 */
+  approvals?: { threadId: string; review?: { status: string; summary: string; items: { key: string; title: string; status: string; text: string }[] } | null }[];
 };
 
 /**
@@ -841,6 +886,31 @@ export function replayFromView(view: ReplayView): LiveEvent[] {
       text: handoff ? `${side === "company" ? "회사" : "업체"} 측 담당자에게 넘겼습니다.` : `${josa(label, "이/가")} ${what} 보냈습니다.`,
       message,
       evidenceCount: handoff ? null : message.claims.length,
+    });
+  }
+  // 계약 검토 담당의 검토: 두 AI가 합의한 뒤, 사람이 승인하기 전에 나온다
+  for (const approval of view.approvals ?? []) {
+    const thread = view.threads.find((item) => item.id === approval.threadId);
+    const review = reviewOf(approval.review, approval.review?.summary ?? "");
+    if (!thread || !review) continue;
+    out.push({
+      type: "activity",
+      seq: next(),
+      at: null,
+      stage: 6,
+      actor: "contract_reviewer",
+      kind: "review",
+      threadId: thread.id,
+      vendorOrgId: thread.vendorOrgId,
+      vendorName: thread.vendorName,
+      author: { side: null, kind: "system", label: REVIEWER_LABEL },
+      text: review.summary,
+      message: null,
+      reasons: [],
+      evidenceCount: null,
+      attempt: null,
+      threadOutcome: null,
+      review,
     });
   }
   out.push({ type: "status", seq: next(), status: view.session.status, phase: null, stages: stageList(null, true) });

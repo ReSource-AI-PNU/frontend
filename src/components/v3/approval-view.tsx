@@ -14,14 +14,15 @@ import {
   formatSignedPrice,
   rejectionLabel,
 } from "@/lib/v3/format";
+import { DOC_LABEL } from "@/lib/v3/labels";
 import type { Assignment, Outcome, OutcomeInput } from "@/lib/v3/types";
 import { BlockedNotice } from "./blocked-notice";
 import { ClaimText, ClaimValue } from "./claim";
+import { ContractReviewBox, needsAck, reviewBlocked } from "./contract-review";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
 import { useRemote } from "./use-remote";
 
-const DOC_LABEL = { request: "요청서", plan: "이행 계획서" } as const;
 
 function Side({ label, done }: { label: string; done: boolean }) {
   return (
@@ -273,6 +274,8 @@ export function ApprovalView() {
   const d = useDiagnosis();
   const { org, mode, readOnly, basePath, setSessionId, failedSessions } = useV3();
   const { view } = d;
+  // 계약 검토의 "확인할 것"을 담당자가 확인했는지(대화마다). 화면에만 두고 저장하지 않는다
+  const [acks, setAcks] = useState<Record<string, boolean>>({});
   // 이 회사로 아직 연 찾기가 없으면 서버에 남은 최근 찾기를 연다(다른 기기에서 들어왔거나 회사를 바꿨을 때)
   const lookUp = mode === "live" && !d.sessionId;
   const recent = useRemote(`sessions:${org.id}`, lookUp, () => api.listSessions(org.id));
@@ -310,7 +313,7 @@ export function ApprovalView() {
   // 한 화면에 먹색 버튼은 하나만 둔다: 지금 승인할 수 있는 첫 합의에만 쓴다
   const firstActionable = view.approvals.find((approval) => {
     const mine = role === "emitter" ? approval.emitter : approval.vendor;
-    return !approval.blocked && !mine;
+    return !approval.blocked && !reviewBlocked(approval.review) && !mine;
   })?.threadId;
   // 승인 칸은 합의·확정 대화에만 있다. 담당자에게 넘어갔거나 거절된 대화는 사유와 함께 따로 적는다
   const closed = view.threads.filter((item) => item.status === "handoff" || item.status === "declined");
@@ -320,7 +323,8 @@ export function ApprovalView() {
       <header className="mb-6">
         <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">승인·서류</h1>
         <p className="mt-2 text-[15px] text-ink-2">
-          양쪽 담당자가 모두 승인해야 확정되고, 그 뒤에 요청서와 이행 계획서가 만들어집니다.
+          승인하기 전에 계약 검토 담당이 합의 조건을 다시 대조합니다. 양쪽 담당자가 모두 승인해야 확정되고, 그 뒤에 요청서,
+          이행 계획서, 위탁 계약서 초안이 만들어집니다.
         </p>
         {readOnly ? (
           <p className="mt-2 text-[13px] text-muted">
@@ -374,6 +378,10 @@ export function ApprovalView() {
         );
         const mine = role === "emitter" ? approval.emitter : role === "vendor" ? approval.vendor : true;
         const blocked = approval.blocked || failed.length > 0;
+        // 계약 검토 담당이 막았거나, 확인할 것을 담당자가 아직 확인하지 않았으면 승인 단추를 끈다(안전장치)
+        const reviewStops = reviewBlocked(approval.review);
+        const unchecked = needsAck(approval.review) && !acks[approval.threadId];
+        const canApprove = role !== "admin" && !readOnly && !mine;
         const reason =
           approval.blockedReason ??
           (failed.length > 0 ? `근거 확인에 실패한 메시지가 ${failed.length}건 있습니다.` : null);
@@ -425,6 +433,16 @@ export function ApprovalView() {
                 </p>
               </MoreDetails>
             ) : null}
+            {approval.review ? (
+              <ContractReviewBox
+                className="mt-4"
+                review={approval.review}
+                acknowledged={Boolean(acks[approval.threadId])}
+                onAcknowledge={
+                  canApprove && d.canAct ? (value) => setAcks((before) => ({ ...before, [approval.threadId]: value })) : undefined
+                }
+              />
+            ) : null}
             {blocked ? (
               <div className="mt-3">
                 <BlockedNotice
@@ -457,11 +475,14 @@ export function ApprovalView() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button
                   variant={approval.threadId === firstActionable ? "primary" : "secondary"}
-                  disabled={!d.canAct || d.busy || blocked || mine}
+                  disabled={!d.canAct || d.busy || blocked || mine || reviewStops || unchecked}
                   onClick={() => d.approve(approval.threadId)}
                 >
                   {mine ? "승인했습니다" : "승인"}
                 </Button>
+                {!mine && !blocked && !reviewStops && unchecked ? (
+                  <span className="text-[13px] text-muted">계약 검토의 확인할 것을 확인하면 승인할 수 있습니다.</span>
+                ) : null}
               </div>
             )}
             {confirmed && (outcomes.length > 0 || role === "vendor") ? (
@@ -494,7 +515,7 @@ export function ApprovalView() {
       })}
 
       <section className="border-t border-line pt-7">
-        <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">요청서와 이행 계획서</h2>
+        <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">요청서 · 이행 계획서 · 계약서 초안</h2>
         {view.documents.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
             양쪽이 승인하면 여기에 만들어집니다. 아직 만들어진 서류가 없습니다.

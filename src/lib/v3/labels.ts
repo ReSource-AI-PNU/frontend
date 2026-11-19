@@ -10,6 +10,15 @@
 /** 두 AI의 이름. 백엔드 작성자 표시(author.label)와 같다. 화면 문구도 이것만 쓴다 */
 export const AI_NAME = { company: "회사 측 AI", vendor: "업체 측 AI" } as const;
 
+/**
+ * 세 번째 에이전트(2026-11-19). 두 AI가 합의한 조건을 승인 전에 다시 대조한다. 모델이 아니라 규칙으로 대조하므로
+ * "AI"라고 부르지 않는다(DESIGN.md "정직한 이름"). 백엔드 agents/reviewer.py LABEL과 같은 낱말이다.
+ */
+export const REVIEWER_NAME = "계약 검토 담당";
+
+/** 서류 종류의 짧은 이름 */
+export const DOC_LABEL = { request: "요청서", plan: "이행 계획서", contract: "계약서 초안" } as const;
+
 /** 판단 도구 ID → 하는 일. 백엔드가 이름을 주지 않을 때만 쓴다(백엔드 names.TOOL_LABELS와 같은 낱말) */
 export const TOOL_LABEL: Record<string, string> = {
   identify_stream: "폐기물 식별·등급",

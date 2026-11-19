@@ -4,16 +4,18 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, PlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { MoreDetails } from "@/components/ui/more-details";
 import { useInView, useMediaQuery } from "@/components/use-media";
 import { BlockedNotice } from "@/components/v3/blocked-notice";
 import { useV3 } from "@/components/v3/context";
+import { ContractReviewBox, needsAck, reviewBlocked } from "@/components/v3/contract-review";
 import { JudgementGraph } from "@/components/v3/judgement-graph";
 import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
 import { THREAD_LABEL, clearedApprovalsText, currentBundle, questionIntro } from "@/lib/v3/format";
-import { AI_NAME } from "@/lib/v3/labels";
+import { AI_NAME, DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
 import {
   NARROW_QUERY,
@@ -34,13 +36,13 @@ import { ImprovementsSection } from "./improvements";
 import { RegulationSection } from "./regulation";
 import { OutsideVendorsSection } from "./outside-vendors";
 import { Dots } from "./dots";
+import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
 
 export { Dots };
 
 type Diagnosis = ReturnType<typeof useDiagnosis>;
 
-const DOC_LABEL = { request: "요청서", plan: "이행 계획서" } as const;
 
 function Me({ children }: { children: ReactNode }) {
   return (
@@ -295,7 +297,12 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
   const [each, setEach] = useState(false);
   const mine = (item: DiagnosisView["approvals"][number]) => (isEmitter ? item.emitter : item.vendor);
   const theirs = (item: DiagnosisView["approvals"][number]) => (isEmitter ? item.vendor : item.emitter);
-  const pending = view.approvals.filter((item) => !mine(item) && !item.blocked);
+  // 계약 검토 담당이 막은 합의는 승인할 수 없다(양쪽 모두)
+  const pending = view.approvals.filter((item) => !mine(item) && !item.blocked && !reviewBlocked(item.review));
+  const stopped = view.approvals.filter((item) => !mine(item) && reviewBlocked(item.review));
+  // 확인할 것이 남은 검토가 있으면 담당자가 확인했다고 골라야 승인 단추가 켜진다
+  const toCheck = pending.filter((item) => needsAck(item.review));
+  const [checked, setChecked] = useState(false);
   const waiting = view.approvals.filter((item) => mine(item) && !theirs(item));
   const streamName = (id: string) => view.streams.find((item) => item.id === id)?.name ?? id;
   if (view.approvals.length === 0) return null;
@@ -304,6 +311,12 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
   const untouched = pending.length === view.approvals.length;
   const showList = each || !untouched;
   const disabled = !d.canAct || d.busy;
+  const unchecked = toCheck.length > 0 && !checked;
+  const counterpartOf = (threadId: string) => {
+    const thread = view.threads.find((item) => item.id === threadId);
+    return isEmitter ? (thread?.vendorName ?? "업체") : nameOf(view.session.emitterOrgId);
+  };
+  const reviewed = view.approvals.filter((item) => item.review && !(mine(item) && theirs(item)));
 
   return (
     <section aria-label="승인">
@@ -319,8 +332,8 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
       {!confirmed ? (
         <p className="mt-1.5 text-[15px] text-ink-2">
           {pending.length > 0
-            ? `승인하면 ${other}${isEmitter && pending.length > 1 ? ` ${pending.length}곳` : ""}에 알립니다. ${other} 담당자도 승인해야 확정되고, 그 뒤에 요청서와 이행 계획서를 만듭니다.`
-            : `${other} 담당자가 승인하면 확정되고, 요청서와 이행 계획서가 만들어집니다.`}
+            ? `승인하면 ${other}${isEmitter && pending.length > 1 ? ` ${pending.length}곳` : ""}에 알립니다. ${other} 담당자도 승인해야 확정되고, 그 뒤에 요청서, 이행 계획서, 위탁 계약서 초안을 만듭니다.`
+            : `${other} 담당자가 승인하면 확정되고, 요청서, 이행 계획서, 위탁 계약서 초안이 만들어집니다.`}
         </p>
       ) : null}
 
@@ -333,9 +346,57 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
         </p>
       ) : null}
 
+      {reviewed.length > 0 && !confirmed ? (
+        <div className="mt-5 rounded-xl bg-ground px-4 py-4">
+          <p className="text-[13px] text-muted">
+            <span className="font-semibold text-ink-2">{REVIEWER_NAME}</span> · 승인 전에 두 AI가 합의한 조건을 항목마다 다시 대조했습니다
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {reviewed.map((item) => {
+              const review = item.review!;
+              const checks = review.items.filter((entry) => entry.status === "check").map((entry) => entry.title);
+              const blocks = review.items.filter((entry) => entry.status === "block").map((entry) => entry.title);
+              return (
+                <li key={item.threadId} className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-[14px]">
+                  <span className="font-medium">{counterpartOf(item.threadId)}</span>
+                  {blocks.length > 0 ? (
+                    <span className="text-loss">막힘 · {blocks.join(", ")}</span>
+                  ) : checks.length > 0 ? (
+                    <span className="text-warn">확인할 것 · {checks.join(", ")}</span>
+                  ) : (
+                    <span className="text-ink-2">모두 맞음</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <MoreDetails className="mt-1" label="검토 내용 보기">
+            <div className="mt-1 space-y-3">
+              {reviewed.map((item) => (
+                <div key={item.threadId}>
+                  <p className="text-[13px] font-semibold text-ink-2">{counterpartOf(item.threadId)}</p>
+                  <ContractReviewBox review={item.review!} className="mt-1 !bg-surface" />
+                </div>
+              ))}
+            </div>
+          </MoreDetails>
+          {stopped.length > 0 ? (
+            <p className="mt-2 text-[13px] font-medium text-loss">
+              막힌 합의({stopped.map((item) => counterpartOf(item.threadId)).join(", ")})는 막힌 항목이 풀릴 때까지 양쪽 모두 승인할 수 없습니다.
+            </p>
+          ) : null}
+          {toCheck.length > 0 && !readOnly ? (
+            <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 text-[14px] text-ink">
+              <input type="checkbox" checked={checked} onChange={(event) => setChecked(event.target.checked)} className="size-4 accent-ink" />
+              계약 검토의 확인할 것을 읽고 확인했습니다
+            </label>
+          ) : null}
+        </div>
+      ) : null}
+
       {pending.length > 0 && !readOnly ? (
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Button disabled={disabled} onClick={() => d.approveAll(pending.map((item) => item.threadId))} className="!min-h-12 !px-6 !text-[16px]">
+          <Button disabled={disabled || unchecked} onClick={() => d.approveAll(pending.map((item) => item.threadId))} className="!min-h-12 !px-6 !text-[16px]">
             {d.busy ? "승인하는 중" : "승인하고 진행"}
           </Button>
           {pending.length > 1 && !showList ? (
@@ -364,12 +425,19 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
                   </span>
                 ) : approval.blocked ? (
                   <span className="text-sm font-medium text-warn">승인이 막혔습니다</span>
+                ) : reviewBlocked(approval.review) ? (
+                  <span className="text-sm font-medium text-loss">계약 검토에서 막혔습니다</span>
                 ) : mine(approval) ? (
                   <span className="text-sm text-muted">{other} 승인 기다리는 중</span>
                 ) : readOnly ? (
                   <span className="text-sm text-muted">승인 전</span>
                 ) : (
-                  <Button size="sm" variant="secondary" disabled={disabled} onClick={() => d.approve(approval.threadId)}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={disabled || (needsAck(approval.review) && !checked)}
+                    onClick={() => d.approve(approval.threadId)}
+                  >
                     승인
                   </Button>
                 )}
@@ -440,6 +508,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
   // 업체 캐릭터나 업체별 대화 줄을 누르면 그 대화가 열린다
   const [talkOpen, setTalkOpen] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  // 발표 화면: 끝난 찾기를 큰 화면에 다시 재생한다(멈춤·빠르기·처음부터)
+  const [presenting, setPresenting] = useState(false);
 
   const nameOf = (orgId: string | null) =>
     orgs.find((item) => item.id === orgId)?.name ??
@@ -495,6 +565,18 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const replay = () => {
     setThreadId(null);
     d.replay();
+  };
+  const present = () => {
+    setTalkOpen(false);
+    setPresenting(true);
+    stream.setPaused(false);
+    stream.setSpeed(1);
+    d.replay();
+  };
+  const closePresent = () => {
+    setPresenting(false);
+    stream.setPaused(false);
+    if (replaying) d.stopReplay();
   };
 
   // 담당자 답이 필요한 질문이 대화 패널 뒤에 가리지 않게 한다(src/lib/v3/question-notice.ts).
@@ -596,9 +678,14 @@ export function Conversation({ d }: { d: Diagnosis }) {
             <p className="text-[15px] text-ink-2">
               {AI_NAME.company}와 {AI_NAME.vendor}가 근거를 확인하며 주고받은 과정을 처음부터 볼 수 있습니다.
             </p>
-            <Button variant="secondary" className="mt-3" onClick={replay}>
-              두 AI의 대화 다시 보기
-            </Button>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Button variant="secondary" onClick={replay}>
+                두 AI의 대화 다시 보기
+              </Button>
+              <button type="button" onClick={present} className="min-h-11 text-sm text-ink-2 underline underline-offset-4 hover:text-ink">
+                발표 화면으로 크게 보기
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -762,9 +849,21 @@ export function Conversation({ d }: { d: Diagnosis }) {
         sessionStatus={holding ? "running" : status}
         liveLine={liveLine}
         freshIds={freshIds}
-        replay={{ can: d.canReplay, active: replaying, start: replay, skip: stream.skip }}
+        replay={{ can: d.canReplay, active: replaying, start: replay, skip: stream.skip, present }}
         notice={placement.panel ? notice : null}
       />
+      {presenting ? (
+        <PresentMode
+          d={d}
+          view={view}
+          threads={threads}
+          stages={stages}
+          emitterName={emitterName}
+          caption={liveLine ?? title}
+          followId={followId}
+          onClose={closePresent}
+        />
+      ) : null}
     </div>
   );
 }

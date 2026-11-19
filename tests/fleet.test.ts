@@ -21,7 +21,7 @@ const COMPLEXES = [
   { id: "noksan", center: [128.8475, 35.0925] as [number, number] },
   { id: "sasang", center: [128.9845, 35.1475] as [number, number] },
 ];
-const ALLOWED = new Set(["depot", "capacityKg", "capacityM3", "costPerKm", "vehicleCount", "routes"]);
+const ALLOWED = new Set(["depot", "capacityKg", "capacityM3", "costPerKm", "vehicleCount", "routes", "serviceAreas", "maxPickupKm"]);
 const ROUTE_KEYS = ["complexes", "days", "name", "regions"];
 
 test("차고지 좌표가 산업단지 가운데면 그 단지를, 다르면 '그대로'를, 없으면 빈 값을 고른다", () => {
@@ -39,6 +39,8 @@ test("저장된 노선·차량으로 입력 칸을 채운다(새 업체의 빈 f
       capacityM3: 20,
       costPerKm: 1200,
       vehicleCount: 2,
+      serviceAreas: ["부산 강서구", "경남 김해시"],
+      maxPickupKm: 40,
       routes: [{ name: "강서 화목", days: ["목", "화"], regions: ["부산 강서구"], complexes: ["녹산국가산업단지"] }],
       evidence: ["human:x"],
     },
@@ -50,9 +52,20 @@ test("저장된 노선·차량으로 입력 칸을 채운다(새 업체의 빈 f
     capacityM3: "20",
     costPerKm: "1200",
     vehicleCount: "2",
+    serviceAreas: "부산 강서구, 경남 김해시",
+    maxPickupKm: "40",
     routes: [{ key: "r0", name: "강서 화목", days: ["화", "목"], regions: "부산 강서구", complexes: ["녹산국가산업단지"] }],
   });
-  assert.deepEqual(fleetDraft({}, COMPLEXES), { depot: "", capacityKg: "", capacityM3: "", costPerKm: "", vehicleCount: "", routes: [] });
+  assert.deepEqual(fleetDraft({}, COMPLEXES), {
+    depot: "",
+    capacityKg: "",
+    capacityM3: "",
+    costPerKm: "",
+    vehicleCount: "",
+    serviceAreas: "",
+    maxPickupKm: "",
+    routes: [],
+  });
 });
 
 test("백엔드와 같은 범위로 검사한다: 무게 0<x≤100,000, 부피 0<x≤1,000, 운송비 0~1,000,000, 대수 1~1,000 정수", () => {
@@ -151,4 +164,21 @@ test("있던 값을 비우면 null로 지우고, 처음부터 빈 항목은 보�
   assert.deepEqual(fleetBody({ ...draft, depot: "sasang" }, previous, COMPLEXES)?.depot, [128.9845, 35.1475]);
   assert.equal(fleetBody(fleetDraft(null, COMPLEXES), null, COMPLEXES), null);
   assert.equal(fleetBody(fleetDraft({}, COMPLEXES), {}, COMPLEXES), null);
+});
+
+test("수거 가능 지역은 쉼표로 적고, 최대 수거 거리는 0보다 크고 1,000 이하의 km다(백엔드 fleet.py와 같다)", () => {
+  const base = fleetDraft(null, COMPLEXES);
+  assert.deepEqual(fleetErrors({ ...base, serviceAreas: "부산, 경남 김해시", maxPickupKm: "1,000" }), {});
+  assert.ok(fleetErrors({ ...base, maxPickupKm: "0" }).maxPickupKm);
+  assert.ok(fleetErrors({ ...base, maxPickupKm: "1001" }).maxPickupKm);
+  assert.ok(fleetErrors({ ...base, serviceAreas: "가".repeat(51) }).serviceAreas);
+  assert.ok(fleetErrors({ ...base, serviceAreas: Array.from({ length: 31 }, (_, i) => `지역${i}`).join(",") }).serviceAreas);
+  const body = fleetBody({ ...base, serviceAreas: " 부산 강서구 , 경남 김해시, 부산 강서구", maxPickupKm: "40" }, null, COMPLEXES);
+  assert.deepEqual(body, { serviceAreas: ["부산 강서구", "경남 김해시"], maxPickupKm: 40 });
+  // 있던 값을 비우면 null로 지운다
+  const previous = { serviceAreas: ["부산"], maxPickupKm: 30 };
+  assert.deepEqual(fleetBody({ ...fleetDraft(previous, COMPLEXES), serviceAreas: "", maxPickupKm: "" }, previous, COMPLEXES), {
+    serviceAreas: null,
+    maxPickupKm: null,
+  });
 });

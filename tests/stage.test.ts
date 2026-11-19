@@ -17,6 +17,7 @@ function thread(id: string, extra: Partial<LiveThread> = {}): LiveThread {
     handoff: false,
     outcome: null,
     outcomeText: null,
+    review: null,
     touched: 1,
     ...extra,
   };

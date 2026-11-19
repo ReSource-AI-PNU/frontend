@@ -1600,6 +1600,42 @@ function VendorForm({
           찾아 새 조건으로 합의해야 합니다.
         </p>
 
+        <h3 className="mt-8 text-[15px] font-semibold">수거 가능 지역</h3>
+        <p className="mt-1 text-[13px] text-muted">
+          이 회사가 어디까지 수거하러 가는지 적습니다. 공장이 적은 지역 밖이고 최대 거리도 넘으면, 계약 검토 담당이 그 합의의
+          승인을 막습니다. 비워 두면 공장마다 &lsquo;확인 필요&rsquo;로 남습니다.
+        </p>
+        <div className="mt-3 grid gap-x-4 gap-y-4 sm:grid-cols-2">
+          <label className={`${fieldLabel} sm:col-span-2`}>
+            수거 가능 지역 (쉼표로 구분)
+            <input
+              value={fleet.serviceAreas}
+              onChange={(event) => setFleet({ ...fleet, serviceAreas: event.target.value })}
+              placeholder="예: 부산, 경남 김해시, 녹산국가산업단지"
+              aria-invalid={fleetIssues.serviceAreas ? true : undefined}
+              className={`${field} aria-invalid:border-loss`}
+              disabled={!canAct}
+            />
+            {fleetIssues.serviceAreas ? (
+              <span role="alert" className="font-normal text-loss">
+                {fleetIssues.serviceAreas}
+              </span>
+            ) : (
+              <span className="font-normal text-muted">
+                시·도만 적으면 그 시·도 전체, 시·군·구나 산업단지를 적으면 그곳만 수거 가능 지역으로 봅니다.
+              </span>
+            )}
+          </label>
+          <FleetNumber
+            label="차고지에서 최대 수거 거리 (km)"
+            hint="지역 밖이어도 이 거리 안이면 수거하러 갑니다. 값은 상대 회사에 보이지 않습니다."
+            value={fleet.maxPickupKm}
+            error={fleetIssues.maxPickupKm}
+            disabled={!canAct}
+            onChange={(value) => setFleet({ ...fleet, maxPickupKm: value })}
+          />
+        </div>
+
         <h3 className="mt-8 text-[15px] font-semibold">노선</h3>
         <p className="mt-1 text-[13px] text-muted">
           노선마다 다니는 요일과 수거하는 곳을 적습니다. 업체 정보에 보여 주는 값이고, 업체 측 AI가 약속하는 수거 요일은 위

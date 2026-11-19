@@ -9,7 +9,7 @@ import { EventDetail } from "@/components/v3/event-detail";
 import { josa } from "@/lib/josa";
 import { evidenceOf, threadLabel, typingText, withinVendorRange, type TalkThread, type Typing } from "@/lib/v3/live";
 import { MESSAGE_LABEL, formatDateTime } from "@/lib/v3/format";
-import { AI_NAME, eventSummary } from "@/lib/v3/labels";
+import { AI_NAME, REVIEWER_NAME, eventSummary } from "@/lib/v3/labels";
 import { noticeText } from "@/lib/v3/question-notice";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
 import { Dots } from "./dots";
@@ -18,12 +18,53 @@ const ACTOR_LABEL: Record<string, string> = {
   company_agent: AI_NAME.company,
   vendor_agent: AI_NAME.vendor,
   validator: "근거 검증기",
+  contract_reviewer: REVIEWER_NAME,
   tool: "판단 도구",
   system: "시스템",
 };
 
 const chip =
   "inline-flex min-h-7 items-center gap-1 rounded-full border border-line px-2.5 text-[12px] text-ink-2 [&_svg]:size-3.5";
+
+type ReviewLike = { status: string; summary: string; items: { key: string; title: string; status: string; text: string }[] };
+const REVIEW_CHIP: Record<string, string> = {
+  block: "bg-loss-bg text-loss",
+  check: "bg-warn-bg text-warn",
+};
+const REVIEW_WORD: Record<string, string> = { block: "막힘", check: "확인할 것" };
+
+/**
+ * 계약 검토 담당의 말(세 번째 화자). 어느 편도 아니라 가운데에 둔다: `ground` 바탕과 가는 선, 위에 이름을 적는다.
+ * 막힘·확인할 것은 항목 이름을 칩으로 보이고, 통과는 개수만 적는다(자세한 문장은 승인 상자에 있다).
+ */
+export function ReviewNote({ review, fresh, className = "" }: { review: ReviewLike; fresh: boolean; className?: string }) {
+  const urgent = review.items.filter((item) => item.status !== "ok");
+  const passed = review.items.length - urgent.length;
+  return (
+    <li className={`${fresh ? "[animation:rs-rise_320ms_var(--ease-out)_both]" : ""} ${className}`}>
+      <div className="mx-auto max-w-[96%] rounded-[18px] border border-line bg-ground px-4 py-3">
+        <p className="mb-1 flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
+          <span className="font-medium text-ink-2">{REVIEWER_NAME}</span>
+          <span>양쪽 합의 조건 대조</span>
+        </p>
+        <p className="text-[15px] leading-relaxed">{review.summary}</p>
+        {urgent.length > 0 ? (
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {urgent.map((item) => (
+              <li key={item.key} className={`inline-flex min-h-7 items-center rounded-full px-2.5 text-[12px] font-semibold ${REVIEW_CHIP[item.status] ?? ""}`}>
+                {REVIEW_WORD[item.status]} · {item.title}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="mt-1.5 text-[12px] text-muted">
+          {passed > 0 ? `통과 ${passed}가지 · ` : ""}
+          {review.status === "blocked" ? "막힌 항목이 풀릴 때까지 양쪽 모두 승인할 수 없습니다." : "사람이 승인하기 전에 규칙으로 다시 대조했습니다."}
+        </p>
+      </div>
+    </li>
+  );
+}
 
 /**
  * 말풍선 하나. 누가 썼는지는 백엔드가 준 작성자 표시(author.label: 회사 측 AI · 업체 측 AI · 자동 안내)로 적고,
@@ -184,7 +225,8 @@ export function AgentTalk({
   liveLine: string | null;
   /** 스트림으로 막 받은 메시지(들어올 때 살짝 떠오른다) */
   freshIds: Set<string>;
-  replay: { can: boolean; active: boolean; start: () => void; skip: () => void };
+  /** present: 발표 화면(큰 화면 다시 재생)을 연다 */
+  replay: { can: boolean; active: boolean; start: () => void; skip: () => void; present?: () => void };
   /** 담당자 답이 필요한 질문이 남았으면 패널 맨 위에 알린다(src/lib/v3/question-notice.ts) */
   notice?: { count: number; answerable: boolean; onGo: () => void } | null;
 }) {
@@ -276,9 +318,16 @@ export function AgentTalk({
                     ) : null}
                   </>
                 ) : (
-                  <button type="button" onClick={replay.start} className="-ml-2 min-h-11 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
-                    처음부터 다시 보기
-                  </button>
+                  <>
+                    <button type="button" onClick={replay.start} className="-ml-2 min-h-11 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
+                      처음부터 다시 보기
+                    </button>
+                    {replay.present ? (
+                      <button type="button" onClick={replay.present} className="min-h-11 rounded-md px-2 text-ink-2 underline underline-offset-4 hover:text-ink">
+                        발표 화면으로 크게 보기
+                      </button>
+                    ) : null}
+                  </>
                 )}
               </div>
             ) : null}
@@ -335,6 +384,12 @@ export function AgentTalk({
                         );
                       })}
                       {thread.typing ? <TypingBubble typing={thread.typing} left={thread.typing.side === "company"} /> : null}
+                      {(() => {
+                        // 실행·다시 보기 중에는 스트림으로 받은 검토만, 끝났으면 승인 상자의 지금 검토를 쓴다
+                        const stored = view.approvals.find((item) => item.threadId === thread.id)?.review ?? null;
+                        const review = thread.review ?? (working ? null : stored);
+                        return review ? <ReviewNote review={review} fresh={Boolean(thread.review) && working} /> : null;
+                      })()}
                     </ol>
                     <div ref={endRef} />
                   </>

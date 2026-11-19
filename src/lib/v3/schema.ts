@@ -623,6 +623,26 @@ export const questionSchema = obj({
   choices: z.array(z.string()).nullable(),
 });
 
+/**
+ * 계약 검토 담당의 검토(계약 8장 "계약 검토", 2026-11-19). 두 AI가 합의한 조건을 승인 전에 규칙으로 다시 대조한다.
+ * block이 있으면 양쪽 모두 승인할 수 없고(409 REVIEW_BLOCKED), check는 담당자가 확인했다고 표시해야 승인 단추가 켜진다.
+ */
+export const reviewItemSchema = obj({
+  key: z.string(),
+  title: z.string(),
+  status: z.enum(["block", "check", "ok"]),
+  text: z.string(),
+  /** 첫 거래 시범 기간 항목만. true면 계약서 초안에 시범 기간이 들어간다 */
+  pilot: z.boolean().optional(),
+});
+
+export const contractReviewSchema = obj({
+  status: z.enum(["blocked", "needs_check", "clear"]),
+  summary: z.string(),
+  items: z.array(reviewItemSchema),
+  reviewer: obj({ label: z.string(), kind: z.string() }),
+});
+
 export const approvalSchema = obj({
   threadId: z.string(),
   emitter: z.boolean(),
@@ -640,11 +660,14 @@ export const approvalSchema = obj({
   streamIds: z.array(z.string()),
   /** 막히면서 지운 승인 쪽(emitter, vendor). 아무도 승인하지 않았거나 막히지 않았으면 빈 배열 */
   clearedApprovals: z.array(z.enum(["emitter", "vendor"])).optional(),
+  /** 계약 검토 담당의 검토. 예전 서버는 보내지 않는다 */
+  review: contractReviewSchema.nullable().optional(),
 });
 
 export const viewDocumentSchema = obj({
   id: z.string(),
-  kind: z.enum(["request", "plan"]),
+  /** request 요청서, plan 이행 계획서, contract 위탁 계약서 초안(계약 검토 담당이 쓴다) */
+  kind: z.enum(["request", "plan", "contract"]),
   threadId: z.string(),
   streamIds: z.array(z.string()),
   title: z.string(),
@@ -659,7 +682,7 @@ export const viewDocumentSchema = obj({
 export const runEventSchema = obj({
   seq: z.number(),
   at: z.string(),
-  actor: z.enum(["company_agent", "vendor_agent", "validator", "tool", "system"]),
+  actor: z.enum(["company_agent", "vendor_agent", "validator", "tool", "system", "contract_reviewer"]),
   kind: z.enum([
     "message",
     "tool_call",
@@ -671,6 +694,7 @@ export const runEventSchema = obj({
     "document",
     "stage",
     "feedback",
+    "review",
   ]),
   threadId: z.string().nullable(),
   summary: z.string(),
