@@ -329,18 +329,15 @@ function Row({
               {isEmitter && (assignment.carbon || assignment.carbonTransport) ? (
                 <div className="mt-4 border-t border-line pt-3 text-ink-2">
                   <p>
-                    탄소 배출 변화{" "}
+                    처리 단계 배출 변화{" "}
                     {assignment.carbon ? (
                       <ClaimValue claim={assignment.carbon} className="!font-normal" />
                     ) : (
                       <span className="text-warn">처리 방식 배출계수 없음</span>
                     )}
-                    {assignment.carbonValue ? (
-                      <span className="text-muted">
-                        {" "}
-                        · 배출권 시세로 환산하면 <ClaimValue claim={assignment.carbonValue} display={`월 ${formatNumber(Math.round(Number(assignment.carbonValue.value)))}원`} className="!font-normal" />
-                      </span>
-                    ) : null}
+                  </p>
+                  <p className="mt-0.5 text-[12.5px] text-muted">
+                    국내 처리 공정 계수로 낸 배정 판단용 값입니다. 신재 대체는 넣지 않아 자원순환 효과의 감축량과 다릅니다.
                   </p>
                   {assignment.carbonProcess || assignment.carbonTransport ? (
                     <p className="mt-0.5 text-[13px] text-muted">
@@ -578,13 +575,15 @@ export function ResultCard({
         {isEmitter && totals.carbon ? (
           <>
             {" "}
-            탄소 배출 변화는 운송 배출을 더해{" "}
+            처리 단계 배출 변화(국내 처리 공정 계수)는 운송 배출을 더해{" "}
             <Glue>
               <ClaimValue claim={totals.carbon} className="!font-normal" />
               입니다.
             </Glue>
-            {carbonGap > 0 ? ` 공인된 배출계수가 없는 처리(열분해 등)로 보내는 ${carbonGap}가지는 처리 방식의 탄소를 합계에 넣지 않았습니다.` : null}
-            {result.carbonInObjective ? " 받는 곳을 고를 때 탄소를 배출권 시세로 환산해 한 달 손익과 함께 봤습니다." : null}
+            {carbonGap > 0 ? ` 근거가 부족한 처리(열분해 등)로 보내는 ${carbonGap}가지는 처리 방식의 탄소를 합계에 넣지 않았습니다.` : null}
+            {result.carbonInObjective
+              ? " 받는 곳을 고를 때 이 값을 배출권 시세로 환산해 한 달 손익과 함께 봤습니다. 판단용 환산이며 받거나 팔 수 있는 돈이 아닙니다."
+              : null}
           </>
         ) : null}
       </p>

@@ -38,6 +38,11 @@ export const claimRoleSchema = z.enum([
   "moisture",
   "priceDeviation",
   "clause",
+  /** 자원순환 효과(2026-11-19). 세 지표는 서로 다른 성과라 합치지 않는다 */
+  "ghgReduction",
+  "energySaving",
+  "virginDisplaced",
+  "routedKg",
 ]);
 
 export const claimSchema = obj({
@@ -687,6 +692,95 @@ export const improvementSchema = obj({
   ),
 });
 
+const circularMetricSchema = obj({
+  /** estimated: 계산함, hold: 산정 보류(0이 아님), zero: 정의상 변화 없음(현행 유지, 거래처만 바뀜) */
+  status: z.enum(["estimated", "hold", "zero"]),
+  /** literature: 문헌 시나리오 추정, site: 현장 입력값으로 낸 추정 */
+  method: z.enum(["literature", "site"]).nullable(),
+  reason: z.string(),
+  value: claimOrNull,
+  /** 이 값에 쓴 계수(문헌·현장 입력)의 근거 ID */
+  evidence: z.array(z.string()),
+});
+
+const circularTotalSchema = obj({
+  /** partial: 산정한 폐기물만 더한 부분합 */
+  status: z.enum(["estimated", "partial", "hold", "zero"]),
+  total: claimOrNull,
+  countedKg: claimOrNull,
+  heldKg: claimOrNull,
+  heldStreams: z.array(obj({ streamId: z.string(), streamName: z.string().nullable() })),
+});
+
+export const circularRouteSchema = z.enum(["reuse", "recycle", "pyrolysis", "landfill", "keep", "unknown"]);
+export const circularBaselineSchema = z.enum(["incineration", "landfill", "recycle"]);
+
+export const circularScenarioSchema = obj({
+  id: z.enum(["A", "B", "C", "D"]),
+  label: z.string(),
+  available: z.boolean(),
+  reason: z.string().nullable().optional(),
+  /** 현행 대비 월 손익. C는 기준선이라, D는 매립 처리비 자료가 없어 null */
+  money: claimOrNull,
+  moneyReason: z.string().nullable().optional(),
+  /** 공정 재투입과 재활용 업체로 가는 물량 */
+  circularKg: claimOrNull,
+  flows: z.array(obj({ route: circularRouteSchema, kg: claimOrNull })),
+  totals: z.partialRecord(z.enum(["ghg", "energy", "virgin"]), circularTotalSchema),
+  virginByMaterial: z.array(obj({ material: z.string(), total: claimOrNull })),
+  /** C만: 현행 처리 단계 배출(국내 계수). 감축량 0이 배출 0이 아님을 보인다 */
+  baselineEmission: claimOrNull,
+  rows: z.array(
+    obj({
+      streamId: z.string(),
+      streamName: z.string().nullable(),
+      route: circularRouteSchema,
+      baseline: circularBaselineSchema.nullable(),
+      baselineAssumed: z.boolean(),
+      ghg: circularMetricSchema,
+      energy: circularMetricSchema,
+      virgin: circularMetricSchema,
+      virginMaterial: z.string().nullable(),
+      resources: z.array(obj({ name: z.string(), value: claimOrNull })),
+      unconfirmed: z.array(z.string()),
+      explain: obj({ effect: z.string(), why: z.string(), conditions: z.string(), basis: z.string() }),
+    }),
+  ),
+});
+
+export const circularSourceSchema = obj({
+  id: z.string(),
+  title: z.string(),
+  source: z.string(),
+  region: z.string().nullable(),
+  country: z.string().nullable(),
+  year: z.number().nullable(),
+  table: z.string().nullable(),
+  unit: z.string().nullable(),
+  originalUnit: z.string().nullable(),
+  metric: z.string().nullable(),
+  material: z.string().nullable(),
+  route: z.string().nullable(),
+  baseline: z.string().nullable(),
+  conditions: z.array(z.string()),
+  caveats: z.array(z.string()),
+  url: z.string().nullable(),
+  asOf: z.string(),
+});
+
+/** 자원순환 효과와 네 시나리오(A 흐름별 최적안, B 묶음 없이, C 현행 유지, D 전부 매립). 배출 기업만 본다 */
+export const circularSchema = obj({
+  scenarios: z.array(circularScenarioSchema),
+  baselines: z.record(z.string(), z.number()),
+  bundle: obj({
+    available: z.boolean(),
+    streams: z.array(obj({ streamId: z.string(), streamName: z.string().nullable() })),
+    kg: claimOrNull,
+  }),
+  excluded: z.array(obj({ streamId: z.string().nullable(), streamName: z.string().nullable(), reason: z.string().nullable() })),
+  sources: z.array(circularSourceSchema),
+});
+
 export const resultSchema = obj({
   status: triStatusSchema,
   assignments: z.array(assignmentSchema),
@@ -744,6 +838,8 @@ export const resultSchema = obj({
   transportPending: z.array(z.string()).optional(),
   /** 비용·탄소 비교의 계산 범위(지금 처리 쪽 운송이 빠졌다는 것 등). 업체 뷰에는 없다 */
   scope: z.array(obj({ key: z.string(), text: z.string() })).optional(),
+  /** 자원순환 효과. 배출 기업이 보는 뷰에만 온다(이 기능 전에 만든 결과에는 없다) */
+  circular: circularSchema.nullable().optional(),
 });
 
 export const questionSchema = obj({

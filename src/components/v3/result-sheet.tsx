@@ -156,7 +156,7 @@ function AssignmentRows({
               ) : null}
               {item.carbonValue ? (
                 <p className="text-[12px] text-muted">
-                  배출권 환산 <ClaimValue claim={item.carbonValue} />
+                  판단용 환산(받는 돈 아님) <ClaimValue claim={item.carbonValue} />
                 </p>
               ) : null}
             </td>
@@ -308,7 +308,7 @@ export function ResultSheet({
           <dd className="text-right">
             <ClaimValue claim={result.totals.monthlyAfter} signed />
           </dd>
-          <dt className="text-muted">탄소 합계</dt>
+          <dt className="text-muted">처리 단계 배출</dt>
           <dd className="text-right">
             <ClaimValue claim={result.totals.carbon} />
           </dd>
@@ -318,7 +318,7 @@ export function ResultSheet({
           <p className="text-[12px] text-muted">
             {result.carbonInObjective ? (
               <>
-                배정을 고를 때 탄소(처리 방식과 운송)를{" "}
+                배정을 고를 때 처리 단계 배출(처리 방식과 운송)을{" "}
                 {result.carbonPrice ? (
                   <>
                     배출권 시세 <ClaimValue claim={result.carbonPrice} />로
@@ -326,7 +326,7 @@ export function ResultSheet({
                 ) : (
                   "배출권 시세로"
                 )}{" "}
-                환산해 월 순비용과 함께 봤습니다.
+                환산해 월 순비용과 함께 봤습니다. 판단용 환산이며 받거나 팔 수 있는 돈이 아닙니다.
               </>
             ) : (
               "배정은 월 순비용만으로 골랐습니다. 탄소는 참고 값입니다."
@@ -356,7 +356,7 @@ export function ResultSheet({
                   <th className="py-2 pr-3 text-right font-semibold">현행 월 손익</th>
                   <th className="py-2 pr-3 text-right font-semibold">배정 후</th>
                   <th className="py-2 pr-3 text-right font-semibold">현행 대비</th>
-                  <th className="py-2 pr-3 text-right font-semibold">탄소</th>
+                  <th className="py-2 pr-3 text-right font-semibold">처리 단계 배출</th>
                 </>
               ) : null}
               <th className="py-2 font-semibold">판정</th>

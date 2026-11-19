@@ -39,6 +39,7 @@ import { ImprovementsSection } from "./improvements";
 import { RegulationSection } from "./regulation";
 import { OutsideVendorsSection } from "./outside-vendors";
 import { Dots } from "./dots";
+import { CircularEffects } from "./circular-effects";
 import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
 
@@ -860,6 +861,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
             busy={d.busy}
           />
         ) : null}
+
+        {result && isEmitter && !holding && result.circular ? <CircularEffects circular={result.circular} /> : null}
 
         {result && isEmitter && !holding && view.streams.length > 0 ? <FlowChart result={result} streams={view.streams} /> : null}
 
