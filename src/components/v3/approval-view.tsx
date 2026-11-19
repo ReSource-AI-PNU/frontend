@@ -789,7 +789,7 @@ export function ApprovalView() {
                       )}
                       {item.pickup ? (
                         <span className="basis-full">
-                          <PickupBrief pickup={item.pickup} />
+                          <PickupBrief pickup={item.pickup} committed={confirmed} />
                         </span>
                       ) : null}
                     </li>

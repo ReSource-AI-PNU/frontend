@@ -19,10 +19,16 @@ export function pickupUnconfirmed(pickup: Pick<Pickup, "status"> | null | undefi
   return pickup?.status === "check" || pickup?.status === "unknown" || pickup?.status === "unavailable";
 }
 
-/** "기존 노선 포함(화·목 운행)", "별도 수거 확인 필요"처럼 수거 상태 한마디 */
-export function pickupStatusText(pickup: Pick<Pickup, "status" | "days">): string {
+/**
+ * "기존 노선 포함(화·목 운행)", "별도 수거 확인 필요"처럼 수거 상태 한마디.
+ * committed를 주면 수거할 수 있다고 밝힌 상태(노선 포함, 업체 수거 가능)에 실제 수거 확약 여부를 붙인다:
+ * 양쪽 승인 전이면 "수거 확약 전", 양쪽 승인으로 확정됐으면 "수거 확약(양쪽 승인)".
+ */
+export function pickupStatusText(pickup: Pick<Pickup, "status" | "days">, committed?: boolean): string {
   const label = PICKUP_STATUS_LABEL[pickup.status];
-  return pickup.status === "route" && pickup.days.length > 0 ? `${label}(${pickup.days.join("·")} 운행)` : label;
+  const base = pickup.status === "route" && pickup.days.length > 0 ? `${label}(${pickup.days.join("·")} 운행)` : label;
+  if (committed === undefined || (pickup.status !== "route" && pickup.status !== "visit")) return base;
+  return `${base} · ${committed ? "수거 확약(양쪽 승인)" : "수거 확약 전"}`;
 }
 
 /**

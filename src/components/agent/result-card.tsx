@@ -27,6 +27,7 @@ function Row({
   onOpenTalk,
   onPermitCheck,
   busy,
+  committed,
 }: {
   assignment: Assignment;
   stream: ViewStream | undefined;
@@ -34,6 +35,8 @@ function Row({
   onOpenTalk: (threadId: string) => void;
   onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
   busy: boolean;
+  /** 이 줄을 맡은 합의가 양쪽 승인으로 확정됐는가(수거 확약). 대화 상태를 모르면 undefined */
+  committed?: boolean;
 }) {
   const { openEvidence } = useV3();
   const [open, setOpen] = useState(false);
@@ -131,7 +134,7 @@ function Row({
             <span className="text-muted">옮길 곳이 정해지지 않았습니다</span>
           )}
           {placed && assignment.pickup ? (
-            <PickupBrief pickup={assignment.pickup} />
+            <PickupBrief pickup={assignment.pickup} committed={committed} />
           ) : isEmitter && placed && assignment.transportPaidBy ? (
             <span className="block text-[13px] text-muted">
               {assignment.transportPaidBy === "vendor" ? (
@@ -488,12 +491,15 @@ export function ResultCard({
   onOpenTalk,
   onPermitCheck,
   busy = false,
+  threads,
 }: {
   result: Result;
   streams: ViewStream[];
   role: OrgRole;
   counterpart: string;
   onOpenTalk: (threadId: string) => void;
+  /** 대화의 상태(확정이면 수거 확약). 주지 않으면 수거 확약 여부를 적지 않는다 */
+  threads?: { id: string; status: string }[];
   /** 배출 기업 담당자가 허가증 원문 대조를 기록한다(승인 대기 중, 체험하기가 아닐 때만 준다) */
   onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
   busy?: boolean;
@@ -536,6 +542,11 @@ export function ResultCard({
               onOpenTalk={onOpenTalk}
               onPermitCheck={onPermitCheck}
               busy={busy}
+              committed={
+                threads && assignment.threadId
+                  ? threads.find((item) => item.id === assignment.threadId)?.status === "confirmed"
+                  : undefined
+              }
             />
           ))}
         </ul>

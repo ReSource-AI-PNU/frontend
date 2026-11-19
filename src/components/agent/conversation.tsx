@@ -859,6 +859,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
             onOpenTalk={openTalk}
             onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
             busy={d.busy}
+            threads={view.threads}
           />
         ) : null}
 

@@ -41,10 +41,10 @@ export function FeeFormula({ pickup }: { pickup: Pickup }) {
  * 결과 표 "조건" 칸의 한 줄: 수거 상태 · 운반비. 수거가 확인되지 않았거나 운반비가 정해지지 않았으면 `warn` 글자다.
  * 노선 밖이라 노선 수거의 "운반비 포함"을 이 공장에 쓰지 않았으면 둘 다 보인다.
  */
-export function PickupBrief({ pickup }: { pickup: Pickup }) {
+export function PickupBrief({ pickup, committed }: { pickup: Pickup; committed?: boolean }) {
   const kind = feeKind(pickup);
   const status = (
-    <span className={pickupUnconfirmed(pickup) ? "text-warn" : undefined}>{pickupStatusText(pickup)}</span>
+    <span className={pickupUnconfirmed(pickup) ? "text-warn" : undefined}>{pickupStatusText(pickup, committed)}</span>
   );
   let fee: React.ReactNode = null;
   if (kind === "included") fee = "운반비 포함";

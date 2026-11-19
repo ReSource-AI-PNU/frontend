@@ -35,6 +35,9 @@ function pickup(over: Partial<Pickup>): Pickup {
 test("수거 상태와 운반비 방식을 따로 적는다", () => {
   const route = pickup({ days: ["화", "목"] });
   assert.equal(pickupStatusText(route), "기존 노선 포함(화·목 운행)");
+  // 실제 수거 확약이 필요한 때에는 양쪽 승인 전인지 뒤인지 붙인다
+  assert.equal(pickupStatusText(route, false), "기존 노선 포함(화·목 운행) · 수거 확약 전");
+  assert.equal(pickupStatusText(route, true), "기존 노선 포함(화·목 운행) · 수거 확약(양쪽 승인)");
   assert.equal(feeKind(route), "included");
   assert.equal(pickupUnconfirmed(route), false);
   const visit = pickup({
@@ -55,6 +58,7 @@ test("수거 상태와 운반비 방식을 따로 적는다", () => {
 test("노선 밖이고 업체가 방문을 밝히지 않으면 확인할 것과 잠정 금액을 알린다", () => {
   const check = pickup({ status: "check", basis: "undecided", paidBy: null, pending: true });
   assert.equal(pickupUnconfirmed(check), true);
+  assert.equal(pickupStatusText(check, false), "별도 수거 확인 필요"); // 확인 필요 상태에는 확약 꼬리를 붙이지 않는다
   assert.equal(feeKind(check), "undecided");
   const todo = pickupTodo({ pickup: check, transportPending: true });
   assert.equal(todo.length, 2);
