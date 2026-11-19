@@ -256,6 +256,12 @@ function Row({
                             <ClaimValue claim={item.monthlyAfter} signed display={signedWon(item.monthlyAfter)} className="!font-normal" />
                           </>
                         ) : null}
+                        {isEmitter && item.carbon ? (
+                          <>
+                            {" · 탄소 "}
+                            <ClaimValue claim={item.carbon} className="!font-normal" />
+                          </>
+                        ) : null}
                         {item.note ? <span className="block text-[13px] text-muted">{item.note}</span> : null}
                       </li>
                     ))}
@@ -263,16 +269,50 @@ function Row({
                 </div>
               ) : null}
 
-              {isEmitter && assignment.carbon ? (
-                <p className="mt-4 border-t border-line pt-3 text-ink-2">
-                  탄소 배출 변화 <ClaimValue claim={assignment.carbon} className="!font-normal" />
-                  {assignment.carbonValue ? (
-                    <span className="text-muted">
-                      {" "}
-                      · 배출권 시세로 환산하면 <ClaimValue claim={assignment.carbonValue} display={`월 ${formatNumber(Math.round(Number(assignment.carbonValue.value)))}원`} className="!font-normal" />
-                    </span>
+              {isEmitter && (assignment.carbon || assignment.carbonTransport) ? (
+                <div className="mt-4 border-t border-line pt-3 text-ink-2">
+                  <p>
+                    탄소 배출 변화{" "}
+                    {assignment.carbon ? (
+                      <ClaimValue claim={assignment.carbon} className="!font-normal" />
+                    ) : (
+                      <span className="text-warn">처리 방식 배출계수 없음</span>
+                    )}
+                    {assignment.carbonValue ? (
+                      <span className="text-muted">
+                        {" "}
+                        · 배출권 시세로 환산하면 <ClaimValue claim={assignment.carbonValue} display={`월 ${formatNumber(Math.round(Number(assignment.carbonValue.value)))}원`} className="!font-normal" />
+                      </span>
+                    ) : null}
+                  </p>
+                  {assignment.carbonProcess || assignment.carbonTransport ? (
+                    <p className="mt-0.5 text-[13px] text-muted">
+                      {assignment.carbonProcess ? (
+                        <>
+                          처리 방식 <ClaimValue claim={assignment.carbonProcess} className="!font-normal" />
+                        </>
+                      ) : null}
+                      {assignment.carbonProcess && assignment.carbonTransport ? " · " : null}
+                      {assignment.carbonTransport ? (
+                        <>
+                          수거 운행 <ClaimValue claim={assignment.carbonTransport} className="!font-normal" />
+                          {assignment.transportKm && numberOf(assignment.transportKm) !== null ? (
+                            <>
+                              {" "}
+                              (업체 차량이 한 달{" "}
+                              <ClaimValue
+                                claim={assignment.transportKm}
+                                display={`${formatNumber(Math.round(numberOf(assignment.transportKm) as number))} km`}
+                                className="!font-normal"
+                              />{" "}
+                              오감)
+                            </>
+                          ) : null}
+                        </>
+                      ) : null}
+                    </p>
                   ) : null}
-                </p>
+                </div>
               ) : null}
 
               {assignment.threadId ? (
@@ -409,12 +449,13 @@ export function ResultCard({
         {isEmitter && totals.carbon ? (
           <>
             {" "}
-            탄소 배출 변화는{" "}
+            탄소 배출 변화는 수거 운행 배출을 더해{" "}
             <Glue>
               <ClaimValue claim={totals.carbon} className="!font-normal" />
               입니다.
             </Glue>
-            {carbonGap > 0 ? ` 공인된 배출계수가 없는 처리(열분해 등)로 보내는 ${carbonGap}가지는 탄소 합계에 넣지 않았습니다.` : null}
+            {carbonGap > 0 ? ` 공인된 배출계수가 없는 처리(열분해 등)로 보내는 ${carbonGap}가지는 처리 방식의 탄소를 합계에 넣지 않았습니다.` : null}
+            {result.carbonInObjective ? " 받는 곳을 고를 때 탄소를 배출권 시세로 환산해 한 달 손익과 함께 봤습니다." : null}
           </>
         ) : null}
       </p>

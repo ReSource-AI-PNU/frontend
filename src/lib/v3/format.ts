@@ -246,6 +246,8 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   loading: "적재(무게·부피)",
   loading_volume: "부피 적재",
   pickup_route: "수거 노선",
+  permit_level: "허가 근거",
+  transport_carbon: "수거 운행 배출",
 };
 
 /** 진단 상태. 합의 없이 끝났거나 합의한 대화가 모두 담당자에게 넘어가면 idle인데 phase가 done이다. */

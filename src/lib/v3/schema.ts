@@ -326,6 +326,10 @@ export const checkKeySchema = z.enum([
   "loading_volume",
   /** 업체가 밝힌 수거 노선이 공장 지역을 지나는지(2026-11-19) */
   "pickup_route",
+  /** 배정한 업체의 허가 근거 수준: 허가증·공공 명부 확인, 허가증 문서, 업체 입력, 공공 명부와 다름(2026-11-19) */
+  "permit_level",
+  /** 수거 운행 배출을 계산하지 못했을 때(공장 위치·차고지·수거 횟수가 없을 때) */
+  "transport_carbon",
 ]);
 
 export const checkSchema = obj({
@@ -343,7 +347,18 @@ export const alternativeSchema = obj({
   route: z.string(),
   unitPrice: claimOrNull,
   monthlyAfter: claimOrNull,
+  /** 이 업체에만 보낼 때의 탄소 변화(처리 방식 + 수거 운행). 이 기능 전 결과에는 없다 */
+  carbon: claimOrNull.optional(),
   note: z.string(),
+});
+
+/** 배정한 업체의 허가를 무엇으로 확인했는가. 업체 입력뿐이거나 공공 명부와 다르면 그 배정은 조건부다 */
+export const permitLevelSchema = obj({
+  level: z.enum(["registry", "document", "self", "mismatch"]),
+  label: z.string(),
+  status: z.enum(["met", "conditional"]),
+  text: z.string(),
+  evidence: z.array(z.string()),
 });
 
 /** 공정 재투입 후보(판단 도구 judge_reuse). 업체가 보는 뷰에서는 null이다 */
@@ -379,9 +394,17 @@ export const assignmentSchema = obj({
   /** 운반비를 누가 내는가. 업체가 조건을 밝히지 않았으면 null */
   transportPaidBy: z.enum(["vendor", "emitter"]).nullable(),
   reuse: reuseSchema.nullable(),
+  /** 탄소 변화 = 처리 방식이 바뀌어 달라지는 배출 + 수거 운행 배출(같은 업체로 가는 폐기물끼리 나눈 몫) */
   carbon: claimOrNull,
+  /** 아래 셋은 2026-11-19 뒤 결과에만 온다. 업체 뷰에서는 null */
+  carbonProcess: claimOrNull.optional(),
+  carbonTransport: claimOrNull.optional(),
+  /** 이 폐기물 몫의 월 수거 운행 거리가 아니라 그 업체의 월 운행 거리(왕복 × 횟수) */
+  transportKm: claimOrNull.optional(),
   /** 탄소 감축량을 KAU 시세로 환산한 금액 */
   carbonValue: claimOrNull,
+  /** 허가 근거 수준. 업체에 배정한 줄에만 있다 */
+  permit: permitLevelSchema.nullable().optional(),
   currentAssumed: z.boolean(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
@@ -542,8 +565,10 @@ export const resultSchema = obj({
   ),
   /** 가격조사 참고 시세. 손익 계산에는 쓰지 않는다 */
   referencePrices: z.array(referencePriceSchema),
-  /** 아래 둘은 배출 기업이 보는 뷰에만 온다 */
+  /** 아래 셋은 배출 기업이 보는 뷰에만 온다 */
   carbonInObjective: z.boolean().optional(),
+  /** 탄소를 배정에 넣을 때 쓴 내부 탄소 가격(배출권 시세, 원/tCO2e) */
+  carbonPrice: claimOrNull.optional(),
   evidence: z.array(z.string()).optional(),
   /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
   outsideVendors: outsideVendorsSchema.nullable().optional(),

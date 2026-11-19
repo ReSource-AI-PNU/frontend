@@ -145,6 +145,11 @@ function AssignmentRows({
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.carbon} />
+              {item.carbonTransport ? (
+                <p className="text-[12px] text-muted">
+                  수거 운행 <ClaimValue claim={item.carbonTransport} />
+                </p>
+              ) : null}
               {item.carbonValue ? (
                 <p className="text-[12px] text-muted">
                   배출권 환산 <ClaimValue claim={item.carbonValue} />
@@ -302,9 +307,21 @@ export function ResultSheet({
         <div className="space-y-1">
           <StatusChip tone={TONE[result.status]}>{STATUS_LABEL[result.status]}</StatusChip>
           <p className="text-[12px] text-muted">
-            {result.carbonInObjective
-              ? "배정을 고를 때 탄소도 가중치로 넣었습니다."
-              : "배정은 월 순비용만으로 골랐습니다. 탄소는 참고 값입니다."}
+            {result.carbonInObjective ? (
+              <>
+                배정을 고를 때 탄소(처리 방식과 수거 운행)를{" "}
+                {result.carbonPrice ? (
+                  <>
+                    배출권 시세 <ClaimValue claim={result.carbonPrice} />로
+                  </>
+                ) : (
+                  "배출권 시세로"
+                )}{" "}
+                환산해 월 순비용과 함께 봤습니다.
+              </>
+            ) : (
+              "배정은 월 순비용만으로 골랐습니다. 탄소는 참고 값입니다."
+            )}
           </p>
         </div>
       </div>
