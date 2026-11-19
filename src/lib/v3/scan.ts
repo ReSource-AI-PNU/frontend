@@ -4,7 +4,7 @@
  * 계약: ~/rs-work/scan/CONTRACT.md (1장 입력, 2장 점군 형식, 3장 ScanView)
  * 검사: node --test tests/scan.test.ts
  */
-import type { ScanLayoutMetrics, ScanList, ScanStage, ScanView } from "./types";
+import type { Claim, ScanLayoutMetrics, ScanList, ScanStage, ScanView } from "./types";
 
 /** 영상 하나에서 고르는 장면 수의 범위와 사진 여러 장의 범위 */
 export const MIN_VIDEO_FRAMES = 24;
@@ -189,40 +189,50 @@ export function pendingText(view: ScanView): string | null {
   return parts.join(" · ");
 }
 
+/** 부피(m³)는 화면에서 소수 둘째 자리로 맞춰 적는다(근거의 값은 그대로 열린다) */
+const cubic = new Intl.NumberFormat("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export function m3(value: number): string {
+  return cubic.format(value);
+}
+
 /** 거리·넓이 값. 소수 둘째 자리까지 */
 const fixed = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
-const unitText = (value: number | null | undefined, unit: string) => (value == null ? "없음" : `${fixed.format(value)} ${unit}`);
+
+/** 정리안 지표 칸 하나: 근거가 열리는 값(claim)과 화면에 적을 글. 간격을 잴 쌍이 없으면 claim 없이 "없음" */
+export type MetricCell = { text: string; claim: Claim | null };
+
+function metricCell(metrics: ScanLayoutMetrics, key: "mixedPairs" | "minMixedGapM" | "weightedDistanceM"): MetricCell {
+  const value = metrics[key];
+  const evidence = metrics.evidence[key];
+  const unit = key === "mixedPairs" ? "쌍" : "m";
+  if (value == null) return { text: "없음", claim: null };
+  const text = key === "mixedPairs" ? `${value}쌍` : `${fixed.format(value)} m`;
+  return {
+    text,
+    claim: evidence ? { id: `${evidence}`, kind: "number", value, unit, evidence: [evidence] } : null,
+  };
+}
 
 /**
- * 정리안 지표 표의 줄: 이름 · 지금 · 정리안. footprintM2(더미가 퍼진 볼록 껍질 넓이)는 정리안에서 오히려 커질 수 있어
- * 개선 지표로 읽히지 않게 보이지 않는다.
+ * 정리안 지표 표의 줄: 이름 · 지금 · 정리안. 칸마다 계산 근거가 열린다.
+ * footprintM2(더미가 퍼진 볼록 껍질 넓이)는 정리안에서 오히려 커질 수 있어 개선 지표로 읽히지 않게 보이지 않는다.
  */
 export function metricRows(
   current: ScanLayoutMetrics,
   proposal: ScanLayoutMetrics | null,
   gapM: number,
-): { key: string; label: string; now: string; next: string | null }[] {
-  const pick = (metrics: ScanLayoutMetrics | null, read: (m: ScanLayoutMetrics) => string) => (metrics ? read(metrics) : null);
-  return [
-    {
-      key: "mixedPairs",
-      label: `다른 폐기물과 ${fixed.format(gapM)} m 안에 붙은 더미 쌍`,
-      now: `${current.mixedPairs}쌍`,
-      next: pick(proposal, (m) => `${m.mixedPairs}쌍`),
-    },
-    {
-      key: "minMixedGapM",
-      label: "다른 폐기물 사이 가장 가까운 간격",
-      now: unitText(current.minMixedGapM, "m"),
-      next: pick(proposal, (m) => unitText(m.minMixedGapM, "m")),
-    },
-    {
-      key: "weightedDistanceM",
-      label: "상차 지점까지 평균 거리(부피 가중)",
-      now: unitText(current.weightedDistanceM, "m"),
-      next: pick(proposal, (m) => unitText(m.weightedDistanceM, "m")),
-    },
-  ];
+): { key: string; label: string; now: MetricCell; next: MetricCell | null }[] {
+  const keys = [
+    ["mixedPairs", `다른 폐기물과 ${fixed.format(gapM)} m 안에 붙은 더미 쌍`],
+    ["minMixedGapM", "다른 폐기물 사이 가장 가까운 간격"],
+    ["weightedDistanceM", "상차 지점까지 평균 거리(부피 가중)"],
+  ] as const;
+  return keys.map(([key, label]) => ({
+    key,
+    label,
+    now: metricCell(current, key),
+    next: proposal ? metricCell(proposal, key) : null,
+  }));
 }
 
 /** 정리안 한 줄 요약. 정리안이 없으면 null */

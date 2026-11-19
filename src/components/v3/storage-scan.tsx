@@ -17,6 +17,7 @@ import { formatNumber } from "@/lib/v3/format";
 import {
   ScanInputError,
   currentScan,
+  m3,
   metricRows,
   pendingText,
   scanTime,
@@ -24,6 +25,7 @@ import {
   stepOf,
   stepStates,
   weighedValue,
+  type MetricCell,
   type ScanStepKey,
 } from "@/lib/v3/scan";
 import type { ScanList, ScanPile, ScanView, StreamRecord } from "@/lib/v3/types";
@@ -119,6 +121,25 @@ function Steps({ current, frames }: { current: ScanStepKey; frames: string | nul
   );
 }
 
+/** 부피 값: 소수 둘째 자리로 적고 누르면 근거가 열린다 */
+function VolumeValue({ claim }: { claim: ScanPile["volume"] }) {
+  const text = typeof claim.value === "number" ? `${m3(claim.value)} m³` : undefined;
+  return <ClaimValue claim={claim} display={text} className="whitespace-nowrap" />;
+}
+
+/** 무게 범위 "713~881 kg"를 한 덩어리로(가운데서 줄을 바꾸지 않는다). 같으면 값 하나 */
+function WeightRange({ weight }: { weight: NonNullable<ScanPile["weight"]> }) {
+  const { low, high } = weight;
+  const same = typeof low.value === "number" && typeof high.value === "number" && Math.round(low.value) === Math.round(high.value);
+  if (same) return <ClaimValue claim={low} className="whitespace-nowrap" />;
+  return (
+    <span className="whitespace-nowrap">
+      <ClaimValue claim={low} display={typeof low.value === "number" ? formatNumber(low.value) : undefined} hideAssumed />
+      ~<ClaimValue claim={high} />
+    </span>
+  );
+}
+
 /** 무게 칸: 범위(같으면 하나), 밀도 출처. 없으면 계량값 필요 */
 function WeightCell({ pile, canAct, onWeigh }: { pile: ScanPile; canAct: boolean; onWeigh: () => void }) {
   const { openEvidence } = useV3();
@@ -137,26 +158,9 @@ function WeightCell({ pile, canAct, onWeigh }: { pile: ScanPile; canAct: boolean
       </div>
     );
   }
-  const { low, high } = pile.weight;
-  const same = typeof low.value === "number" && typeof high.value === "number" && Math.round(low.value) === Math.round(high.value);
   return (
-    <div>
-      <span className="whitespace-nowrap">
-        {same ? (
-          <ClaimValue claim={low} className="font-medium" />
-        ) : (
-          <>
-            <ClaimValue
-              claim={low}
-              display={typeof low.value === "number" ? formatNumber(low.value) : undefined}
-              hideAssumed
-              className="font-medium"
-            />
-            ~
-            <ClaimValue claim={high} className="font-medium" />
-          </>
-        )}
-      </span>
+    <div className="min-w-0">
+      <WeightRange weight={pile.weight} />
       {pile.weighedKg ? (
         // 계량한 더미는 계량값 그대로다(하한 = 상한). 사람이 적은 값이라 먹색으로 적는다
         <button
@@ -238,6 +242,12 @@ function WeighForm({
   );
 }
 
+/** 정리안 지표 칸. 값은 누르면 계산 근거가 열린다 */
+function MetricValue({ cell, strong = false }: { cell: MetricCell; strong?: boolean }) {
+  if (!cell.claim) return <span className="text-muted">{cell.text}</span>;
+  return <ClaimValue claim={cell.claim} display={cell.text} className={strong ? "" : "text-ink-2"} />;
+}
+
 /** 분석이 끝난 스캔: 요약 한 줄, 더미 표, 정리안 한 줄과 3D 보기, 접어 둔 지표·가정값 */
 function ScanResult({
   view,
@@ -290,52 +300,60 @@ function ScanResult({
   return (
     <div className="mt-5">
       <p className="text-[18px] leading-snug font-semibold tracking-[-0.02em]">
-        더미 <span className="tabular-nums">{summary.pileCount}</span>개 · 부피 <ClaimValue claim={summary.volume} />
+        <span className="whitespace-nowrap">
+          더미 <span className="tabular-nums">{summary.pileCount}</span>개
+        </span>
+        {" · "}
+        <span className="whitespace-nowrap">
+          부피 <VolumeValue claim={summary.volume} />
+        </span>
         {summary.weight ? (
           <>
-            {" · "}무게 약{" "}
-            <ClaimValue
-              claim={summary.weight.low}
-              display={typeof summary.weight.low.value === "number" ? formatNumber(summary.weight.low.value) : undefined}
-              hideAssumed
-            />
-            ~<ClaimValue claim={summary.weight.high} />
+            {" · "}
+            <span className="whitespace-nowrap">
+              무게 약 <WeightRange weight={summary.weight} />
+            </span>
           </>
         ) : null}
         {pending ? <span className="text-[14px] font-medium text-warn"> · {pending}</span> : null}
       </p>
       <p className="mt-1 text-[13px] text-muted">
         {scanTime(view.createdAt)} · 장면 <span className="tabular-nums">{view.frameCount}</span>장
+        {summary.floorArea ? (
+          <>
+            {" · "}보인 바닥 <ClaimValue claim={summary.floorArea} />
+          </>
+        ) : null}
         {summary.weight && pending ? " · 무게 합계는 무게를 잰 더미만의 합입니다" : null}
       </p>
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-[13px] text-muted">
-              <th className="py-2 pr-3 font-medium">더미</th>
-              <th className="py-2 pr-3 font-medium">폐기물</th>
-              <th className="py-2 pr-3 font-medium">부피</th>
-              <th className="py-2 font-medium">무게</th>
-            </tr>
-          </thead>
-          <tbody>
-            {view.piles.map((pile) => (
-              <PileRow
-                key={pile.id}
-                pile={pile}
-                streams={streams}
-                canAct={canAct}
-                busy={busy === pile.id}
-                weighing={weighing === pile.id}
-                onStream={(streamId) => void putPile(pile, { streamId })}
-                onWeigh={() => setWeighing(pile.id)}
-                onWeighSave={(kg) => void putPile(pile, { weighedKg: kg })}
-                onWeighCancel={() => setWeighing(null)}
-              />
-            ))}
-          </tbody>
-        </table>
+      {/* 넓은 화면은 네 칸 표처럼, 휴대폰은 줄마다 세로로 쌓는다(가로로 넘치지 않는다) */}
+      <div className="mt-4 text-sm">
+        <div
+          aria-hidden="true"
+          className="hidden border-b border-line pb-2 text-[13px] font-medium text-muted sm:grid sm:grid-cols-[minmax(0,1fr)_170px_110px_170px] sm:gap-3"
+        >
+          <span>더미</span>
+          <span>폐기물</span>
+          <span>부피</span>
+          <span>무게</span>
+        </div>
+        <ul aria-label="더미 목록">
+          {view.piles.map((pile) => (
+            <PileRow
+              key={pile.id}
+              pile={pile}
+              streams={streams}
+              canAct={canAct}
+              busy={busy === pile.id}
+              weighing={weighing === pile.id}
+              onStream={(streamId) => void putPile(pile, { streamId })}
+              onWeigh={() => setWeighing(pile.id)}
+              onWeighSave={(kg) => void putPile(pile, { weighedKg: kg })}
+              onWeighCancel={() => setWeighing(null)}
+            />
+          ))}
+        </ul>
       </div>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-loss">
@@ -370,8 +388,12 @@ function ScanResult({
                 {metricRows(layout.current, layout.proposal.metrics, layout.rules.gapM).map((row) => (
                   <tr key={row.key} className="border-b border-line">
                     <td className="py-2 pr-3 text-ink-2">{row.label}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap tabular-nums">{row.now}</td>
-                    <td className="py-2 font-medium whitespace-nowrap tabular-nums">{row.next ?? "—"}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap">
+                      <MetricValue cell={row.now} />
+                    </td>
+                    <td className="py-2 whitespace-nowrap">
+                      {row.next ? <MetricValue cell={row.next} strong /> : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -436,28 +458,31 @@ function PileRow({
   onWeighCancel: () => void;
 }) {
   const selectId = `scan-stream-${pile.id}`;
+  const range = (
+    <span className="text-[12px] font-normal text-muted tabular-nums">
+      {m3(pile.volumeRangeM3[0])}~{m3(pile.volumeRangeM3[1])}
+    </span>
+  );
   return (
-    <>
-      <tr className={`align-top ${weighing ? "" : "border-b border-line"}`}>
-        <td className="py-3 pr-3">
-          <div className="flex items-start gap-2.5">
-            {pile.thumbnail ? (
-              // eslint-disable-next-line @next/next/no-img-element -- 서버가 보낸 작은 장면 사진(data URL)이라 최적화가 필요 없다
-              <img src={pile.thumbnail} alt={`${pile.name} 장면`} width={56} height={56} className="size-14 shrink-0 rounded-md object-cover" />
-            ) : (
-              <span aria-hidden="true" className="size-14 shrink-0 rounded-md bg-sunken" />
-            )}
-            <div className="min-w-0">
-              <p className="font-medium">{pile.name}</p>
-              <p className="text-[12px] text-muted tabular-nums">
-                {formatNumber(Math.round(pile.sizeM[0] * 100) / 100)} × {formatNumber(Math.round(pile.sizeM[1] * 100) / 100)} m · 높이{" "}
-                {formatNumber(Math.round(pile.heightM * 100) / 100)} m
-              </p>
-              {pile.note ? <p className="mt-0.5 text-[12px] text-muted">{pile.note}</p> : null}
-            </div>
+    <li className="border-b border-line py-3">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_170px_110px_170px] sm:items-start sm:gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
+          {pile.thumbnail ? (
+            // eslint-disable-next-line @next/next/no-img-element -- 서버가 보낸 작은 장면 사진(data URL)이라 최적화가 필요 없다
+            <img src={pile.thumbnail} alt={`${pile.name} 장면`} width={56} height={56} className="size-14 shrink-0 rounded-md object-cover" />
+          ) : (
+            <span aria-hidden="true" className="size-14 shrink-0 rounded-md bg-sunken" />
+          )}
+          <div className="min-w-0">
+            <p className="font-medium">{pile.name}</p>
+            <p className="text-[12px] text-muted tabular-nums">
+              {formatNumber(Math.round(pile.sizeM[0] * 100) / 100)} × {formatNumber(Math.round(pile.sizeM[1] * 100) / 100)} m · 높이{" "}
+              {formatNumber(Math.round(pile.heightM * 100) / 100)} m
+            </p>
+            {pile.note ? <p className="mt-0.5 text-[12px] text-muted">{pile.note}</p> : null}
           </div>
-        </td>
-        <td className="py-3 pr-3">
+        </div>
+        <div className="min-w-0">
           {canAct ? (
             <>
               <label htmlFor={selectId} className="sr-only">
@@ -465,12 +490,12 @@ function PileRow({
               </label>
               <select
                 id={selectId}
-                className={`${field} w-full max-w-[180px] text-[14px]`}
+                className={`${field} w-full text-[14px]`}
                 value={pile.streamId ?? ""}
                 disabled={busy}
                 onChange={(event) => onStream(event.target.value || null)}
               >
-                <option value="">고르기</option>
+                <option value="">폐기물 고르기</option>
                 {streams.map((stream) => (
                   <option key={stream.id} value={stream.id}>
                     {stream.name}
@@ -479,27 +504,35 @@ function PileRow({
               </select>
             </>
           ) : (
-            <span className={pile.streamName ? "" : "text-muted"}>{pile.streamName ?? "지정 안 함"}</span>
+            <span className={pile.streamName ? "" : "text-muted"}>
+              <span className="text-muted sm:hidden">폐기물 </span>
+              {pile.streamName ?? "지정 안 함"}
+            </span>
           )}
-        </td>
-        <td className="py-3 pr-3 whitespace-nowrap">
-          <ClaimValue claim={pile.volume} className="font-medium" />
-          <span className="mt-0.5 block text-[12px] text-muted tabular-nums">
-            {formatNumber(pile.volumeRangeM3[0])}~{formatNumber(pile.volumeRangeM3[1])}
+        </div>
+        {/* 넓은 화면: 부피 칸 */}
+        <div className="hidden sm:block">
+          <VolumeValue claim={pile.volume} />
+          <span className="mt-0.5 block">{range}</span>
+        </div>
+        {/* 휴대폰: 부피 한 줄 */}
+        <p className="sm:hidden">
+          <span className="text-muted">부피 </span>
+          <span className="whitespace-nowrap">
+            <VolumeValue claim={pile.volume} /> {range}
           </span>
-        </td>
-        <td className="py-3">
+        </p>
+        <div className="flex flex-wrap items-baseline gap-x-1">
+          <span className="text-muted sm:hidden">무게 </span>
           <WeightCell pile={pile} canAct={canAct && !busy} onWeigh={onWeigh} />
-        </td>
-      </tr>
+        </div>
+      </div>
       {weighing ? (
-        <tr className="border-b border-line">
-          <td colSpan={4} className="pb-3">
-            <WeighForm pile={pile} busy={busy} onSave={onWeighSave} onCancel={onWeighCancel} />
-          </td>
-        </tr>
+        <div className="mt-3">
+          <WeighForm pile={pile} busy={busy} onSave={onWeighSave} onCancel={onWeighCancel} />
+        </div>
       ) : null}
-    </>
+    </li>
   );
 }
 

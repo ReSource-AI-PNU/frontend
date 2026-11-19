@@ -1,6 +1,6 @@
 /**
  * 보관장 3D 스캔(src/lib/v3/scan.ts)의 순수 로직과 ScanView 계약(schema.ts).
- *  - tests/fixtures/v3-scan.json: 백엔드 devserver(backend work/scan d34e54d, 가짜 재구성 서버)가 실제로 낸 목록.
+ *  - tests/fixtures/v3-scan.json: 백엔드 devserver(backend work/scan e4c227f, 가짜 재구성 서버)가 실제로 낸 목록.
  *    진행 중(scan_2)과 끝남(scan_1: 더미 다섯, 폐기물 셋 지정, 더미 2는 230 kg 계량, 더미 4는 미지정)
  *  - tests/fixtures/v3-scan-unassigned.json: 같은 스캔을 폐기물 지정 전에 본 뷰(정리안 없음)
  * 실행: node --test tests/scan.test.ts
@@ -182,7 +182,7 @@ test("무게를 못 낸 더미를 폐기물 미지정과 계량값 필요로 나
   assert.equal(pendingText(all), null);
 });
 
-test("정리안 지표 표와 한 줄 요약(퍼진 넓이는 보이지 않는다)", () => {
+test("정리안 지표 표와 한 줄 요약(퍼진 넓이는 보이지 않고, 칸마다 계산 근거가 열린다)", () => {
   const done = list.scans.find((scan) => scan.id === "scan_1")!;
   const layout = done.layout!;
   const rows = metricRows(layout.current, layout.proposal!.metrics, layout.rules.gapM);
@@ -191,15 +191,31 @@ test("정리안 지표 표와 한 줄 요약(퍼진 넓이는 보이지 않는�
     ["mixedPairs", "minMixedGapM", "weightedDistanceM"],
   );
   assert.equal(rows[0].label, "다른 폐기물과 1 m 안에 붙은 더미 쌍");
-  assert.equal(rows[0].now, "4쌍");
-  assert.equal(rows[0].next, "0쌍");
-  assert.equal(rows[1].now, "0 m");
-  assert.equal(rows[1].next, "1.05 m");
-  assert.equal(rows[2].now, "3.7 m");
+  assert.equal(rows[0].now.text, "4쌍");
+  assert.equal(rows[0].next?.text, "0쌍");
+  assert.equal(rows[1].now.text, "0 m");
+  assert.equal(rows[1].next?.text, "1.05 m");
+  assert.equal(rows[2].now.text, "3.7 m");
+  for (const row of rows) {
+    assert.ok(row.now.claim?.evidence[0]?.startsWith("calc:"), `${row.key} 지금 칸에 계산 근거가 없다`);
+    assert.ok(row.next?.claim?.evidence[0]?.startsWith("calc:"), `${row.key} 정리안 칸에 계산 근거가 없다`);
+  }
+  assert.equal(rows[0].now.claim?.value, 4);
   assert.equal(metricRows(layout.current, null, 1)[0].next, null);
+  // 간격을 잴 쌍이 없으면 "없음"이고 근거를 열지 않는다
+  const lonely = structuredClone(layout.current);
+  lonely.minMixedGapM = null;
+  lonely.evidence.minMixedGapM = null;
+  assert.deepEqual(metricRows(lonely, null, 1)[1].now, { text: "없음", claim: null });
   assert.equal(proposalSummary(done), "붙은 더미 4쌍 → 0쌍 · 상차 지점까지 평균 3.7 m → 2.77 m · 더미 4개 옮김");
   assert.equal(proposalSummary(unassigned), null);
   assert.equal(unassigned.layout?.unavailable, "더미에 폐기물을 두 가지 이상 지정하면 정리안을 그립니다.");
+});
+
+test("보인 바닥 넓이는 재구성 근거가 열리는 값이다", () => {
+  const done = list.scans.find((scan) => scan.id === "scan_1")!;
+  assert.equal(done.summary?.floorArea?.unit, "m²");
+  assert.ok(done.summary?.floorArea?.evidence[0]?.startsWith("model:"));
 });
 
 test("정리안 색은 영역 순서를 따르고 여섯을 넘으면 되돌아간다", () => {

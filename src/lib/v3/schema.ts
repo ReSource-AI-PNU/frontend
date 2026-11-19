@@ -1341,6 +1341,8 @@ export const scanLayoutMetricsSchema = obj({
   /** Σ부피×상차 거리 ÷ Σ부피 */
   weightedDistanceM: z.number().nullable(),
   footprintM2: z.number(),
+  /** 지표마다 계산(calc) 근거 ID. 간격을 잴 쌍이 없으면 minMixedGapM은 null */
+  evidence: obj({ mixedPairs: z.string(), minMixedGapM: z.string().nullable(), weightedDistanceM: z.string() }),
 });
 
 export const scanLayoutSchema = obj({
@@ -1372,6 +1374,8 @@ export const scanViewSchema = obj({
     /** 무게를 산정 보류한 더미 수(계량값이나 밀도가 없음) */
     weightPending: z.number(),
     floorAreaM2: z.number().nullable(),
+    /** 보인 바닥 넓이(m², 재구성 근거). 바닥을 찾지 못했으면 null */
+    floorArea: claimOrNull,
   }).nullable(),
   piles: z.array(scanPileSchema),
   layout: scanLayoutSchema.nullable(),
