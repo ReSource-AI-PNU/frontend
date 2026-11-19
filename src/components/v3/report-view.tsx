@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
 import { api } from "@/lib/v3/api";
-import { ROUTE_LABEL } from "@/lib/v3/format";
+import { ROUTE_LABEL, formatNumber } from "@/lib/v3/format";
 import { signedWon, won } from "@/lib/v3/money";
 import {
   EMPTY_LEAD,
@@ -15,6 +15,7 @@ import {
   REPORT_LEAD,
   baselineNote,
   carbonGapNote,
+  correctionNote,
   csvName,
   periodRange,
   periodText,
@@ -22,7 +23,7 @@ import {
   reportHeadline,
   type PeriodKey,
 } from "@/lib/v3/report";
-import type { Claim, Report } from "@/lib/v3/types";
+import type { Claim, Report, ReportRecord } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
@@ -57,6 +58,9 @@ function download(name: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
+/** 정정한 검수의 바로 앞 판(정정하지 않았으면 undefined) */
+const before = (item: ReportRecord) => item.history[item.history.length - 1];
+
 function Records({ report }: { report: Report }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-line print:overflow-visible print:rounded-none">
@@ -77,7 +81,15 @@ function Records({ report }: { report: Report }) {
         <tbody className="divide-y divide-line">
           {report.records.map((item) => (
             <tr key={item.id}>
-              <td className={`${td} font-mono text-[13px] whitespace-nowrap print:text-[11px]`}>{item.inspectedOn}</td>
+              <td className={`${td} font-mono text-[13px] whitespace-nowrap print:text-[11px]`}>
+                {item.inspectedOn}
+                {item.weighTicket ? (
+                  <span className="block font-sans text-[12px] text-muted">계량표 {item.weighTicket}</span>
+                ) : null}
+                {item.revision > 1 ? (
+                  <span className="block font-sans text-[12px] text-muted">정정 {item.revision - 1}회</span>
+                ) : null}
+              </td>
               <td className={`${td} whitespace-nowrap`}>{item.streamName ?? item.streamLabel}</td>
               <td className={`${td} whitespace-nowrap`}>
                 {item.vendorName}
@@ -86,6 +98,9 @@ function Records({ report }: { report: Report }) {
               <td className={td}>{item.grade ?? <span className="text-muted">기록 없음</span>}</td>
               <td className={`${td} text-right whitespace-nowrap`}>
                 <ClaimValue claim={item.kg} title={`${item.inspectedOn} 실제 무게`} />
+                {before(item)?.kg != null && before(item)?.kg !== item.kg?.value ? (
+                  <span className="block text-[12px] text-muted">정정 전 {formatNumber(before(item)?.kg ?? 0)} kg</span>
+                ) : null}
               </td>
               <td className={`${td} text-right whitespace-nowrap`}>
                 <ClaimValue claim={item.unitPrice} price title={`${item.inspectedOn} 실제 단가`} />
@@ -173,6 +188,7 @@ export function ReportView() {
 
   const carbonGap = report ? carbonGapNote(report.records) : null;
   const baseline = report ? baselineNote(report.records) : null;
+  const corrected = report ? correctionNote(report.records) : null;
   const revenue = report?.totals?.revenue ?? null;
   const fee = report?.totals?.fee ?? null;
   // 확정한 합의가 있는 찾기. 승인·서류 화면에서 그 합의의 이행 계획서(단가 조정 조항 포함)를 연다
@@ -245,10 +261,11 @@ export function ReportView() {
                     note={report.totals.carbon && Number(report.totals.carbon.value) < 0 ? "−는 지금 처리보다 줄어든 양" : undefined}
                   />
                 </div>
-                {carbonGap || baseline ? (
+                {carbonGap || baseline || corrected ? (
                   <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-muted">
                     {carbonGap ? <li>{carbonGap}</li> : null}
                     {baseline ? <li>{baseline}</li> : null}
+                    {corrected ? <li>{corrected}</li> : null}
                   </ul>
                 ) : null}
               </>

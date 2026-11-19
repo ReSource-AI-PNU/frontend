@@ -31,6 +31,8 @@ const KEEP_SERVER_MESSAGE = new Set([
   "INVALID_CRITERIA",
   // 견적 요청서: 후보를 찾은 뒤 무엇이 바뀌어 요청서를 만들지 않았는지 서버가 적는다
   "OUTSIDE_STALE",
+  // 실제 결과: 같은 날 같은 계량표 번호를 이미 기록했다(어느 날 무슨 번호인지와 정정하라는 말을 서버가 적는다)
+  "DUPLICATE_TICKET",
   // 프런트 통로(src/lib/v3/backend-plan.ts)가 쓴 문구는 이미 사용자 말이다
   "DEMO_READ_ONLY",
   "DEMO_UNAVAILABLE",

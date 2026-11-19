@@ -262,6 +262,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   loading: "적재(무게·부피)",
   loading_volume: "부피 적재",
   pickup_route: "수거 노선",
+  pickup_area: "수거 가능 지역",
   permit_level: "허가 근거",
   transport_carbon: "운송 배출",
 };

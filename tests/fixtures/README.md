@@ -5,7 +5,7 @@
 | 파일 | 상태 | 받는 법 |
 |---|---|---|
 | `../../src/lib/v3/fixture-data/view.json` | 승인 전(화면의 예시 데이터) | `node scripts/v3-capture-fixture.mjs` |
-| `v3-view-confirmed.json` | 양쪽 승인 뒤 확정. 사람 교정 한 건, 업체의 실제 결과 한 건 포함 | 위와 같은 스크립트 |
+| `v3-view-confirmed.json` | 양쪽 승인 뒤 확정. 사람 교정 한 건, 업체가 같은 날 같은 폐기물로 기록한 반입(검수) 두 건 포함(두 번째 건은 120kg → 110kg 정정, 정정 이력 포함) | 위와 같은 스크립트 |
 | `v3-view-vendor-confirmed.json` | 같은 진단을 (주)남해열분해가 본 뷰 | 위와 같은 스크립트 |
 | `v3-view-declined.json` | 자동 거절: (주)미소환경의 자동 거절 조건에 "PP"를 더하고 돌린 진단 | `node scripts/v3-capture-states.mjs` |
 | `v3-view-blocked.json` | 승인 막힘: 합의 뒤 같은 측정일의 측정값을 다른 값으로 다시 올리고 승인을 시도(`blockedCodes`에 `EVIDENCE_CHANGED`, `STREAM_CHANGED`) | 위와 같은 스크립트 |

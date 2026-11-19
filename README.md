@@ -92,6 +92,7 @@ BACKEND_DIR=../backend npm run test:e2e   # 브라우저로 끝까지: 찾기 �
 
 - `tests/backend-plan.test.ts`: 통로의 회사 묶기(세션 회사만, 주소의 다른 회사 403), 체험하기 읽기 전용, bff 머리글, 사용자 문구.
 - `tests/auth-account.test.ts`: 로그인 응답과 소속 읽기, 활성 회사 고르기, 돌아갈 주소, 실패 문구, 초대 링크.
+- `tests/outcome.test.ts`: 실제 결과(검수 한 건)의 등록 요청 번호, 검수 번호 표시, 같은 날 순번, 정정 전후 값.
 - `tests/v3-errors.test.ts`: 오류 문구에 코드·환경 변수·서비스 이름이 섞이지 않는지.
 - `tests/labels.test.ts`: 근거 패널과 실행 기록에 판단 도구 ID(judge_route 등)가 아닌 이름이 나오는지.
 - `tests/trust.test.ts`: AI 신뢰도의 쉬운 지표 이름과 설명, 평가 용어가 없는지, 지난 실행 숫자를 빼는지, 작은 표본 표시.

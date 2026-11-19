@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MoreDetails } from "@/components/ui/more-details";
-import { api } from "@/lib/v3/api";
+import { ApiError, api } from "@/lib/v3/api";
 import Link from "next/link";
 import {
   THREAD_LABEL,
@@ -15,7 +15,23 @@ import {
   rejectionLabel,
 } from "@/lib/v3/format";
 import { DOC_LABEL } from "@/lib/v3/labels";
-import type { Assignment, Outcome, OutcomeInput } from "@/lib/v3/types";
+import {
+  ALREADY_SAVED,
+  CORRECTED_MEANWHILE,
+  REPLAYED,
+  inspectionLabel,
+  latestChanges,
+  newRequestId,
+  sameDayOrder,
+} from "@/lib/v3/outcome";
+import type {
+  Assignment,
+  Outcome,
+  OutcomeCorrection,
+  OutcomeInput,
+  OutcomeResult,
+  OutcomeValues,
+} from "@/lib/v3/types";
 import { PermitSummary } from "@/components/agent/permit-check";
 import { PickupBrief } from "@/components/agent/pickup-line";
 import { pickupTodo } from "@/lib/v3/pickup";
@@ -38,95 +54,480 @@ function Side({ label, done }: { label: string; done: boolean }) {
 
 const GRADES = ["A", "B", "C", "등외"];
 const field = "min-h-10 rounded-[10px] border border-line-strong bg-surface px-2.5 text-sm";
+const evidenceLink = "font-medium tabular-nums underline decoration-line-strong underline-offset-4";
 
-/** 업체가 기록한 실제 결과. 사람이 적은 값이라 먹색 점으로 표시하고, 값마다 근거(사람 확인)가 열린다. */
-function OutcomeTable({ outcomes, streamName }: { outcomes: Outcome[]; streamName: (id: string) => string }) {
-  const { openEvidence } = useV3();
-  const link = "font-medium tabular-nums underline decoration-line-strong underline-offset-4";
+type PriceSide = "매입" | "처리비";
+/** 입력 칸의 값(글자 그대로). 보낼 때 숫자로 바꾼다 */
+type Draft = { grade: string; side: PriceSide | null; price: string; kg: string; inspectedOn: string; ticket: string; note: string };
+
+const emptyDraft = (today: string): Draft => ({
+  grade: "",
+  side: null,
+  price: "",
+  kg: "",
+  inspectedOn: today,
+  ticket: "",
+  note: "",
+});
+
+function draftOf(item: Outcome): Draft {
+  const price = item.actualUnitPriceKrwPerKg;
+  return {
+    grade: item.actualGrade ?? "",
+    side: price === null ? null : price < 0 ? "처리비" : "매입",
+    price: price === null ? "" : String(Math.abs(price)),
+    kg: item.actualKg === null ? "" : String(item.actualKg),
+    inspectedOn: item.inspectedOn,
+    ticket: item.weighTicket ?? "",
+    note: item.note ?? "",
+  };
+}
+
+/**
+ * 입력 칸을 보낼 값으로 바꾼다. 틀린 칸이 있으면 null.
+ * 단가는 배출 기업 기준 부호로 보낸다: 매입이면 양수, 처리비면 음수. 방향을 고르지 않았으면 합의한 단가의 방향을 따른다.
+ */
+function valuesOf(draft: Draft, agreed: number | undefined): OutcomeValues | null {
+  const side = draft.side ?? (typeof agreed === "number" && agreed < 0 ? "처리비" : "매입");
+  const price = draft.price.trim() === "" ? null : Number(draft.price);
+  const kg = draft.kg.trim() === "" ? null : Number(draft.kg);
+  const ok =
+    Boolean(draft.inspectedOn) &&
+    (draft.grade !== "" || price !== null) &&
+    (price === null || (Number.isFinite(price) && price >= 0)) &&
+    (kg === null || (Number.isFinite(kg) && kg >= 0));
+  if (!ok) return null;
+  return {
+    actualGrade: draft.grade || null,
+    actualUnitPriceKrwPerKg: price === null ? null : side === "처리비" ? -price : price,
+    actualKg: kg,
+    inspectedOn: draft.inspectedOn,
+    weighTicket: draft.ticket.trim() || null,
+    note: draft.note.trim() || undefined,
+  };
+}
+
+/** 검수 한 건의 입력 칸(새 반입 등록과 정정이 같이 쓴다) */
+function OutcomeFields({
+  draft,
+  onChange,
+  agreed,
+}: {
+  draft: Draft;
+  onChange: (next: Draft) => void;
+  agreed: number | undefined;
+}) {
+  const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
+  const side = draft.side ?? (typeof agreed === "number" && agreed < 0 ? "처리비" : "매입");
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-[13px]">
-        <thead>
-          <tr className="border-b border-line-strong text-left text-muted">
-            <th className="py-1 pr-3 font-semibold">폐기물</th>
-            <th className="py-1 pr-3 font-semibold">검수일</th>
-            <th className="py-1 pr-3 font-semibold">실제 등급</th>
-            <th className="py-1 pr-3 text-right font-semibold">실제 단가</th>
-            <th className="py-1 pr-3 text-right font-semibold">실제 중량</th>
-            <th className="py-1 pr-3 text-right font-semibold">매입 기준표 단가</th>
-            <th className="py-1 text-right font-semibold">기준표 대비</th>
-          </tr>
-        </thead>
-        <tbody>
-          {outcomes.map((item) => (
-            <tr key={item.id} className="border-b border-line align-top last:border-b-0">
-              <td className="py-1.5 pr-3">
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <span aria-hidden="true" className="size-2 rounded-full bg-ink" />
-                  {streamName(item.streamId)}
-                </span>
-                {item.note ? <span className="text-muted">{item.note}</span> : null}
-              </td>
-              <td className="py-1.5 pr-3 tabular-nums">{item.inspectedOn}</td>
-              <td className="py-1.5 pr-3">
-                {item.actualGrade ? (
-                  <button
-                    type="button"
-                    className={link}
-                    disabled={!item.evidence.grade}
-                    onClick={() => openEvidence(item.evidence.grade ? [item.evidence.grade] : [], "실제 등급")}
-                  >
-                    {item.actualGrade}
-                  </button>
-                ) : (
-                  <span className="text-muted">기록 없음</span>
-                )}
-              </td>
-              <td className="py-1.5 pr-3 text-right whitespace-nowrap">
-                {item.actualUnitPriceKrwPerKg !== null ? (
-                  <button
-                    type="button"
-                    className={link}
-                    disabled={!item.evidence.unitPrice}
-                    onClick={() => openEvidence(item.evidence.unitPrice ? [item.evidence.unitPrice] : [], "실제 단가")}
-                  >
-                    {formatSignedPrice(item.actualUnitPriceKrwPerKg)}
-                  </button>
-                ) : (
-                  <span className="text-muted">기록 없음</span>
-                )}
-              </td>
-              <td className="py-1.5 pr-3 text-right whitespace-nowrap">
-                {item.actualKg !== null ? (
-                  <button
-                    type="button"
-                    className={link}
-                    disabled={!item.evidence.kg}
-                    onClick={() => openEvidence(item.evidence.kg ? [item.evidence.kg] : [], "실제 중량")}
-                  >
-                    {formatNumber(item.actualKg)} kg
-                  </button>
-                ) : (
-                  <span className="text-muted">기록 없음</span>
-                )}
-              </td>
-              <td className="py-1.5 pr-3 text-right whitespace-nowrap">
-                {item.tablePrice ? <ClaimValue claim={item.tablePrice} price /> : <span className="text-muted">-</span>}
-              </td>
-              <td className="py-1.5 text-right whitespace-nowrap">
-                {item.deviation ? <ClaimValue claim={item.deviation} signed /> : <span className="text-muted">-</span>}
-              </td>
-            </tr>
+    <>
+      <label className="flex flex-col gap-1 font-semibold">
+        검수일
+        <input
+          type="date"
+          value={draft.inspectedOn}
+          onChange={(event) => set({ inspectedOn: event.target.value })}
+          className={`${field} tabular-nums`}
+        />
+      </label>
+      <label className="flex flex-col gap-1 font-semibold">
+        계량표 번호 (선택)
+        <input
+          value={draft.ticket}
+          maxLength={40}
+          onChange={(event) => set({ ticket: event.target.value })}
+          className={`${field} w-28 tabular-nums`}
+        />
+      </label>
+      <label className="flex flex-col gap-1 font-semibold">
+        실제 등급
+        <select value={draft.grade} onChange={(event) => set({ grade: event.target.value })} className={field}>
+          <option value="">기록 안 함</option>
+          {GRADES.map((item) => (
+            <option key={item}>{item}</option>
           ))}
-        </tbody>
-      </table>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 font-semibold">
+        실제 단가 (kg당 원)
+        <span className="flex gap-1">
+          <select
+            value={side}
+            aria-label="단가 방향"
+            onChange={(event) => set({ side: event.target.value as PriceSide })}
+            className={field}
+          >
+            <option>매입</option>
+            <option>처리비</option>
+          </select>
+          <input
+            value={draft.price}
+            onChange={(event) => set({ price: event.target.value })}
+            inputMode="decimal"
+            aria-label="실제 단가"
+            className={`${field} w-24 tabular-nums`}
+          />
+        </span>
+      </label>
+      <label className="flex flex-col gap-1 font-semibold">
+        실제 중량 (kg)
+        <input
+          value={draft.kg}
+          onChange={(event) => set({ kg: event.target.value })}
+          inputMode="decimal"
+          className={`${field} w-24 tabular-nums`}
+        />
+      </label>
+      <label className="flex min-w-[10rem] flex-1 flex-col gap-1 font-semibold">
+        메모 (선택)
+        <input value={draft.note} onChange={(event) => set({ note: event.target.value })} className={field} />
+      </label>
+    </>
+  );
+}
+
+type SendState = { busy: boolean; error: string | null; done: string | null };
+const idle: SendState = { busy: false, error: null, done: null };
+
+/**
+ * 한 번 누른 요청을 응답이 올 때까지 같은 요청 번호로 보낸다. 두 번 누르거나, 응답을 받지 못해 다시 누르면
+ * 같은 번호가 가서 서버가 한 건으로 묶는다. 성공하거나 서버가 "이미 다른 내용으로 저장됨"이라고 답하면 번호를 비운다.
+ */
+function useOnceRequest() {
+  const pending = useRef<string | null>(null);
+  const sending = useRef(false);
+  const [state, setState] = useState<SendState>(idle);
+  const run = async (
+    call: (requestId: string) => Promise<OutcomeResult>,
+    done: string,
+    onConflict: () => void,
+  ): Promise<boolean> => {
+    if (sending.current) return false;
+    sending.current = true;
+    pending.current ??= newRequestId();
+    setState({ busy: true, error: null, done: null });
+    try {
+      const result = await call(pending.current);
+      pending.current = null;
+      setState({ busy: false, error: null, done: result.replayed ? REPLAYED : done });
+      return true;
+    } catch (error) {
+      const code = error instanceof ApiError ? error.code : null;
+      if (code === "REQUEST_ID_REUSED" || code === "REVISION_CONFLICT") {
+        pending.current = null;
+        onConflict();
+      }
+      const message =
+        code === "REQUEST_ID_REUSED"
+          ? ALREADY_SAVED
+          : code === "REVISION_CONFLICT"
+            ? CORRECTED_MEANWHILE
+            : error instanceof Error
+              ? error.message
+              : "기록하지 못했습니다.";
+      setState({ busy: false, error: message, done: null });
+      return false;
+    } finally {
+      sending.current = false;
+    }
+  };
+  return { state, run };
+}
+
+function SendStatus({ state }: { state: SendState }) {
+  return (
+    <>
+      {state.error ? (
+        <p role="alert" className="mt-2 text-sm text-loss">
+          {state.error}
+        </p>
+      ) : null}
+      {state.done ? (
+        <p role="status" className="mt-2 text-[13px] font-semibold">
+          {state.done}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * 이미 기록한 검수 한 건의 정정. 그 줄 아래 먹색 1px 테두리 상자에 지금 값을 채워 열고, 정정 사유를 받는다.
+ * 앞 판은 이력으로 남고 실적에는 고친 값만 한 번 들어간다.
+ */
+function CorrectionForm({
+  item,
+  agreed,
+  onCorrect,
+  onConflict,
+  onClose,
+}: {
+  item: Outcome;
+  agreed: number | undefined;
+  onCorrect: (inspectionId: string, body: OutcomeCorrection) => Promise<OutcomeResult>;
+  onConflict: () => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(() => draftOf(item));
+  const [reason, setReason] = useState("");
+  const { state, run } = useOnceRequest();
+  const values = valuesOf(draft, agreed);
+  const send = async () => {
+    if (!values) return;
+    const ok = await run(
+      (requestId) =>
+        onCorrect(item.inspectionId, { ...values, requestId, baseRevision: item.revision, reason: reason.trim() }),
+      "정정을 기록했습니다.",
+      onConflict,
+    );
+    if (ok) onClose();
+  };
+  return (
+    <div className="rounded-xl border border-ink p-3">
+      <p className="text-[13px] font-semibold">
+        {inspectionLabel(item)} 정정 <span className="font-normal text-muted">· 지금 {item.revision}판</span>
+      </p>
+      <div className="mt-2 flex flex-wrap items-end gap-3 text-[13px]">
+        <OutcomeFields draft={draft} onChange={setDraft} agreed={agreed} />
+        <label className="flex min-w-[12rem] flex-1 flex-col gap-1 font-semibold">
+          정정 사유
+          <input
+            value={reason}
+            maxLength={200}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="예: 계량표 재확인"
+            className={field}
+          />
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="secondary" disabled={!values || !reason.trim() || state.busy} onClick={send}>
+          {state.busy ? "기록 중" : "정정 기록"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onClose} disabled={state.busy}>
+          취소
+        </Button>
+      </div>
+      <p className="mt-2 text-[13px] text-muted">
+        정정하면 앞의 기록은 정정 이력으로 남고, 실적에는 고친 값만 한 번 들어갑니다. 다른 반입이면 정정하지 말고 아래에서 새로
+        기록해 주세요.
+      </p>
+      <SendStatus state={state} />
+    </div>
+  );
+}
+
+/** 정정한 건의 이력: 가장 최근 정정은 늘 보이고(앞 값은 취소선, 누르면 그때의 근거), 그 앞 판들은 접는다 */
+function CorrectionHistory({ item }: { item: Outcome }) {
+  const { openEvidence } = useV3();
+  const before = item.history[item.history.length - 1];
+  if (!before) return null;
+  const changes = latestChanges(item);
+  const older = item.history.slice(0, -1);
+  return (
+    <div className="text-[13px]">
+      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span aria-hidden="true" className="size-2 self-center rounded-full bg-ink" />
+        <span className="font-semibold">정정 {item.revision - 1}회</span>
+        {item.reason ? <span className="text-ink-2">사유 · {item.reason}</span> : null}
+        {item.recordedOn ? <span className="text-muted tabular-nums">{item.recordedOn}</span> : null}
+      </p>
+      <ul className="mt-0.5 pl-4">
+        {changes.map((change) => {
+          const old = change.part ? before.evidence[change.part] : null;
+          return (
+            <li key={change.label}>
+              {change.label}{" "}
+              {old ? (
+                <button
+                  type="button"
+                  className="tabular-nums text-muted line-through decoration-muted"
+                  onClick={() => openEvidence([old], `정정 전 ${change.label}`)}
+                >
+                  {change.before}
+                </button>
+              ) : (
+                <span className="tabular-nums text-muted line-through">{change.before}</span>
+              )}{" "}
+              → <span className="font-medium tabular-nums">{change.after}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {older.length > 0 ? (
+        <MoreDetails className="pl-4" label="이전 판 모두 보기" hint={`${older.length}판`}>
+          <ul className="mb-1 space-y-0.5 text-muted">
+            {older.map((entry) => (
+              <li key={entry.revision} className="tabular-nums">
+                {entry.revision}판 · {entry.recordedOn ?? "기록일 없음"} · {entry.actualGrade ?? "등급 기록 없음"} ·{" "}
+                {entry.actualUnitPriceKrwPerKg === null ? "단가 기록 없음" : formatSignedPrice(entry.actualUnitPriceKrwPerKg)} ·{" "}
+                {entry.actualKg === null ? "중량 기록 없음" : `${formatNumber(entry.actualKg)} kg`}
+                {entry.reason ? ` · 사유 ${entry.reason}` : ""}
+              </li>
+            ))}
+          </ul>
+        </MoreDetails>
+      ) : null}
     </div>
   );
 }
 
 /**
- * 업체의 실제 결과 입력(확정된 대화에만). 검수에서 나온 실제 등급·단가·중량을 적으면 재학습 데이터가 된다.
- * 단가는 배출 기업 기준 부호로 보낸다: 매입이면 양수, 처리비면 음수.
+ * 업체가 기록한 실제 결과. 검수(계량) 한 건이 한 줄이다. 사람이 적은 값이라 먹색 점으로 표시하고, 값마다 근거(사람 확인)가
+ * 열린다. 같은 날 같은 폐기물을 여러 번 받았으면 몇 번째인지 적고, 정정한 건은 줄 아래에 정정 이력을 둔다.
+ * 업체 담당자는 줄마다 "정정"으로 그 건을 고친다(새 반입은 아래 입력 줄로 따로 기록한다).
+ */
+function OutcomeTable({
+  outcomes,
+  streamName,
+  agreedOf,
+  onCorrect,
+  onConflict,
+}: {
+  outcomes: Outcome[];
+  streamName: (id: string) => string;
+  agreedOf: (streamId: string) => number | undefined;
+  onCorrect: ((inspectionId: string, body: OutcomeCorrection) => Promise<OutcomeResult>) | null;
+  onConflict: () => void;
+}) {
+  const { openEvidence } = useV3();
+  const [editing, setEditing] = useState<string | null>(null);
+  const order = sameDayOrder(outcomes);
+  const columns = onCorrect ? 9 : 8;
+  const target = outcomes.find((item) => item.inspectionId === editing) ?? null;
+  return (
+    <div>
+      {/* relative: 머리 칸의 화면 낭독기용 글자(절대 위치)가 스크롤 상자 밖으로 문서 폭을 늘리지 않게 */}
+      <div className="relative overflow-x-auto">
+        <table className="w-full min-w-[760px] text-[13px]">
+          <thead>
+            <tr className="border-b border-line-strong text-left text-muted">
+              <th className="py-1 pr-3 font-semibold">폐기물</th>
+              <th className="py-1 pr-3 font-semibold">검수일</th>
+              <th className="py-1 pr-3 font-semibold">검수 번호</th>
+              <th className="py-1 pr-3 font-semibold">실제 등급</th>
+              <th className="py-1 pr-3 text-right font-semibold">실제 단가</th>
+              <th className="py-1 pr-3 text-right font-semibold">실제 중량</th>
+              <th className="py-1 pr-3 text-right font-semibold">매입 기준표 단가</th>
+              <th className="py-1 pr-3 text-right font-semibold">기준표 대비</th>
+              {onCorrect ? (
+                <th className="py-1 font-semibold">
+                  <span className="sr-only">정정</span>
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          {outcomes.map((item) => (
+            <tbody key={item.inspectionId} className="border-b border-line last:border-b-0">
+              <tr className="align-top">
+                <td className="py-1.5 pr-3">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <span aria-hidden="true" className="size-2 rounded-full bg-ink" />
+                    {streamName(item.streamId)}
+                  </span>
+                  {item.note ? <span className="text-muted">{item.note}</span> : null}
+                </td>
+                <td className="py-1.5 pr-3 tabular-nums">
+                  {item.inspectedOn}
+                  {order.get(item.inspectionId) ? (
+                    <span className="block text-[12px] text-muted">{order.get(item.inspectionId)}</span>
+                  ) : null}
+                </td>
+                <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums" title={item.inspectionId}>
+                  {inspectionLabel(item)}
+                </td>
+                <td className="py-1.5 pr-3">
+                  {item.actualGrade ? (
+                    <button
+                      type="button"
+                      className={evidenceLink}
+                      disabled={!item.evidence.grade}
+                      onClick={() => openEvidence(item.evidence.grade ? [item.evidence.grade] : [], "실제 등급")}
+                    >
+                      {item.actualGrade}
+                    </button>
+                  ) : (
+                    <span className="text-muted">기록 없음</span>
+                  )}
+                </td>
+                <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                  {item.actualUnitPriceKrwPerKg !== null ? (
+                    <button
+                      type="button"
+                      className={evidenceLink}
+                      disabled={!item.evidence.unitPrice}
+                      onClick={() => openEvidence(item.evidence.unitPrice ? [item.evidence.unitPrice] : [], "실제 단가")}
+                    >
+                      {formatSignedPrice(item.actualUnitPriceKrwPerKg)}
+                    </button>
+                  ) : (
+                    <span className="text-muted">기록 없음</span>
+                  )}
+                </td>
+                <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                  {item.actualKg !== null ? (
+                    <button
+                      type="button"
+                      className={evidenceLink}
+                      disabled={!item.evidence.kg}
+                      onClick={() => openEvidence(item.evidence.kg ? [item.evidence.kg] : [], "실제 중량")}
+                    >
+                      {formatNumber(item.actualKg)} kg
+                    </button>
+                  ) : (
+                    <span className="text-muted">기록 없음</span>
+                  )}
+                </td>
+                <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                  {item.tablePrice ? <ClaimValue claim={item.tablePrice} price /> : <span className="text-muted">-</span>}
+                </td>
+                <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                  {item.deviation ? <ClaimValue claim={item.deviation} signed /> : <span className="text-muted">-</span>}
+                </td>
+                {onCorrect ? (
+                  <td className="py-0.5 text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-expanded={editing === item.inspectionId}
+                      onClick={() => setEditing(editing === item.inspectionId ? null : item.inspectionId)}
+                    >
+                      정정
+                    </Button>
+                  </td>
+                ) : null}
+              </tr>
+              {item.history.length > 0 ? (
+                <tr>
+                  <td colSpan={columns} className="pb-2">
+                    <CorrectionHistory item={item} />
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          ))}
+        </table>
+      </div>
+      {/* 정정 상자는 표 밖에 둔다(휴대폰에서 표만 가로로 밀리고 입력 칸은 화면 폭에 맞게) */}
+      {onCorrect && target ? (
+        <div className="mt-2">
+          <CorrectionForm
+            key={`${target.inspectionId}:${target.revision}`}
+            item={target}
+            agreed={agreedOf(target.streamId)}
+            onCorrect={onCorrect}
+            onConflict={onConflict}
+            onClose={() => setEditing(null)}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * 업체의 새 반입 기록(확정된 대화에만). 검수에서 나온 실제 등급·단가·중량을 반입할 때마다 한 건씩 적는다.
+ * 같은 날 같은 폐기물을 여러 번 받았으면 건마다 기록하고, 이미 기록한 건을 고치는 것은 표의 "정정"이다.
  */
 function OutcomeForm({
   threadId,
@@ -134,64 +535,34 @@ function OutcomeForm({
   streamName,
   today,
   onSubmit,
+  onConflict,
 }: {
   threadId: string;
   rows: Assignment[];
   streamName: (id: string) => string;
   today: string;
-  onSubmit: (body: OutcomeInput) => Promise<void>;
+  onSubmit: (body: OutcomeInput) => Promise<OutcomeResult>;
+  onConflict: () => void;
 }) {
   const [streamId, setStreamId] = useState(rows[0]?.streamId ?? "");
   const agreed = rows.find((item) => item.streamId === streamId)?.unitPrice?.value;
-  const [grade, setGrade] = useState("");
-  const [side, setSide] = useState<"매입" | "처리비" | null>(null);
-  const [price, setPrice] = useState("");
-  const [kg, setKg] = useState("");
-  const [inspectedOn, setInspectedOn] = useState(today);
-  const [note, setNote] = useState("");
-  const [state, setState] = useState<{ busy: boolean; error: string | null; done: boolean }>({
-    busy: false,
-    error: null,
-    done: false,
-  });
-  // 고르지 않았으면 합의한 단가의 방향을 따른다
-  const sideNow = side ?? (typeof agreed === "number" && agreed < 0 ? "처리비" : "매입");
-  const priceValue = price.trim() === "" ? null : Number(price);
-  const kgValue = kg.trim() === "" ? null : Number(kg);
-  const valid =
-    Boolean(streamId) &&
-    Boolean(inspectedOn) &&
-    (grade !== "" || priceValue !== null) &&
-    (priceValue === null || (Number.isFinite(priceValue) && priceValue >= 0)) &&
-    (kgValue === null || (Number.isFinite(kgValue) && kgValue >= 0));
+  const [draft, setDraft] = useState(() => emptyDraft(today));
+  const { state, run } = useOnceRequest();
+  const values = valuesOf(draft, typeof agreed === "number" ? agreed : undefined);
   const send = async () => {
-    setState({ busy: true, error: null, done: false });
-    try {
-      await onSubmit({
-        threadId,
-        streamId,
-        actualGrade: grade || null,
-        actualUnitPriceKrwPerKg: priceValue === null ? null : sideNow === "처리비" ? -priceValue : priceValue,
-        actualKg: kgValue,
-        inspectedOn,
-        note: note.trim() || undefined,
-      });
-      setGrade("");
-      setPrice("");
-      setKg("");
-      setNote("");
-      setState({ busy: false, error: null, done: true });
-    } catch (error) {
-      setState({
-        busy: false,
-        error: error instanceof Error ? error.message : "기록하지 못했습니다.",
-        done: false,
-      });
-    }
+    if (!values || !streamId) return;
+    const ok = await run(
+      (requestId) => onSubmit({ ...values, requestId, threadId, streamId }),
+      "새 반입 한 건을 기록했습니다.",
+      onConflict,
+    );
+    // 다음 반입을 바로 적을 수 있게 값만 비우고 검수일은 그대로 둔다
+    if (ok) setDraft({ ...emptyDraft(draft.inspectedOn), side: draft.side });
   };
   return (
     <div className="mt-3">
-      <div className="flex flex-wrap items-end gap-3 text-[13px]">
+      <p className="text-[13px] font-semibold">새 반입 기록</p>
+      <div className="mt-1 flex flex-wrap items-end gap-3 text-[13px]">
         <label className="flex flex-col gap-1 font-semibold">
           폐기물
           <select value={streamId} onChange={(event) => setStreamId(event.target.value)} className={field}>
@@ -202,72 +573,16 @@ function OutcomeForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          검수일
-          <input
-            type="date"
-            value={inspectedOn}
-            onChange={(event) => setInspectedOn(event.target.value)}
-            className={`${field} tabular-nums`}
-          />
-        </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          실제 등급
-          <select value={grade} onChange={(event) => setGrade(event.target.value)} className={field}>
-            <option value="">기록 안 함</option>
-            {GRADES.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          실제 단가 (kg당 원)
-          <span className="flex gap-1">
-            <select
-              value={sideNow}
-              aria-label="단가 방향"
-              onChange={(event) => setSide(event.target.value as "매입" | "처리비")}
-              className={field}
-            >
-              <option>매입</option>
-              <option>처리비</option>
-            </select>
-            <input
-              value={price}
-              onChange={(event) => setPrice(event.target.value)}
-              inputMode="decimal"
-              aria-label="실제 단가"
-              className={`${field} w-24 tabular-nums`}
-            />
-          </span>
-        </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          실제 중량 (kg)
-          <input
-            value={kg}
-            onChange={(event) => setKg(event.target.value)}
-            inputMode="decimal"
-            className={`${field} w-24 tabular-nums`}
-          />
-        </label>
-        <label className="flex min-w-[10rem] flex-1 flex-col gap-1 font-semibold">
-          메모 (선택)
-          <input value={note} onChange={(event) => setNote(event.target.value)} className={field} />
-        </label>
-        <Button size="sm" variant="secondary" disabled={!valid || state.busy} onClick={send}>
-          {state.busy ? "기록 중" : "실제 결과 기록"}
+        <OutcomeFields draft={draft} onChange={setDraft} agreed={typeof agreed === "number" ? agreed : undefined} />
+        <Button size="sm" variant="secondary" disabled={!values || !streamId || state.busy} onClick={send}>
+          {state.busy ? "기록 중" : "새 반입 기록"}
         </Button>
       </div>
       <p className="mt-2 text-[13px] text-muted">
-        실제 등급이나 실제 단가 가운데 하나는 적어야 합니다. 같은 폐기물과 검수일로 다시 기록하면 앞의 기록을 고친 새
-        판이 됩니다. 기록은 배출 기업도 봅니다.
+        실제 등급이나 실제 단가 가운데 하나는 적어야 합니다. 같은 날 같은 폐기물을 여러 번 받았으면 받을 때마다 따로 기록합니다.
+        이미 기록한 건의 값을 고치려면 위 표에서 그 줄의 &ldquo;정정&rdquo;을 누르세요. 기록은 배출 기업도 봅니다.
       </p>
-      {state.error ? (
-        <p role="alert" className="mt-2 text-sm text-loss">
-          {state.error}
-        </p>
-      ) : null}
-      {state.done ? <p className="mt-2 text-[13px] font-semibold">실제 결과를 기록했습니다.</p> : null}
+      <SendStatus state={state} />
     </div>
   );
 }
@@ -543,7 +858,27 @@ export function ApprovalView() {
                 <h3 className="text-[15px] font-medium">받아 보니 실제로는 (검수 뒤 업체가 기록)</h3>
                 {outcomes.length > 0 ? (
                   <div className="mt-2">
-                    <OutcomeTable outcomes={outcomes} streamName={streamName} />
+                    <p className="mb-1 text-[13px] text-muted">
+                      검수 {outcomes.length}건 · 반입(계량) 한 번이 한 줄이고, 정정한 건은 고친 값만 실적에 들어갑니다.
+                    </p>
+                    <OutcomeTable
+                      outcomes={outcomes}
+                      streamName={streamName}
+                      agreedOf={(streamId) => {
+                        const value = rows.find((item) => item.streamId === streamId)?.unitPrice?.value;
+                        return typeof value === "number" ? value : undefined;
+                      }}
+                      onCorrect={
+                        role === "vendor" && d.canAct
+                          ? async (inspectionId, body) => {
+                              const result = await api.correctOutcome(view.session.id, org.id, inspectionId, body);
+                              d.reload();
+                              return result;
+                            }
+                          : null
+                      }
+                      onConflict={d.reload}
+                    />
                   </div>
                 ) : (
                   <p className="mt-1 text-sm text-muted">아직 기록한 실제 결과가 없습니다.</p>
@@ -556,9 +891,11 @@ export function ApprovalView() {
                     streamName={streamName}
                     today={view.session.today}
                     onSubmit={async (body) => {
-                      await api.recordOutcome(view.session.id, org.id, body);
+                      const result = await api.recordOutcome(view.session.id, org.id, body);
                       d.reload();
+                      return result;
                     }}
+                    onConflict={d.reload}
                   />
                 ) : null}
               </div>

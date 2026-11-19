@@ -45,6 +45,7 @@ export type Assumption = Result["assumptions"][number];
 export type CorrectionField = z.infer<typeof s.correctionFieldSchema>;
 export type Correction = z.infer<typeof s.correctionSchema>;
 export type Outcome = z.infer<typeof s.outcomeSchema>;
+export type OutcomeRevision = z.infer<typeof s.outcomeRevisionSchema>;
 export type Assignment = z.infer<typeof s.assignmentSchema>;
 export type PermitLevel = z.infer<typeof s.permitLevelSchema>;
 export type PermitCheck = z.infer<typeof s.permitCheckSchema>;
@@ -188,17 +189,24 @@ export type CorrectionInput = {
 };
 export type CorrectionResult = { correction: Correction; evidence: string[] };
 
-/** POST /sessions/{id}/outcomes. 실제 등급이나 실제 단가 가운데 하나는 있어야 한다 */
-export type OutcomeInput = {
-  threadId: string;
-  streamId: string;
+/** 검수 한 건의 값. 실제 등급이나 실제 단가 가운데 하나는 있어야 한다 */
+export type OutcomeValues = {
   actualGrade: string | null;
   actualUnitPriceKrwPerKg: number | null;
   actualKg: number | null;
   inspectedOn: string;
+  weighTicket?: string | null;
   note?: string;
 };
-export type OutcomeResult = { outcome: Outcome; evidence: string[] };
+/**
+ * POST /sessions/{id}/outcomes: 새 반입 한 건. requestId는 등록 한 번마다 만들고, 응답을 받기 전에 다시 보낼 때는
+ * 같은 번호를 쓴다(서버가 한 건으로 묶는다).
+ */
+export type OutcomeInput = OutcomeValues & { requestId: string; threadId: string; streamId: string };
+/** PUT /sessions/{id}/outcomes/{inspectionId}: 이미 기록한 검수의 정정. baseRevision은 보고 고친 판 번호 */
+export type OutcomeCorrection = OutcomeValues & { requestId: string; baseRevision: number; reason: string };
+/** replayed가 참이면 같은 요청이 다시 간 것이라 서버가 새로 만들지 않고 이미 있는 기록을 돌려줬다 */
+export type OutcomeResult = { outcome: Outcome; evidence: string[]; replayed: boolean };
 
 /** 업체가 고르는 모델 설정. 실제로 어떤 구현이 답했는지는 진단 뷰의 vendorModel에 따로 온다. */
 export type ConfiguredModel = { provider: "foundry" | "ollama"; name: string };

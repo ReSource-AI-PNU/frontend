@@ -12,6 +12,8 @@ import {
   REPORT_LEAD,
   baselineNote,
   carbonGapNote,
+  correctionNote,
+  correctionText,
   csvCell,
   csvName,
   periodRange,
@@ -46,6 +48,29 @@ test("CSV는 BOM과 머리 줄, 실적 줄, 합계 줄을 담고 칸 수가 같�
   assert.ok(lines[1].startsWith(`${first.inspectedOn},`));
   // 처리비 합계는 표의 부호(−는 낸 돈)로 적는다
   if (report.totals?.fee) assert.ok(lines.some((line) => line.startsWith("처리비 합계,") && line.includes(`,-${report.totals?.fee?.value}`)));
+});
+
+test("CSV는 검수 한 건이 한 줄이고, 검수 ID·계량표 번호·정정 이력 칸을 싣는다", () => {
+  // 예시 리포트: 같은 날 같은 폐기물 반입 두 건, 두 번째 건은 120kg → 110kg 정정
+  assert.equal(report.records.length, 2);
+  assert.equal(report.totals?.count, 2);
+  assert.equal(report.totals?.kg?.value, report.records.reduce((sum, item) => sum + Number(item.kg?.value ?? 0), 0));
+  const lines = reportCsv(report).slice(1).trimEnd().split("\r\n");
+  const column = (name: string) => CSV_HEADER.indexOf(name);
+  const rows = lines.slice(1, 1 + report.records.length).map((line) => line.split(","));
+  assert.deepEqual(
+    rows.map((row) => row[column("검수 ID")]),
+    report.records.map((item) => item.inspectionId),
+  );
+  const fixed = report.records.find((item) => item.revision === 2);
+  assert.ok(fixed);
+  assert.equal(correctionText(fixed), "2판(정정 1회). 1판 중량 120kg · 단가 -72원/kg · 등급 등외. 최근 사유: 계량표 재확인(가상)");
+  assert.equal(correctionText(report.records.find((item) => item.revision === 1) ?? fixed), "");
+  assert.ok(lines.some((line) => line.includes(",T-0002,") && line.includes("2판(정정 1회)")));
+  // 합계 줄의 건수는 검수 건 수다(정정한 건을 두 번 세지 않는다)
+  assert.ok(lines.some((line) => line.startsWith("합계,2건,")));
+  assert.match(correctionNote(report.records) ?? "", /^정정한 검수 1건은 고친 값만 합계에 넣었습니다/);
+  assert.equal(correctionNote(report.records.filter((item) => item.revision === 1)), null);
 });
 
 test("CSV 칸은 수식으로 읽히지 않고, 쉼표·따옴표를 감싼다", () => {

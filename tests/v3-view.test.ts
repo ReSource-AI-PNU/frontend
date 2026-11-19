@@ -59,7 +59,7 @@ for (const [name, file] of [
   });
 }
 
-test("실적 리포트(확정 뒤 검수 한 건)가 스키마에 맞고, 합계는 실적만 더한다", () => {
+test("실적 리포트(확정 뒤 같은 날 검수 두 건, 한 건은 정정)가 스키마에 맞고, 합계는 검수 건마다 최신 판만 더한다", () => {
   const report = reportSchema.parse(read("./fixtures/v3-report.json"));
   assert.ok(report.records.length > 0);
   assert.equal(report.totals?.count, report.records.length);
@@ -194,7 +194,17 @@ test("가정값은 이름과 값으로 오고, 확인 항목의 key는 모두 �
 test("확정 뒤 뷰에는 사람 교정과 업체의 실제 결과가 있다", () => {
   const view = diagnosisViewSchema.parse(read("./fixtures/v3-view-confirmed.json"));
   assert.equal(view.feedback.corrections.length, 1);
-  assert.equal(view.feedback.outcomes.length, 1);
+  // 같은 날 같은 폐기물의 반입 두 건(검수 ID가 다르다). 두 번째 건은 정정해 최신 판과 이력이 함께 온다
+  assert.equal(view.feedback.outcomes.length, 2);
+  assert.equal(new Set(view.feedback.outcomes.map((item) => item.inspectionId)).size, 2);
+  assert.ok(view.feedback.outcomes.every((item) => item.id === item.inspectionId && !item.legacy));
+  assert.deepEqual(
+    view.feedback.outcomes.map((item) => [item.revision, item.history.length]),
+    [
+      [1, 0],
+      [2, 1],
+    ],
+  );
   assert.ok(view.events.some((event) => event.kind === "feedback"));
   // 승인 칸은 합의·확정 대화에만 있다
   const open = new Set(view.threads.filter((item) => ["agreed", "confirmed"].includes(item.status)).map((item) => item.id));
@@ -202,7 +212,7 @@ test("확정 뒤 뷰에는 사람 교정과 업체의 실제 결과가 있다", 
   // 업체에게는 교정이 가지 않는다
   const vendor = diagnosisViewSchema.parse(read("./fixtures/v3-view-vendor-confirmed.json"));
   assert.equal(vendor.feedback.corrections.length, 0);
-  assert.equal(vendor.feedback.outcomes.length, 1);
+  assert.equal(vendor.feedback.outcomes.length, 2);
 });
 
 test("실행 기록의 숨긴 근거 개수는 정수다", () => {

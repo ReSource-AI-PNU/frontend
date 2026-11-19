@@ -106,7 +106,32 @@ export const CSV_HEADER = [
   "금액(원 · +받은 돈 −낸 돈)",
   "탄소 변화(tCO2e · −는 감축)",
   "비교한 현행 처리",
+  "검수 ID",
+  "계량표 번호",
+  "정정 이력",
 ];
+
+/** 정정한 검수의 이력 한 칸. 정정하지 않았으면 빈 칸. 예: "2판(정정 1회). 1판 중량 200kg · 단가 300원/kg. 최근 사유: 계량표 재확인" */
+export function correctionText(item: ReportRecord): string {
+  if (item.revision <= 1 || item.history.length === 0) return "";
+  const before = item.history.map((entry) => {
+    const parts = [
+      entry.kg === null ? null : `중량 ${entry.kg}kg`,
+      entry.unitPrice === null ? null : `단가 ${entry.unitPrice}원/kg`,
+      entry.grade === null ? null : `등급 ${entry.grade}`,
+    ].filter(Boolean);
+    return `${entry.revision}판 ${parts.join(" · ") || "값 기록 없음"}`;
+  });
+  const reason = item.correctionReason ? `. 최근 사유: ${item.correctionReason}` : "";
+  return `${item.revision}판(정정 ${item.revision - 1}회). ${before.join("; ")}${reason}`;
+}
+
+/** 정정한 검수가 있으면 합계 아래에 붙이는 한 줄 */
+export function correctionNote(records: ReportRecord[]): string | null {
+  const corrected = records.filter((item) => item.revision > 1).length;
+  if (corrected === 0) return null;
+  return `정정한 검수 ${corrected}건은 고친 값만 합계에 넣었습니다. 정정 전 값과 사유는 업체 기록 근거와 CSV의 "정정 이력" 칸에 남아 있습니다.`;
+}
 
 /** 실적 CSV. 엑셀에서 한글이 깨지지 않게 BOM을 붙인다. 합계 줄(건수·무게·탄소, 매각 수익, 처리비)을 맨 아래에 둔다 */
 export function reportCsv(report: Report): string {
@@ -124,6 +149,9 @@ export function reportCsv(report: Report): string {
       numberOf(item.carbon),
       // 검수 당시 계산 기준이 없는 예전 기록은 비교한 현행 처리를 모른다(빈 칸)
       item.currentMethod === null ? "" : item.currentMethodAssumed ? `${item.currentMethod}(가정)` : item.currentMethod,
+      item.inspectionId,
+      item.weighTicket ?? "",
+      correctionText(item),
     ]);
   }
   if (report.totals) {

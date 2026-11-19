@@ -8,7 +8,8 @@
  * 시연 데이터를 처음 상태로 되돌린 뒤(관리자 조직으로 부른다), 진단을 만들고 승인 전(awaiting_approval)까지 돌린다.
  * 담당자 질문에는 포장 필름 수분만 답하고 나머지는 "모름"으로 답한다. 여기까지가 화면의 예시 데이터다.
  * 이어서 같은 진단에 사람 교정 한 건을 기록하고, 허가증 원문 대조가 남은 경로는 업체가 허가증(가상)을 올리고 배출 기업
- * 담당자가 대조를 기록한 뒤(서버가 대조 전 확정을 막는다), 양쪽 승인으로 확정하고 업체가 실제 결과 한 건을 기록해
+ * 담당자가 대조를 기록한 뒤(서버가 대조 전 확정을 막는다), 양쪽 승인으로 확정하고 업체가 같은 날 반입 두 건을 기록하고
+ * 두 번째 건을 정정해
  * 확정 뒤 뷰(배출 기업, 업체)와 실적 리포트를 tests/fixtures/에 받는다. 스키마 검사(tests/v3-view.test.ts)가 이 세 뷰와 리포트를 읽는다.
  * 근거는 뷰와 업체 프로필이 직접 가리키는 것과 그 계산 사슬의 바로 아래 단계까지만 담는다(법령 원문 등으로 파일이 커지지 않게).
  * 화면이 쓰는 값은 전부 이 서버가 실제로 낸 응답이다. 손으로 고치지 않는다.
@@ -169,14 +170,23 @@ const mine = checking.approvals.find(
 );
 if (!mine) throw new Error(`${OUTCOME_VENDOR}와 합의한 대화가 없습니다`);
 const agreed = checking.result.assignments.find((item) => item.threadId === mine.threadId);
-await post(`/sessions/${id}/outcomes`, OUTCOME_VENDOR, {
+// 같은 날 같은 폐기물을 두 번 받은 반입(검수 두 건)과, 두 번째 건의 정정(정정 이력이 있는 기록)
+const delivery = (requestId, actualKg, extra = {}) => ({
+  requestId,
   threadId: mine.threadId,
   streamId: agreed.streamId,
   actualGrade: "등외",
   actualUnitPriceKrwPerKg: agreed.unitPrice.value,
-  actualKg: 240,
+  actualKg,
   inspectedOn: view.session.today,
   note: "예시 데이터용 실제 결과(가상)",
+  ...extra,
+});
+await post(`/sessions/${id}/outcomes`, OUTCOME_VENDOR, delivery("fixture-delivery-1", 240));
+const second = await post(`/sessions/${id}/outcomes`, OUTCOME_VENDOR, delivery("fixture-delivery-2", 120, { weighTicket: "T-0002" }));
+await call(`/sessions/${id}/outcomes/${encodeURIComponent(second.outcome.inspectionId)}`, OUTCOME_VENDOR, {
+  method: "PUT",
+  body: JSON.stringify({ ...delivery("fixture-fix-2", 110, { weighTicket: "T-0002" }), baseRevision: 1, reason: "계량표 재확인(가상)" }),
 });
 const confirmed = await call(`/sessions/${id}`, EMITTER);
 if (confirmed.session.status !== "confirmed") throw new Error(`확정 상태가 아닙니다: ${confirmed.session.status}`);

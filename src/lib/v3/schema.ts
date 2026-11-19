@@ -360,6 +360,7 @@ export const checkKeySchema = z.enum([
   "loading_volume",
   /** 업체가 밝힌 수거 노선이 공장 지역을 지나는지(2026-11-19) */
   "pickup_route",
+  "pickup_area",
   /** 배정한 업체의 허가 근거 수준: 허가증·공공 명부 확인, 허가증 문서, 업체 입력, 공공 명부와 다름(2026-11-19) */
   "permit_level",
   /** 운송 배출을 계산하지 못했을 때(공장 위치나 업체 차고지가 없을 때) */
@@ -979,10 +980,53 @@ export const correctionSchema = obj({
   dataOrigin: dataOriginSchema.optional(),
 });
 
-/** 업체가 확정 뒤 기록한 실제 결과 */
+const outcomeEvidenceSchema = obj({
+  grade: z.string().nullable().optional(),
+  unitPrice: z.string().nullable().optional(),
+  kg: z.string().nullable().optional(),
+});
+
+/** 정정되기 전 판 하나(그때 업체가 적은 값과 그 근거). reason은 그 판을 만든 정정의 사유(처음 판이면 null) */
+export const outcomeRevisionSchema = obj({
+  revision: z.number(),
+  reason: z.string().nullable(),
+  recordedOn: z.string().nullable(),
+  recordedAt: z.string().nullable(),
+  inspectedOn: z.string(),
+  actualGrade: z.string().nullable(),
+  actualUnitPriceKrwPerKg: z.number().nullable(),
+  actualKg: z.number().nullable(),
+  note: z.string().nullable(),
+  weighTicket: z.string().nullable(),
+  documentName: z.string().nullable(),
+  evidenceKind: z.enum(["human", "doc"]),
+  evidence: outcomeEvidenceSchema,
+  deviation: claimOrNull,
+});
+
+/**
+ * 업체가 확정 뒤 기록한 실제 결과. 검수(계량) 한 건이 하나이고 id는 검수 ID(inspectionId)와 같다.
+ * 정정하면 최신 판이 오고 앞 판은 history에 실린다. legacy는 검수일로 키를 만든 2026-11-19 전 기록이다.
+ */
 export const outcomeSchema = obj({
   type: z.literal("outcome"),
   id: z.string(),
+  inspectionId: z.string(),
+  revision: z.number(),
+  /** 고친 앞 판 번호(처음 판이면 null) */
+  supersedes: z.number().nullable(),
+  /** 등록·정정 요청 번호(재전송을 한 건으로 묶는다). 예전 기록이면 null */
+  requestId: z.string().nullable(),
+  /** 이 판을 만든 정정의 사유(처음 판이면 null) */
+  reason: z.string().nullable(),
+  legacy: z.boolean(),
+  /** 계량표 번호(업체가 적었으면) */
+  weighTicket: z.string().nullable(),
+  documentName: z.string().nullable(),
+  createdOn: z.string().nullable(),
+  createdAt: z.string().nullable(),
+  recordedAt: z.string().nullable(),
+  history: z.array(outcomeRevisionSchema),
   sessionId: z.string(),
   threadId: z.string(),
   vendorOrgId: z.string(),
@@ -994,11 +1038,7 @@ export const outcomeSchema = obj({
   actualKg: z.number().nullable(),
   note: z.string().nullable(),
   evidenceKind: z.enum(["human", "doc"]),
-  evidence: obj({
-    grade: z.string().nullable().optional(),
-    unitPrice: z.string().nullable().optional(),
-    kg: z.string().nullable().optional(),
-  }),
+  evidence: outcomeEvidenceSchema,
   features: obj({
     material: z.string().nullable(),
     contaminationPct: z.number().nullable(),
@@ -1095,8 +1135,29 @@ export const evidenceSchema = obj({
  * GET /orgs/{orgId}/report?from=&to=: 재활용·탄소 실적 리포트(배출 기업 본인만).
  * 실적(records)은 업체가 기록한 검수 결과, 예상(planned)은 양쪽이 확정한 합의의 한 달 예상이다. 숫자는 모두 근거가 붙은 claim이다.
  */
+/** 실적 줄의 정정 이력 한 판(그때의 값과 근거 ID) */
+export const reportRevisionSchema = obj({
+  revision: z.number(),
+  recordedOn: z.string().nullable(),
+  inspectedOn: z.string().nullable(),
+  grade: z.string().nullable(),
+  kg: z.number().nullable(),
+  unitPrice: z.number().nullable(),
+  weighTicket: z.string().nullable(),
+  reason: z.string().nullable(),
+  evidence: outcomeEvidenceSchema,
+});
+
 export const reportRecordSchema = obj({
   id: z.string(),
+  /** 검수(계량) 한 건의 ID. 같은 날 같은 폐기물을 두 번 받았으면 두 줄이다 */
+  inspectionId: z.string(),
+  /** 정정했으면 2 이상(최신 판만 실적에 넣는다) */
+  revision: z.number(),
+  weighTicket: z.string().nullable(),
+  legacy: z.boolean(),
+  history: z.array(reportRevisionSchema),
+  correctionReason: z.string().nullable(),
   inspectedOn: z.string(),
   streamId: z.string(),
   streamLabel: z.string(),

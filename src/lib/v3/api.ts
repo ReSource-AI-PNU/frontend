@@ -24,6 +24,7 @@ import type {
   ExtractedField,
   MediaUploadResult,
   Org,
+  OutcomeCorrection,
   OutcomeInput,
   OutcomeResult,
   QuoteRequest,
@@ -246,8 +247,15 @@ export const api = {
   recordCorrection: (sessionId: string, orgId: string, body: CorrectionInput) =>
     request<CorrectionResult>(`/sessions/${enc(sessionId)}/corrections`, orgId, json(body)),
   /** 업체가 확정된 대화의 실제 결과(등급·단가·중량·검수일)를 기록한다. */
+  /** 새 반입 한 건. 같은 requestId로 다시 보내면 서버가 한 건으로 묶는다 */
   recordOutcome: (sessionId: string, orgId: string, body: OutcomeInput) =>
     request<OutcomeResult>(`/sessions/${enc(sessionId)}/outcomes`, orgId, json(body)),
+  /** 이미 기록한 검수 한 건의 정정(새 판). 앞 판은 이력으로 남는다 */
+  correctOutcome: (sessionId: string, orgId: string, inspectionId: string, body: OutcomeCorrection) =>
+    request<OutcomeResult>(`/sessions/${enc(sessionId)}/outcomes/${enc(inspectionId)}`, orgId, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 
   /** 공개 평가 결과(로그인 없이 읽는다). 모양은 src/lib/trust.ts가 읽는다 */
   trust: () => request<unknown>("/trust", null),
