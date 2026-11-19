@@ -343,7 +343,7 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
             ? isEmitter
               ? "이 조건으로 진행할까요?"
               : "이 조건으로 받으시겠어요?"
-            : held.length > 0 && isEmitter
+            : held.length > 0 && isEmitter && waiting.length === 0
               ? "허가증 원문 대조가 끝나야 확정할 수 있습니다."
               : `승인했습니다. ${other} 승인을 기다리고 있습니다.`}
       </h2>
