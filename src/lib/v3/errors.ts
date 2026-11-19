@@ -38,6 +38,7 @@ const KEEP_SERVER_MESSAGE = new Set([
   "STREAM_REQUIRED",
   "SCAN_UNAVAILABLE",
   "SCAN_NOT_READY",
+  "SCAN_IN_PROGRESS",
   // 프런트 통로(src/lib/v3/backend-plan.ts)가 쓴 문구는 이미 사용자 말이다
   "DEMO_READ_ONLY",
   "DEMO_UNAVAILABLE",
@@ -64,7 +65,9 @@ const BY_CODE: Record<string, string> = {
   SCAN_UNAVAILABLE: "지금은 3D 분석을 할 수 없습니다. 잠시 뒤 다시 올려 주세요.",
   TOO_FEW_FRAMES: "장면이 너무 적습니다. 보관장을 천천히 한 바퀴 돌며 다시 찍어 주세요.",
   STREAM_REQUIRED: "먼저 이 더미의 폐기물을 골라 주세요.",
-  SCAN_NOT_READY: "3D 장면이 아직 준비되지 않았습니다. 분석이 끝난 뒤 다시 열어 주세요.",
+  SCAN_NOT_READY: "분석이 끝난 뒤에 고칠 수 있습니다.",
+  SCAN_IN_PROGRESS: "이미 분석 중인 스캔이 있습니다. 끝난 뒤 다시 올려 주세요.",
+  POINTS_NOT_READY: "3D 장면이 아직 준비되지 않았습니다. 분석이 끝난 뒤 다시 열어 주세요.",
 };
 
 export function userMessage(status: number, code: string, serverMessage: string | null): string {

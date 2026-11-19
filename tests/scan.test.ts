@@ -1,6 +1,6 @@
 /**
  * 보관장 3D 스캔(src/lib/v3/scan.ts)의 순수 로직과 ScanView 계약(schema.ts).
- *  - tests/fixtures/v3-scan.json: 백엔드 devserver(backend work/scan e4c227f, 가짜 재구성 서버)가 실제로 낸 목록.
+ *  - tests/fixtures/v3-scan.json: 백엔드 devserver(backend work/scan a8a1eab, 가짜 재구성 서버)가 실제로 낸 목록.
  *    진행 중(scan_2)과 끝남(scan_1: 더미 다섯, 폐기물 셋 지정, 더미 2는 230 kg 계량, 더미 4는 미지정)
  *  - tests/fixtures/v3-scan-unassigned.json: 같은 스캔을 폐기물 지정 전에 본 뷰(정리안 없음)
  * 실행: node --test tests/scan.test.ts
@@ -20,6 +20,9 @@ import {
   frameCount,
   frameTimes,
   insidePolygon,
+  keptText,
+  looksLikeScanList,
+  looksLikeScanView,
   metricRows,
   nextQuality,
   parsePoints,
@@ -237,11 +240,45 @@ test("상차 지점은 바닥 다각형 안이어야 한다", () => {
   assert.equal(insidePolygon(0, -3.5, floor), false);
 });
 
-test("계량한 무게 입력은 0보다 큰 숫자만 받는다", () => {
+test("계량한 무게 입력은 0보다 크고 100,000 kg 이하인 숫자만 받는다", () => {
   assert.equal(weighedValue("480"), 480);
   assert.equal(weighedValue("1,250.5"), 1250.5);
+  assert.equal(weighedValue("100000"), 100000);
+  assert.equal(weighedValue("999999"), null);
   assert.equal(weighedValue(""), null);
   assert.equal(weighedValue("0"), null);
   assert.equal(weighedValue("-3"), null);
   assert.equal(weighedValue("많음"), null);
+});
+
+test("응답 최소 확인: 꼭 필요한 칸이 없으면 쓰지 않고, 모르는 칸이 더해져도 받는다", () => {
+  assert.equal(looksLikeScanList(list), true);
+  assert.equal(looksLikeScanList({}), false);
+  assert.equal(looksLikeScanList({ canScan: true, scans: [{}] }), false);
+  assert.equal(looksLikeScanView({}), false);
+  assert.equal(looksLikeScanView(null), false);
+  assert.equal(looksLikeScanView("{not json"), false);
+  const done = list.scans.find((scan) => scan.status === "done")!;
+  assert.equal(looksLikeScanView({ ...done, someNewField: 1 }), true);
+  assert.equal(looksLikeScanView({ ...done, status: "weird" }), false);
+  assert.equal(looksLikeScanView({ ...done, summary: null }), false);
+  assert.equal(looksLikeScanView({ ...done, piles: "x" }), false);
+  assert.equal(looksLikeScanView(unassigned), true);
+});
+
+test("옮길 자리가 없어 제자리에 둔 더미를 한 줄로 알리고, 그 폐기물에도 색을 준다", () => {
+  const done = list.scans.find((scan) => scan.status === "done")!;
+  assert.equal(keptText(done), null);
+  const kept = structuredClone(done);
+  const proposal = kept.layout!.proposal!;
+  // 불량 사출품 더미(p3)를 제자리에 두고, 그 폐기물의 영역은 없다
+  proposal.kept = ["p3"];
+  proposal.zones = proposal.zones.filter((zone) => zone.streamId !== "st_defect");
+  assert.equal(keptText(kept), "더미 3은 옮길 자리가 없어 제자리에 둡니다.");
+  assert.ok(zoneOrder(kept).includes("st_defect"));
+  assert.equal(zoneOrder(kept).at(-1), "st_defect");
+  proposal.kept = ["p2", "p4"];
+  assert.equal(keptText(kept), "더미 2·4는 옮길 자리가 없어 제자리에 둡니다.");
+  proposal.kept = ["p2"];
+  assert.equal(keptText(kept), "더미 2는 옮길 자리가 없어 제자리에 둡니다.");
 });

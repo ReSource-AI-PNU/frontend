@@ -1354,6 +1354,8 @@ export const scanLayoutSchema = obj({
     zones: z.array(obj({ streamId: z.string(), name: z.string(), polygon: z.array(xy) })),
     metrics: scanLayoutMetricsSchema,
     moved: z.number(),
+    /** 폐기물을 지정했지만 옮길 자리가 없어 제자리에 둔 더미 ID. 그 폐기물의 더미가 모두 제자리면 zones에 그 폐기물이 없다 */
+    kept: z.array(z.string()),
   }).nullable(),
   unavailable: z.string().nullable(),
 });

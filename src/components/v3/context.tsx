@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   useTransition,
@@ -142,9 +143,22 @@ export function V3Provider({
     },
     [sessionKey],
   );
+  // 근거 패널을 닫으면 패널을 연 단추로 초점을 되돌린다(패널 안에서 다른 근거를 열 때는 처음 연 단추를 지킨다)
+  const opener = useRef<HTMLElement | null>(null);
   const openEvidence = useCallback((ids: string[], title?: string) => {
     // 한 판단에 같은 근거가 여러 번 실려 올 수 있다. 한 번만 연다
-    if (ids.length > 0) setPanel({ ids: [...new Set(ids)], title });
+    if (ids.length === 0) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !active.closest('[role="dialog"][aria-label="근거"]')) opener.current = active;
+    setPanel({ ids: [...new Set(ids)], title });
+  }, []);
+  const closeEvidence = useCallback(() => {
+    setPanel(null);
+    const back = opener.current;
+    opener.current = null;
+    window.requestAnimationFrame(() => {
+      if (back?.isConnected) back.focus({ preventScroll: true });
+    });
   }, []);
 
   const value = useMemo<Ctx>(
@@ -194,7 +208,7 @@ export function V3Provider({
           orgName={(id) => orgs.find((item) => item.id === id)?.name ?? "다른 회사"}
           technical={org.role === "admin" && !demo}
           live={remote.mode === "live"}
-          onClose={() => setPanel(null)}
+          onClose={closeEvidence}
         />
       ) : null}
     </V3Context.Provider>

@@ -64,6 +64,32 @@ function canvasOf(width: number, height: number) {
   return { canvas, context };
 }
 
+/**
+ * 영상을 열어 화면에 보이는 방향(회전 정보를 반영한 표시 크기)으로 세로 영상인지 본다. 장면은 뽑지 않는다.
+ * 세로로 찍은 영상은 더미를 잘 찾지 못하므로 화면이 올리기 전에 한 번 묻는다(막지는 않는다).
+ */
+export async function probeVideo(file: File): Promise<{ portrait: boolean }> {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  video.src = url;
+  try {
+    try {
+      await waitFor(video, "loadedmetadata", 20000);
+    } catch {
+      throw new ScanInputError(OPEN_FAILED);
+    }
+    if (video.videoWidth === 0 || video.videoHeight === 0) throw new ScanInputError(OPEN_FAILED);
+    return { portrait: video.videoHeight > video.videoWidth };
+  } finally {
+    video.removeAttribute("src");
+    video.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** 영상 길이 d초에서 고르게 장면을 뽑는다. 합계가 상한을 넘으면 품질을 낮춰 다시 뽑는다 */
 export async function framesFromVideo(file: File, onProgress?: Progress): Promise<FrameSet> {
   const url = URL.createObjectURL(file);

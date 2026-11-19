@@ -249,10 +249,36 @@ export function proposalSummary(view: ScanView): string | null {
   return parts.join(" · ");
 }
 
-/** 폐기물마다 정리안 색 순서(정리안 영역 순서를 따른다). 범례와 3D가 같은 순서를 쓴다 */
+/**
+ * 폐기물마다 정리안 색 순서. 정리안 영역 순서를 따르고, 옮길 자리가 없어 모두 제자리에 둔 폐기물(영역이 없음)은 그 뒤에 둔다.
+ * 범례와 3D가 같은 순서를 쓴다
+ */
 export function zoneOrder(view: ScanView): string[] {
-  const zones = view.layout?.proposal?.zones ?? [];
-  return zones.map((zone) => zone.streamId);
+  const proposal = view.layout?.proposal;
+  const order = (proposal?.zones ?? []).map((zone) => zone.streamId);
+  for (const id of proposal?.kept ?? []) {
+    const stream = view.piles.find((pile) => pile.id === id)?.streamId;
+    if (stream && !order.includes(stream)) order.push(stream);
+  }
+  return order;
+}
+
+/** 옮길 자리가 없어 제자리에 둔 더미 이름 한 줄("더미 2·4는 옮길 자리가 없어 제자리에 둡니다."). 없으면 null */
+export function keptText(view: ScanView): string | null {
+  const kept = view.layout?.proposal?.kept ?? [];
+  const names = kept.map((id) => view.piles.find((pile) => pile.id === id)?.name).filter((name): name is string => Boolean(name));
+  if (names.length === 0) return null;
+  const numbers = names.map((name) => name.replace(/^더미\s*/, ""));
+  return `더미 ${numbers.join("·")}${names.length > 1 ? "는" : josaOf(numbers[0])} 옮길 자리가 없어 제자리에 둡니다.`;
+}
+
+/** 숫자로 끝나는 이름 뒤의 "은/는"(1·3·6·7·8·0은 받침이 있다) */
+function josaOf(text: string): string {
+  const last = text.at(-1) ?? "";
+  if (/[0-9]/.test(last)) return "136780".includes(last) ? "은" : "는";
+  const code = last.charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return "는";
+  return code % 28 === 0 ? "는" : "은";
 }
 
 /** 정리안 색 토큰. 차트 범주형 고정 순서. 여섯을 넘으면 되돌아간다 */
@@ -294,9 +320,39 @@ export function scanTime(iso: string): string {
   }).format(date);
 }
 
-/** 계량한 무게 입력값. 빈 칸·0 이하·숫자가 아니면 null */
+/** 계량한 무게의 화면 상한(kg). 서버도 같은 범위를 본다(밀도 검사는 서버가 한다) */
+export const MAX_WEIGHED_KG = 100_000;
+
+/** 계량한 무게 입력값. 빈 칸, 0 이하, 100,000 kg 초과, 숫자가 아니면 null */
 export function weighedValue(text: string): number | null {
   const value = Number(text.replace(/,/g, "").trim());
-  if (text.trim() === "" || !Number.isFinite(value) || value <= 0) return null;
+  if (text.trim() === "" || !Number.isFinite(value) || value <= 0 || value > MAX_WEIGHED_KG) return null;
   return value;
 }
+
+// ── 응답 최소 확인 ────────────────────────────────────────────────────
+// 이 저장소는 실행 중에 strictObject를 쓰지 않는다(백엔드가 칸을 더해도 화면이 깨지지 않게).
+// 그래도 화면 상태를 바꾸기 전에 꼭 필요한 칸만 본다. 어긋나면 상태를 바꾸지 않고 연결 문장을 보인다.
+
+const STATUSES = new Set(["processing", "done", "failed"]);
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** ScanView로 쓸 수 있는지: id·status·piles·frameCount, 끝났으면 summary와 layout이 객체이거나 null */
+export function looksLikeScanView(value: unknown): value is ScanView {
+  if (!isObject(value)) return false;
+  if (typeof value.id !== "string" || !value.id) return false;
+  if (typeof value.status !== "string" || !STATUSES.has(value.status)) return false;
+  if (!Array.isArray(value.piles) || typeof value.frameCount !== "number") return false;
+  if (value.summary !== null && value.summary !== undefined && !isObject(value.summary)) return false;
+  if (value.layout !== null && value.layout !== undefined && !isObject(value.layout)) return false;
+  if (value.status === "done" && !isObject(value.summary)) return false;
+  return value.piles.every((pile) => isObject(pile) && typeof pile.id === "string" && isObject(pile.volume));
+}
+
+export function looksLikeScanList(value: unknown): value is ScanList {
+  return isObject(value) && typeof value.canScan === "boolean" && Array.isArray(value.scans) && value.scans.every(looksLikeScanView);
+}
+
+/** 길이(m)를 소수 둘째 자리로 맞춰 적는다(1 → "1.00") */
+export const fix2 = (value: number) => cubic.format(value);

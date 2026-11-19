@@ -7,6 +7,7 @@
  */
 import { syncMemberships } from "@/lib/server/company-actions";
 import { UNAVAILABLE, userMessage } from "./errors";
+import { looksLikeScanList, looksLikeScanView } from "./scan";
 import type {
   AdminStatus,
   CorrectionInput,
@@ -29,8 +30,6 @@ import type {
   OutcomeResult,
   QuoteRequest,
   Report,
-  ScanList,
-  ScanView,
   RetrainExport,
   RunStarted,
   SessionSummary,
@@ -158,6 +157,22 @@ async function requestBytes(path: string, orgId: string | null): Promise<ArrayBu
   return response.arrayBuffer();
 }
 
+/**
+ * 응답을 읽지 못했거나(깨진 JSON) 꼭 필요한 칸이 없으면 서버에 닿지 못한 것과 같이 다룬다.
+ * 화면 상태를 바꾸지 않고 "잠시 연결이 원활하지 않습니다"를 보이게 한다(실행 중에는 엄격 검사를 하지 않는다).
+ */
+async function checked<T>(call: Promise<unknown>, ok: (value: unknown) => value is T): Promise<T> {
+  let value: unknown;
+  try {
+    value = await call;
+  } catch (error) {
+    if (error instanceof ApiError || error instanceof ApiUnreachable) throw error;
+    throw new ApiUnreachable(UNAVAILABLE);
+  }
+  if (!ok(value)) throw new ApiUnreachable(UNAVAILABLE);
+  return value;
+}
+
 const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
 const enc = encodeURIComponent;
 
@@ -282,26 +297,37 @@ export const api = {
     form.set("source", source);
     if (durationSec !== null) form.set("durationSec", String(durationSec));
     frames.forEach((frame, index) => form.append("frames", frame, `f${String(index).padStart(3, "0")}.jpg`));
-    return request<ScanView>("/intake/scan", orgId, { method: "POST", body: form });
+    return checked(request<unknown>("/intake/scan", orgId, { method: "POST", body: form }), looksLikeScanView);
   },
   /** 스캔 목록(최근 것이 먼저)과 지금 분석을 받을 수 있는지. 읽기라서 체험하기에서도 열린다 */
-  listScans: (orgId: string) => request<ScanList>(`/orgs/${enc(orgId)}/scans`, orgId),
+  listScans: (orgId: string) => checked(request<unknown>(`/orgs/${enc(orgId)}/scans`, orgId), looksLikeScanList),
   /** 스캔 하나. 진행 중이면 서버가 이때 진행을 갱신한다 */
-  getScan: (orgId: string, scanId: string) => request<ScanView>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}`, orgId),
-  /** 점군 바이트(RSPC). 진행 중이면 409 SCAN_NOT_READY */
+  getScan: (orgId: string, scanId: string) =>
+    checked(request<unknown>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}`, orgId), looksLikeScanView),
+  /** 점군 바이트(RSPC). 분석이 끝나지 않았으면 404 POINTS_NOT_READY */
   getScanPoints: (orgId: string, scanId: string) => requestBytes(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/points`, orgId),
-  /** 더미의 폐기물(streamId, null이면 지정 해제)이나 계량한 무게(weighedKg, null이면 지움)를 바꾼다. 계량값은 폐기물을 먼저 골라야 한다(422 STREAM_REQUIRED) */
+  /**
+   * 더미의 폐기물(streamId, null이면 지정 해제)이나 계량한 무게(weighedKg, null이면 지움)를 바꾼다.
+   * 계량값은 폐기물을 먼저 골라야 하고(422 STREAM_REQUIRED), 부피에 견줘 밀도가 맞지 않으면 422 INVALID_VALUE.
+   * 분석이 끝나기 전이면 409 SCAN_NOT_READY
+   */
   putScanPile: (orgId: string, scanId: string, pileId: string, body: { streamId?: string | null; weighedKg?: number | null }) =>
-    request<ScanView>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/piles/${enc(pileId)}`, orgId, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
+    checked(
+      request<unknown>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/piles/${enc(pileId)}`, orgId, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+      looksLikeScanView,
+    ),
   /** 상차 지점(바닥 좌표, m). null이면 영상을 찍기 시작한 곳으로 되돌린다 */
   putScanLayout: (orgId: string, scanId: string, pickup: { x: number; y: number } | null) =>
-    request<ScanView>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/layout`, orgId, {
-      method: "PUT",
-      body: JSON.stringify({ pickup }),
-    }),
+    checked(
+      request<unknown>(`/orgs/${enc(orgId)}/scans/${enc(scanId)}/layout`, orgId, {
+        method: "PUT",
+        body: JSON.stringify({ pickup }),
+      }),
+      looksLikeScanView,
+    ),
 
   /** 배출 기업 담당자가 고친 값을 기록한다. 기록만 남고 흐름의 값은 바뀌지 않는다. */
   recordCorrection: (sessionId: string, orgId: string, body: CorrectionInput) =>
