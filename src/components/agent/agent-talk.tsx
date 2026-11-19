@@ -3,15 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, ChevronDownIcon, CloseIcon, TalkIcon } from "@/components/icons";
 import { useEscape } from "@/components/use-escape";
-import { ClaimText } from "@/components/v3/claim";
+import { ClaimText, ClaimValue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { EventDetail } from "@/components/v3/event-detail";
 import { josa } from "@/lib/josa";
 import { evidenceOf, threadLabel, typingText, withinVendorRange, type TalkThread, type Typing } from "@/lib/v3/live";
-import { MESSAGE_LABEL, formatDateTime } from "@/lib/v3/format";
+import { MESSAGE_LABEL, formatDateTime, formatNumber } from "@/lib/v3/format";
 import { AI_NAME, REVIEWER_NAME, eventSummary } from "@/lib/v3/labels";
 import { noticeText } from "@/lib/v3/question-notice";
+import { PICKUP_STATUS_LABEL } from "@/lib/v3/pickup";
 import type { DiagnosisView, ThreadMessage } from "@/lib/v3/types";
+
+type MessagePickup = NonNullable<NonNullable<NonNullable<ThreadMessage["meta"]>["terms"]>["pickup"]>;
 import { Dots } from "./dots";
 
 const ACTOR_LABEL: Record<string, string> = {
@@ -71,6 +74,41 @@ export function ReviewNote({ review, fresh, className = "" }: { review: ReviewLi
  * 모델·구현 이름은 쓰지 않는다. 표시가 없는 예전 뷰는 보낸 쪽으로 정한다.
  * 아래에 "근거 n개 확인"(누르면 근거가 열린다)과, 업체 측 AI가 업체가 정한 범위 안에서 낸 조건이면 그 표시를 단다.
  */
+/**
+ * 업체 조건 답의 수거·운반 견적을 한 줄로: 수거 상태 · 운반비(회당 금액 × 월 횟수 또는 월 금액, 근거가 열리는 값).
+ * 본문의 "수거·운반:" 문장과 같은 값이다. 금액·횟수가 빠졌으면 무엇이 빠졌는지 `warn`으로 적는다.
+ */
+function PickupQuote({ pickup, claims }: { pickup: MessagePickup; claims: ThreadMessage["claims"] }) {
+  const fee = claims.find((claim) => claim.id === pickup.feeClaimId) ?? null;
+  const count = claims.find((claim) => claim.id === pickup.pickupsClaimId) ?? null;
+  const unconfirmed = pickup.status === "check" || pickup.status === "unknown" || pickup.status === "unavailable";
+  return (
+    <p className="mt-2 text-[13px] text-ink-2">
+      수거·운반 견적 · <span className={unconfirmed ? "text-warn" : undefined}>{PICKUP_STATUS_LABEL[pickup.status]}</span>
+      {pickup.status === "unavailable" ? null : pickup.basis === "included" ? (
+        " · 운반비 단가에 포함"
+      ) : pickup.basis === "separate" && fee ? (
+        <>
+          {" · 운반비 "}
+          {pickup.unit === "per_month" ? "한 달 " : "회당 "}
+          <ClaimValue claim={fee} display={typeof fee.value === "number" ? `${formatNumber(fee.value)}원` : undefined} className="!font-normal" />
+          {pickup.unit === "per_month" ? null : count ? (
+            <>
+              {" × "}
+              <ClaimValue claim={count} display={typeof count.value === "number" ? `월 ${formatNumber(count.value)}회` : undefined} className="!font-normal" />
+            </>
+          ) : (
+            <span className="text-warn"> · 월 수거 횟수 확인 필요</span>
+          )}
+          {pickup.paidBy === "emitter" ? " (공장 부담)" : null}
+        </>
+      ) : (
+        <span className="text-warn"> · 운반비 {pickup.basis === "separate" ? "금액 확인 필요" : "미정"}</span>
+      )}
+    </p>
+  );
+}
+
 function Bubble({ message, mine, name, fresh }: { message: ThreadMessage; mine: boolean; name: string; fresh: boolean }) {
   const { openEvidence } = useV3();
   const { validation } = message;
@@ -88,6 +126,7 @@ function Bubble({ message, mine, name, fresh }: { message: ThreadMessage; mine: 
           className={`rounded-[18px] px-4 py-3 text-[15px] leading-relaxed ${mine ? "bg-sunken" : "border border-line bg-surface"}`}
         >
           <ClaimText text={message.text} claims={message.claims} />
+          {message.meta?.terms?.pickup ? <PickupQuote pickup={message.meta.terms.pickup} claims={message.claims} /> : null}
           {message.meta?.terms && message.meta.terms.days.length > 0 ? (
             <p className="mt-2 text-[13px] text-ink-2">수거 요일 {message.meta.terms.days.join("·")}</p>
           ) : null}

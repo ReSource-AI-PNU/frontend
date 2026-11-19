@@ -11,6 +11,7 @@ import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
 import type { Assignment, OrgRole, PermitCheckInput, Result, ViewStream } from "@/lib/v3/types";
 import { BlockedRoutes, PermitChip, PermitDetail, PermitSummary } from "./permit-check";
+import { PickupBrief, RoomNote, TransportRows } from "./pickup-line";
 
 const CHECK_WORD = { met: "충족", conditional: "확인 필요", unmet: "맞지 않음", needs_information: "값 없음" } as const;
 const STATUS_WORD = { calculated: "조건 확정", conditional: "조건 확인 뒤 확정", needs_information: "값 확인 필요" } as const;
@@ -80,7 +81,11 @@ function Row({
           {isEmitter && assignment.difference ? (
             <>
               <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
-              {isAssumed(assignment.difference) ? <span className="block text-[12px] text-muted">가정값 포함</span> : null}
+              {assignment.transportPending ? (
+                <span className="block text-[12px] text-warn">운반비 반영 전</span>
+              ) : isAssumed(assignment.difference) ? (
+                <span className="block text-[12px] text-muted">가정값 포함</span>
+              ) : null}
             </>
           ) : isEmitter ? (
             <span className="text-[13px] text-muted">{placed ? "계산 전" : "변화 없음"}</span>
@@ -125,7 +130,9 @@ function Row({
           ) : (
             <span className="text-muted">옮길 곳이 정해지지 않았습니다</span>
           )}
-          {isEmitter && placed && assignment.transportPaidBy ? (
+          {placed && assignment.pickup ? (
+            <PickupBrief pickup={assignment.pickup} />
+          ) : isEmitter && placed && assignment.transportPaidBy ? (
             <span className="block text-[13px] text-muted">
               {assignment.transportPaidBy === "vendor" ? (
                 "운반비 포함"
@@ -157,6 +164,12 @@ function Row({
                   disabled={busy}
                 />
               ) : null}
+              {isEmitter ? (
+                <RoomNote
+                  assignment={assignment}
+                  vendorName={(id) => assignment.alternatives.find((item) => item.vendorOrgId === id)?.vendorName}
+                />
+              ) : null}
               {isEmitter && assignment.revenue ? (
                 <dl className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1.5 border-b border-line pb-4 tabular-nums">
                   <dt className="text-ink-2">
@@ -165,9 +178,16 @@ function Row({
                   <dd className="text-right">
                     <ClaimValue claim={assignment.revenue} signed display={signedWon(assignment.revenue)} className="!font-normal" />
                   </dd>
+                  {placed && assignment.pickup ? (
+                    <TransportRows
+                      assignment={assignment}
+                      onOpenTalk={assignment.threadId ? () => onOpenTalk(assignment.threadId as string) : undefined}
+                    />
+                  ) : null}
                   {placed ? (
                     <>
-                      <dt className="text-ink-2">운반비</dt>
+                      {assignment.pickup ? null : <dt className="text-ink-2">운반비</dt>}
+                      {assignment.pickup ? null : (
                       <dd className="text-right">
                         {assignment.transportPaidBy === "vendor" ? (
                           <span className="text-ink-2">업체 단가에 포함</span>
@@ -177,6 +197,7 @@ function Row({
                           <span className="text-warn">확인 필요</span>
                         )}
                       </dd>
+                      )}
                       <dt className="text-ink-2">전처리 인건비</dt>
                       <dd className="text-right">
                         {assignment.labor ? (
@@ -187,7 +208,10 @@ function Row({
                       </dd>
                     </>
                   ) : null}
-                  <dt className="mt-1 border-t border-line pt-2 font-medium">옮긴 뒤 한 달</dt>
+                  <dt className="mt-1 border-t border-line pt-2 font-medium">
+                    옮긴 뒤 한 달
+                    {assignment.transportPending ? <span className="ml-1.5 text-[12px] font-normal text-warn">운반비 반영 전</span> : null}
+                  </dt>
                   <dd className="mt-1 border-t border-line pt-2 text-right font-medium">
                     {assignment.monthlyAfter ? (
                       <ClaimValue claim={assignment.monthlyAfter} signed display={signedWon(assignment.monthlyAfter)} />
@@ -286,6 +310,7 @@ function Row({
                           <>
                             {" · 한 달 "}
                             <ClaimValue claim={item.monthlyAfter} signed display={signedWon(item.monthlyAfter)} className="!font-normal" />
+                            {item.transportPending ? <span className="ml-1 text-[12px] text-warn">운반비 반영 전</span> : null}
                           </>
                         ) : null}
                         {isEmitter && item.carbon ? (
@@ -412,7 +437,15 @@ function GreenestNote({ greenest }: { greenest: NonNullable<Result["greenest"]> 
 }
 
 /** 한 달 손익을 담당자가 읽는 문장으로 푼다. 숫자는 누르면 근거가 열린다. */
-function MoneySentence({ totals, conditional }: { totals: Result["totals"]; conditional: boolean }) {
+function MoneySentence({
+  totals,
+  conditional,
+  pending,
+}: {
+  totals: Result["totals"];
+  conditional: boolean;
+  pending: number;
+}) {
   const now = numberOf(totals.monthlyNow);
   const after = numberOf(totals.monthlyAfter);
   const difference = numberOf(totals.difference);
@@ -437,6 +470,9 @@ function MoneySentence({ totals, conditional }: { totals: Result["totals"]; cond
             <ClaimValue claim={totals.monthlyAfter} display={won(totals.monthlyAfter)} className="text-ink" />을
           </Glue>{" "}
           {after < 0 ? "내게" : "받게"} 됩니다.
+          {pending > 0 ? (
+            <span className="text-warn"> 운반비가 정해지지 않은 폐기물 {pending}가지는 별도 운반비를 빼기 전 금액이라 잠정값입니다.</span>
+          ) : null}
         </>
       ) : null}
     </p>
@@ -474,6 +510,8 @@ export function ResultCard({
   // 받는 곳은 정해졌는데 탄소를 계산하지 못한 폐기물(배출계수가 없는 처리 방식). 합계에서 빠졌다는 것을 숨기지 않는다
   const carbonGap = result.assignments.filter((item) => item.vendorOrgId && item.carbon === null).length;
   const conditional = result.status === "conditional";
+  // 운반비가 정해지지 않아 별도 운반비 반영 전 값이 합계에 섞인 폐기물
+  const pending = result.transportPending ?? [];
 
   return (
     <section aria-label="결과">
@@ -482,7 +520,7 @@ export function ResultCard({
           ? `${counterpart}에서 폐기물 ${count}가지를 문의했습니다.`
           : placedHeadline(count, placed)}
       </h2>
-      {isEmitter ? <MoneySentence totals={totals} conditional={conditional} /> : null}
+      {isEmitter ? <MoneySentence totals={totals} conditional={conditional} pending={pending.length} /> : null}
 
       <div className="mt-6">
         <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem] gap-x-4 border-b border-line pb-2 text-[13px] text-muted sm:grid">
@@ -506,7 +544,12 @@ export function ResultCard({
         </ul>
         {isEmitter && totals.difference ? (
           <p className="flex items-baseline justify-between gap-4 py-4 font-semibold">
-            <span>한 달 합계</span>
+            <span>
+              한 달 합계
+              {pending.length > 0 ? (
+                <span className="ml-2 text-[13px] font-normal text-warn">잠정 · 운반비 반영 전 {pending.length}가지 포함</span>
+              ) : null}
+            </span>
             <span className="text-[18px] tabular-nums">
               <ClaimValue claim={totals.difference} signed display={signedWon(totals.difference)} />
             </span>
@@ -545,6 +588,16 @@ export function ResultCard({
           </>
         ) : null}
       </p>
+      {isEmitter && (result.scope ?? []).length > 0 ? (
+        <div className="mt-2 text-[13px] leading-relaxed text-muted">
+          <p className="font-medium text-ink-2">계산 범위</p>
+          <ul className="mt-0.5 space-y-0.5">
+            {(result.scope ?? []).map((item) => (
+              <li key={item.key}>{item.text}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

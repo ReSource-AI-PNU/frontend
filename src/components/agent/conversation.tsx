@@ -16,6 +16,7 @@ import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
 import { THREAD_LABEL, clearedApprovalsText, currentBundle, questionIntro } from "@/lib/v3/format";
 import { AI_NAME, DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
+import { pickupTodo } from "@/lib/v3/pickup";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
 import {
   NARROW_QUERY,
@@ -294,7 +295,7 @@ function Questions({
 }
 
 function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nameOf: (id: string | null) => string }) {
-  const { readOnly } = useV3();
+  const { readOnly, basePath } = useV3();
   const isEmitter = view.viewer.role === "emitter";
   const [each, setEach] = useState(false);
   const mine = (item: DiagnosisView["approvals"][number]) => (isEmitter ? item.emitter : item.vendor);
@@ -326,6 +327,12 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
     return isEmitter ? (thread?.vendorName ?? "업체") : nameOf(view.session.emitterOrgId);
   };
   const reviewed = view.approvals.filter((item) => item.review && !(mine(item) && theirs(item)));
+  // 승인 전에 확인할 수거·운반(노선 밖 수거 확인, 정해지지 않은 운반비). 합의마다 센다
+  const todoOf = (threadId: string) =>
+    (view.result?.assignments ?? [])
+      .filter((item) => item.threadId === threadId)
+      .reduce((count, item) => count + pickupTodo(item).length, 0);
+  const todoTotal = pending.reduce((count, item) => count + todoOf(item.threadId), 0);
 
   return (
     <section aria-label="승인">
@@ -378,6 +385,16 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
             )}
           </ul>
         </div>
+      ) : null}
+
+      {pending.length > 0 && todoTotal > 0 ? (
+        <p className="mt-3 rounded-xl bg-warn-bg px-4 py-3 text-sm text-ink-2">
+          <span className="font-medium text-warn">승인 전에 확인할 수거·운반이 {todoTotal}개 있습니다.</span> 노선 밖 수거나
+          정해지지 않은 운반비는 한 달 금액을 바꿀 수 있습니다.{" "}
+          <Link href={`${basePath}/approval`} className="font-medium text-ink underline underline-offset-4">
+            승인·서류에서 보기
+          </Link>
+        </p>
       ) : null}
 
       {pending.length > 0 && readOnly ? (
@@ -470,6 +487,9 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
                         </span>
                       ))}
                     </p>
+                  ) : null}
+                  {!done && todoOf(approval.threadId) > 0 ? (
+                    <p className="text-[13px] text-warn">수거·운반 확인할 것 {todoOf(approval.threadId)}개</p>
                   ) : null}
                 </div>
                 {done ? (

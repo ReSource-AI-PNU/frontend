@@ -50,6 +50,8 @@ export type PermitLevel = z.infer<typeof s.permitLevelSchema>;
 export type PermitCheck = z.infer<typeof s.permitCheckSchema>;
 export type PermitDocument = z.infer<typeof s.permitDocumentSchema>;
 export type BlockedRoute = z.infer<typeof s.blockedRouteSchema>;
+/** 결과 한 줄의 수거 상태와 운반비 조건(2026-11-19) */
+export type Pickup = z.infer<typeof s.pickupSchema>;
 export type ReferencePrice = z.infer<typeof s.referencePriceSchema>;
 export type Result = z.infer<typeof s.resultSchema>;
 export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;

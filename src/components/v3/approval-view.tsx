@@ -17,6 +17,8 @@ import {
 import { DOC_LABEL } from "@/lib/v3/labels";
 import type { Assignment, Outcome, OutcomeInput } from "@/lib/v3/types";
 import { PermitSummary } from "@/components/agent/permit-check";
+import { PickupBrief } from "@/components/agent/pickup-line";
+import { pickupTodo } from "@/lib/v3/pickup";
 import { BlockedNotice } from "./blocked-notice";
 import { ClaimText, ClaimValue } from "./claim";
 import { ContractReviewBox, needsAck, reviewBlocked } from "./contract-review";
@@ -391,11 +393,21 @@ export function ApprovalView() {
           (failed.length > 0 ? `근거 확인에 실패한 메시지가 ${failed.length}건 있습니다.` : null);
         const outcomes = view.feedback.outcomes.filter((item) => item.threadId === approval.threadId);
         const confirmed = thread?.status === "confirmed";
+        // 승인 전에 확인할 수거·운반(노선 밖 수거 확인, 정해지지 않은 운반비). 있으면 "조건이 맞음"으로만 보이지 않게 한다
+        const todos = rows.flatMap((item) => pickupTodo(item).map((text) => ({ streamId: item.streamId, text })));
+        const headline =
+          thread?.status === "agreed" && todos.length > 0
+            ? `합의함 · 확인할 것 ${todos.length}개`
+            : thread
+              ? THREAD_LABEL[thread.status]
+              : "";
         return (
           <section key={approval.threadId} className="border-t border-line py-7">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">{thread?.vendorName ?? "업체"}</h2>
-              <span className="text-sm text-muted">{thread ? THREAD_LABEL[thread.status] : ""}</span>
+              <span className={`text-sm ${todos.length > 0 && thread?.status === "agreed" ? "text-warn" : "text-muted"}`}>
+                {headline}
+              </span>
               <div className="ml-auto flex flex-wrap gap-4">
                 <Side label="배출 기업" done={approval.emitter} />
                 <Side label="처리 업체" done={approval.vendor} />
@@ -418,8 +430,14 @@ export function ApprovalView() {
                       {role === "vendor" ? null : (
                         <span className="w-36 text-right tabular-nums">
                           <ClaimValue claim={item.monthlyAfter} signed />
+                          {item.transportPending ? <span className="block text-[12px] text-warn">운반비 반영 전</span> : null}
                         </span>
                       )}
+                      {item.pickup ? (
+                        <span className="basis-full">
+                          <PickupBrief pickup={item.pickup} />
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -444,6 +462,18 @@ export function ApprovalView() {
                       : "배출 기업 담당자가 허가증 원문을 대조하면 확정됩니다. 허가증을 아직 올리지 않았으면 자료 화면에서 올려 주세요."}
                   </p>
                 ) : null}
+              </div>
+            ) : null}
+            {todos.length > 0 && !confirmed ? (
+              <div className="mt-3 rounded-xl bg-warn-bg px-4 py-3 text-sm">
+                <p className="font-medium text-warn">승인 전에 확인할 수거·운반 {todos.length}개</p>
+                <ul className="mt-1.5 space-y-1 text-ink-2">
+                  {todos.map((item, index) => (
+                    <li key={`${item.streamId}-${index}`}>
+                      <span className="font-medium text-ink">{streamName(item.streamId)}</span> · {item.text}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             {thread && thread.messages.length > 0 ? (

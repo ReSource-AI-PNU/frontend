@@ -251,7 +251,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   permit: "허가 품목",
   current_assumed: "현행 처리",
   current_method: "현행 처리 방법(가정)",
-  transport: "운송비",
+  transport: "운반비",
   carbon: "탄소",
   vendor_condition: "업체 조건",
   price_differs: "단가 차이",
@@ -326,6 +326,7 @@ export const BLOCK_CODE_LABEL: Record<string, string> = {
   EVIDENCE_CHANGED: "대화에서 인용한 근거가 합의 뒤에 바뀌었거나 사라졌습니다",
   STREAM_CHANGED: "합의한 뒤에 배정된 폐기물의 자료(재질, 물량, 측정값 등)가 바뀌었습니다",
   VENDOR_TERMS_CHANGED: "합의한 뒤에 업체가 매입 기준표·허가 품목·가드레일을 바꿔 합의 조건에 영향을 줍니다",
+  PICKUP_TERMS_CHANGED: "합의한 뒤에 업체의 수거·운반 조건(노선, 노선 밖 수거, 운반비)이 바뀌어 운반비와 한 달 손익이 달라집니다",
   VALUE_MISMATCH: "메시지의 값이 지금 근거의 값과 다릅니다",
   EVIDENCE_EXPIRED: "인용한 근거의 유효 기한이 지났습니다",
   EVIDENCE_FORBIDDEN: "인용한 근거의 열람 권한이 닫혔습니다",
@@ -355,6 +356,12 @@ export function blockNotice(codes: string[]): BlockNotice | null {
   const has = (code: string) => codes.includes(code);
   if (has("VENDOR_TERMS_CHANGED") && !has("STREAM_CHANGED")) {
     return { action: "rerun", headline: "업체가 조건을 바꿨습니다. 다시 실행하면 새 조건으로 이어 갑니다" };
+  }
+  if (has("PICKUP_TERMS_CHANGED") && !has("STREAM_CHANGED")) {
+    return {
+      action: "rerun",
+      headline: "업체의 수거·운반 조건이 바뀌었습니다. 다시 실행하면 새 운반비로 한 달 손익을 다시 계산합니다",
+    };
   }
   if (has("STREAM_CHANGED") || has("EVIDENCE_CHANGED")) {
     return { action: "rediagnose", headline: "자료가 바뀌었습니다. 새 진단이 필요합니다" };

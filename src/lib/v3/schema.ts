@@ -150,6 +150,26 @@ export const askFieldSchema = z.enum([
   "terms",
 ]);
 
+/**
+ * 방문 수거 상태(2026-11-19). route 기존 노선 포함, check 별도 수거 확인 필요(노선 밖이고 업체가 방문을 밝히지 않음),
+ * visit 업체 수거 가능 확인(노선 밖이지만 업체가 따로 오겠다고 밝힘), unavailable 수거 불가, unknown 미상(노선을 밝히지 않음)
+ */
+export const pickupStatusSchema = z.enum(["route", "check", "visit", "unavailable", "unknown"]);
+/** 운반비 방식: 단가에 포함, 별도, 미정 */
+export const transportBasisSchema = z.enum(["included", "separate", "undecided"]);
+export const transportUnitSchema = z.enum(["per_pickup", "per_month"]);
+
+/** 업체 조건 답에 붙은 수거·운반 견적. 값은 claims에만 있고 여기에는 어느 claim이 금액·횟수인지만 둔다 */
+export const messagePickupSchema = obj({
+  status: pickupStatusSchema,
+  basis: transportBasisSchema,
+  paidBy: z.enum(["vendor", "emitter"]).nullable(),
+  unit: transportUnitSchema.nullable(),
+  feeClaimId: z.string().nullable(),
+  pickupsClaimId: z.string().nullable(),
+  days: z.array(z.string()),
+});
+
 export const messageMetaSchema = obj({
   asks: z.array(obj({ streamId: z.string(), field: askFieldSchema })),
   excluded: z.array(obj({ streamId: z.string(), reason: z.string() })),
@@ -158,6 +178,8 @@ export const messageMetaSchema = obj({
     items: z.array(obj({ streamId: z.string(), claimId: z.string() })),
     days: z.array(z.string()),
     conditions: z.array(z.string()),
+    /** 2026-11-19 뒤 업체 조건 답에만 있다 */
+    pickup: messagePickupSchema.nullable().optional(),
   }).nullable(),
 });
 
@@ -358,6 +380,9 @@ export const alternativeSchema = obj({
   carbon: claimOrNull.optional(),
   /** 이 업체로 보낼 때의 허가 확인 상태(2026-11-19 뒤 결과) */
   permit: z.lazy(() => permitLevelSchema).nullable().optional(),
+  /** 운반비가 정해지지 않아 monthlyAfter가 별도 운반비 반영 전 값이다(2026-11-19 뒤 결과) */
+  transportPending: z.boolean().optional(),
+  pickupStatus: pickupStatusSchema.nullable().optional(),
   note: z.string(),
 });
 
@@ -405,6 +430,33 @@ export const permitDocumentSchema = obj({
     siteMatches: z.boolean().nullable().optional(),
   }).nullable(),
   evidence: z.array(z.string()),
+});
+
+/**
+ * 결과 한 줄의 수거·운반(2026-11-19). 수거 상태와 운반비 조건은 따로 본다.
+ * fee는 업체가 밝힌 운반비 견적(원/회 또는 원/월), pickups는 월 수거 횟수, monthly는 이 업체에 드는 월 운반비(같은 수거 차량의
+ * 폐기물에 한 번만 든다), room은 운반비가 정해지지 않았을 때 "운반비가 한 달 이만큼을 넘으면 다음 선택지가 낫다"는 값이다.
+ * 업체 뷰에서 room과 roomAgainst는 null이다.
+ */
+export const pickupSchema = obj({
+  status: pickupStatusSchema,
+  label: z.string().nullable(),
+  days: z.array(z.string()),
+  basis: transportBasisSchema,
+  basisLabel: z.string().nullable(),
+  /** 노선 수거의 운반비 방식(노선 밖이라 이 공장에 그대로 쓰지 않았을 때 참고) */
+  routeBasis: transportBasisSchema.nullable(),
+  paidBy: z.enum(["vendor", "emitter"]).nullable(),
+  unit: transportUnitSchema.nullable(),
+  fee: claimOrNull,
+  pickups: claimOrNull,
+  monthly: claimOrNull,
+  room: claimOrNull,
+  roomAgainst: obj({ vendorOrgId: z.string().nullable(), route: z.string() }).nullable(),
+  pending: z.boolean(),
+  /** 이 조건을 밝힌 업체 답의 메시지 번호. 업체 답이 아니라 업체 정보로 정했으면 null */
+  seq: z.number().nullable(),
+  source: z.enum(["answer", "profile"]).nullable(),
 });
 
 /**
@@ -486,6 +538,10 @@ export const assignmentSchema = obj({
   carbonValue: claimOrNull,
   /** 허가 근거 수준. 업체에 배정한 줄에만 있다 */
   permit: permitLevelSchema.nullable().optional(),
+  /** 수거 상태와 운반비 조건. 업체에 배정한 줄에만 있다(2026-11-19 뒤 결과) */
+  pickup: pickupSchema.nullable().optional(),
+  /** 운반비가 정해지지 않아 이 줄의 한 달 값(monthlyAfter, difference)은 별도 운반비 반영 전이다 */
+  transportPending: z.boolean().optional(),
   currentAssumed: z.boolean(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
@@ -684,6 +740,10 @@ export const resultSchema = obj({
   improvements: z.array(improvementSchema).optional(),
   /** ③ 규정 확인. 배출 기업이 보는 뷰에만 온다(2026-11-19 전 결과에는 없다) */
   regulation: z.array(regulationSchema).optional(),
+  /** 운반비가 정해지지 않아 합계에 별도 운반비 반영 전 값이 섞인 폐기물(합계는 잠정값). 업체 뷰에는 없다 */
+  transportPending: z.array(z.string()).optional(),
+  /** 비용·탄소 비교의 계산 범위(지금 처리 쪽 운송이 빠졌다는 것 등). 업체 뷰에는 없다 */
+  scope: z.array(obj({ key: z.string(), text: z.string() })).optional(),
 });
 
 export const questionSchema = obj({

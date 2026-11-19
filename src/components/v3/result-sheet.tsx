@@ -1,5 +1,6 @@
 "use client";
 
+import { PickupBrief } from "@/components/agent/pickup-line";
 import { useId, useState } from "react";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, carbonText, fieldLabel, formatValue } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
@@ -127,6 +128,7 @@ function AssignmentRows({
           <p className="text-[13px] text-muted">
             {item.route ? (item.process ? processLabel(item.route, item.process) : (ROUTE_LABEL[item.route] ?? item.route)) : "경로 미정"}
           </p>
+          {item.pickup ? <PickupBrief pickup={item.pickup} /> : null}
         </td>
         <td className="py-3 pr-3 text-right whitespace-nowrap">
           <ClaimValue claim={item.unitPrice} price />
@@ -139,9 +141,11 @@ function AssignmentRows({
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.monthlyAfter} signed />
+              {item.transportPending ? <p className="text-[12px] font-semibold text-warn">운반비 반영 전</p> : null}
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.difference} signed />
+              {item.transportPending ? <p className="text-[12px] font-semibold text-warn">운반비 반영 전</p> : null}
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.carbon} />
@@ -285,7 +289,12 @@ export function ResultSheet({
       )}
       <div className={full ? "flex flex-wrap items-end gap-x-8 gap-y-3" : "hidden"}>
         <div>
-          <p className="text-label text-muted">현행 대비 월 손익</p>
+          <p className="text-label text-muted">
+            현행 대비 월 손익
+            {(result.transportPending ?? []).length > 0 ? (
+              <span className="ml-2 text-warn">잠정 · 운반비 반영 전 {(result.transportPending ?? []).length}가지 포함</span>
+            ) : null}
+          </p>
           <p className="text-display">
             <ClaimValue claim={result.totals.difference} signed title="공장 현행 대비 월 손익" />
           </p>
