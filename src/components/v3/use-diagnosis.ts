@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/v3/api";
-import type { DiagnosisView } from "@/lib/v3/types";
+import type { DiagnosisView, PermitCheckInput } from "@/lib/v3/types";
 import { useV3 } from "./context";
 import { useLiveRun, type LiveMode, type LiveTarget } from "./use-live";
 
@@ -203,6 +203,24 @@ export function useDiagnosis() {
         : Promise.resolve(),
     approve: (threadId: string) =>
       sessionId ? act(() => api.approve(sessionId, org.id, threadId)) : Promise.resolve(),
+    /**
+     * 배출 기업 담당자가 허가증 원문에서 품목과 처리 방법을 대조한 기록을 남긴다. 실패하면 화면 문장을 돌려준다
+     * (대조 폼 옆에 보인다). 성공하면 서버가 다시 판정한 진단 뷰로 바꾼다.
+     */
+    recordPermitCheck: async (input: PermitCheckInput): Promise<string | null> => {
+      if (!sessionId || !canWrite) return "지금은 기록할 수 없습니다.";
+      setBusy(true);
+      try {
+        const next = await api.recordPermitCheck(sessionId, org.id, input);
+        setLoaded({ key: `${mode}:${org.id}:${next.session.id}`, view: next, error: null });
+        return null;
+      } catch (error) {
+        setTick((before) => before + 1);
+        return messageOf(error);
+      } finally {
+        setBusy(false);
+      }
+    },
     forget: () => setSessionId(null),
   };
 }

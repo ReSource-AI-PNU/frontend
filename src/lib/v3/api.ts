@@ -17,6 +17,7 @@ import type {
   DocumentConfirmResult,
   DocumentKind,
   DocumentUploadResult,
+  PermitCheckInput,
   EvalResult,
   EvidenceDetail,
   EvidenceHit,
@@ -192,6 +193,9 @@ export const api = {
     ),
   approve: (sessionId: string, orgId: string, threadId: string) =>
     request<DiagnosisView>(`/sessions/${enc(sessionId)}/approvals`, orgId, json({ threadId })),
+  /** 배출 기업 담당자가 업체가 올린 허가증 원문에서 품목과 처리 방법을 대조한 기록. 응답은 진단 뷰다 */
+  recordPermitCheck: (sessionId: string, orgId: string, body: PermitCheckInput) =>
+    request<DiagnosisView>(`/sessions/${enc(sessionId)}/permit-checks`, orgId, json(body)),
 
   getEvidence: (id: string, orgId: string) =>
     request<EvidenceDetail>(`/evidence/${enc(id)}`, orgId),

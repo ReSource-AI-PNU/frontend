@@ -9,7 +9,8 @@ import { josa } from "@/lib/josa";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
-import type { Assignment, OrgRole, Result, ViewStream } from "@/lib/v3/types";
+import type { Assignment, OrgRole, PermitCheckInput, Result, ViewStream } from "@/lib/v3/types";
+import { BlockedRoutes, PermitChip, PermitDetail, PermitSummary } from "./permit-check";
 
 const CHECK_WORD = { met: "충족", conditional: "확인 필요", unmet: "맞지 않음", needs_information: "값 없음" } as const;
 const STATUS_WORD = { calculated: "조건 확정", conditional: "조건 확인 뒤 확정", needs_information: "값 확인 필요" } as const;
@@ -23,11 +24,15 @@ function Row({
   stream,
   role,
   onOpenTalk,
+  onPermitCheck,
+  busy,
 }: {
   assignment: Assignment;
   stream: ViewStream | undefined;
   role: OrgRole;
   onOpenTalk: (threadId: string) => void;
+  onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
+  busy: boolean;
 }) {
   const { openEvidence } = useV3();
   const [open, setOpen] = useState(false);
@@ -35,10 +40,19 @@ function Row({
   const reused = assignment.route === "reuse";
   const reuse = assignment.reuse;
   const reuseCandidate = Boolean(isEmitterRole(role) && reuse?.eligible && !reused);
-  const todo = assignment.checks.filter((item) => item.status !== "met");
-  const met = assignment.checks.length - todo.length;
+  const permit = placed ? (assignment.permit ?? null) : null;
+  const blockedRoutes = assignment.blockedRoutes ?? [];
+  // 허가 확인은 위 한 줄과 펼친 곳의 "허가 확인"에 따로 그린다(같은 내용을 확인 항목에 다시 적지 않는다)
+  const shownChecks = permit ? assignment.checks.filter((item) => item.key !== "permit_level") : assignment.checks;
+  const todo = shownChecks.filter((item) => item.status !== "met");
+  const met = shownChecks.length - todo.length;
   const hasDetail =
-    assignment.checks.length > 0 || assignment.alternatives.length > 0 || Boolean(assignment.threadId) || reuseCandidate || reused;
+    assignment.checks.length > 0 ||
+    assignment.alternatives.length > 0 ||
+    Boolean(assignment.threadId) ||
+    reuseCandidate ||
+    reused ||
+    Boolean(permit);
   const facts = [stream?.material, stream?.form].filter(Boolean).join(" · ");
   const panelId = `route-${assignment.streamId}`;
   const isEmitter = role === "emitter";
@@ -127,10 +141,22 @@ function Row({
         </p>
       </div>
 
+      {permit ? <PermitSummary permit={permit} /> : null}
+      {isEmitter ? <BlockedRoutes routes={blockedRoutes} placedName={placed ? assignment.vendorName : null} /> : null}
+
       {hasDetail ? (
         <>
           {open ? (
             <div id={panelId} className="mt-3 rounded-xl bg-ground px-4 py-4 text-sm">
+              {permit && assignment.vendorOrgId ? (
+                <PermitDetail
+                  permit={permit}
+                  streamId={assignment.streamId}
+                  vendorOrgId={assignment.vendorOrgId}
+                  onRecord={isEmitter ? onPermitCheck : undefined}
+                  disabled={busy}
+                />
+              ) : null}
               {isEmitter && assignment.revenue ? (
                 <dl className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1.5 border-b border-line pb-4 tabular-nums">
                   <dt className="text-ink-2">
@@ -226,7 +252,7 @@ function Row({
                 <details className={todo.length > 0 ? "mt-4 border-t border-line pt-3" : ""}>
                   <summary className="cursor-pointer text-[13px] text-ink-2 hover:text-ink">이미 맞는 조건 {met}개</summary>
                   <ul className="mt-2 space-y-2 text-ink-2">
-                    {assignment.checks
+                    {shownChecks
                       .filter((item) => item.status === "met")
                       .map((check, index) => (
                         <li key={`${check.key}-${index}`}>
@@ -245,6 +271,11 @@ function Row({
                     {assignment.alternatives.map((item, index) => (
                       <li key={`alt-${index}`} className="text-ink-2">
                         <span className="font-medium text-ink">{item.vendorName ?? ROUTE_LABEL[item.route] ?? item.route}</span>
+                        {item.permit ? (
+                          <span className="ml-2 inline-flex align-middle">
+                            <PermitChip permit={item.permit} />
+                          </span>
+                        ) : null}
                         {item.unitPrice ? (
                           <>
                             {" · "}
@@ -422,12 +453,17 @@ export function ResultCard({
   role,
   counterpart,
   onOpenTalk,
+  onPermitCheck,
+  busy = false,
 }: {
   result: Result;
   streams: ViewStream[];
   role: OrgRole;
   counterpart: string;
   onOpenTalk: (threadId: string) => void;
+  /** 배출 기업 담당자가 허가증 원문 대조를 기록한다(승인 대기 중, 체험하기가 아닐 때만 준다) */
+  onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
+  busy?: boolean;
 }) {
   const { openEvidence } = useV3();
   const { totals } = result;
@@ -463,6 +499,8 @@ export function ResultCard({
               stream={streams.find((item) => item.id === assignment.streamId)}
               role={role}
               onOpenTalk={onOpenTalk}
+              onPermitCheck={onPermitCheck}
+              busy={busy}
             />
           ))}
         </ul>

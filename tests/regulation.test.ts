@@ -27,14 +27,22 @@ test("업체 허가는 폐기물마다 한 줄, 담당자 할 일은 겹치지 �
   assert.equal(related.length, new Set(related).size);
 });
 
-test("허가가 모두 충족이면 제목이 할 일 수를 말하고, 아니면 확인하지 못한 수를 말한다", () => {
+test("제목은 배정 경로마다의 허가 확인 상태를 세고, \"모두 확인했습니다\"라고 쓰지 않는다", () => {
   const plan = planRegulation(sections, nameOf);
-  if (plan.permits.every((row) => row.status === "met")) assert.match(plan.headline, /모두 확인했습니다/);
-  const broken = sections.map((section) => ({
+  assert.doesNotMatch(plan.headline, /모두 확인했습니다/);
+  assert.match(plan.headline, /^받는 업체의 허가: /);
+  // 시연은 대조 완료 · 검토 대기 · 원본 확인 필요를 함께 보인다
+  assert.match(plan.headline, /허가증 대조 완료 \d+건/);
+  assert.match(plan.headline, /원본 확인 필요 \d+건/);
+  assert.match(plan.headline, /담당자가 챙길 일 \d+가지/);
+  // 줄마다 허가 상태(결과표와 같은 값)가 붙는다
+  assert.ok(plan.permits.filter((row) => row.route !== "지금 방식 그대로").every((row) => row.permit));
+  // 이전 결과(허가 상태가 없는 줄)는 "허가 상태 확인 필요"로 센다
+  const old = sections.map((section) => ({
     ...section,
-    items: section.items.map((item) => (item.kind === "check" ? { ...item, status: "unmet" as const } : item)),
+    items: section.items.map((item) => (item.kind === "check" ? { ...item, permit: undefined, status: "met" as const } : item)),
   }));
-  assert.match(planRegulation(broken, nameOf).headline, /^허가를 확인하지 못한 폐기물이 \d+가지/);
+  assert.match(planRegulation(old, nameOf).headline, /허가 상태 확인 필요 \d+건/);
 });
 
 test("문구에 개발자 말이 없다", () => {

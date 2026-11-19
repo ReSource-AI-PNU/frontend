@@ -5,6 +5,7 @@ import { ClaimValue } from "@/components/v3/claim";
 import { StatusChip, type ChipTone } from "@/components/v3/status-chip";
 import { REGULATION_FOOT, REGULATION_LEAD, STATUS_WORD, planRegulation, type Todo } from "@/lib/v3/regulation";
 import type { Claim, Regulation, ViewStream } from "@/lib/v3/types";
+import { PermitChip } from "./permit-check";
 
 const TONE: Record<string, ChipTone> = { met: "done", conditional: "warn", unmet: "stop", needs_information: "warn" };
 
@@ -79,7 +80,14 @@ export function RegulationSection({ sections, streams }: { sections: Regulation[
               <li key={row.streamId} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2 text-[14px]">
                 <span className="font-medium">{row.name}</span>
                 <span className="text-muted">{row.route}</span>
-                <StatusChip tone={TONE[row.status] ?? "warn"}>{STATUS_WORD[row.status]}</StatusChip>
+                {row.permit ? (
+                  <PermitChip permit={row.permit} />
+                ) : (
+                  <StatusChip tone={row.status === "met" ? "neutral" : (TONE[row.status] ?? "warn")}>
+                    {/* 이전 결과: 원문 대조라는 기록이 없던 때라 "충족"을 대조 완료처럼 보이지 않게 한다 */}
+                    {row.status === "met" ? "원문 대조 기록 없음" : STATUS_WORD[row.status]}
+                  </StatusChip>
+                )}
                 <span className="basis-full text-[13px] text-ink-2 sm:basis-auto">{row.note}</span>
               </li>
             ))}

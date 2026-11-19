@@ -29,7 +29,9 @@ import {
   type NoticeMark,
 } from "@/lib/v3/question-notice";
 import type { DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
+import { permitLine, permitPaper, permitTodo } from "@/lib/v3/permit";
 import { AgentStage } from "./agent-stage";
+import { PermitChip } from "./permit-check";
 import { AgentTalk, QuestionNotice } from "./agent-talk";
 import { FlowChart } from "./flow-chart";
 import { ImprovementsSection } from "./improvements";
@@ -298,18 +300,25 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
   const mine = (item: DiagnosisView["approvals"][number]) => (isEmitter ? item.emitter : item.vendor);
   const theirs = (item: DiagnosisView["approvals"][number]) => (isEmitter ? item.vendor : item.emitter);
   // 계약 검토 담당이 막은 합의는 승인할 수 없다(양쪽 모두)
-  const pending = view.approvals.filter((item) => !mine(item) && !item.blocked && !reviewBlocked(item.review));
+  // 허가증 원문 대조가 끝나지 않은 경로가 있는 합의는 배출 기업이 승인(확정)할 수 없다(서버도 409로 막는다)
+  const holds = (item: DiagnosisView["approvals"][number]) => Boolean(item.permitHold) && !(item.emitter && item.vendor);
+  const pending = view.approvals.filter(
+    (item) => !mine(item) && !item.blocked && !reviewBlocked(item.review) && !(isEmitter && holds(item)),
+  );
+  const held = view.approvals.filter(holds);
   const stopped = view.approvals.filter((item) => !mine(item) && reviewBlocked(item.review));
   // 확인할 것이 남은 검토가 있으면 담당자가 확인했다고 골라야 승인 단추가 켜진다
   const toCheck = pending.filter((item) => needsAck(item.review));
   const [checked, setChecked] = useState(false);
   const waiting = view.approvals.filter((item) => mine(item) && !theirs(item));
   const streamName = (id: string) => view.streams.find((item) => item.id === id)?.name ?? id;
+  const vendorOf = (item: DiagnosisView["approvals"][number]) =>
+    view.threads.find((thread) => thread.id === item.threadId)?.vendorName ?? "업체";
   if (view.approvals.length === 0) return null;
   const confirmed = view.session.status === "confirmed";
   const other = isEmitter ? "업체" : "배출 기업";
   const untouched = pending.length === view.approvals.length;
-  const showList = each || !untouched;
+  const showList = each || !untouched || held.length > 0;
   const disabled = !d.canAct || d.busy;
   const unchecked = toCheck.length > 0 && !checked;
   const counterpartOf = (threadId: string) => {
@@ -327,7 +336,9 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
             ? isEmitter
               ? "이 조건으로 진행할까요?"
               : "이 조건으로 받으시겠어요?"
-            : `승인했습니다. ${other} 승인을 기다리고 있습니다.`}
+            : held.length > 0 && isEmitter
+              ? "허가증 원문 대조가 끝나야 확정할 수 있습니다."
+              : `승인했습니다. ${other} 승인을 기다리고 있습니다.`}
       </h2>
       {!confirmed ? (
         <p className="mt-1.5 text-[15px] text-ink-2">
@@ -335,6 +346,38 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
             ? `승인하면 ${other}${isEmitter && pending.length > 1 ? ` ${pending.length}곳` : ""}에 알립니다. ${other} 담당자도 승인해야 확정되고, 그 뒤에 요청서, 이행 계획서, 위탁 계약서 초안을 만듭니다.`
             : `${other} 담당자가 승인하면 확정되고, 요청서, 이행 계획서, 위탁 계약서 초안이 만들어집니다.`}
         </p>
+      ) : null}
+
+      {held.length > 0 && !confirmed ? (
+        <div className="mt-4 rounded-xl bg-warn-bg px-4 py-3 text-sm">
+          <p className="font-medium text-ink">허가증 원문 대조가 끝나지 않은 경로는 확정하지 않습니다.</p>
+          <p className="mt-0.5 text-ink-2">
+            {isEmitter
+              ? "결과표에서 그 줄을 펼쳐 업체가 올린 허가증 원문과 품목·처리 방법을 대조해 기록하면 승인할 수 있습니다."
+              : "배출 기업 담당자가 허가증 원문을 대조하면 확정됩니다. 허가증을 아직 올리지 않았으면 자료 화면에서 올려 주세요."}
+          </p>
+          <ul className="mt-2 space-y-2">
+            {held.flatMap((item) =>
+              (item.permits ?? [])
+                .filter((permit) => permit.status !== "met")
+                .map((permit) => (
+                  <li key={`${item.threadId}-${permit.streamId}`}>
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-medium text-ink">
+                        {streamName(permit.streamId)} → {vendorOf(item)}
+                      </span>
+                      <PermitChip permit={permit} />
+                    </span>
+                    <span className="mt-0.5 block text-[13px] text-ink-2">
+                      {permitTodo(permit).length > 0
+                        ? `${permitPaper(permit)} · 확인할 항목: ${permitTodo(permit).join(", ")}`
+                        : permitLine(permit)}
+                    </span>
+                  </li>
+                )),
+            )}
+          </ul>
+        </div>
       ) : null}
 
       {pending.length > 0 && readOnly ? (
@@ -418,6 +461,16 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{counterpart}</p>
                   <p className="text-[13px] text-muted">{approval.streamIds.map(streamName).join(", ")}</p>
+                  {(approval.permits ?? []).length > 0 ? (
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
+                      {(approval.permits ?? []).map((permit) => (
+                        <span key={permit.streamId} className="inline-flex items-center gap-1.5">
+                          {approval.permits && approval.permits.length > 1 ? streamName(permit.streamId) : "허가"}
+                          <PermitChip permit={permit} />
+                        </span>
+                      ))}
+                    </p>
+                  ) : null}
                 </div>
                 {done ? (
                   <span className="flex items-center gap-1.5 text-sm font-medium text-gain">
@@ -427,6 +480,8 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
                   <span className="text-sm font-medium text-warn">승인이 막혔습니다</span>
                 ) : reviewBlocked(approval.review) ? (
                   <span className="text-sm font-medium text-loss">계약 검토에서 막혔습니다</span>
+                ) : isEmitter && holds(approval) && !mine(approval) ? (
+                  <span className="text-sm font-medium text-warn">허가증 대조 뒤 승인</span>
                 ) : mine(approval) ? (
                   <span className="text-sm text-muted">{other} 승인 기다리는 중</span>
                 ) : readOnly ? (
@@ -775,7 +830,15 @@ export function Conversation({ d }: { d: Diagnosis }) {
         ))}
 
         {result ? (
-          <ResultCard result={result} streams={view.streams} role={view.viewer.role} counterpart={emitterName} onOpenTalk={openTalk} />
+          <ResultCard
+            result={result}
+            streams={view.streams}
+            role={view.viewer.role}
+            counterpart={emitterName}
+            onOpenTalk={openTalk}
+            onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
+            busy={d.busy}
+          />
         ) : null}
 
         {result && isEmitter && !holding && view.streams.length > 0 ? <FlowChart result={result} streams={view.streams} /> : null}

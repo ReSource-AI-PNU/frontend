@@ -7,7 +7,8 @@
  *
  * 시연 데이터를 처음 상태로 되돌린 뒤(관리자 조직으로 부른다), 진단을 만들고 승인 전(awaiting_approval)까지 돌린다.
  * 담당자 질문에는 포장 필름 수분만 답하고 나머지는 "모름"으로 답한다. 여기까지가 화면의 예시 데이터다.
- * 이어서 같은 진단에 사람 교정 한 건을 기록하고, 양쪽 승인으로 확정한 뒤 업체가 실제 결과 한 건을 기록해
+ * 이어서 같은 진단에 사람 교정 한 건을 기록하고, 허가증 원문 대조가 남은 경로는 업체가 허가증(가상)을 올리고 배출 기업
+ * 담당자가 대조를 기록한 뒤(서버가 대조 전 확정을 막는다), 양쪽 승인으로 확정하고 업체가 실제 결과 한 건을 기록해
  * 확정 뒤 뷰(배출 기업, 업체)와 실적 리포트를 tests/fixtures/에 받는다. 스키마 검사(tests/v3-view.test.ts)가 이 세 뷰와 리포트를 읽는다.
  * 근거는 뷰와 업체 프로필이 직접 가리키는 것과 그 계산 사슬의 바로 아래 단계까지만 담는다(법령 원문 등으로 파일이 커지지 않게).
  * 화면이 쓰는 값은 전부 이 서버가 실제로 낸 응답이다. 손으로 고치지 않는다.
@@ -117,16 +118,57 @@ await post(`/sessions/${id}/corrections`, EMITTER, {
   after: "압축",
   note: "예시 데이터용 교정(가상)",
 });
-for (const approval of view.approvals) {
-  const thread = view.threads.find((item) => item.id === approval.threadId);
+// 허가증 원문 대조가 끝나지 않은 경로는 서버가 확정하지 않는다(409 PERMIT_UNVERIFIED). 시연은 새길자원만 대조해 둔 상태라,
+// 허가증을 올리지 않은 업체는 업체로 허가증(가상 글 파일)을 올리고, 배출 기업 담당자로 원문 대조를 기록한 뒤 승인한다.
+const HOLDERS = {
+  org_saegil: ["(주)새길자원", "부산광역시 강서구 미음동"],
+  org_namhae: ["(주)남해열분해", "경상남도 김해시 주촌면"],
+  org_miso: ["(주)미소환경", "부산광역시 사상구 학장동"],
+};
+async function uploadPermit(vendorOrgId) {
+  const [name, address] = HOLDERS[vendorOrgId];
+  const text = `폐기물처리업 허가증(가상)\n상호: ${name}\n소재지: ${address}\n업종: 폐기물 종합재활용업\n영업대상 폐기물: 폐플라스틱(PP, PE, ABS)\n`;
+  const form = new FormData();
+  form.set("file", new Blob([text], { type: "text/plain" }), "허가증(가상).txt");
+  form.set("orgId", vendorOrgId);
+  form.set("kind", "permit");
+  const response = await fetch(`${base}/intake/documents`, { method: "POST", body: form, headers: { "X-Org-Id": vendorOrgId } });
+  if (!response.ok) throw new Error(`허가증 올리기 → ${response.status} ${await response.text()}`);
+}
+let checking = await call(`/sessions/${id}`, EMITTER);
+for (const approval of checking.approvals.filter((item) => item.permitHold)) {
+  const thread = checking.threads.find((item) => item.id === approval.threadId);
+  if ((approval.permits ?? []).some((permit) => !permit.document)) await uploadPermit(thread.vendorOrgId);
+}
+checking = await call(`/sessions/${id}`, EMITTER);
+for (const approval of checking.approvals.filter((item) => item.permitHold)) {
+  const thread = checking.threads.find((item) => item.id === approval.threadId);
+  for (const permit of (approval.permits ?? []).filter((item) => item.status !== "met")) {
+    const document = permit.document;
+    if (!document) throw new Error(`${thread.vendorOrgId}: 대조할 허가증이 없습니다`);
+    const read = document.items.find((item) => item.wasteItem === permit.wasteItem);
+    checking = await post(`/sessions/${id}/permit-checks`, EMITTER, {
+      streamId: permit.streamId,
+      vendorOrgId: thread.vendorOrgId,
+      documentId: document.id,
+      page: read?.page ?? 1,
+      itemFound: true,
+      processFits: true,
+      itemQuote: read?.quote ?? undefined,
+      processQuote: document.business?.quote ?? undefined,
+    });
+  }
+}
+for (const approval of checking.approvals) {
+  const thread = checking.threads.find((item) => item.id === approval.threadId);
   await post(`/sessions/${id}/approvals`, EMITTER, { threadId: approval.threadId });
   await post(`/sessions/${id}/approvals`, thread.vendorOrgId, { threadId: approval.threadId });
 }
-const mine = view.approvals.find(
-  (approval) => view.threads.find((item) => item.id === approval.threadId)?.vendorOrgId === OUTCOME_VENDOR,
+const mine = checking.approvals.find(
+  (approval) => checking.threads.find((item) => item.id === approval.threadId)?.vendorOrgId === OUTCOME_VENDOR,
 );
 if (!mine) throw new Error(`${OUTCOME_VENDOR}와 합의한 대화가 없습니다`);
-const agreed = view.result.assignments.find((item) => item.threadId === mine.threadId);
+const agreed = checking.result.assignments.find((item) => item.threadId === mine.threadId);
 await post(`/sessions/${id}/outcomes`, OUTCOME_VENDOR, {
   threadId: mine.threadId,
   streamId: agreed.streamId,

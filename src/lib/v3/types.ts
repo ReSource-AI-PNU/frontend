@@ -46,6 +46,10 @@ export type CorrectionField = z.infer<typeof s.correctionFieldSchema>;
 export type Correction = z.infer<typeof s.correctionSchema>;
 export type Outcome = z.infer<typeof s.outcomeSchema>;
 export type Assignment = z.infer<typeof s.assignmentSchema>;
+export type PermitLevel = z.infer<typeof s.permitLevelSchema>;
+export type PermitCheck = z.infer<typeof s.permitCheckSchema>;
+export type PermitDocument = z.infer<typeof s.permitDocumentSchema>;
+export type BlockedRoute = z.infer<typeof s.blockedRouteSchema>;
 export type ReferencePrice = z.infer<typeof s.referencePriceSchema>;
 export type Result = z.infer<typeof s.resultSchema>;
 export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
@@ -268,6 +272,20 @@ export type DocumentUploadResult = {
   draft?: CriteriaDraft;
   needsReview?: boolean;
   note?: string;
+  /** 업체가 허가증을 올리면 "검토 대기" 문서로 남는다(배출 기업 담당자가 원문을 대조하기 전) */
+  permitDocument?: PermitDocument;
+};
+
+/** POST /sessions/{id}/permit-checks 본문. 그 업체가 올린 허가증(documentId)의 원문 쪽에서 대조한 결과 */
+export type PermitCheckInput = {
+  streamId: string;
+  vendorOrgId: string;
+  documentId: string;
+  page: number;
+  itemFound: boolean;
+  processFits: boolean;
+  itemQuote?: string;
+  processQuote?: string;
 };
 
 /** 초안의 칸 하나. raw는 문서에 적힌 글자, quote는 칸 밖(각주·문장)에서 왔을 때의 그 글, review는 확인 사유 */

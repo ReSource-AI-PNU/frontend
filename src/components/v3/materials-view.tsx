@@ -393,6 +393,17 @@ function DocumentUpload({
         state={upload.state}
         busyText={kind === "purchase_criteria" ? "AI가 문서를 읽고 있습니다. 표가 길면 1분 넘게 걸릴 수 있습니다." : undefined}
       />
+      {latest?.permitDocument ? (
+        <p role="status" className="rounded-xl bg-ground px-4 py-3 text-[13px] text-ink-2">
+          <span className="font-medium text-ink">
+            <span className="tabular-nums">{latest.filename}</span>을 허가증으로 올렸습니다.
+          </span>{" "}
+          AI가 읽은 허가 품목 {latest.permitDocument.items.length}개
+          {latest.permitDocument.business ? ` · 업종 ${latest.permitDocument.business.name}` : ""}. 배출 기업 담당자가 원문에서 품목과
+          처리 방법을 대조하기 전까지 거래 상대에게는 &lsquo;허가증 검토 대기&rsquo;로 보이고, 대조가 끝나야 거래를 확정할 수 있습니다.
+          {latest.permitDocument.holder?.name ? ` 허가증의 상호: ${latest.permitDocument.holder.name}.` : ""}
+        </p>
+      ) : null}
       {latest && (latest.blocked || latest.handoff) ? (
         <p role="alert" className="rounded-xl bg-loss-bg px-4 py-3 text-sm font-medium text-loss">
           {latest.filename}: 이 문서에서 AI에게 내리는 숨은 지시문이 발견되어 이 문서를 쓰지 않습니다.

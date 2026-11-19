@@ -356,16 +356,89 @@ export const alternativeSchema = obj({
   monthlyAfter: claimOrNull,
   /** 이 업체에만 보낼 때의 탄소 변화(처리 방식 + 수거 운행). 이 기능 전 결과에는 없다 */
   carbon: claimOrNull.optional(),
+  /** 이 업체로 보낼 때의 허가 확인 상태(2026-11-19 뒤 결과) */
+  permit: z.lazy(() => permitLevelSchema).nullable().optional(),
   note: z.string(),
 });
 
-/** 배정한 업체의 허가를 무엇으로 확인했는가. 업체 입력뿐이거나 공공 명부와 다르면 그 배정은 조건부다 */
+/** 배출 기업 담당자가 업체가 올린 허가증 원문에서 품목과 처리 방법을 대조한 기록(2026-11-19) */
+export const permitCheckSchema = obj({
+  id: z.string(),
+  documentId: z.string().nullable(),
+  document: z.string().nullable(),
+  /** 대조한 쪽 */
+  page: z.number().nullable(),
+  wasteItem: z.string().nullable(),
+  materials: z.array(z.string()),
+  /** 대조한 처리 방식(재활용, 열분해 등) */
+  process: z.string().nullable(),
+  itemFound: z.boolean(),
+  processFits: z.boolean(),
+  itemQuote: z.string().nullable(),
+  processQuote: z.string().nullable(),
+  /** 업체 뷰에서는 userName이 null이다 */
+  checkedBy: obj({ orgId: z.string(), orgName: z.string().nullable(), userName: z.string().nullable() }),
+  checkedAt: z.string(),
+  /** 대조 기록 근거(human). 업체 뷰에서는 null */
+  evidence: z.string().nullable(),
+});
+
+const permitPlaceSchema = obj({ name: z.string(), page: z.number().nullable(), quote: z.string().nullable() });
+
+/** 업체가 올린 허가증(AI가 읽은 값, 담당자 대조 전). 파일은 서버에 남지 않는다 */
+export const permitDocumentSchema = obj({
+  id: z.string(),
+  name: z.string().nullable(),
+  uploadedAt: z.string().nullable(),
+  pages: z.array(z.number()),
+  items: z.array(
+    obj({ wasteItem: z.string(), materials: z.array(z.string()), page: z.number().nullable(), quote: z.string().nullable() }),
+  ),
+  business: permitPlaceSchema.nullable(),
+  holder: obj({
+    name: z.string().nullable(),
+    address: z.string().nullable(),
+    page: z.number().nullable(),
+    quote: z.string().nullable(),
+    /** 허가증의 상호·소재지가 이 업체와 같은가(모르면 null). 다르면 그 문서는 쓰지 않는다 */
+    nameMatches: z.boolean().nullable().optional(),
+    siteMatches: z.boolean().nullable().optional(),
+  }).nullable(),
+  evidence: z.array(z.string()),
+});
+
+/**
+ * 배정 경로(업체 · 폐기물 · 처리 방식)의 허가 확인 상태. 담당자가 원문을 대조한 경로만 verified(대조 완료)다.
+ * 2026-11-19 이전 결과의 level(registry, document, self)은 원문 대조 기록이 없는 상태로 그린다(permit.ts).
+ */
 export const permitLevelSchema = obj({
-  level: z.enum(["registry", "document", "self", "mismatch"]),
+  level: z.enum(["verified", "pending_review", "registered", "mismatch", "registry", "document", "self"]),
   label: z.string(),
   status: z.enum(["met", "conditional", "unmet"]),
   text: z.string(),
   evidence: z.array(z.string()),
+  /** 실제 근거 수준: 원문 대조 기록 · 업체가 올린 허가증 · 공공 명부 · 업체 입력 */
+  source: z.enum(["check", "document", "registry", "typed"]).optional(),
+  wasteItem: z.string().nullable().optional(),
+  materials: z.array(z.string()).optional(),
+  process: z.string().nullable().optional(),
+  /** 처리 방식에 필요한 허가 업종(재활용업, 처분업) */
+  need: z.string().nullable().optional(),
+  business: z.string().nullable().optional(),
+  check: permitCheckSchema.nullable().optional(),
+  document: permitDocumentSchema.nullable().optional(),
+  /** 쓰지 않은 허가증(다른 업체·사업장)과 그 이유 */
+  ignored: z.array(obj({ name: z.string().nullable(), reason: z.string() })).optional(),
+  /** 대조 완료 전: 제출받을 문서와 확인할 항목 */
+  todo: obj({ submit: z.string(), items: z.array(z.string()) }).nullable().optional(),
+});
+
+/** 허가 확인 결과 이 경로로 진행할 수 없는 업체. 예상 손익은 싣지 않는다 */
+export const blockedRouteSchema = obj({
+  vendorOrgId: z.string(),
+  vendorName: z.string().nullable(),
+  permit: permitLevelSchema,
+  note: z.string(),
 });
 
 /** 공정 재투입 후보(판단 도구 judge_reuse). 업체가 보는 뷰에서는 null이다 */
@@ -416,6 +489,8 @@ export const assignmentSchema = obj({
   currentAssumed: z.boolean(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
+  /** 허가 확인 결과 진행할 수 없는 경로(2026-11-19 뒤 결과) */
+  blockedRoutes: z.array(blockedRouteSchema).optional(),
 });
 
 export const referencePriceSchema = obj({
@@ -497,6 +572,8 @@ const regulationSectionSchema = obj({
       note: z.string(),
       /** check: 서비스가 판정한 요건(업체 허가) · todo: 서비스가 확인할 수 없는 담당자 할 일 */
       kind: z.enum(["check", "todo"]),
+      /** 배정한 업체의 허가 확인 상태(결과표·승인 카드와 같은 값). 배정이 없거나 이전 결과면 없다 */
+      permit: z.lazy(() => permitLevelSchema).nullable().optional(),
       clauses: z.array(clauseClaimSchema),
     }),
   ),
@@ -662,6 +739,10 @@ export const approvalSchema = obj({
   clearedApprovals: z.array(z.enum(["emitter", "vendor"])).optional(),
   /** 계약 검토 담당의 검토. 예전 서버는 보내지 않는다 */
   review: contractReviewSchema.nullable().optional(),
+  /** 이 대화에 배정된 폐기물마다 허가 확인 상태(결과표와 같은 값, 2026-11-19 뒤) */
+  permits: z.array(permitLevelSchema.extend({ streamId: z.string() })).optional(),
+  /** 허가증 대조 완료가 아닌 경로가 있으면 true. 서버가 배출 기업의 승인(확정)을 409 PERMIT_UNVERIFIED로 막는다 */
+  permitHold: z.boolean().optional(),
 });
 
 export const viewDocumentSchema = obj({

@@ -16,6 +16,7 @@ import {
 } from "@/lib/v3/format";
 import { DOC_LABEL } from "@/lib/v3/labels";
 import type { Assignment, Outcome, OutcomeInput } from "@/lib/v3/types";
+import { PermitSummary } from "@/components/agent/permit-check";
 import { BlockedNotice } from "./blocked-notice";
 import { ClaimText, ClaimValue } from "./claim";
 import { ContractReviewBox, needsAck, reviewBlocked } from "./contract-review";
@@ -311,9 +312,12 @@ export function ApprovalView() {
   const streamName = (id: string) => view.streams.find((item) => item.id === id)?.name ?? id;
   const role = view.viewer.role;
   // 한 화면에 먹색 버튼은 하나만 둔다: 지금 승인할 수 있는 첫 합의에만 쓴다
+  // 허가증 원문 대조가 끝나지 않은 합의는 배출 기업이 승인할 수 없다(서버도 409 PERMIT_UNVERIFIED로 막는다)
+  const permitHeld = (approval: (typeof view.approvals)[number]) =>
+    role === "emitter" && Boolean(approval.permitHold) && !(approval.emitter && approval.vendor);
   const firstActionable = view.approvals.find((approval) => {
     const mine = role === "emitter" ? approval.emitter : approval.vendor;
-    return !approval.blocked && !reviewBlocked(approval.review) && !mine;
+    return !approval.blocked && !reviewBlocked(approval.review) && !mine && !permitHeld(approval);
   })?.threadId;
   // 승인 칸은 합의·확정 대화에만 있다. 담당자에게 넘어갔거나 거절된 대화는 사유와 함께 따로 적는다
   const closed = view.threads.filter((item) => item.status === "handoff" || item.status === "declined");
@@ -423,6 +427,25 @@ export function ApprovalView() {
                 <p className="mt-1 font-medium">{approval.streamIds.map(streamName).join(", ")}</p>
               )}
             </div>
+            {(approval.permits ?? []).length > 0 ? (
+              <div className="mt-3">
+                {(approval.permits ?? []).map((permit) => (
+                  <PermitSummary
+                    key={permit.streamId}
+                    permit={permit}
+                    vendorName={(approval.permits ?? []).length > 1 ? streamName(permit.streamId) : null}
+                  />
+                ))}
+                {approval.permitHold && !confirmed ? (
+                  <p className="mt-3 rounded-xl bg-warn-bg px-4 py-3 text-sm text-ink-2">
+                    <span className="font-medium text-ink">허가증 원문 대조가 끝나지 않은 경로는 확정하지 않습니다.</span>{" "}
+                    {role === "emitter"
+                      ? "찾기 화면의 결과표에서 그 줄을 펼쳐 업체가 올린 허가증 원문과 품목·처리 방법을 대조해 기록하면 승인할 수 있습니다."
+                      : "배출 기업 담당자가 허가증 원문을 대조하면 확정됩니다. 허가증을 아직 올리지 않았으면 자료 화면에서 올려 주세요."}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {thread && thread.messages.length > 0 ? (
               <MoreDetails className="mt-3 text-sm" hint={`마지막 메시지 (${thread.messages.length}번째)`}>
                 <p className="mt-2 rounded-xl bg-ground px-4 py-3 whitespace-pre-wrap text-ink-2">
@@ -475,10 +498,10 @@ export function ApprovalView() {
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button
                   variant={approval.threadId === firstActionable ? "primary" : "secondary"}
-                  disabled={!d.canAct || d.busy || blocked || mine || reviewStops || unchecked}
+                  disabled={!d.canAct || d.busy || blocked || mine || reviewStops || unchecked || permitHeld(approval)}
                   onClick={() => d.approve(approval.threadId)}
                 >
-                  {mine ? "승인했습니다" : "승인"}
+                  {mine ? "승인했습니다" : permitHeld(approval) ? "허가증 대조 뒤 승인" : "승인"}
                 </Button>
                 {!mine && !blocked && !reviewStops && unchecked ? (
                   <span className="text-[13px] text-muted">계약 검토의 확인할 것을 확인하면 승인할 수 있습니다.</span>

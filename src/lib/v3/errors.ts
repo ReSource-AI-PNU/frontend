@@ -11,6 +11,16 @@ const KEEP_SERVER_MESSAGE = new Set([
   "NOT_AGREED",
   "APPROVAL_BLOCKED",
   "PERMIT_MISMATCH",
+  // 허가증 원문 대조가 끝나지 않은 경로: 어느 폐기물·업체가 어떤 상태인지와 할 일을 서버가 적는다
+  "PERMIT_UNVERIFIED",
+  // 허가증 대조 기록: 다른 업체·사업장의 허가증, 없는 쪽, 대조할 경로가 아님 등을 서버가 적는다
+  "PERMIT_DOCUMENT_IGNORED",
+  "PERMIT_DOCUMENT_NOT_FOUND",
+  "PERMIT_NOT_MATCHED",
+  "INVALID_PAGE",
+  "NOT_AWAITING_APPROVAL",
+  "ALREADY_CONFIRMED",
+  "ROUTE_NOT_FOUND",
   "THREAD_NOT_CONFIRMED",
   "INVALID_VALUE",
   "INVALID_ANSWER",
