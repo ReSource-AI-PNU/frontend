@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, fieldLabel, formatValue } from "@/lib/v3/format";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, carbonText, fieldLabel, formatValue } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import type { Assignment, Check, CheckStatus, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
@@ -147,7 +147,7 @@ function AssignmentRows({
               <ClaimValue claim={item.carbon} />
               {item.carbonTransport ? (
                 <p className="text-[12px] text-muted">
-                  수거 운행 <ClaimValue claim={item.carbonTransport} />
+                  운송 <ClaimValue claim={item.carbonTransport} display={carbonText(item.carbonTransport)} />
                 </p>
               ) : null}
               {item.carbonValue ? (
@@ -309,7 +309,7 @@ export function ResultSheet({
           <p className="text-[12px] text-muted">
             {result.carbonInObjective ? (
               <>
-                배정을 고를 때 탄소(처리 방식과 수거 운행)를{" "}
+                배정을 고를 때 탄소(처리 방식과 운송)를{" "}
                 {result.carbonPrice ? (
                   <>
                     배출권 시세 <ClaimValue claim={result.carbonPrice} />로

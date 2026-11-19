@@ -5,7 +5,8 @@ import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
-import { CHECK_KEY_LABEL, ROUTE_LABEL, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
+import { josa } from "@/lib/josa";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
 import type { Assignment, OrgRole, Result, ViewStream } from "@/lib/v3/types";
@@ -259,7 +260,7 @@ function Row({
                         {isEmitter && item.carbon ? (
                           <>
                             {" · 탄소 "}
-                            <ClaimValue claim={item.carbon} className="!font-normal" />
+                            <ClaimValue claim={item.carbon} display={carbonText(item.carbon)} className="!font-normal" />
                           </>
                         ) : null}
                         {item.note ? <span className="block text-[13px] text-muted">{item.note}</span> : null}
@@ -295,17 +296,18 @@ function Row({
                       {assignment.carbonProcess && assignment.carbonTransport ? " · " : null}
                       {assignment.carbonTransport ? (
                         <>
-                          수거 운행 <ClaimValue claim={assignment.carbonTransport} className="!font-normal" />
+                          운송{" "}
+                          <ClaimValue claim={assignment.carbonTransport} display={carbonText(assignment.carbonTransport, true)} className="!font-normal" />
                           {assignment.transportKm && numberOf(assignment.transportKm) !== null ? (
                             <>
                               {" "}
-                              (업체 차량이 한 달{" "}
+                              (공장에서 업체까지{" "}
                               <ClaimValue
                                 claim={assignment.transportKm}
-                                display={`${formatNumber(Math.round(numberOf(assignment.transportKm) as number))} km`}
+                                display={`${formatNumber(Math.round((numberOf(assignment.transportKm) as number) * 10) / 10)} km`}
                                 className="!font-normal"
-                              />{" "}
-                              오감)
+                              />
+                              )
                             </>
                           ) : null}
                         </>
@@ -331,6 +333,50 @@ function Row({
         </>
       ) : null}
     </li>
+  );
+}
+
+/**
+ * 탄소를 가장 많이 줄이는 배정과 고른 배정의 비교. 같으면 한 줄로 그렇다고 적고, 다르면 무엇을 바꾸면 되는지와
+ * 그때의 돈·탄소 차이를 적는다. 고른 배정은 돈 차이가 배출권 시세로 환산한 탄소 차이보다 크다(백엔드 최적 배정의 목적).
+ */
+function GreenestNote({ greenest }: { greenest: NonNullable<Result["greenest"]> }) {
+  if (greenest.same) {
+    return (
+      <p className="mt-3 text-[14px] leading-relaxed text-ink-2">
+        이 배정이 탄소도 가장 많이 줄입니다. 처리 방식과 업체까지 실어 가는 운송 배출을 함께 비교했습니다.
+      </p>
+    );
+  }
+  const moves = greenest.changes.map((change) => {
+    const where = change.vendorName ?? (change.route === "reuse" ? "사내 공정" : "지금 처리하는 곳");
+    return `${josa(change.streamName ?? "폐기물", "을/를")} ${where}에`;
+  });
+  const money = numberOf(greenest.moneyGap);
+  const carbon = numberOf(greenest.carbonGap);
+  return (
+    <p className="mt-3 rounded-xl bg-ground px-4 py-3 text-[14px] leading-relaxed text-ink-2">
+      <span className="font-medium text-ink">탄소를 가장 많이 줄이려면</span> {moves.join(", ")} 보내면 됩니다.{" "}
+      {money !== null && carbon !== null && greenest.moneyGap && greenest.carbonGap ? (
+        <>
+          그러면 한 달 손익이{" "}
+          <Glue>
+            <ClaimValue claim={greenest.moneyGap} display={won(greenest.moneyGap)} className="!font-normal" />
+            {money <= 0 ? " 줄고" : " 늘고"}
+          </Glue>{" "}
+          탄소를{" "}
+          <Glue>
+            <ClaimValue
+              claim={greenest.carbonGap}
+              display={carbonText({ ...greenest.carbonGap, value: Math.abs(carbon) })}
+              className="!font-normal"
+            />
+            {carbon <= 0 ? " 더 줄입니다." : " 덜 줄입니다."}
+          </Glue>{" "}
+          줄어드는 돈이 그 탄소를 배출권 시세로 환산한 값보다 커서 지금 배정을 골랐습니다.
+        </>
+      ) : null}
+    </p>
   );
 }
 
@@ -430,6 +476,8 @@ export function ResultCard({
         ) : null}
       </div>
 
+      {isEmitter && result.greenest ? <GreenestNote greenest={result.greenest} /> : null}
+
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
         {conditional ? "‘조건 확인 뒤 확정’은 업체가 물건을 받아 확인한 뒤에 이 조건이 굳어진다는 뜻입니다. " : ""}
         숫자를 누르면 계약서·측정값·법 조항 같은 근거가 열립니다.
@@ -449,7 +497,7 @@ export function ResultCard({
         {isEmitter && totals.carbon ? (
           <>
             {" "}
-            탄소 배출 변화는 수거 운행 배출을 더해{" "}
+            탄소 배출 변화는 운송 배출을 더해{" "}
             <Glue>
               <ClaimValue claim={totals.carbon} className="!font-normal" />
               입니다.

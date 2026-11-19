@@ -335,7 +335,7 @@ export const checkKeySchema = z.enum([
   "pickup_route",
   /** 배정한 업체의 허가 근거 수준: 허가증·공공 명부 확인, 허가증 문서, 업체 입력, 공공 명부와 다름(2026-11-19) */
   "permit_level",
-  /** 수거 운행 배출을 계산하지 못했을 때(공장 위치·차고지·수거 횟수가 없을 때) */
+  /** 운송 배출을 계산하지 못했을 때(공장 위치나 업체 차고지가 없을 때) */
   "transport_carbon",
 ]);
 
@@ -363,7 +363,7 @@ export const alternativeSchema = obj({
 export const permitLevelSchema = obj({
   level: z.enum(["registry", "document", "self", "mismatch"]),
   label: z.string(),
-  status: z.enum(["met", "conditional"]),
+  status: z.enum(["met", "conditional", "unmet"]),
   text: z.string(),
   evidence: z.array(z.string()),
 });
@@ -405,8 +405,9 @@ export const assignmentSchema = obj({
   carbon: claimOrNull,
   /** 아래 셋은 2026-11-19 뒤 결과에만 온다. 업체 뷰에서는 null */
   carbonProcess: claimOrNull.optional(),
+  /** 운송 배출 = 트럭 운송 계수(톤·km당) × 월 발생량 × 공장 → 업체 거리 */
   carbonTransport: claimOrNull.optional(),
-  /** 이 폐기물 몫의 월 수거 운행 거리가 아니라 그 업체의 월 운행 거리(왕복 × 횟수) */
+  /** 공장 → 업체 차고지 거리(km) */
   transportKm: claimOrNull.optional(),
   /** 탄소 감축량을 KAU 시세로 환산한 금액 */
   carbonValue: claimOrNull,
@@ -576,6 +577,25 @@ export const resultSchema = obj({
   carbonInObjective: z.boolean().optional(),
   /** 탄소를 배정에 넣을 때 쓴 내부 탄소 가격(배출권 시세, 원/tCO2e) */
   carbonPrice: claimOrNull.optional(),
+  /** 탄소를 가장 많이 줄이는 배정과의 비교. 같으면 same true, 다르면 바뀌는 폐기물과 돈·탄소 차이(탄소 우선 − 고른 배정) */
+  greenest: obj({
+    same: z.boolean(),
+    changes: z.array(
+      obj({
+        streamId: z.string(),
+        streamName: z.string().nullable(),
+        vendorOrgId: z.string().nullable(),
+        vendorName: z.string().nullable(),
+        route: z.string(),
+      }),
+    ),
+    monthlyAfter: claimOrNull.optional(),
+    carbon: claimOrNull.optional(),
+    moneyGap: claimOrNull.optional(),
+    carbonGap: claimOrNull.optional(),
+  })
+    .nullable()
+    .optional(),
   evidence: z.array(z.string()).optional(),
   /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
   outsideVendors: outsideVendorsSchema.nullable().optional(),

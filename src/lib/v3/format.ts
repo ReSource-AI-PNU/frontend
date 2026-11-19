@@ -12,6 +12,15 @@ function withUnit(text: string, unit: string | null): string {
 }
 
 /** 값과 단위를 한 줄로. 값이 없으면 null을 돌려주고 화면은 "확인 필요"를 그린다. */
+/** 탄소 claim(tCO2e/월)을 적는다. 0.1톤보다 작으면 kg으로 적어 "0.001"처럼 뭉개지지 않게 한다. */
+export function carbonText(claim: Claim | null | undefined, signed = false): string | undefined {
+  if (!claim || typeof claim.value !== "number") return undefined;
+  const value = claim.value;
+  if (Math.abs(value) >= 0.1 || claim.unit !== "tCO2e/월") return formatClaim(claim, signed) ?? undefined;
+  const sign = value > 0 ? (signed ? "+" : "") : value < 0 ? "−" : "";
+  return `${sign}${formatNumber(Math.round(Math.abs(value) * 10000) / 10)} kgCO2e/월`;
+}
+
 export function formatClaim(claim: Claim | null | undefined, signed = false): string | null {
   if (!claim || claim.value === null || claim.value === undefined) return null;
   if (typeof claim.value === "string") return claim.value;
@@ -254,7 +263,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   loading_volume: "부피 적재",
   pickup_route: "수거 노선",
   permit_level: "허가 근거",
-  transport_carbon: "수거 운행 배출",
+  transport_carbon: "운송 배출",
 };
 
 /** 진단 상태. 합의 없이 끝났거나 합의한 대화가 모두 담당자에게 넘어가면 idle인데 phase가 done이다. */
