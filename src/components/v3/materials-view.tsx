@@ -1793,7 +1793,14 @@ function VendorForm({
             노선 추가
           </Button>
         ) : null}
-        <OffRouteTerms saved={savedTransport} draft={offRoute} onChange={setOffRoute} errors={offRouteIssues} canAct={canAct} />
+        <OffRouteTerms
+          saved={savedTransport}
+          draft={offRoute}
+          onChange={setOffRoute}
+          errors={offRouteIssues}
+          canAct={canAct}
+          areas={fleet.serviceAreas}
+        />
       </section>
 
       <div className="flex flex-wrap items-center gap-3 pt-6">

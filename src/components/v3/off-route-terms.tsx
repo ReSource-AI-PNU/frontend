@@ -25,12 +25,15 @@ export function OffRouteTerms({
   onChange,
   errors,
   canAct,
+  areas = "",
 }: {
   saved: TransportTerms | null | undefined;
   draft: OffRouteDraft;
   onChange: (draft: OffRouteDraft) => void;
   errors: OffRouteErrors;
   canAct: boolean;
+  /** 위 "수거 가능 지역" 칸의 글(쉼표로 적은 지역). 수거 불가와 함께 적으면 두 답이 어긋난다 */
+  areas?: string;
 }) {
   const { openEvidence } = useV3();
   const savedText = offRouteText(saved?.offRoute);
@@ -39,8 +42,8 @@ export function OffRouteTerms({
     <div className="mt-8">
       <h3 className="text-[15px] font-semibold">노선 밖 공장 수거</h3>
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
-        위 노선이 지나지 않는 공장에서 문의가 오면 이 조건으로 답합니다. 공장의 결과표와 승인 화면에 수거 여부와 운반비로
-        보이고, 정하지 않으면 공장 화면에 “별도 수거 확인 필요”로 남습니다.
+        노선이 지나지 않는 공장에 따로 수거하러 갈 때의 조건입니다. 수거 가능 지역 밖 공장도 여기서 따로 가겠다고 답할 수
+        있습니다. 공장의 결과표와 승인 화면에 수거 여부와 운반비로 보이고, 정하지 않으면 “별도 수거 확인 필요”로 남습니다.
       </p>
       <p className="mt-2 text-sm text-ink-2">
         {savedText ? (
@@ -85,6 +88,12 @@ export function OffRouteTerms({
             </li>
           ))}
         </ul>
+        {draft.choice === "unavailable" && areas.trim() ? (
+          <p className="mt-2.5 text-[13px] leading-relaxed text-warn">
+            위 수거 가능 지역 안에 있는 공장은 두 답이 어긋나 공장 화면에 “별도 수거 확인 필요”로 남습니다. 노선 밖으로는 가지
+            않는다면 수거 가능 지역을 노선이 지나는 곳으로 줄여 주세요.
+          </p>
+        ) : null}
         {draft.choice === "paid" ? (
           <div className="mt-3 rounded-xl bg-ground px-4 py-4">
             <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
