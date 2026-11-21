@@ -27,8 +27,9 @@ export default defineConfig({
     baseURL,
     locale: "ko-KR",
     timezoneId: "Asia/Seoul",
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
+    trace: "off",
+    screenshot: "off",
+    video: "off",
   },
   projects: [
     {

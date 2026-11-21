@@ -83,7 +83,7 @@ export type TreatmentInput =
   | { ok: false; message: string };
 
 /**
- * 입력 칸을 PUT 본문의 currentTreatment로 바꾼다. 처리 방법을 비우면 null(혼합 소각 가정값을 쓴다).
+ * 입력 칸을 PUT 본문의 currentTreatment로 바꾼다. 처리 방법을 비우면 null(비교 계산을 보류한다).
  * 회당·월 정액은 billing만 보내고 kg당 금액은 백엔드가 월 발생량으로 다시 계산한다.
  */
 export function treatmentInput(
@@ -164,5 +164,5 @@ export function billingHint(mode: BillingMode): string {
   if (mode === "sale") return "지금 받는 돈과 견줘, 그보다 더 주는 곳만 추천합니다.";
   if (mode === "per_trip") return "계약한 대로 적으면 한 달 발생량으로 나눠 kg당 처리비로 바꿉니다.";
   if (mode === "monthly") return "한 달에 내는 금액을 적으면 한 달 발생량으로 나눠 kg당 처리비로 바꿉니다.";
-  return "비워 두면 혼합 소각으로 가정하고, 결과에 ‘가정’이라고 표시합니다.";
+  return "기존 처리 방법과 단가를 확인해야 현행 대비 손익과 탄소를 비교할 수 있습니다. 비워 둔 값은 산정 보류로 남습니다.";
 }

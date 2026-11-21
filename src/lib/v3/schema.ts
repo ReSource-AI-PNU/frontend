@@ -55,6 +55,7 @@ export const claimSchema = obj({
   label: z.string().optional(),
   /** 처리비(treatmentFee)는 값이 음수 그대로 오고 화면은 크기로 그린다 */
   role: claimRoleSchema.optional(),
+  evidenceClass: z.enum(["measured", "official", "literature", "assumption", "policy", "hold"]).optional(),
 });
 const claimOrNull = claimSchema.nullable();
 
@@ -388,6 +389,7 @@ export const alternativeSchema = obj({
   permit: z.lazy(() => permitLevelSchema).nullable().optional(),
   /** 운반비가 정해지지 않아 monthlyAfter가 별도 운반비 반영 전 값이다(2026-11-19 뒤 결과) */
   transportPending: z.boolean().optional(),
+  costPending: z.boolean().optional(),
   pickupStatus: pickupStatusSchema.nullable().optional(),
   note: z.string(),
 });
@@ -550,6 +552,7 @@ export const assignmentSchema = obj({
   /** 운반비가 정해지지 않아 이 줄의 한 달 값(monthlyAfter, difference)은 별도 운반비 반영 전이다 */
   transportPending: z.boolean().optional(),
   currentAssumed: z.boolean(),
+  costPending: z.boolean().optional(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
   /** 허가 확인 결과 진행할 수 없는 경로(2026-11-19 뒤 결과) */

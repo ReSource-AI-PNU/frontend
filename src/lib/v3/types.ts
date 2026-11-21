@@ -140,6 +140,11 @@ export type StreamRecord = {
     virginPriceKrwPerKg: number;
     reusableKgPerMonth: number;
     regrindCostKrwPerKg?: number | null;
+    recoveryYieldPct?: number | null;
+    recoveryResidueCostKrwPerKg?: number | null;
+    virginSubstitutionPct?: number | null;
+    recoveryApplication?: string;
+    recoveryEvidence?: string[];
     evidence?: string[];
   } | null;
   synthetic?: boolean;
@@ -216,6 +221,9 @@ export type OutcomeResult = { outcome: Outcome; evidence: string[]; replayed: bo
 export type ConfiguredModel = { provider: "foundry" | "ollama"; name: string };
 
 export type VendorProfile = {
+  process?: string | null;
+  processEvidence?: string[];
+  inspectionFallbackCriterionId?: string | null;
   orgId: string;
   name?: string;
   permits: { wasteItem: string; materials: string[]; evidence: string[] }[];

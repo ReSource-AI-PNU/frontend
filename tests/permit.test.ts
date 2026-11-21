@@ -104,8 +104,9 @@ test("이전 결과의 허가증·공공 명부 수준은 충족이었어도 원
 
 test("대조 완료 문구는 누가·언제·어느 문서 몇 쪽에서·무엇을 확인했는지와 범위를 적는다", () => {
   const line = permitLine(verified);
-  assert.match(line, /\(주\)한빛정밀 담당자 김담당이 2026-11-19 허가증\.pdf 2쪽에서 폐플라스틱\(PP\)과 처리 방식 재활용을 확인했습니다/);
-  assert.match(line, /이 폐기물과 처리 방식에만 해당합니다/);
+  assert.match(line, /\(주\)한빛정밀 담당자 김담당이 2026-11-19 허가증\.pdf 2쪽에서 폐플라스틱\(PP\)과 처리 방식 재활용을 대조했다고 기록했습니다/);
+  assert.match(line, /이 폐기물과 처리 방식에만 해당하며/);
+  assert.match(line, /발급기관의 진위·유효성 확인을 대신하지 않습니다/);
   assert.doesNotMatch(line, /모두 확인/);
   assert.deepEqual(permitTodo(verified), []);
   assert.equal(canRecordCheck(verified), false);

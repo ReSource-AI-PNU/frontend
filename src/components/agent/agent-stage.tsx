@@ -256,6 +256,15 @@ export function AgentStage({ live, onOpen }: { live: LiveState; onOpen?: (thread
       <p className="border-t border-line px-5 py-2.5 text-[12px] leading-relaxed text-muted">
         위의 전문 담당 여섯은 근거가 붙은 계산과 검색으로 판단하고, 회사 측 AI와 업체 측 AI가 그 결과로 대화합니다.
       </p>
+      <details className="border-t border-line px-5 py-3 text-sm text-ink-2">
+        <summary className="cursor-pointer font-semibold">두 AI의 목표·근거·권한</summary>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div><h3 className="font-semibold">회사 측 AI</h3><p>폐기물 자료와 현재 처리 조건을 참고해 허가·품질·수거 조건을 먼저 대조하고, 확인된 비용을 반영한 손익을 비교합니다. 비용이 미정이면 잠정값입니다. 탄소가격 환산은 현금 수익이 아닙니다.</p></div>
+          <div><h3 className="font-semibold">업체 측 AI</h3><p>업체가 등록한 허가·등급·물량·수거·협상 권한 안에서만 제안합니다. 한도 미설정은 무제한 권한이 아니며 범위를 넘으면 담당자 확인이 필요합니다. 비공개 한도와 내부 원가는 상대에게 공개하지 않습니다.</p></div>
+        </div>
+        <p className="mt-3">단가 조정은 서버 도구가 계산합니다. 한 번 더 요청하는 인상률은 운영자가 정한 정책이며 시장 최적값이 아닙니다. 모델은 설명을 작성하고, 독립 규칙 검토가 금액·근거·필수 조건을 대조합니다.</p>
+        <p className="mt-2">제안 → 잠정 합의 → 검토 → 양쪽 담당자 승인 → 앱 내 확정·서류 초안 순서입니다. 결제·송금·외부 서명 권한은 없습니다. 허가증 대조는 담당자의 확인 기록이며 기관의 진위 인증이 아닙니다.</p>
+      </details>
     </section>
   );
 }

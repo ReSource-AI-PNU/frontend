@@ -944,10 +944,24 @@ function CostInputs({
   const [virgin, setVirgin] = useState(text(stream.reuse?.virginPriceKrwPerKg));
   const [reusable, setReusable] = useState(text(stream.reuse?.reusableKgPerMonth));
   const [regrind, setRegrind] = useState(text(stream.reuse?.regrindCostKrwPerKg));
+  const [yieldPct, setYieldPct] = useState(text(stream.reuse?.recoveryYieldPct));
+  const [residueCost, setResidueCost] = useState(text(stream.reuse?.recoveryResidueCostKrwPerKg));
+  const [substitution, setSubstitution] = useState(text(stream.reuse?.virginSubstitutionPct));
+  const [application, setApplication] = useState(stream.reuse?.recoveryApplication ?? "");
+  const [proofId, setProofId] = useState(stream.reuse?.recoveryEvidence?.[0] ?? "");
+  const [proofs, setProofs] = useState<{ id: string; label: string }[]>([]);
+  const findProofs = async () => {
+    try {
+      const hits = await Promise.all([api.searchEvidence(stream.orgId, stream.material ?? "", "doc"), api.searchEvidence(stream.orgId, "", "measure")]);
+      setProofs(hits.flat().map((hit) => ({ id: hit.evidence.id, label: hit.evidence.label || hit.evidence.source })));
+    } catch {
+      setNote({ ok: false, text: "계량·품질 근거를 불러오지 못했습니다. 근거 없이 효과를 계산하지 않습니다." });
+    }
+  };
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
 
   const save = async () => {
-    const values = { hours: parse(hours), rate: parse(rate), virgin: parse(virgin), reusable: parse(reusable), regrind: parse(regrind) };
+    const values = { hours: parse(hours), rate: parse(rate), virgin: parse(virgin), reusable: parse(reusable), regrind: parse(regrind), yieldPct: parse(yieldPct), substitution: parse(substitution), residueCost: parse(residueCost) };
     if (Object.values(values).some((value) => value !== null && !Number.isFinite(value))) {
       setNote({ ok: false, text: "숫자로 입력해 주세요." });
       return;
@@ -963,7 +977,10 @@ function CostInputs({
         laborCostKrwPerHour: values.hours === null ? null : values.rate,
         reuse:
           values.virgin !== null && values.reusable !== null
-            ? { virginPriceKrwPerKg: values.virgin, reusableKgPerMonth: values.reusable, regrindCostKrwPerKg: values.regrind }
+            ? { virginPriceKrwPerKg: values.virgin, reusableKgPerMonth: values.reusable, regrindCostKrwPerKg: values.regrind,
+                recoveryYieldPct: values.yieldPct, virginSubstitutionPct: values.substitution,
+                recoveryResidueCostKrwPerKg: values.residueCost,
+                recoveryApplication: application, recoveryEvidence: proofId ? [proofId] : [] }
             : null,
       });
       setNote({ ok: true, text: "저장했습니다. 다음에 찾을 때부터 계산에 넣습니다." });
@@ -989,7 +1006,7 @@ function CostInputs({
           <NumberField label="한 달 작업 시간" unit="시간" value={hours} onChange={setHours} disabled={!canAct} />
           <NumberField label="시간당 인건비" unit="원" value={rate} onChange={setRate} disabled={!canAct} />
         </div>
-        <p className="text-[13px] text-muted">분리, 분쇄, 포장에 드는 시간입니다. 인건비를 비우면 2026년 최저임금으로 계산하고 ‘가정’이라고 표시합니다.</p>
+        <p className="text-[13px] text-muted">분리, 분쇄, 포장에 드는 시간입니다. 인건비를 비우면 미정 비용으로 남기며 실제 작업비를 확인하기 전에는 순손익을 확정하지 않습니다.</p>
       </fieldset>
       <fieldset className="space-y-2.5">
         <legend className="text-[13px] font-medium">공정에 다시 넣는다면</legend>
@@ -997,7 +1014,20 @@ function CostInputs({
           <NumberField label="신재 구입 단가" unit="원/kg" value={virgin} onChange={setVirgin} disabled={!canAct} />
           <NumberField label="한 달에 다시 넣을 수 있는 양" unit="kg" value={reusable} onChange={setReusable} disabled={!canAct} />
           <NumberField label="분쇄 비용" unit="원/kg" value={regrind} onChange={setRegrind} disabled={!canAct} />
+          <NumberField label="사용 가능한 원료 회수수율" unit="%" value={yieldPct} onChange={setYieldPct} disabled={!canAct} />
+          <NumberField label="수율 손실 잔재의 처리비" unit="원/kg" value={residueCost} onChange={setResidueCost} disabled={!canAct} />
+          <NumberField label="재생원료의 신재 대체율" unit="%" value={substitution} onChange={setSubstitution} disabled={!canAct} />
         </div>
+        <label className="block">실제 사용 용도와 품질 확인 내용<input className={`${field} mt-1 w-full`} value={application} onChange={(e) => setApplication(e.target.value)} disabled={!canAct} /></label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={findProofs} disabled={!canAct}>계량·품질 근거 찾기</Button>
+          <select aria-label="수율·대체율 근거" className={field} value={proofId} onChange={(e) => setProofId(e.target.value)} disabled={!canAct}>
+            <option value="">근거 미확보 · 신재 대체량 산정 보류</option>
+            {proofId && !proofs.some((p) => p.id === proofId) ? <option value={proofId}>이전에 연결한 근거</option> : null}
+            {proofs.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+        </div>
+        <p className="text-[13px] text-muted">담당자가 이 폐기물의 수율·품질·용도에 해당하는 근거를 연결해야 계산합니다. 단순 재투입량을 신재 대체량으로 보지 않으며 분쇄 비용 미입력도 0원으로 처리하지 않습니다.</p>
         <p className="text-[13px] text-muted">
           공정에서 나온 한 가지 재질이고 섞인 것이 없으며 측정한 오염도가 낮을 때만 다시 넣는 길을 함께 견줍니다. 실제로 넣어도 되는지는
           품질 담당자가 정합니다.
@@ -1361,6 +1391,8 @@ function VendorForm({
     profile.guardrails.floorPriceKrwPerKg != null ? String(profile.guardrails.floorPriceKrwPerKg) : "",
   );
   const [days, setDays] = useState(profile.guardrails.days.join(", "));
+  const [fallbackGrade, setFallbackGrade] = useState(profile.inspectionFallbackCriterionId ?? "");
+  const [process, setProcess] = useState(profile.process ?? "");
   const [fleet, setFleet] = useState<FleetDraft>(() => fleetDraft(profile.fleet, COMPLEXES));
   const [fleetIssues, setFleetIssues] = useState<FleetErrors>({});
   // 새로 더한 노선의 목록 열쇠
@@ -1400,6 +1432,10 @@ function VendorForm({
     const floorValue = num(floor);
     const pickupValue = num(pickups);
     const ceilingValue = num(ceiling);
+    if (floorValue !== null && ceilingValue !== null && floorValue > ceilingValue) {
+      setNote("최저 단가는 최고 단가보다 클 수 없습니다. 기존 설정은 유지됩니다.");
+      return;
+    }
     const priceValues = profile.criteria.map((row) => num(priceText(row)));
     if (
       [floorValue, pickupValue, ceilingValue, ...priceValues].some((value) => value !== null && !Number.isFinite(value))
@@ -1424,6 +1460,8 @@ function VendorForm({
       await onSave({
         ...profile,
         criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
+        inspectionFallbackCriterionId: fallbackGrade || null,
+        process: process || null,
         guardrails: {
           ...profile.guardrails,
           floorPriceKrwPerKg: floorValue,
@@ -1568,6 +1606,22 @@ function VendorForm({
 
       <section className="py-8">
         <h2 className={sectionTitle}>AI가 지킬 범위</h2>
+        <label className={`${fieldLabel} mt-3`}>
+          업체가 적용할 처리 방식
+          <select aria-label="업체가 적용할 처리 방식" value={process} onChange={(event) => setProcess(event.target.value)} className={field} disabled={!canAct}>
+            <option value="">미확인 · 환경 효과 산정 보류</option>
+            {["재활용", "물질 재활용", "열분해", "소각", "매립"].map((value) => <option key={value}>{value}</option>)}
+          </select>
+          <span className="font-normal text-muted">담당자 선언이며 공정 실측이나 허가 인증이 아닙니다. 매입 단가로 처리 방식을 추측하지 않습니다. 변경하면 승인 전 합의를 다시 확인합니다.</span>
+        </label>
+        <label className={`${fieldLabel} mt-3`}>
+          품질 초과 시 검토할 등록 등급
+          <select value={fallbackGrade} onChange={(event) => setFallbackGrade(event.target.value)} className={field} disabled={!canAct}>
+            <option value="">반입 보류 후 재협의 (자동 등급 변경 없음)</option>
+            {profile.criteria.filter((row) => row.grade && row.unitPriceKrwPerKg !== null).map((row) => <option key={row.id} value={row.id}>{row.material} · {row.form ?? "형태 미정"} · {row.grade}등급</option>)}
+          </select>
+          <span className="font-normal text-muted">재질·형태가 맞는 등록 기준만 문서에서 참조합니다. 새 등급은 품질 조건 재확인과 양쪽 재승인 후 적용합니다.</span>
+        </label>
         <p className="mt-1 text-sm text-muted">{AI_NAME.vendor}는 여기서 정한 범위 밖의 조건을 내놓지 않습니다. 확정은 담당자가 합니다.</p>
         <div className="mt-4 grid gap-x-4 gap-y-4 sm:grid-cols-2">
           <label className={fieldLabel}>
@@ -1612,7 +1666,7 @@ function VendorForm({
               className={field}
               disabled={!canAct}
             />
-            <span className="font-normal text-muted">운반 거리는 고른 산업단지의 가운데에서 잽니다.</span>
+            <span className="font-normal text-muted">산업단지 중심점 기준 참고 거리입니다. 실제 사업장 도로 거리와 다르며, 같은 단지를 골라도 운송 배출이 0이라는 뜻은 아닙니다.</span>
           </label>
           <FleetNumber label="한 번에 싣는 무게 (kg)" value={fleet.capacityKg} error={fleetIssues.capacityKg} disabled={!canAct} onChange={(value) => setFleet({ ...fleet, capacityKg: value })} />
           <FleetNumber label="한 번에 싣는 부피 (m³)" value={fleet.capacityM3} error={fleetIssues.capacityM3} disabled={!canAct} onChange={(value) => setFleet({ ...fleet, capacityM3: value })} />

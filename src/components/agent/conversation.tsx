@@ -226,7 +226,7 @@ function Questions({
                 {stream && !question.text.includes(stream.name) ? (
                   <span className="mb-0.5 block text-[13px] font-normal text-muted">{stream.name}</span>
                 ) : null}
-                {question.text.replace(/\s*모르면 '모름'으로 답해 주세요\.?$/, "")}
+                {question.text.replace(/\bmoisturePct\b/g, "수분").replace(/\bcontaminationPct\b/g, "오염도").replace(/\bmonthlyKg\b/g, "월 발생량").replace(/\s*모르면 '모름'으로 답해 주세요\.?$/, "")}
               </label>
               <form
                 className="mt-2 flex flex-wrap items-center gap-2"
@@ -786,7 +786,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
               questions={questions}
               summary={holding ? null : view.questionBatch}
               streams={view.streams}
-              disabled={!d.canAct || d.busy || working}
+              disabled={!d.canAct || d.busy}
               onAnswer={d.answerAndContinue}
             />
             {working && openQuestions.length > 0 ? (

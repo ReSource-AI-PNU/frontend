@@ -441,8 +441,8 @@ function OutcomeTable({
               <th className="py-1 pr-3 font-semibold">실제 등급</th>
               <th className="py-1 pr-3 text-right font-semibold">실제 단가</th>
               <th className="py-1 pr-3 text-right font-semibold">실제 중량</th>
-              <th className="py-1 pr-3 text-right font-semibold">매입 기준표 단가</th>
-              <th className="py-1 pr-3 text-right font-semibold">기준표 대비</th>
+              <th className="py-1 pr-3 text-right font-semibold">합의 단가</th>
+              <th className="py-1 pr-3 text-right font-semibold">합의 단가 대비</th>
               {onCorrect ? (
                 <th className="py-1 font-semibold">
                   <span className="sr-only">정정</span>
@@ -784,7 +784,7 @@ export function ApprovalView() {
                       {role === "vendor" ? null : (
                         <span className="w-36 text-right tabular-nums">
                           <ClaimValue claim={item.monthlyAfter} signed />
-                          {item.transportPending ? <span className="block text-[12px] text-warn">별도 운반비 반영 전</span> : null}
+                          {(item.transportPending || item.costPending) ? <span className="block text-[12px] text-warn">미확인 비용 반영 전</span> : null}
                         </span>
                       )}
                       {item.pickup ? (
