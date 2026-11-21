@@ -49,7 +49,7 @@ export function matchLabel(candidate: OutsideCandidate): string {
   return candidate.match === "confirmed" ? "허가 품목 맞음" : "처리 품목 확인 필요";
 }
 
-export function phoneText(candidate: OutsideCandidate): string {
+export function phoneText(candidate: Pick<OutsideCandidate, "phone" | "agency">): string {
   if (candidate.phone) return candidate.phone;
   return candidate.agency ? `전화번호 없음 · ${candidate.agency}에 문의` : "전화번호 없음";
 }

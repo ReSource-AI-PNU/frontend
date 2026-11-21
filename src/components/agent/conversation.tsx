@@ -38,6 +38,7 @@ import { FlowChart } from "./flow-chart";
 import { ImprovementsSection } from "./improvements";
 import { RegulationSection } from "./regulation";
 import { OutsideVendorsSection } from "./outside-vendors";
+import { ComplexPartnersSection } from "./complex-partners";
 import { Dots } from "./dots";
 import { CircularEffects } from "./circular-effects";
 import { PresentMode } from "./present-mode";
@@ -879,6 +880,17 @@ export function Conversation({ d }: { d: Diagnosis }) {
         {result && isEmitter && !holding && result.outsideVendors ? (
           <OutsideVendorsSection
             outside={result.outsideVendors}
+            streams={view.streams}
+            sessionId={view.session.id}
+            orgId={d.org.id}
+            onSearchAgain={d.canAct ? d.forget : undefined}
+          />
+        ) : null}
+
+        {result && isEmitter && !holding && result.complexPartners ? (
+          <ComplexPartnersSection
+            partners={result.complexPartners}
+            outside={result.outsideVendors ?? null}
             streams={view.streams}
             sessionId={view.session.id}
             orgId={d.org.id}

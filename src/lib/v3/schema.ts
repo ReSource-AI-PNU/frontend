@@ -599,6 +599,8 @@ export const outsideCandidateSchema = obj({
   asOf: z.string().nullable(),
   evidence: z.array(z.string()),
   note: z.string().nullable(),
+  /** 회사와 같은 산업단지에 있는 업체(2026-11-22 추가, 이전 결과에는 없다) */
+  sameComplex: z.boolean().optional(),
 });
 
 export const outsideVendorsSchema = obj({
@@ -621,6 +623,55 @@ export const outsideVendorsSchema = obj({
       changed: z.array(obj({ field: z.string(), label: z.string(), before: z.string(), after: z.string() })).optional(),
       /** 후보를 찾은 뒤 폐기물이 지워졌다 */
       removed: z.boolean().optional(),
+    }),
+  ),
+});
+
+/**
+ * 같은 산업단지의 자원순환 후보(2026-11-22). 등록공장 현황(회사가 신고한 생산품)과 공공 허가 명부로 찾는다.
+ * takes: 폐기물을 받아 재생원료로 만드는 곳, uses: 재생원료가 된 뒤 쓸 수 있는 곳. 손익 계산에는 넣지 않는다.
+ */
+export const complexCandidateSchema = obj({
+  /** 등록공장 ID(cf_…) 또는 허가 명부에만 있는 업체 ID(pv_…) */
+  id: z.string(),
+  name: z.string(),
+  address: z.string(),
+  role: z.enum(["takes", "uses"]),
+  /** 회사가 신고한 생산품 원문. 허가 명부에만 있는 곳은 null */
+  product: z.string().nullable(),
+  /** 생산품에서 이 역할로 읽은 품목 */
+  items: z.array(z.string()),
+  /** named: 생산품에 같은 재질이 적혀 있음 · unstated: 재질이 적혀 있지 않음(확인 필요) */
+  resinMatch: z.enum(["named", "unstated"]),
+  resins: z.array(z.string()),
+  evidence: z.array(z.string()),
+  /** takes에만 있다. listed: 허가 품목 맞음 · listed_check: 재활용업 허가 명부에 있으나 처리 품목 확인 필요 · unlisted: 명부에 없음 */
+  permit: obj({
+    status: z.enum(["listed", "listed_check", "unlisted"]),
+    vendorId: z.string().nullable(),
+    business: z.string().nullable(),
+    phone: z.string().nullable(),
+    agency: z.string().nullable().optional(),
+    matchedCodes: z.array(wasteCodeSchema),
+  }).optional(),
+});
+
+export const complexPartnersSchema = obj({
+  /** 회사가 든 산업단지. 모르면 null이고 reason에 이유가 있다 */
+  complex: obj({ id: z.string(), name: z.string(), basis: z.enum(["region", "location"]) }).nullable(),
+  reason: z.string().nullable(),
+  source: obj({
+    factories: obj({ name: z.string(), url: z.string(), asOf: z.string(), note: z.string() }),
+    registry: obj({ name: z.string(), url: z.string(), asOfRange: z.array(z.string()).nullable() }),
+  }),
+  streams: z.array(
+    obj({
+      streamId: z.string(),
+      takes: z.array(complexCandidateSchema),
+      uses: z.array(complexCandidateSchema),
+      takesTotal: z.number(),
+      usesTotal: z.number(),
+      reason: z.string().nullable(),
     }),
   ),
 });
@@ -846,6 +897,8 @@ export const resultSchema = obj({
   evidence: z.array(z.string()).optional(),
   /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
   outsideVendors: outsideVendorsSchema.nullable().optional(),
+  /** 같은 산업단지의 자원순환 후보. 배출 기업이 보는 뷰에만 온다(2026-11-22 전 결과에는 없다) */
+  complexPartners: complexPartnersSchema.nullable().optional(),
   /** 배출 기업이 보는 뷰에만 온다. 이 기능 전에 만든 결과에는 없다 */
   improvements: z.array(improvementSchema).optional(),
   /** ③ 규정 확인. 배출 기업이 보는 뷰에만 온다(2026-11-19 전 결과에는 없다) */
