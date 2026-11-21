@@ -141,11 +141,11 @@ function AssignmentRows({
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.monthlyAfter} signed />
-              {item.transportPending ? <p className="text-[12px] font-semibold text-warn">운반비 반영 전</p> : null}
+              {(item.transportPending || item.costPending) ? <p className="text-[12px] font-semibold text-warn">미확인 비용 반영 전</p> : null}
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.difference} signed />
-              {item.transportPending ? <p className="text-[12px] font-semibold text-warn">운반비 반영 전</p> : null}
+              {(item.transportPending || item.costPending) ? <p className="text-[12px] font-semibold text-warn">미확인 비용 반영 전</p> : null}
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.carbon} />
@@ -292,7 +292,7 @@ export function ResultSheet({
           <p className="text-label text-muted">
             현행 대비 월 손익
             {(result.transportPending ?? []).length > 0 ? (
-              <span className="ml-2 text-warn">잠정 · 운반비 반영 전 {(result.transportPending ?? []).length}가지 포함</span>
+              <span className="ml-2 text-warn">잠정 · 미확인 비용 반영 전 {(result.transportPending ?? []).length}가지 포함</span>
             ) : null}
           </p>
           <p className="text-display">
@@ -384,9 +384,9 @@ export function ResultSheet({
       {full ? (
       <div className="grid gap-5 md:grid-cols-2">
         <section>
-          <h3 className="text-label text-muted">가정값</h3>
+          <h3 className="text-label text-muted">가정·운영 정책 (구분과 결정 주체는 근거에서 확인)</h3>
           {result.assumptions.length === 0 ? (
-            <p className="mt-1 text-sm text-muted">이 결과에 쓴 가정값이 없습니다.</p>
+            <p className="mt-1 text-sm text-muted">이 결과에 쓴 가정·운영 정책이 없습니다.</p>
           ) : (
             <ul className="mt-1 space-y-1 text-sm">
               {result.assumptions.map((item) => {

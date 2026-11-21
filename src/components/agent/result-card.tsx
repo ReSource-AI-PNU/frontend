@@ -103,8 +103,19 @@ function Row({
           {isEmitter && assignment.difference ? (
             <>
               <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
-              {assignment.transportPending ? (
-                <span className="block text-[12px] text-warn">별도 운반비 반영 전</span>
+              {(assignment.transportPending || assignment.costPending) ? (
+                <span className="block text-[12px] text-warn">미확인 비용 반영 전</span>
+              ) : assignment.bundleBelowCurrent?.bundle ? (
+                <span className="block text-[12px] text-warn">
+                  묶음 전체{" "}
+                  <ClaimValue
+                    claim={assignment.bundleBelowCurrent.bundle}
+                    signed
+                    hideAssumed
+                    display={signedWon(assignment.bundleBelowCurrent.bundle)}
+                    className="!font-normal"
+                  />
+                </span>
               ) : isAssumed(assignment.difference) ? (
                 <span className="block text-[12px] text-muted">가정값 포함</span>
               ) : null}
@@ -251,7 +262,7 @@ function Row({
                   ) : null}
                   <dt className="mt-1 border-t border-line pt-2 font-medium">
                     옮긴 뒤 한 달
-                    {assignment.transportPending ? <span className="ml-1.5 text-[12px] font-normal text-warn">별도 운반비 반영 전</span> : null}
+                    {(assignment.transportPending || assignment.costPending) ? <span className="ml-1.5 text-[12px] font-normal text-warn">미확인 비용 반영 전</span> : null}
                   </dt>
                   <dd className="mt-1 border-t border-line pt-2 text-right font-medium">
                     {assignment.monthlyAfter ? (
@@ -351,7 +362,7 @@ function Row({
                           <>
                             {" · 한 달 "}
                             <ClaimValue claim={item.monthlyAfter} signed display={signedWon(item.monthlyAfter)} className="!font-normal" />
-                            {item.transportPending ? <span className="ml-1 text-[12px] text-warn">별도 운반비 반영 전</span> : null}
+                            {(item.transportPending || item.costPending) ? <span className="ml-1 text-[12px] text-warn">미확인 비용 반영 전</span> : null}
                           </>
                         ) : null}
                         {isEmitter && item.carbon ? (
@@ -591,7 +602,7 @@ export function ResultCard({
             <span>
               한 달 합계
               {pending.length > 0 ? (
-                <span className="ml-2 text-[13px] font-normal text-warn">잠정 · 운반비 반영 전 {pending.length}가지 포함</span>
+                <span className="ml-2 text-[13px] font-normal text-warn">잠정 · 미확인 비용 반영 전 {pending.length}가지 포함</span>
               ) : null}
             </span>
             <span className="text-[18px] tabular-nums">
@@ -609,13 +620,13 @@ export function ResultCard({
         {assumptionIds.length > 0 ? (
           <>
             {" "}
-            측정값이 없어 가정한 값이 {assumptionIds.length}개 있습니다.{" "}
+            별도 확인할 가정·운영 정책이 {assumptionIds.length}개 있습니다. 근거에서 구분과 결정 주체를 확인하세요.{" "}
             <button
               type="button"
               className="underline underline-offset-4 hover:text-ink"
-              onClick={() => openEvidence(assumptionIds, "이 결과에 쓴 가정값")}
+              onClick={() => openEvidence(assumptionIds, "이 결과의 가정·운영 정책")}
             >
-              가정값 보기
+              가정·정책 보기
             </button>
           </>
         ) : null}

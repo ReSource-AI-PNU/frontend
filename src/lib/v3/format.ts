@@ -74,6 +74,7 @@ export function formatValue(value: number | string | null | undefined, unit: str
 }
 
 const dateTime = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
@@ -265,6 +266,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   pickup_area: "수거 가능 지역",
   permit_level: "허가 근거",
   transport_carbon: "운송 배출",
+  bundle_below_current: "묶음 때문에 함께 보냄",
 };
 
 /** 진단 상태. 합의 없이 끝났거나 합의한 대화가 모두 담당자에게 넘어가면 idle인데 phase가 done이다. */

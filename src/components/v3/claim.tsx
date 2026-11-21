@@ -67,7 +67,7 @@ export function ClaimValue({
     <>
       {claim.kind === "clause" ? `“${text}”` : text}
       {assumed && !hideAssumed ? (
-        <span className="ml-1 align-baseline text-[11px] font-normal text-muted">가정</span>
+        <span className="ml-1 align-baseline text-[11px] font-normal text-muted">{claim.evidenceClass === "policy" ? "운영 정책" : "가정"}</span>
       ) : null}
     </>
   );

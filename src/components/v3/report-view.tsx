@@ -40,7 +40,7 @@ const segment =
 const th = "px-3 py-2 text-left text-[12px] font-medium whitespace-nowrap text-muted";
 const td = "px-3 py-2.5 align-top";
 
-function Stat({ label, claim, display, note }: { label: string; claim: Claim | null; display?: string; note?: string }) {
+function Stat({ label, claim, display, note, empty = "없음" }: { label: string; claim: Claim | null; display?: string; note?: string; empty?: string }) {
   return (
     <div className="min-w-0 border-t border-line pt-3">
       <p className="text-[13px] text-muted">{label}</p>
@@ -48,7 +48,7 @@ function Stat({ label, claim, display, note }: { label: string; claim: Claim | n
         {claim ? (
           <ClaimValue claim={claim} display={display} className="text-left whitespace-nowrap" />
         ) : (
-          <span className="text-[17px] text-muted">없음</span>
+          <span className="text-[17px] text-muted">{empty}</span>
         )}
       </p>
       {note ? <p className="mt-0.5 text-[12px] text-muted">{note}</p> : null}
@@ -355,6 +355,7 @@ export function ReportView() {
                   <Stat label="처리비(낸 돈)" claim={fee} display={won(fee)} />
                   <Stat
                     label="탄소 변화(추정)"
+                    empty="산정 보류"
                     claim={report.totals.carbon}
                     display={carbonText(report.totals.carbon)}
                     note={`배출계수 적용 · ${report.carbonScope.label}${

@@ -55,6 +55,7 @@ export const claimSchema = obj({
   label: z.string().optional(),
   /** 처리비(treatmentFee)는 값이 음수 그대로 오고 화면은 크기로 그린다 */
   role: claimRoleSchema.optional(),
+  evidenceClass: z.enum(["measured", "official", "literature", "assumption", "policy", "hold"]).optional(),
 });
 const claimOrNull = claimSchema.nullable();
 
@@ -365,6 +366,8 @@ export const checkKeySchema = z.enum([
   "permit_level",
   /** 운송 배출을 계산하지 못했을 때(공장 위치나 업체 차고지가 없을 때) */
   "transport_carbon",
+  /** 이 폐기물만 보면 현행보다 불리하지만 같은 업체 묶음 전체가 나아 함께 보낸다(2026-11-22) */
+  "bundle_below_current",
 ]);
 
 export const checkSchema = obj({
@@ -388,6 +391,7 @@ export const alternativeSchema = obj({
   permit: z.lazy(() => permitLevelSchema).nullable().optional(),
   /** 운반비가 정해지지 않아 monthlyAfter가 별도 운반비 반영 전 값이다(2026-11-19 뒤 결과) */
   transportPending: z.boolean().optional(),
+  costPending: z.boolean().optional(),
   pickupStatus: pickupStatusSchema.nullable().optional(),
   note: z.string(),
 });
@@ -550,6 +554,16 @@ export const assignmentSchema = obj({
   /** 운반비가 정해지지 않아 이 줄의 한 달 값(monthlyAfter, difference)은 별도 운반비 반영 전이다 */
   transportPending: z.boolean().optional(),
   currentAssumed: z.boolean(),
+  costPending: z.boolean().optional(),
+  /**
+   * 묶음 때문에 현행보다 불리한 배정(2026-11-22 뒤 결과). 이 폐기물의 현행 대비 차이(loss, 음수)와 같은 업체로
+   * 함께 보내는 폐기물 전체의 현행 대비 차이(bundle). 운반비·작업비가 모두 확인됐을 때만 온다. 업체 뷰에서는 null
+   */
+  bundleBelowCurrent: obj({
+    loss: claimOrNull,
+    bundle: claimOrNull,
+    streamIds: z.array(z.string()),
+  }).nullable().optional(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
   /** 허가 확인 결과 진행할 수 없는 경로(2026-11-19 뒤 결과) */

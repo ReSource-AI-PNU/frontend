@@ -111,7 +111,7 @@ export function permitLine(permit: PermitLevel): string {
     case "verified": {
       const check = permit.check;
       const where = check ? `${check.document ?? "허가증"} ${check.page ?? "?"}쪽` : "허가증 원문";
-      return `${josa(checkerText(permit), "이/가")} ${day(check?.checkedAt)} ${where}에서 ${scope} ${process} 확인했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당합니다.`;
+      return `${josa(checkerText(permit), "이/가")} ${day(check?.checkedAt)} ${where}에서 ${scope} ${process} 대조했다고 기록했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당하며, 발급기관의 진위·유효성 확인을 대신하지 않습니다.`;
     }
     case "pending_review":
       return permit.document

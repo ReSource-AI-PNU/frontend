@@ -35,15 +35,22 @@ async function pickOrg(page: Page, orgId: string) {
   await expect(select).toBeEnabled();
 }
 
-/** 질문이 더 나오지 않을 때까지 답한다. 포장 필름 수분만 숫자로 답하고 나머지는 모름이다. */
+/**
+ * 질문이 더 나오지 않을 때까지 답한다. 시연 담당자 답(백엔드 DEMO_ANSWERS)처럼 포장 필름 수분은 2, 현행 처리비는
+ * kg당 250원으로 답하고 나머지는 모름이다. 현행 처리비를 모름으로 두면 가정값 없이 그 폐기물을 배정에서 뺀다.
+ */
 async function answerQuestions(page: Page) {
   const result = page.getByRole("region", { name: "결과" });
   for (let turn = 0; turn < 30; turn += 1) {
     if (await result.isVisible()) return;
     const film = page.getByLabel("포장 필름의 수분은 대략 몇 %인가요?");
+    const cost = page.getByLabel(/지금 처리하는 데 kg당 얼마를 내고 계신가요/).first();
     if (await film.isVisible().catch(() => false)) {
       await film.fill("2");
       await film.press("Enter");
+    } else if (await cost.isVisible().catch(() => false)) {
+      await cost.fill("250");
+      await cost.press("Enter");
     } else {
       const unknown = page.getByRole("button", { name: "모름" }).first();
       if (await unknown.isVisible().catch(() => false)) await unknown.click();
@@ -76,8 +83,9 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
     await expect(rows.filter({ hasText: name })).toContainText(WON);
   }
   await expect(result.getByText("한 달 합계")).toBeVisible();
-  // 탄소는 공식 배출계수로 계산한 값이 단위와 함께 나온다
-  await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toBeVisible();
+  // 원문 경계를 확인한 배출계수와 실제 운송 조건이 없으면 탄소는 0으로 두지 않고 산정 보류로 보인다
+  await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "자원순환 효과" }).getByText("산정 보류").first()).toBeVisible();
 
   // 순비용의 내역: 매각 수익, 운반비, 전처리 인건비
   const sprue = rows.filter({ hasText: "스프루·런너" });
@@ -126,6 +134,14 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
     await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
     const approve = page.getByRole("button", { name: "승인", exact: true });
     await expect(approve.first()).toBeVisible();
+    if (vendor === "org_miso") {
+      // 시연 시드의 미소환경은 노선 밖 운반비가 정해지지 않았다. 계약 검토 담당이 필수 운반비 미정으로 막아
+      // 양쪽 모두 승인할 수 없다(견적이 오기 전에는 확정하지 않는다)
+      await expect(page.getByText(/필수 운반비가 미정입니다/).first()).toBeVisible();
+      await expect(page.getByText(/막힌 항목이 풀릴 때까지 양쪽 모두 승인할 수 없습니다/).first()).toBeVisible();
+      await expect(approve.first()).toBeDisabled();
+      continue;
+    }
     while ((await approve.count()) > 0) {
       // 업체 쪽도 계약 검토의 확인할 것을 확인해야 승인할 수 있다
       const ack = page.getByLabel(/확인할 것 \d+가지를 읽고 확인했습니다/).first();
@@ -149,10 +165,12 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
   await page.getByRole("link", { name: "실적" }).click();
   await expect(page.getByRole("heading", { name: "재활용 실적" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "확정한 합의 · 한 달 예상" })).toBeVisible();
-  // 합의의 이행 계획서에는 단가 조정 조항이 있다
+  // 합의의 이행 계획서: 조건 변경은 양쪽 승인 뒤 적용한다. 승인 기록이 있는 시세 변동 폭이 없으면 단가 재협의
+  // 폭을 계약에 넣지 않는다(근거 없는 정책값을 쓰지 않는다)
   await page.getByRole("button", { name: "합의 조건과 이행 계획서 보기" }).click();
   await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
-  await expect(page.getByText(/단가를 다시 협의합니다/).first()).toBeVisible();
+  await expect(page.getByText(/양쪽 담당자가 새 조건을 승인한 뒤에 적용합니다/).first()).toBeVisible();
+  await expect(page.getByText(/넘게 오르거나 내리면 단가를 다시 협의합니다/)).toHaveCount(0);
 });
 
 test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 조건이 보이지 않는다", async ({ page, request }) => {

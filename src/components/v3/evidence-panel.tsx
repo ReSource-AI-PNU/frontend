@@ -61,12 +61,14 @@ function EvidenceCard({
   // 원문이 JSON 덩어리(기준표 등)면 줄글 대신 고정폭으로 보여 준다
   const structured = /^[[{]/.test(item.excerpt.trim());
   const excerpt = structured ? item.excerpt : evidenceExcerpt(item, (key) => CHECK_KEY_LABEL[key]);
-  const assumed = item.kind === "assumption";
+  const policy = item.meta.evidenceClass === "policy";
+  const assumed = item.kind === "assumption" && !policy;
   return (
     <article>
       <p className="text-[13px] text-muted">
         {item.kindLabel}
         {assumed ? <span className="ml-1.5 text-warn">팀이 정한 가정값입니다</span> : null}
+        {policy ? <span className="ml-1.5 text-warn">서비스 운영 정책 · 과학적 상수가 아닙니다</span> : null}
       </p>
       <h3 className={compact ? "text-[15px] font-medium" : "mt-0.5 text-[17px] leading-snug font-semibold tracking-[-0.02em]"}>
         {evidenceTitle(item)}
@@ -91,6 +93,12 @@ function EvidenceCard({
       {hiddenInputs ? (
         <p className="mt-2 text-[13px] text-muted">계산에 넣은 원본 값은 계산한 회사에게만 보입니다.</p>
       ) : null}
+        {!hiddenInputs && item.meta.inputs && typeof item.meta.inputs === "object" ? (
+          <details className="mt-3 text-[13px] text-ink-2">
+            <summary className="cursor-pointer">계산에 사용한 입력값 보기</summary>
+            <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-ground p-3 text-[12px] whitespace-pre-wrap break-all">{JSON.stringify(item.meta.inputs, null, 2)}</pre>
+          </details>
+        ) : null}
       <dl className="mt-3 grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1 text-[13px] text-ink-2">
         <dt className="text-muted">출처</dt>
         <dd>
@@ -121,6 +129,20 @@ function EvidenceCard({
           </>
         )}
       </dl>
+      <dl className="mt-3 grid grid-cols-[6rem_1fr] gap-x-3 gap-y-1 text-[13px] text-ink-2">
+        {Object.entries({ evidenceClass: "근거 분류", decisionOwner: "결정 주체", country: "적용 국가", dataYear: "자료 기준연도", publicationDate: "발행일", functionalUnit: "기준량", systemBoundary: "계산 경계", energyType: "에너지 종류", table: "원문 위치", datasetVersion: "자료 버전", verifiedOn: "확인일", holdReason: "산정 보류 이유" }).map(([key, label]) => typeof item.meta[key] === "string" ? (
+            <div key={key} className="contents"><dt className="text-muted">{label}</dt><dd>{key === "evidenceClass" ? ({ measured: "① 사용자 실측·증빙", official: "② 공식 자료", literature: "③ 적용 조건이 있는 문헌 추정", assumption: "④ 계산 가정", policy: "⑤ 운영 정책", hold: "⑥ 산정 보류" }[String(item.meta[key])] ?? String(item.meta[key])) : String(item.meta[key])}</dd></div>
+        ) : null)}
+      </dl>
+      {policy && item.meta.policyApproval ? (
+        <details className="mt-3 text-[13px] text-ink-2"><summary className="cursor-pointer">정책 승인 기록</summary><pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(item.meta.policyApproval, null, 2)}</pre></details>
+      ) : null}
+      {["conditions", "caveats", "excludes"].map((key) => Array.isArray(item.meta[key]) ? (
+        <div key={key} className="mt-3 text-[13px] text-ink-2">
+          <p className="font-semibold">{key === "conditions" ? "적용 조건" : key === "excludes" ? "제외 조건" : "해석 시 주의"}</p>
+          <ul className="list-disc pl-5">{(item.meta[key] as unknown[]).filter((v): v is string => typeof v === "string").map((v, i) => <li key={i}>{v}</li>)}</ul>
+        </div>
+      ) : null)}
       {compact || !technical ? null : (
         <details className="mt-2 text-[12px] text-muted">
           <summary className="cursor-pointer hover:text-ink">기술 정보</summary>
