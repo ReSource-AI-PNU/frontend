@@ -1,0 +1,387 @@
+{
+  "memory": {
+    "orgId": "org_hanbit",
+    "enabled": true,
+    "dataOrigin": "demo",
+    "minRecords": 3,
+    "summary": {
+      "streams": 4,
+      "inspections": 3,
+      "below": 3,
+      "answers": 5,
+      "stillUnknown": 2,
+      "corrections": 0,
+      "deals": 3,
+      "vendors": 3
+    },
+    "streams": [
+      {
+        "streamId": "st_defect",
+        "name": "PP 사출 불량품",
+        "inspections": {
+          "count": 0,
+          "gradeLower": 0,
+          "priceLower": 0,
+          "below": 0,
+          "status": "none",
+          "minRecords": 3,
+          "evidence": []
+        },
+        "inspectionRows": [],
+        "answers": [
+          {
+            "streamId": "st_defect",
+            "field": "moisturePct",
+            "label": "수분",
+            "answer": null,
+            "unit": "%",
+            "unknown": true,
+            "stillUnknown": true,
+            "answeredOn": "2026-11-17",
+            "sessionId": "ses_1"
+          }
+        ],
+        "corrections": []
+      },
+      {
+        "streamId": "st_film",
+        "name": "LDPE 포장 필름",
+        "inspections": {
+          "count": 0,
+          "gradeLower": 0,
+          "priceLower": 0,
+          "below": 0,
+          "status": "none",
+          "minRecords": 3,
+          "evidence": []
+        },
+        "inspectionRows": [],
+        "answers": [
+          {
+            "streamId": "st_film",
+            "field": "currentCost",
+            "label": "현행 처리비·판매 단가",
+            "answer": 250.0,
+            "unit": "원/kg",
+            "unknown": false,
+            "stillUnknown": false,
+            "answeredOn": "2026-11-17",
+            "sessionId": "ses_1"
+          },
+          {
+            "streamId": "st_film",
+            "field": "moisturePct",
+            "label": "수분",
+            "answer": 2.0,
+            "unit": "%",
+            "unknown": false,
+            "stillUnknown": false,
+            "answeredOn": "2026-11-17",
+            "sessionId": "ses_1"
+          }
+        ],
+        "corrections": []
+      },
+      {
+        "streamId": "st_purge",
+        "name": "PP+ABS 퍼지 덩어리",
+        "inspections": {
+          "count": 0,
+          "gradeLower": 0,
+          "priceLower": 0,
+          "below": 0,
+          "status": "none",
+          "minRecords": 3,
+          "evidence": []
+        },
+        "inspectionRows": [],
+        "answers": [
+          {
+            "streamId": "st_purge",
+            "field": "currentCost",
+            "label": "현행 처리비·판매 단가",
+            "answer": 250.0,
+            "unit": "원/kg",
+            "unknown": false,
+            "stillUnknown": false,
+            "answeredOn": "2026-11-17",
+            "sessionId": "ses_1"
+          },
+          {
+            "streamId": "st_purge",
+            "field": "moisturePct",
+            "label": "수분",
+            "answer": null,
+            "unit": "%",
+            "unknown": true,
+            "stillUnknown": true,
+            "answeredOn": "2026-11-17",
+            "sessionId": "ses_1"
+          }
+        ],
+        "corrections": []
+      },
+      {
+        "streamId": "st_sprue",
+        "name": "PP 스프루·러너",
+        "inspections": {
+          "count": 3,
+          "gradeLower": 3,
+          "priceLower": 3,
+          "below": 3,
+          "status": "below",
+          "minRecords": 3,
+          "evidence": [
+            "human:org_saegil:검수-insp-e633cf09a0cf-r1-등급",
+            "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가",
+            "human:org_saegil:검수-insp-e633cf09a0cf-r1-중량",
+            "human:org_saegil:검수-insp-ea108c1ec781-r1-등급",
+            "human:org_saegil:검수-insp-ea108c1ec781-r1-단가",
+            "human:org_saegil:검수-insp-ea108c1ec781-r1-중량",
+            "human:org_saegil:검수-insp-9e39a3ae429b-r1-등급",
+            "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가",
+            "human:org_saegil:검수-insp-9e39a3ae429b-r1-중량"
+          ]
+        },
+        "inspectionRows": [
+          {
+            "inspectionId": "insp-e633cf09a0cf",
+            "inspectedOn": "2026-11-16",
+            "sessionId": "ses_1",
+            "streamId": "st_sprue",
+            "vendorOrgId": "org_saegil",
+            "agreedGrade": "A",
+            "actualGrade": "B",
+            "grade": "lower",
+            "agreedPrice": {
+              "id": "agreedUnitPrice",
+              "kind": "number",
+              "value": 320.0,
+              "unit": "원/kg",
+              "evidence": [
+                "calc:judge_route:3d162486c422:unitPrice",
+                "doc:snapshot:2e1513d2d198",
+                "doc:snapshot:ec2a3facd183",
+                "doc:snapshot:e88c189c0320",
+                "doc:snapshot:cc6b999bf4b1"
+              ],
+              "label": "합의 단가",
+              "role": "unitPrice"
+            },
+            "actualPrice": {
+              "id": "actualUnitPrice",
+              "kind": "number",
+              "value": 300.0,
+              "unit": "원/kg",
+              "evidence": [
+                "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가"
+              ],
+              "label": "실제 단가(검수)",
+              "role": "unitPrice"
+            },
+            "price": "lower",
+            "evidence": [
+              "human:org_saegil:검수-insp-e633cf09a0cf-r1-등급",
+              "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가",
+              "human:org_saegil:검수-insp-e633cf09a0cf-r1-중량"
+            ],
+            "dataOrigin": "demo",
+            "vendorName": "(주)새길자원"
+          },
+          {
+            "inspectionId": "insp-ea108c1ec781",
+            "inspectedOn": "2026-11-16",
+            "sessionId": "ses_1",
+            "streamId": "st_sprue",
+            "vendorOrgId": "org_saegil",
+            "agreedGrade": "A",
+            "actualGrade": "C",
+            "grade": "lower",
+            "agreedPrice": {
+              "id": "agreedUnitPrice",
+              "kind": "number",
+              "value": 320.0,
+              "unit": "원/kg",
+              "evidence": [
+                "calc:judge_route:3d162486c422:unitPrice",
+                "doc:snapshot:2e1513d2d198",
+                "doc:snapshot:ec2a3facd183",
+                "doc:snapshot:e88c189c0320",
+                "doc:snapshot:cc6b999bf4b1"
+              ],
+              "label": "합의 단가",
+              "role": "unitPrice"
+            },
+            "actualPrice": {
+              "id": "actualUnitPrice",
+              "kind": "number",
+              "value": 300.0,
+              "unit": "원/kg",
+              "evidence": [
+                "human:org_saegil:검수-insp-ea108c1ec781-r1-단가"
+              ],
+              "label": "실제 단가(검수)",
+              "role": "unitPrice"
+            },
+            "price": "lower",
+            "evidence": [
+              "human:org_saegil:검수-insp-ea108c1ec781-r1-등급",
+              "human:org_saegil:검수-insp-ea108c1ec781-r1-단가",
+              "human:org_saegil:검수-insp-ea108c1ec781-r1-중량"
+            ],
+            "dataOrigin": "demo",
+            "vendorName": "(주)새길자원"
+          },
+          {
+            "inspectionId": "insp-9e39a3ae429b",
+            "inspectedOn": "2026-11-16",
+            "sessionId": "ses_1",
+            "streamId": "st_sprue",
+            "vendorOrgId": "org_saegil",
+            "agreedGrade": "A",
+            "actualGrade": "C",
+            "grade": "lower",
+            "agreedPrice": {
+              "id": "agreedUnitPrice",
+              "kind": "number",
+              "value": 320.0,
+              "unit": "원/kg",
+              "evidence": [
+                "calc:judge_route:3d162486c422:unitPrice",
+                "doc:snapshot:2e1513d2d198",
+                "doc:snapshot:ec2a3facd183",
+                "doc:snapshot:e88c189c0320",
+                "doc:snapshot:cc6b999bf4b1"
+              ],
+              "label": "합의 단가",
+              "role": "unitPrice"
+            },
+            "actualPrice": {
+              "id": "actualUnitPrice",
+              "kind": "number",
+              "value": 300.0,
+              "unit": "원/kg",
+              "evidence": [
+                "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가"
+              ],
+              "label": "실제 단가(검수)",
+              "role": "unitPrice"
+            },
+            "price": "lower",
+            "evidence": [
+              "human:org_saegil:검수-insp-9e39a3ae429b-r1-등급",
+              "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가",
+              "human:org_saegil:검수-insp-9e39a3ae429b-r1-중량"
+            ],
+            "dataOrigin": "demo",
+            "vendorName": "(주)새길자원"
+          }
+        ],
+        "answers": [],
+        "corrections": []
+      }
+    ],
+    "deals": [
+      {
+        "vendorOrgId": "org_miso",
+        "vendorName": "(주)미소환경",
+        "count": 1,
+        "lastOn": "2026-11-17"
+      },
+      {
+        "vendorOrgId": "org_namhae",
+        "vendorName": "(주)남해열분해",
+        "count": 1,
+        "lastOn": "2026-11-17"
+      },
+      {
+        "vendorOrgId": "org_saegil",
+        "vendorName": "(주)새길자원",
+        "count": 1,
+        "lastOn": "2026-11-17"
+      }
+    ]
+  },
+  "review": {
+    "status": "needs_check",
+    "summary": "규칙 대조 후에도 필수 확인이 남아 있습니다. 허가 대조 등 서버 승인 조건을 충족해야 진행할 수 있습니다. 승인 전에 담당자가 확인할 것: 반입 검수 조건, 법령 요건, 지난 검수 기록.",
+    "items": [
+      {
+        "key": "evidence",
+        "title": "근거 대조",
+        "status": "ok",
+        "text": "두 AI가 주고받은 숫자와 조항을 승인 직전에 근거와 다시 대조했고 모두 맞습니다."
+      },
+      {
+        "key": "terms_range",
+        "title": "업체가 정한 범위",
+        "status": "ok",
+        "text": "합의한 단가와 수거 요일이 업체가 정한 범위 안입니다."
+      },
+      {
+        "key": "permit",
+        "title": "허가 근거",
+        "status": "ok",
+        "text": "(주)한빛정밀 담당자가 허가증 원문에서 포장재(LDPE)와 처리 방식 재활용(재활용업)을 대조해 맞다고 기록했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당합니다."
+      },
+      {
+        "key": "pickup",
+        "title": "수거 가능 지역",
+        "status": "ok",
+        "text": "업체가 밝힌 수거 노선이 이 공장 지역을 지나갑니다(운행 요일 화, 목)."
+      },
+      {
+        "key": "volume",
+        "title": "최소 물량과 적재",
+        "status": "ok",
+        "text": "합친 물량이 업체의 최소 물량 이상이고 한 번 수거량이 차량에 실립니다."
+      },
+      {
+        "key": "transport",
+        "title": "운반비 부담",
+        "status": "ok",
+        "text": "운반비는 업체가 부담합니다(단가에 포함)."
+      },
+      {
+        "key": "inspection",
+        "title": "반입 검수 조건",
+        "status": "check",
+        "text": "오염도·수분·물량 가운데 측정하지 않은 값이 있거나 업체가 반입 검수 조건을 걸었습니다. 반입 검수에서 합의한 품질 조건을 벗어나면 반입을 보류하고 양쪽 담당자가 다시 협의합니다. 등록·합의되지 않은 등급 단가, 위약금, 반품 비용을 자동 적용하지 않습니다."
+      },
+      {
+        "key": "law",
+        "title": "법령 요건",
+        "status": "check",
+        "text": "담당자가 챙길 법령 요건이 있습니다(맡기기 전에 업체의 처리 능력 확인서를 받고 서면 계약을 맺어 정해진 기간 동안 보관하는지 등). 결과의 법령 요건 확인에서 방법과 근거 조항을 볼 수 있습니다."
+      },
+      {
+        "key": "history",
+        "title": "지난 검수 기록",
+        "status": "check",
+        "text": "이 업체와의 지난 검수에서 PP 스프루·러너의 등급이나 단가가 합의보다 낮게 나온 건이 절반 이상입니다. 계약서 초안의 반입 검수 조건(검수 결과에 따른 단가 조정)을 양쪽이 확인한 뒤 승인해 주세요.",
+        "evidence": [
+          "human:org_saegil:검수-insp-e633cf09a0cf-r1-등급",
+          "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가",
+          "human:org_saegil:검수-insp-e633cf09a0cf-r1-중량",
+          "human:org_saegil:검수-insp-ea108c1ec781-r1-등급",
+          "human:org_saegil:검수-insp-ea108c1ec781-r1-단가",
+          "human:org_saegil:검수-insp-ea108c1ec781-r1-중량",
+          "human:org_saegil:검수-insp-9e39a3ae429b-r1-등급",
+          "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가",
+          "human:org_saegil:검수-insp-9e39a3ae429b-r1-중량"
+        ]
+      },
+      {
+        "key": "pilot",
+        "title": "첫 거래 시범 기간",
+        "status": "ok",
+        "text": "이 업체와 앞서 확정한 거래가 있어 시범 기간을 두지 않습니다.",
+        "pilot": false
+      }
+    ],
+    "reviewer": {
+      "label": "계약 검토 담당",
+      "kind": "rules"
+    }
+  }
+}

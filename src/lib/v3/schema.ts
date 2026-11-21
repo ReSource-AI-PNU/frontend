@@ -922,6 +922,8 @@ export const reviewItemSchema = obj({
   text: z.string(),
   /** 첫 거래 시범 기간 항목만. true면 계약서 초안에 시범 기간이 들어간다 */
   pilot: z.boolean().optional(),
+  /** 지난 검수 기록(history) 항목만. 같은 두 회사 사이의 검수 근거 ID */
+  evidence: z.array(z.string()).optional(),
 });
 
 export const contractReviewSchema = obj({
@@ -1321,6 +1323,93 @@ export const reportPlannedSchema = obj({
   unitPrice: claimOrNull,
   monthlyAfter: claimOrNull,
   carbon: claimOrNull,
+});
+
+/** 회사별 기록에서 검수 한 건을 합의 때의 등급·단가와 견준 결과. null이면 견줄 값이 없다 */
+export const memoryCompareSchema = z.enum(["lower", "same", "higher"]).nullable();
+
+/** 회사별 기록의 검수 묶음 요약(평균 없이 건수만). few는 minRecords건 미만이라 참고만 한다 */
+export const memorySummarySchema = obj({
+  count: z.number(),
+  gradeLower: z.number(),
+  priceLower: z.number(),
+  below: z.number(),
+  status: z.enum(["none", "few", "as_agreed", "below"]),
+  minRecords: z.number(),
+  evidence: z.array(z.string()),
+});
+
+export const memoryInspectionSchema = obj({
+  inspectionId: z.string(),
+  inspectedOn: z.string(),
+  sessionId: z.string(),
+  streamId: z.string(),
+  vendorOrgId: z.string(),
+  vendorName: z.string().nullable(),
+  agreedGrade: z.string().nullable(),
+  actualGrade: z.string().nullable(),
+  grade: memoryCompareSchema,
+  agreedPrice: claimOrNull,
+  actualPrice: claimOrNull,
+  price: memoryCompareSchema,
+  evidence: z.array(z.string()),
+  dataOrigin: z.string(),
+});
+
+export const memoryAnswerSchema = obj({
+  streamId: z.string(),
+  field: z.string(),
+  label: z.string(),
+  answer: z.union([z.string(), z.number()]).nullable(),
+  unit: z.string().nullable(),
+  unknown: z.boolean(),
+  /** 모름으로 답한 뒤 아직 채우지 않았다(다시 묻지 않으므로 자료 화면에서 채운다) */
+  stillUnknown: z.boolean(),
+  answeredOn: z.string().nullable(),
+  sessionId: z.string(),
+});
+
+export const memoryCorrectionSchema = obj({
+  id: z.string(),
+  streamId: z.string(),
+  field: z.string(),
+  label: z.string(),
+  before: z.union([z.string(), z.number()]).nullable(),
+  after: z.union([z.string(), z.number()]).nullable(),
+  recordedOn: z.string(),
+  evidence: z.array(z.string()),
+});
+
+/** GET·PUT /orgs/{orgId}/memory: 회사별 기록(지난 답변·검수·교정·거래). 배출 기업 본인만 본다 */
+export const orgMemorySchema = obj({
+  orgId: z.string(),
+  /** false면 계약 검토에 쓰지 않는다(기록은 그대로 둔다) */
+  enabled: z.boolean(),
+  dataOrigin: z.enum(["real", "demo"]),
+  minRecords: z.number(),
+  summary: obj({
+    streams: z.number(),
+    inspections: z.number(),
+    below: z.number(),
+    answers: z.number(),
+    stillUnknown: z.number(),
+    corrections: z.number(),
+    deals: z.number(),
+    vendors: z.number(),
+  }),
+  streams: z.array(
+    obj({
+      streamId: z.string(),
+      name: z.string(),
+      inspections: memorySummarySchema,
+      inspectionRows: z.array(memoryInspectionSchema),
+      answers: z.array(memoryAnswerSchema),
+      corrections: z.array(memoryCorrectionSchema),
+    }),
+  ),
+  deals: z.array(
+    obj({ vendorOrgId: z.string(), vendorName: z.string().nullable(), count: z.number(), lastOn: z.string().nullable() }),
+  ),
 });
 
 export const reportSchema = obj({

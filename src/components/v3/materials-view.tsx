@@ -71,6 +71,7 @@ import type {
 } from "@/lib/v3/types";
 import { Dots } from "@/components/agent/dots";
 import { ClaimValue } from "./claim";
+import { CompanyMemory } from "./company-memory";
 import { useV3 } from "./context";
 import { CriteriaReview } from "./criteria-review";
 import { OffRouteTerms } from "./off-route-terms";
@@ -1334,6 +1335,7 @@ function EmitterMaterials() {
         ))}
       </div>
       <StorageScan streams={streams} />
+      <CompanyMemory />
     </>
   );
 }
