@@ -9,12 +9,13 @@ import { josa } from "@/lib/josa";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
-import type { Assignment, OrgRole, PermitCheckInput, Result, ViewStream } from "@/lib/v3/types";
+import type { Approval, Assignment, OrgRole, PermitCheckInput, Result, Thread, ViewStream } from "@/lib/v3/types";
 import { BlockedRoutes, PermitChip, PermitDetail, PermitSummary } from "./permit-check";
 import { PickupBrief, RoomNote, TransportRows } from "./pickup-line";
 
 const CHECK_WORD = { met: "충족", conditional: "확인 필요", unmet: "맞지 않음", needs_information: "값 없음" } as const;
-const STATUS_WORD = { calculated: "조건 확정", conditional: "조건 확인 뒤 확정", needs_information: "값 확인 필요" } as const;
+const STATUS_WORD = { calculated: "매입표 기준 충족", conditional: "매입 조건 확인 필요", needs_information: "값 확인 필요" } as const;
+const INSPECTION_CHECKS = new Set(["contamination_basis", "contaminationPct", "moisture_basis", "moisturePct", "mixture", "monthly_kg_basis"]);
 
 function isEmitterRole(role: OrgRole) {
   return role === "emitter";
@@ -27,7 +28,8 @@ function Row({
   onOpenTalk,
   onPermitCheck,
   busy,
-  committed,
+  approval,
+  thread,
 }: {
   assignment: Assignment;
   stream: ViewStream | undefined;
@@ -35,8 +37,8 @@ function Row({
   onOpenTalk: (threadId: string) => void;
   onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
   busy: boolean;
-  /** 이 줄을 맡은 합의가 양쪽 승인으로 확정됐는가(수거 확약). 대화 상태를 모르면 undefined */
-  committed?: boolean;
+  approval?: Approval;
+  thread?: Thread;
 }) {
   const { openEvidence } = useV3();
   const [open, setOpen] = useState(false);
@@ -64,6 +66,19 @@ function Row({
     : assignment.alternatives.filter((item) => item.note.startsWith("수거 불가")).map((item) => item.vendorName ?? "업체");
   const panelId = `route-${assignment.streamId}`;
   const isEmitter = role === "emitter";
+  const pickup = assignment.pickup;
+  const terms = thread?.messages?.find((message) => message.seq === thread.agreedSeq)?.meta?.terms;
+  const pickupKnown = pickup?.status === "route" || pickup?.status === "visit";
+  const days = pickupKnown || !pickup ? (pickup?.days ?? terms?.pickup?.days ?? terms?.days ?? []) : [];
+  const approvalLabel = !approval ? "양측 승인 상태 확인 필요"
+    : approval.emitter && approval.vendor ? "양측 승인 완료"
+    : approval.emitter ? "배출 기업 승인 완료 · 업체 승인 전"
+    : approval.vendor ? "업체 승인 완료 · 배출 기업 승인 전"
+    : "양측 승인 전";
+  const pickupCommitted = pickupKnown && thread?.status === "confirmed" &&
+    Boolean(approval?.emitter && approval.vendor && !approval.blocked);
+  const statusLabel = STATUS_WORD[assignment.status] ?? "매입 조건 상태 확인 필요";
+  const inspectionRequired = todo.some((item) => INSPECTION_CHECKS.has(item.key));
 
   return (
     <li className="py-3.5">
@@ -118,12 +133,12 @@ function Row({
               onClick={() => setOpen((before) => !before)}
               className="-my-2 -ml-1 flex min-h-11 items-center gap-0.5 rounded-md px-1 text-left text-[13px] text-muted hover:bg-sunken hover:text-ink"
             >
-              {placed ? STATUS_WORD[assignment.status] : reused ? "계산 내역" : reuseCandidate ? "재투입 후보" : "옮기지 않은 까닭"}
+              {placed ? statusLabel : reused ? "계산 내역" : reuseCandidate ? "재투입 후보" : "옮기지 않은 까닭"}
               {todo.length > 0 ? ` · 확인할 것 ${todo.length}개` : ""}
               <ChevronDownIcon className={`size-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
             </button>
           ) : placed ? (
-            <p className="text-[13px] text-muted">{STATUS_WORD[assignment.status]}</p>
+            <p className="text-[13px] text-muted">{statusLabel}</p>
           ) : null}
         </div>
 
@@ -140,8 +155,8 @@ function Row({
           {noPickup.length > 0 ? (
             <span className="block text-[13px] text-warn">{noPickup.join(", ")} · 수거 불가</span>
           ) : null}
-          {placed && assignment.pickup ? (
-            <PickupBrief pickup={assignment.pickup} committed={committed} />
+          {placed && pickup ? (
+            <PickupBrief pickup={pickup} />
           ) : isEmitter && placed && assignment.transportPaidBy ? (
             <span className="block text-[13px] text-muted">
               {assignment.transportPaidBy === "vendor" ? (
@@ -153,6 +168,22 @@ function Row({
               ) : (
                 "운반비 별도(금액 확인 필요)"
               )}
+            </span>
+          ) : null}
+          {placed ? (
+            <span className="block text-[13px] text-muted">
+              {inspectionRequired ? <span className="block">반입 검수 필요</span> : null}
+              {pickup?.status !== "unavailable" ? (
+                <>
+                  <span className="block">{pickupCommitted ? "업체 수거 확약" : "업체 수거 확인 전"}</span>
+                  {!pickupCommitted ? (
+                    <span className="block">
+                      {days.length > 0 ? `${days.join("·")} 수거 일정을 업체에 확인` : "수거 가능 여부와 일정을 업체에 확인"}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+              <span className="block">{approvalLabel}</span>
             </span>
           ) : null}
         </p>
@@ -499,14 +530,15 @@ export function ResultCard({
   onPermitCheck,
   busy = false,
   threads,
+  approvals,
 }: {
   result: Result;
   streams: ViewStream[];
   role: OrgRole;
   counterpart: string;
   onOpenTalk: (threadId: string) => void;
-  /** 대화의 상태(확정이면 수거 확약). 주지 않으면 수거 확약 여부를 적지 않는다 */
-  threads?: { id: string; status: string }[];
+  threads: Thread[];
+  approvals: Approval[];
   /** 배출 기업 담당자가 허가증 원문 대조를 기록한다(승인 대기 중, 체험하기가 아닐 때만 준다) */
   onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
   busy?: boolean;
@@ -535,11 +567,11 @@ export function ResultCard({
       <div className="mt-6">
         <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem] gap-x-4 border-b border-line pb-2 text-[13px] text-muted sm:grid">
           <span>폐기물</span>
-          <span>{isEmitter ? "받는 곳" : "상태"}</span>
+          <span>{isEmitter ? "처리 후보" : "상태"}</span>
           <span>조건</span>
           <span className="text-right">{isEmitter ? "한 달 차이" : ""}</span>
         </div>
-        <ul className="divide-y divide-line border-b border-line sm:border-t-0">
+        <ul aria-label="품목별 처리 후보" className="divide-y divide-line border-b border-line sm:border-t-0">
           {result.assignments.map((assignment) => (
             <Row
               key={assignment.streamId}
@@ -549,11 +581,8 @@ export function ResultCard({
               onOpenTalk={onOpenTalk}
               onPermitCheck={onPermitCheck}
               busy={busy}
-              committed={
-                threads && assignment.threadId
-                  ? threads.find((item) => item.id === assignment.threadId)?.status === "confirmed"
-                  : undefined
-              }
+              thread={threads.find((item) => item.id === assignment.threadId)}
+              approval={approvals.find((item) => item.threadId === assignment.threadId && item.streamIds.includes(assignment.streamId))}
             />
           ))}
         </ul>
@@ -575,7 +604,7 @@ export function ResultCard({
       {isEmitter && result.greenest ? <GreenestNote greenest={result.greenest} /> : null}
 
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
-        {conditional ? "‘조건 확인 뒤 확정’은 업체가 물건을 받아 확인한 뒤에 이 조건이 굳어진다는 뜻입니다. " : ""}
+        {conditional ? "조건부 후보의 매입 조건은 검수 등 확인 결과에 따라 달라질 수 있습니다. " : ""}
         숫자를 누르면 계약서·측정값·법 조항 같은 근거가 열립니다.
         {assumptionIds.length > 0 ? (
           <>
