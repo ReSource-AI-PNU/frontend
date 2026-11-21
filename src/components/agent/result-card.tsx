@@ -105,6 +105,17 @@ function Row({
               <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
               {(assignment.transportPending || assignment.costPending) ? (
                 <span className="block text-[12px] text-warn">미확인 비용 반영 전</span>
+              ) : assignment.bundleBelowCurrent?.bundle ? (
+                <span className="block text-[12px] text-warn">
+                  묶음 전체{" "}
+                  <ClaimValue
+                    claim={assignment.bundleBelowCurrent.bundle}
+                    signed
+                    hideAssumed
+                    display={signedWon(assignment.bundleBelowCurrent.bundle)}
+                    className="!font-normal"
+                  />
+                </span>
               ) : isAssumed(assignment.difference) ? (
                 <span className="block text-[12px] text-muted">가정값 포함</span>
               ) : null}

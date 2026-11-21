@@ -366,6 +366,8 @@ export const checkKeySchema = z.enum([
   "permit_level",
   /** 운송 배출을 계산하지 못했을 때(공장 위치나 업체 차고지가 없을 때) */
   "transport_carbon",
+  /** 이 폐기물만 보면 현행보다 불리하지만 같은 업체 묶음 전체가 나아 함께 보낸다(2026-11-22) */
+  "bundle_below_current",
 ]);
 
 export const checkSchema = obj({
@@ -553,6 +555,15 @@ export const assignmentSchema = obj({
   transportPending: z.boolean().optional(),
   currentAssumed: z.boolean(),
   costPending: z.boolean().optional(),
+  /**
+   * 묶음 때문에 현행보다 불리한 배정(2026-11-22 뒤 결과). 이 폐기물의 현행 대비 차이(loss, 음수)와 같은 업체로
+   * 함께 보내는 폐기물 전체의 현행 대비 차이(bundle). 운반비·작업비가 모두 확인됐을 때만 온다. 업체 뷰에서는 null
+   */
+  bundleBelowCurrent: obj({
+    loss: claimOrNull,
+    bundle: claimOrNull,
+    streamIds: z.array(z.string()),
+  }).nullable().optional(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
   /** 허가 확인 결과 진행할 수 없는 경로(2026-11-19 뒤 결과) */
