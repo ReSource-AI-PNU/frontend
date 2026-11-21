@@ -77,6 +77,7 @@ import { CriteriaReview } from "./criteria-review";
 import { OffRouteTerms } from "./off-route-terms";
 import { StorageScan } from "./storage-scan";
 import { useRemote } from "./use-remote";
+import { VendorOnboarding } from "./vendor-onboarding";
 
 const field =
   "min-h-11 min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
@@ -1968,33 +1969,49 @@ function VendorMaterials() {
   const { mode, canWrite, org } = useV3();
   const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
   const [note, setNote] = useState<string | null>(null);
+  // AI 도우미가 업체 정보를 저장하면 폼을 새로 그려 저장된 값으로 시작한다(폼 칸은 처음 그릴 때의 프로필로 정해진다)
+  const [revision, setRevision] = useState(0);
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   const profile = remote.data ?? emptyProfile(org.id, org.name);
   return (
-    <VendorForm
-      key={`${profile.orgId}:${remote.data ? "saved" : "new"}`}
-      profile={profile}
-      canAct={canWrite}
-      note={note}
-      setNote={setNote}
-      onSave={async (next) => {
-        // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다.
-        // 차량 정보가 없으면 보내지 않는다(빈 값을 근거로 등록하지 않게)
-        const { model, fleet, ...rest } = next;
-        const body = { ...rest, ...(model?.provider ? { model } : {}), ...(fleet ? { fleet } : {}) };
-        const saved = normalizeProfile(await api.putVendor(org.id, body as VendorProfile), org.id, org.name);
-        remote.set(saved);
-        return saved;
-      }}
-      onConfirmed={(result) => {
-        // 응답의 허가 품목·매입 기준으로 바로 다시 그리고, 프로필 전체는 다시 읽는다
-        if (result.profile && remote.data) {
-          remote.set(normalizeProfile({ ...remote.data, permits: result.profile.permits, criteria: result.profile.criteria }, org.id, org.name));
-        }
-        remote.reload();
-      }}
-    />
+    <>
+      {mode === "live" && canWrite ? (
+        <div className="mb-8 border-b border-line">
+          <VendorOnboarding
+            orgId={org.id}
+            onSaved={(saved) => {
+              remote.set(normalizeProfile(saved, org.id, org.name));
+              setRevision((before) => before + 1);
+              remote.reload();
+            }}
+          />
+        </div>
+      ) : null}
+      <VendorForm
+        key={`${profile.orgId}:${remote.data ? "saved" : "new"}:${revision}`}
+        profile={profile}
+        canAct={canWrite}
+        note={note}
+        setNote={setNote}
+        onSave={async (next) => {
+          // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다.
+          // 차량 정보가 없으면 보내지 않는다(빈 값을 근거로 등록하지 않게)
+          const { model, fleet, ...rest } = next;
+          const body = { ...rest, ...(model?.provider ? { model } : {}), ...(fleet ? { fleet } : {}) };
+          const saved = normalizeProfile(await api.putVendor(org.id, body as VendorProfile), org.id, org.name);
+          remote.set(saved);
+          return saved;
+        }}
+        onConfirmed={(result) => {
+          // 응답의 허가 품목·매입 기준으로 바로 다시 그리고, 프로필 전체는 다시 읽는다
+          if (result.profile && remote.data) {
+            remote.set(normalizeProfile({ ...remote.data, permits: result.profile.permits, criteria: result.profile.criteria }, org.id, org.name));
+          }
+          remote.reload();
+        }}
+      />
+    </>
   );
 }
 

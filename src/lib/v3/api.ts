@@ -29,6 +29,8 @@ import type {
   OutcomeInput,
   OutcomeResult,
   QuoteRequest,
+  OnboardingConfirmResult,
+  OnboardingState,
   OrgMemory,
   Report,
   RetrainExport,
@@ -214,6 +216,18 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(profile),
     }),
+
+  /** 업체 정보 AI 도우미. 대화가 없으면 저장하지 않은 인사 메시지(id "greeting") 하나가 온다 */
+  getOnboarding: (orgId: string) => request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding`, orgId),
+  /** 담당자 말 하나를 보내고 AI의 답과 새 초안을 받는다. 모델이 답하므로 1분 가까이 걸릴 수 있다 */
+  sendOnboardingMessage: (orgId: string, text: string) =>
+    request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding/messages`, orgId, json({ text })),
+  /** 담당자가 고른 초안 항목(keys)만 업체 정보에 저장한다 */
+  confirmOnboarding: (orgId: string, keys: string[]) =>
+    request<OnboardingConfirmResult>(`/vendors/${enc(orgId)}/onboarding/confirm`, orgId, json({ keys })),
+  /** 대화와 초안을 비운다(저장한 업체 정보는 그대로다) */
+  resetOnboarding: (orgId: string) =>
+    request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding`, orgId, { method: "DELETE" }),
 
   /** 내가 당사자인 찾기 목록. 다른 기기에서 들어와도 이어 볼 수 있게 한다. */
   listSessions: (orgId: string) => request<SessionSummary[]>("/sessions", orgId),

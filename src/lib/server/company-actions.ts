@@ -83,7 +83,8 @@ export async function createCompany(_prev: CompanyFormState, formData: FormData)
     throw error;
   }
   await unstable_update({ activeOrgId: orgId });
-  redirect("/app");
+  // 처리 업체는 업체 정보(허가 품목·매입 기준)를 채워야 탐색에 나오므로 업체 정보 화면에서 시작한다
+  redirect(parsed.data.kind === "vendor" ? "/app/materials" : "/app");
 }
 
 /** 사이드바의 회사 바꾸기. 소속 목록에 있는 회사만 고를 수 있다(auth.ts의 jwt 콜백이 다시 확인한다). */

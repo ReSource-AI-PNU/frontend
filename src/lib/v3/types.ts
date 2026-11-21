@@ -597,3 +597,35 @@ export type ScanPile = z.infer<typeof s.scanPileSchema>;
 export type ScanLayout = z.infer<typeof s.scanLayoutSchema>;
 export type ScanLayoutMetrics = z.infer<typeof s.scanLayoutMetricsSchema>;
 export type ScanStage = z.infer<typeof s.scanStageSchema>;
+
+// 업체 정보 AI 도우미 (2026-11-22). 업체 측 AI가 공공 허가 명부와 담당자 대화로 업체 정보 초안을 채운다.
+// 초안은 담당자가 고른 항목만 저장된다(POST /vendors/{orgId}/onboarding/confirm).
+export type OnboardingSection = "permits" | "fleet" | "guardrails" | "process";
+export type OnboardingMessage = {
+  id: string;
+  role: "assistant" | "user";
+  text: string;
+  at: string | null;
+  /** 이 답을 쓰며 AI가 한 일(예: 공공 허가 명부 조회). summary만 화면에 보인다 */
+  tools: { name: string; summary: string }[];
+};
+export type OnboardingDraftItem = {
+  key: string;
+  section: OnboardingSection;
+  label: string;
+  value: unknown;
+  /** 화면에 보일 값 한 줄 */
+  text: string;
+  source: { kind: "registry" | "conversation"; label: string; quote: string | null };
+};
+export type OnboardingCheck = { key: string; label: string; done: boolean; note: string };
+export type OnboardingState = {
+  orgId: string;
+  /** 이 대화를 답한 구현. rule이면 모델 없이 정해 둔 안내 문장이다 */
+  model: { provider: "ollama" | "foundry" | "anthropic" | "rule"; name: string } | null;
+  messages: OnboardingMessage[];
+  draft: OnboardingDraftItem[];
+  checks: OnboardingCheck[];
+  discoverable: boolean;
+};
+export type OnboardingConfirmResult = { profile: VendorProfile; onboarding: OnboardingState };
