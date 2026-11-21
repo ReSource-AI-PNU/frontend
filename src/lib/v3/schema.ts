@@ -447,6 +447,7 @@ export const permitDocumentSchema = obj({
 export const pickupSchema = obj({
   status: pickupStatusSchema,
   label: z.string().nullable(),
+  detail: z.string().optional(),
   days: z.array(z.string()),
   basis: transportBasisSchema,
   basisLabel: z.string().nullable(),

@@ -24,8 +24,8 @@ export function pickupUnconfirmed(pickup: Pick<Pickup, "status"> | null | undefi
  * committed를 주면 수거할 수 있다고 밝힌 상태(노선 포함, 업체 수거 가능)에 실제 수거 확약 여부를 붙인다:
  * 양쪽 승인 전이면 "수거 확약 전", 양쪽 승인으로 확정됐으면 "수거 확약(양쪽 승인)".
  */
-export function pickupStatusText(pickup: Pick<Pickup, "status" | "days">, committed?: boolean): string {
-  const label = PICKUP_STATUS_LABEL[pickup.status];
+export function pickupStatusText(pickup: Pick<Pickup, "status" | "days"> & Partial<Pick<Pickup, "label" | "detail">>, committed?: boolean): string {
+  const label = (pickup.detail && pickup.label) || PICKUP_STATUS_LABEL[pickup.status];
   const base = pickup.status === "route" && pickup.days.length > 0 ? `${label}(${pickup.days.join("·")} 운행)` : label;
   if (committed === undefined || (pickup.status !== "route" && pickup.status !== "visit")) return base;
   return `${base} · ${committed ? "수거 확약(양쪽 승인)" : "수거 확약 전"}`;
@@ -65,7 +65,9 @@ export function pickupTodo(assignment: Pick<Assignment, "pickup" | "transportPen
   const pickup = assignment.pickup;
   if (!pickup) return [];
   const out: string[] = [];
-  if (pickup.status === "check") {
+  if (pickup.status === "check" && pickup.detail) {
+    out.push(pickup.detail);
+  } else if (pickup.status === "check") {
     out.push(
       pickup.routeBasis === "included"
         ? "공장 지역이 업체의 수거 노선 밖입니다. 노선 수거는 운반비가 단가에 포함이지만, 따로 수거하러 올 수 있는지와 그때 운반비를 확인하세요."

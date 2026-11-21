@@ -104,7 +104,7 @@ function Row({
             <>
               <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
               {assignment.transportPending ? (
-                <span className="block text-[12px] text-warn">운반비 반영 전</span>
+                <span className="block text-[12px] text-warn">별도 운반비 반영 전</span>
               ) : isAssumed(assignment.difference) ? (
                 <span className="block text-[12px] text-muted">가정값 포함</span>
               ) : null}
@@ -251,7 +251,7 @@ function Row({
                   ) : null}
                   <dt className="mt-1 border-t border-line pt-2 font-medium">
                     옮긴 뒤 한 달
-                    {assignment.transportPending ? <span className="ml-1.5 text-[12px] font-normal text-warn">운반비 반영 전</span> : null}
+                    {assignment.transportPending ? <span className="ml-1.5 text-[12px] font-normal text-warn">별도 운반비 반영 전</span> : null}
                   </dt>
                   <dd className="mt-1 border-t border-line pt-2 text-right font-medium">
                     {assignment.monthlyAfter ? (
@@ -351,7 +351,7 @@ function Row({
                           <>
                             {" · 한 달 "}
                             <ClaimValue claim={item.monthlyAfter} signed display={signedWon(item.monthlyAfter)} className="!font-normal" />
-                            {item.transportPending ? <span className="ml-1 text-[12px] text-warn">운반비 반영 전</span> : null}
+                            {item.transportPending ? <span className="ml-1 text-[12px] text-warn">별도 운반비 반영 전</span> : null}
                           </>
                         ) : null}
                         {isEmitter && item.carbon ? (

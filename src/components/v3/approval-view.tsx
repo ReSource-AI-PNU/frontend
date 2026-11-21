@@ -784,7 +784,7 @@ export function ApprovalView() {
                       {role === "vendor" ? null : (
                         <span className="w-36 text-right tabular-nums">
                           <ClaimValue claim={item.monthlyAfter} signed />
-                          {item.transportPending ? <span className="block text-[12px] text-warn">운반비 반영 전</span> : null}
+                          {item.transportPending ? <span className="block text-[12px] text-warn">별도 운반비 반영 전</span> : null}
                         </span>
                       )}
                       {item.pickup ? (
