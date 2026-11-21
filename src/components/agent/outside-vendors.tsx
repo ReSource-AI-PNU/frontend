@@ -35,13 +35,21 @@ import type { Claim, OutsideCandidate, OutsideVendors, QuoteRequest, ViewStream 
 const SHOWN = 3;
 
 /** 업체에 물을 수 있는 폐기물 하나(그 업체가 후보인 폐기물만) */
-type Item = { id: string; name: string; material: string | null; form: string | null; monthlyKg: Claim | null };
+export type Item = { id: string; name: string; material: string | null; form: string | null; monthlyKg: Claim | null };
 
-function itemsFor(outside: OutsideVendors, streams: ViewStream[], vendorId: string): Item[] {
-  return vendorStreamIds(outside, vendorId).flatMap((id) => {
+/** 견적 요청서를 만들 업체. 가입하지 않은 업체 후보와 같은 단지 후보(허가 명부에 있는 곳)가 함께 쓴다 */
+export type QuoteTarget = Pick<OutsideCandidate, "id" | "name" | "phone" | "agency">;
+
+/** 폐기물 ID 목록 → 문의할 폐기물 줄(지금 폐기물 목록에 있는 것만) */
+export function itemsOf(streamIds: string[], streams: ViewStream[]): Item[] {
+  return streamIds.flatMap((id) => {
     const stream = streams.find((item) => item.id === id);
     return stream ? [{ id, name: stream.name, material: stream.material, form: stream.form, monthlyKg: stream.monthlyKg }] : [];
   });
+}
+
+function itemsFor(outside: OutsideVendors, streams: ViewStream[], vendorId: string): Item[] {
+  return itemsOf(vendorStreamIds(outside, vendorId), streams);
 }
 
 function MonthlyKg({ claim, name }: { claim: Claim | null; name: string }) {
@@ -59,7 +67,7 @@ function MonthlyKg({ claim, name }: { claim: Claim | null; name: string }) {
  * 문의할 폐기물 고르기. 이 업체가 후보인 폐기물만 나온다. 이름 · 재질 · 형태 · 월 물량(근거 열림)을 보이고,
  * 후보를 찾은 뒤 바뀐 칸이 있으면 그 줄에 미리 적는다(요청서를 만들 수 있는지는 서버가 지금 자료로 다시 본다).
  */
-function ItemPicker({
+export function ItemPicker({
   name,
   items,
   selected,
@@ -70,7 +78,8 @@ function ItemPicker({
   name: string;
   items: Item[];
   selected: string;
-  outside: OutsideVendors;
+  /** 후보를 찾은 뒤 바뀐 칸을 알릴 때 쓴다. 없으면 알리지 않는다 */
+  outside: OutsideVendors | null;
   onSelect: (streamId: string) => void;
   /** 업체 카드처럼 폭이 넓으면 넓은 화면에서 두 열로 둔다 */
   wide?: boolean;
@@ -83,7 +92,7 @@ function ItemPicker({
       <div className={`mt-1.5 grid gap-1.5 ${wide ? "sm:grid-cols-2" : ""}`}>
         {items.map((item) => {
           const checked = item.id === selected;
-          const { changed, removed } = streamChanges(outside, item.id);
+          const { changed, removed } = outside ? streamChanges(outside, item.id) : { changed: [], removed: false };
           return (
             <div
               key={item.id}
@@ -141,6 +150,7 @@ function Candidate({
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium">{candidate.name}</span>
             <StatusChip tone={candidate.match === "confirmed" ? "neutral" : "warn"}>{matchLabel(candidate)}</StatusChip>
+            {candidate.sameComplex ? <StatusChip tone="neutral">같은 단지</StatusChip> : null}
           </p>
           <p className="mt-1 text-[13px] text-ink-2">
             {candidate.business} · 직선 <ClaimValue claim={candidate.distance} title={`${candidate.name}까지 직선거리`} /> ·{" "}
@@ -177,7 +187,7 @@ function Candidate({
 
 type Loaded = { key: string; letter: QuoteRequest | null; error: { code: string; message: string } | null };
 
-function QuoteSheet({
+export function QuoteSheet({
   sessionId,
   orgId,
   candidate,
@@ -193,10 +203,10 @@ function QuoteSheet({
 }: {
   sessionId: string;
   orgId: string;
-  candidate: OutsideCandidate;
+  candidate: QuoteTarget;
   items: Item[];
   streamId: string;
-  outside: OutsideVendors;
+  outside: OutsideVendors | null;
   contact: string;
   demoView: boolean;
   onSelect: (streamId: string) => void;

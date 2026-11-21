@@ -1,0 +1,2651 @@
+{
+  "note": "백엔드 work/complex-partners(2026-11-22)가 시연 회사(한빛정밀, 녹산)로 낸 결과의 complexPartners와 outsideVendors. tests/v3/runtime_fixtures(규칙 정책)로 만들었다.",
+  "streams": [
+    {
+      "id": "st_defect",
+      "name": "불량 사출품",
+      "label": "PP 사출 불량품",
+      "material": "PP",
+      "form": "가공 전",
+      "monthlyKg": {
+        "id": "st_defect_monthlyKg",
+        "kind": "number",
+        "value": 400,
+        "unit": "kg/월",
+        "evidence": [
+          "measure:org_hanbit:st_defect:월발생량@2026-11-10"
+        ],
+        "label": "월 발생량",
+        "role": "monthlyKg"
+      }
+    },
+    {
+      "id": "st_film",
+      "name": "포장 필름",
+      "label": "LDPE 포장 필름",
+      "material": "LDPE",
+      "form": "필름",
+      "monthlyKg": {
+        "id": "st_film_monthlyKg",
+        "kind": "number",
+        "value": 300,
+        "unit": "kg/월",
+        "evidence": [
+          "measure:org_hanbit:st_film:월발생량@2026-11-10"
+        ],
+        "label": "월 발생량",
+        "role": "monthlyKg"
+      }
+    },
+    {
+      "id": "st_purge",
+      "name": "퍼지 덩어리",
+      "label": "PP+ABS 퍼지 덩어리",
+      "material": "PP+ABS",
+      "form": "가공 전",
+      "monthlyKg": {
+        "id": "st_purge_monthlyKg",
+        "kind": "number",
+        "value": 250,
+        "unit": "kg/월",
+        "evidence": [
+          "human:org_hanbit:st_purge-월발생량-추정"
+        ],
+        "label": "월 발생량",
+        "role": "monthlyKg"
+      }
+    },
+    {
+      "id": "st_sprue",
+      "name": "스프루·런너",
+      "label": "PP 스프루·러너",
+      "material": "PP",
+      "form": "가공 전",
+      "monthlyKg": {
+        "id": "st_sprue_monthlyKg",
+        "kind": "number",
+        "value": 600,
+        "unit": "kg/월",
+        "evidence": [
+          "measure:org_hanbit:st_sprue:월발생량@2026-11-10"
+        ],
+        "label": "월 발생량",
+        "role": "monthlyKg"
+      }
+    }
+  ],
+  "complexPartners": {
+    "complex": {
+      "id": "noksan",
+      "name": "녹산국가산업단지",
+      "basis": "location"
+    },
+    "reason": null,
+    "source": {
+      "factories": {
+        "name": "한국산업단지공단 전국등록공장현황(공공데이터포털)",
+        "url": "https://www.data.go.kr/data/15105482/fileData.do",
+        "asOf": "2025-12-31",
+        "note": "공장설립온라인지원시스템에 등록된 공장의 회사명, 단지명, 생산품, 공장주소입니다. 생산품은 회사가 신고한 문장이라 지금도 그 품목을 만드는지, 폐기물을 받을 수 있는지는 회사에 물어 확인해야 합니다."
+      },
+      "registry": {
+        "name": "공공데이터포털 전국폐기물처리업소표준데이터",
+        "url": "https://www.data.go.kr/data/15114147/standard.do",
+        "asOfRange": [
+          "2023-07-14",
+          "2026-10-22"
+        ]
+      }
+    },
+    "streams": [
+      {
+        "streamId": "st_defect",
+        "takes": [
+          {
+            "id": "cf_42907780bc",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-25 (송정동)",
+            "role": "takes",
+            "product": "재생PE,PP칩",
+            "items": [
+              "재생PE"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP",
+              "PE"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_42907780bc@2025-12-31",
+              "ref:허가업체명부:pv_2ae6ba678e@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2ae6ba678e",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c57acb0b79",
+            "name": "(주)성우케미칼",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-9 (송정동)",
+            "role": "takes",
+            "product": "재생수지",
+            "items": [
+              "재생수지"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c57acb0b79@2025-12-31",
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2f44dd5e8d",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_8f0f2144d8",
+            "name": "극동산업",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-23 (송정동)",
+            "role": "takes",
+            "product": "합성수지재생",
+            "items": [
+              "합성수지재생"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_8f0f2144d8@2025-12-31",
+              "ref:허가업체명부:pv_ff9352c4ff@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_ff9352c4ff",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "role": "takes",
+            "product": null,
+            "items": [],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_346c59cb8b",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_968c986484",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로 376 (송정동)",
+            "role": "takes",
+            "product": "재생플라스틱 칩",
+            "items": [
+              "재생플라스틱 칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_968c986484@2025-12-31",
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_637c017f1a",
+              "business": "폐기물중간재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_a7b66bb32a",
+            "name": "준성화학",
+            "address": "부산광역시 강서구 녹산산단442로 52 (송정동)",
+            "role": "takes",
+            "product": "재생칩",
+            "items": [
+              "재생칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_a7b66bb32a@2025-12-31",
+              "ref:허가업체명부:pv_07c39acf65@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_07c39acf65",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c0482c4cbe",
+            "name": "대원프라스틱공업사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-23 (송정동)",
+            "role": "takes",
+            "product": "재생용 플라스틱 사출품,재생용 플라스틱 칩(CHIP)",
+            "items": [
+              "재생용 플라스틱 사출품",
+              "재생용 플라스틱 칩(CHIP)"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c0482c4cbe@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_b9f78c8825",
+            "name": "세화골게이트팩(주)",
+            "address": "부산광역시 강서구 녹산산단381로 25 (송정동)",
+            "role": "takes",
+            "product": "골판지 상자, 재생플라스틱 소재 물질 제조, 플라스틱 포대 제조",
+            "items": [
+              "재생플라스틱 소재 물질 제조"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_b9f78c8825@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          }
+        ],
+        "uses": [
+          {
+            "id": "cf_8f02c18be5",
+            "name": "부산프라스틱공업(주)",
+            "address": "부산광역시 강서구 녹산산업중로168번길 3 (송정동)",
+            "role": "uses",
+            "product": "포장용 프라스틱 CPP,PAD",
+            "items": [
+              "포장용 프라스틱 CPP"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_8f02c18be5@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_4da2b3ec93",
+            "name": "(주)경기",
+            "address": "부산광역시 강서구 녹산산업북로313번길 49 (송정동)",
+            "role": "uses",
+            "product": "사출성형품",
+            "items": [
+              "사출성형품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_4da2b3ec93@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_d9254de75a",
+            "name": "(주)성광프라",
+            "address": "부산광역시 강서구 녹산산단262로13번길 48 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_d9254de75a@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e0ed4d06c6",
+            "name": "(주)재영테크윈 제2공장",
+            "address": "부산광역시 강서구 녹산산단261로59번길 8 (송정동)",
+            "role": "uses",
+            "product": "플라스틱부품, 플라스틱부품, 플라스틱부품, 플라스틱부품",
+            "items": [
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e0ed4d06c6@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e3731fcc95",
+            "name": "골드ENG",
+            "address": "부산광역시 강서구 녹산산업중로 51-12 (송정동)",
+            "role": "uses",
+            "product": "플라스틱",
+            "items": [
+              "플라스틱"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e3731fcc95@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_50cc854d59",
+            "name": "대성프라스틱",
+            "address": "부산광역시 강서구 녹산산단262로50번길 28 (송정동)",
+            "role": "uses",
+            "product": "플라스틱 사출품",
+            "items": [
+              "플라스틱 사출품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_50cc854d59@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_2c7ca72b92",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로40번길 16 (송정동)",
+            "role": "uses",
+            "product": "플라스틱제품",
+            "items": [
+              "플라스틱제품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_2c7ca72b92@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_f36b159b52",
+            "name": "삼화프라스틱",
+            "address": "부산광역시 강서구 녹산산단262로 27 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_f36b159b52@2025-12-31"
+            ]
+          }
+        ],
+        "takesTotal": 8,
+        "usesTotal": 17,
+        "reason": null
+      },
+      {
+        "streamId": "st_film",
+        "takes": [
+          {
+            "id": "cf_42907780bc",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-25 (송정동)",
+            "role": "takes",
+            "product": "재생PE,PP칩",
+            "items": [
+              "재생PE"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP",
+              "PE"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_42907780bc@2025-12-31",
+              "ref:허가업체명부:pv_2ae6ba678e@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2ae6ba678e",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c57acb0b79",
+            "name": "(주)성우케미칼",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-9 (송정동)",
+            "role": "takes",
+            "product": "재생수지",
+            "items": [
+              "재생수지"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c57acb0b79@2025-12-31",
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2f44dd5e8d",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_8f0f2144d8",
+            "name": "극동산업",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-23 (송정동)",
+            "role": "takes",
+            "product": "합성수지재생",
+            "items": [
+              "합성수지재생"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_8f0f2144d8@2025-12-31",
+              "ref:허가업체명부:pv_ff9352c4ff@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_ff9352c4ff",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "role": "takes",
+            "product": null,
+            "items": [],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_346c59cb8b",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_968c986484",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로 376 (송정동)",
+            "role": "takes",
+            "product": "재생플라스틱 칩",
+            "items": [
+              "재생플라스틱 칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_968c986484@2025-12-31",
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_637c017f1a",
+              "business": "폐기물중간재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_a7b66bb32a",
+            "name": "준성화학",
+            "address": "부산광역시 강서구 녹산산단442로 52 (송정동)",
+            "role": "takes",
+            "product": "재생칩",
+            "items": [
+              "재생칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_a7b66bb32a@2025-12-31",
+              "ref:허가업체명부:pv_07c39acf65@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_07c39acf65",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c0482c4cbe",
+            "name": "대원프라스틱공업사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-23 (송정동)",
+            "role": "takes",
+            "product": "재생용 플라스틱 사출품,재생용 플라스틱 칩(CHIP)",
+            "items": [
+              "재생용 플라스틱 사출품",
+              "재생용 플라스틱 칩(CHIP)"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c0482c4cbe@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_b9f78c8825",
+            "name": "세화골게이트팩(주)",
+            "address": "부산광역시 강서구 녹산산단381로 25 (송정동)",
+            "role": "takes",
+            "product": "골판지 상자, 재생플라스틱 소재 물질 제조, 플라스틱 포대 제조",
+            "items": [
+              "재생플라스틱 소재 물질 제조"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_b9f78c8825@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          }
+        ],
+        "uses": [
+          {
+            "id": "cf_8d3072d44c",
+            "name": "(주)아이에스테크",
+            "address": "부산광역시 강서구 녹산산단262로 21 (송정동)",
+            "role": "uses",
+            "product": "PE  FILM",
+            "items": [
+              "PE  FILM"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PE"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_8d3072d44c@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_66f6c58118",
+            "name": "기동산업",
+            "address": "부산광역시 강서구 녹산산단261로73번길 25 (송정동)",
+            "role": "uses",
+            "product": "식품용 PE비닐",
+            "items": [
+              "식품용 PE비닐"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PE"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_66f6c58118@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_4da2b3ec93",
+            "name": "(주)경기",
+            "address": "부산광역시 강서구 녹산산업북로313번길 49 (송정동)",
+            "role": "uses",
+            "product": "사출성형품",
+            "items": [
+              "사출성형품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_4da2b3ec93@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e2c8e011ef",
+            "name": "(주)다원테크",
+            "address": "부산광역시 강서구 녹산산단382로50번길 29 (송정동)",
+            "role": "uses",
+            "product": "비닐포장지",
+            "items": [
+              "비닐포장지"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e2c8e011ef@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_d9254de75a",
+            "name": "(주)성광프라",
+            "address": "부산광역시 강서구 녹산산단262로13번길 48 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_d9254de75a@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e0ed4d06c6",
+            "name": "(주)재영테크윈 제2공장",
+            "address": "부산광역시 강서구 녹산산단261로59번길 8 (송정동)",
+            "role": "uses",
+            "product": "플라스틱부품, 플라스틱부품, 플라스틱부품, 플라스틱부품",
+            "items": [
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e0ed4d06c6@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_3499b75819",
+            "name": "(주)한국유화",
+            "address": "부산광역시 강서구 녹산산단165로 36-20 (송정동) (총 2 필지)",
+            "role": "uses",
+            "product": "비닐봉지, 아연첨가고무칩",
+            "items": [
+              "비닐봉지"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_3499b75819@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e3731fcc95",
+            "name": "골드ENG",
+            "address": "부산광역시 강서구 녹산산업중로 51-12 (송정동)",
+            "role": "uses",
+            "product": "플라스틱",
+            "items": [
+              "플라스틱"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e3731fcc95@2025-12-31"
+            ]
+          }
+        ],
+        "takesTotal": 8,
+        "usesTotal": 22,
+        "reason": null
+      },
+      {
+        "streamId": "st_purge",
+        "takes": [
+          {
+            "id": "cf_42907780bc",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-25 (송정동)",
+            "role": "takes",
+            "product": "재생PE,PP칩",
+            "items": [
+              "재생PE"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP",
+              "PE"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_42907780bc@2025-12-31",
+              "ref:허가업체명부:pv_2ae6ba678e@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2ae6ba678e",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c57acb0b79",
+            "name": "(주)성우케미칼",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-9 (송정동)",
+            "role": "takes",
+            "product": "재생수지",
+            "items": [
+              "재생수지"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c57acb0b79@2025-12-31",
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2f44dd5e8d",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_8f0f2144d8",
+            "name": "극동산업",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-23 (송정동)",
+            "role": "takes",
+            "product": "합성수지재생",
+            "items": [
+              "합성수지재생"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_8f0f2144d8@2025-12-31",
+              "ref:허가업체명부:pv_ff9352c4ff@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_ff9352c4ff",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "role": "takes",
+            "product": null,
+            "items": [],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_346c59cb8b",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_968c986484",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로 376 (송정동)",
+            "role": "takes",
+            "product": "재생플라스틱 칩",
+            "items": [
+              "재생플라스틱 칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_968c986484@2025-12-31",
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_637c017f1a",
+              "business": "폐기물중간재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_a7b66bb32a",
+            "name": "준성화학",
+            "address": "부산광역시 강서구 녹산산단442로 52 (송정동)",
+            "role": "takes",
+            "product": "재생칩",
+            "items": [
+              "재생칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_a7b66bb32a@2025-12-31",
+              "ref:허가업체명부:pv_07c39acf65@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_07c39acf65",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c0482c4cbe",
+            "name": "대원프라스틱공업사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-23 (송정동)",
+            "role": "takes",
+            "product": "재생용 플라스틱 사출품,재생용 플라스틱 칩(CHIP)",
+            "items": [
+              "재생용 플라스틱 사출품",
+              "재생용 플라스틱 칩(CHIP)"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c0482c4cbe@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_b9f78c8825",
+            "name": "세화골게이트팩(주)",
+            "address": "부산광역시 강서구 녹산산단381로 25 (송정동)",
+            "role": "takes",
+            "product": "골판지 상자, 재생플라스틱 소재 물질 제조, 플라스틱 포대 제조",
+            "items": [
+              "재생플라스틱 소재 물질 제조"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_b9f78c8825@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          }
+        ],
+        "uses": [
+          {
+            "id": "cf_8f02c18be5",
+            "name": "부산프라스틱공업(주)",
+            "address": "부산광역시 강서구 녹산산업중로168번길 3 (송정동)",
+            "role": "uses",
+            "product": "포장용 프라스틱 CPP,PAD",
+            "items": [
+              "포장용 프라스틱 CPP"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_8f02c18be5@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_4da2b3ec93",
+            "name": "(주)경기",
+            "address": "부산광역시 강서구 녹산산업북로313번길 49 (송정동)",
+            "role": "uses",
+            "product": "사출성형품",
+            "items": [
+              "사출성형품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_4da2b3ec93@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_d9254de75a",
+            "name": "(주)성광프라",
+            "address": "부산광역시 강서구 녹산산단262로13번길 48 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_d9254de75a@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e0ed4d06c6",
+            "name": "(주)재영테크윈 제2공장",
+            "address": "부산광역시 강서구 녹산산단261로59번길 8 (송정동)",
+            "role": "uses",
+            "product": "플라스틱부품, 플라스틱부품, 플라스틱부품, 플라스틱부품",
+            "items": [
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e0ed4d06c6@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e3731fcc95",
+            "name": "골드ENG",
+            "address": "부산광역시 강서구 녹산산업중로 51-12 (송정동)",
+            "role": "uses",
+            "product": "플라스틱",
+            "items": [
+              "플라스틱"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e3731fcc95@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_50cc854d59",
+            "name": "대성프라스틱",
+            "address": "부산광역시 강서구 녹산산단262로50번길 28 (송정동)",
+            "role": "uses",
+            "product": "플라스틱 사출품",
+            "items": [
+              "플라스틱 사출품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_50cc854d59@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_2c7ca72b92",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로40번길 16 (송정동)",
+            "role": "uses",
+            "product": "플라스틱제품",
+            "items": [
+              "플라스틱제품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_2c7ca72b92@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_f36b159b52",
+            "name": "삼화프라스틱",
+            "address": "부산광역시 강서구 녹산산단262로 27 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_f36b159b52@2025-12-31"
+            ]
+          }
+        ],
+        "takesTotal": 8,
+        "usesTotal": 17,
+        "reason": null
+      },
+      {
+        "streamId": "st_sprue",
+        "takes": [
+          {
+            "id": "cf_42907780bc",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-25 (송정동)",
+            "role": "takes",
+            "product": "재생PE,PP칩",
+            "items": [
+              "재생PE"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP",
+              "PE"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_42907780bc@2025-12-31",
+              "ref:허가업체명부:pv_2ae6ba678e@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2ae6ba678e",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c57acb0b79",
+            "name": "(주)성우케미칼",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-9 (송정동)",
+            "role": "takes",
+            "product": "재생수지",
+            "items": [
+              "재생수지"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c57acb0b79@2025-12-31",
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_2f44dd5e8d",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_8f0f2144d8",
+            "name": "극동산업",
+            "address": "부산광역시 강서구 녹산산단381로12번길 43-23 (송정동)",
+            "role": "takes",
+            "product": "합성수지재생",
+            "items": [
+              "합성수지재생"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_8f0f2144d8@2025-12-31",
+              "ref:허가업체명부:pv_ff9352c4ff@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_ff9352c4ff",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "role": "takes",
+            "product": null,
+            "items": [],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_346c59cb8b",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_968c986484",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로 376 (송정동)",
+            "role": "takes",
+            "product": "재생플라스틱 칩",
+            "items": [
+              "재생플라스틱 칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_968c986484@2025-12-31",
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_637c017f1a",
+              "business": "폐기물중간재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_a7b66bb32a",
+            "name": "준성화학",
+            "address": "부산광역시 강서구 녹산산단442로 52 (송정동)",
+            "role": "takes",
+            "product": "재생칩",
+            "items": [
+              "재생칩"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_a7b66bb32a@2025-12-31",
+              "ref:허가업체명부:pv_07c39acf65@2026-09-09"
+            ],
+            "permit": {
+              "status": "listed_check",
+              "vendorId": "pv_07c39acf65",
+              "business": "폐기물종합재활용업",
+              "phone": null,
+              "agency": "부산광역시 강서구",
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_c0482c4cbe",
+            "name": "대원프라스틱공업사",
+            "address": "부산광역시 강서구 녹산산단381로12번길 13-23 (송정동)",
+            "role": "takes",
+            "product": "재생용 플라스틱 사출품,재생용 플라스틱 칩(CHIP)",
+            "items": [
+              "재생용 플라스틱 사출품",
+              "재생용 플라스틱 칩(CHIP)"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_c0482c4cbe@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          },
+          {
+            "id": "cf_b9f78c8825",
+            "name": "세화골게이트팩(주)",
+            "address": "부산광역시 강서구 녹산산단381로 25 (송정동)",
+            "role": "takes",
+            "product": "골판지 상자, 재생플라스틱 소재 물질 제조, 플라스틱 포대 제조",
+            "items": [
+              "재생플라스틱 소재 물질 제조"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_b9f78c8825@2025-12-31"
+            ],
+            "permit": {
+              "status": "unlisted",
+              "vendorId": null,
+              "business": null,
+              "phone": null,
+              "agency": null,
+              "matchedCodes": []
+            }
+          }
+        ],
+        "uses": [
+          {
+            "id": "cf_8f02c18be5",
+            "name": "부산프라스틱공업(주)",
+            "address": "부산광역시 강서구 녹산산업중로168번길 3 (송정동)",
+            "role": "uses",
+            "product": "포장용 프라스틱 CPP,PAD",
+            "items": [
+              "포장용 프라스틱 CPP"
+            ],
+            "resinMatch": "named",
+            "resins": [
+              "PP"
+            ],
+            "evidence": [
+              "ref:등록공장현황:cf_8f02c18be5@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_4da2b3ec93",
+            "name": "(주)경기",
+            "address": "부산광역시 강서구 녹산산업북로313번길 49 (송정동)",
+            "role": "uses",
+            "product": "사출성형품",
+            "items": [
+              "사출성형품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_4da2b3ec93@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_d9254de75a",
+            "name": "(주)성광프라",
+            "address": "부산광역시 강서구 녹산산단262로13번길 48 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_d9254de75a@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e0ed4d06c6",
+            "name": "(주)재영테크윈 제2공장",
+            "address": "부산광역시 강서구 녹산산단261로59번길 8 (송정동)",
+            "role": "uses",
+            "product": "플라스틱부품, 플라스틱부품, 플라스틱부품, 플라스틱부품",
+            "items": [
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품",
+              "플라스틱부품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e0ed4d06c6@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_e3731fcc95",
+            "name": "골드ENG",
+            "address": "부산광역시 강서구 녹산산업중로 51-12 (송정동)",
+            "role": "uses",
+            "product": "플라스틱",
+            "items": [
+              "플라스틱"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_e3731fcc95@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_50cc854d59",
+            "name": "대성프라스틱",
+            "address": "부산광역시 강서구 녹산산단262로50번길 28 (송정동)",
+            "role": "uses",
+            "product": "플라스틱 사출품",
+            "items": [
+              "플라스틱 사출품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_50cc854d59@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_2c7ca72b92",
+            "name": "동양피앤씨 유한회사",
+            "address": "부산광역시 강서구 녹산산단381로40번길 16 (송정동)",
+            "role": "uses",
+            "product": "플라스틱제품",
+            "items": [
+              "플라스틱제품"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_2c7ca72b92@2025-12-31"
+            ]
+          },
+          {
+            "id": "cf_f36b159b52",
+            "name": "삼화프라스틱",
+            "address": "부산광역시 강서구 녹산산단262로 27 (송정동)",
+            "role": "uses",
+            "product": "플라스틱용기",
+            "items": [
+              "플라스틱용기"
+            ],
+            "resinMatch": "unstated",
+            "resins": [],
+            "evidence": [
+              "ref:등록공장현황:cf_f36b159b52@2025-12-31"
+            ]
+          }
+        ],
+        "takesTotal": 8,
+        "usesTotal": 17,
+        "reason": null
+      }
+    ]
+  },
+  "outsideVendors": {
+    "source": {
+      "name": "공공데이터포털 전국폐기물처리업소표준데이터",
+      "url": "https://www.data.go.kr/data/15114147/standard.do",
+      "asOfRange": [
+        "2023-07-14",
+        "2026-10-22"
+      ],
+      "note": "지자체가 올린 폐기물처리업 허가 정보입니다. 모든 지자체가 올리지는 않아 명부에 없는 업체도 있습니다.",
+      "radiusKm": 60.0
+    },
+    "streams": [
+      {
+        "streamId": "st_defect",
+        "codes": [
+          {
+            "code": "51-03-01",
+            "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+          },
+          {
+            "code": "51-03-00",
+            "name": "폐합성고분자화합물"
+          }
+        ],
+        "candidates": [
+          {
+            "id": "pv_e14c39f95c",
+            "name": "원일상사",
+            "address": "부산광역시 남구 신선로 211",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2015-12-03",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_defect_outside0_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:264ec3552ade:st_defect_outside0_distanceKm",
+                "ref:snapshot:d72675f41749"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e14c39f95c@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_7266f53a97",
+            "name": "㈜부경환경산업",
+            "address": "부산광역시 남구 신선로 213-1",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2018-05-16",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_defect_outside1_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:857ab24b7759:st_defect_outside1_distanceKm",
+                "ref:snapshot:44f25514a3aa"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_7266f53a97@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_e1e1a7a14d",
+            "name": "현대실업(주)",
+            "address": "부산광역시 금정구 공단로8번길15 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "40-02-06",
+                "name": null
+              },
+              {
+                "code": "40-02-07",
+                "name": null
+              },
+              {
+                "code": "40-02-08",
+                "name": null
+              },
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2008-07-10",
+            "phone": "051-521-1003",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_defect_outside2_distanceKm",
+              "kind": "number",
+              "value": 29.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:03676ebe0417:st_defect_outside2_distanceKm",
+                "ref:snapshot:d70d30257c5e"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e1e1a7a14d@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_5239777c61",
+            "name": "(주)현대자원",
+            "address": "부산광역시 금정구 반송로490번길27 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2014-02-27",
+            "phone": "051-522-3367",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_defect_outside3_distanceKm",
+              "kind": "number",
+              "value": 30.1,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:132ca3148255:st_defect_outside3_distanceKm",
+                "ref:snapshot:c52f78a840d5"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_5239777c61@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_2bc75926d1",
+            "name": "태양재활용산업",
+            "address": "경상남도 창원시 의창구 북면 백월로 233-5",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2009-08-05",
+            "phone": "055-255-6605",
+            "agency": "경상남도 창원시 의창구청",
+            "asOf": "2025-02-13",
+            "distance": {
+              "id": "st_defect_outside4_distanceKm",
+              "kind": "number",
+              "value": 31.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:d53d8568d53c:st_defect_outside4_distanceKm",
+                "ref:snapshot:dadefd1275ec"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2bc75926d1@2025-02-13"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_637c017f1a",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로376(송정동)",
+            "business": "폐기물중간재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2005-05-19",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_defect_outside5_distanceKm",
+              "kind": "number",
+              "value": 3.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:57d9e0557143:st_defect_outside5_distanceKm",
+                "ref:snapshot:2fa88211ccc4"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2013-05-10",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_defect_outside6_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:15602957218c:st_defect_outside6_distanceKm",
+                "ref:snapshot:a9b408df5251"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_2f44dd5e8d",
+            "name": "성우케미칼",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-9(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2012-06-21",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_defect_outside7_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:ff98a9b4dff1:st_defect_outside7_distanceKm",
+                "ref:snapshot:b6a10c4a0f82"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          }
+        ],
+        "total": 70,
+        "confirmedTotal": 15,
+        "reason": null,
+        "changed": [],
+        "removed": false
+      },
+      {
+        "streamId": "st_film",
+        "codes": [
+          {
+            "code": "51-03-01",
+            "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+          },
+          {
+            "code": "51-03-07",
+            "name": "플라스틱폐포장재"
+          },
+          {
+            "code": "51-03-00",
+            "name": "폐합성고분자화합물"
+          }
+        ],
+        "candidates": [
+          {
+            "id": "pv_e14c39f95c",
+            "name": "원일상사",
+            "address": "부산광역시 남구 신선로 211",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2015-12-03",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_film_outside0_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:df87e413200d:st_film_outside0_distanceKm",
+                "ref:snapshot:d72675f41749"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e14c39f95c@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_7266f53a97",
+            "name": "㈜부경환경산업",
+            "address": "부산광역시 남구 신선로 213-1",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2018-05-16",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_film_outside1_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:9ee584125f92:st_film_outside1_distanceKm",
+                "ref:snapshot:44f25514a3aa"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_7266f53a97@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_e1e1a7a14d",
+            "name": "현대실업(주)",
+            "address": "부산광역시 금정구 공단로8번길15 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "40-02-06",
+                "name": null
+              },
+              {
+                "code": "40-02-07",
+                "name": null
+              },
+              {
+                "code": "40-02-08",
+                "name": null
+              },
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2008-07-10",
+            "phone": "051-521-1003",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_film_outside2_distanceKm",
+              "kind": "number",
+              "value": 29.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:acb5636e4f18:st_film_outside2_distanceKm",
+                "ref:snapshot:d70d30257c5e"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e1e1a7a14d@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_5239777c61",
+            "name": "(주)현대자원",
+            "address": "부산광역시 금정구 반송로490번길27 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2014-02-27",
+            "phone": "051-522-3367",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_film_outside3_distanceKm",
+              "kind": "number",
+              "value": 30.1,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:bc7187dc9363:st_film_outside3_distanceKm",
+                "ref:snapshot:c52f78a840d5"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_5239777c61@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_2bc75926d1",
+            "name": "태양재활용산업",
+            "address": "경상남도 창원시 의창구 북면 백월로 233-5",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2009-08-05",
+            "phone": "055-255-6605",
+            "agency": "경상남도 창원시 의창구청",
+            "asOf": "2025-02-13",
+            "distance": {
+              "id": "st_film_outside4_distanceKm",
+              "kind": "number",
+              "value": 31.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:70a961b592b0:st_film_outside4_distanceKm",
+                "ref:snapshot:dadefd1275ec"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2bc75926d1@2025-02-13"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_637c017f1a",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로376(송정동)",
+            "business": "폐기물중간재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2005-05-19",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_film_outside5_distanceKm",
+              "kind": "number",
+              "value": 3.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:aaf4429ba75f:st_film_outside5_distanceKm",
+                "ref:snapshot:2fa88211ccc4"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2013-05-10",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_film_outside6_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:d64f3019bddc:st_film_outside6_distanceKm",
+                "ref:snapshot:a9b408df5251"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_2f44dd5e8d",
+            "name": "성우케미칼",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-9(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2012-06-21",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_film_outside7_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:ac040e8eb72e:st_film_outside7_distanceKm",
+                "ref:snapshot:b6a10c4a0f82"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          }
+        ],
+        "total": 70,
+        "confirmedTotal": 15,
+        "reason": null,
+        "changed": [],
+        "removed": false
+      },
+      {
+        "streamId": "st_purge",
+        "codes": [
+          {
+            "code": "51-03-01",
+            "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+          },
+          {
+            "code": "51-03-00",
+            "name": "폐합성고분자화합물"
+          }
+        ],
+        "candidates": [
+          {
+            "id": "pv_e14c39f95c",
+            "name": "원일상사",
+            "address": "부산광역시 남구 신선로 211",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2015-12-03",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_purge_outside0_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:7463022c9995:st_purge_outside0_distanceKm",
+                "ref:snapshot:d72675f41749"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e14c39f95c@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_7266f53a97",
+            "name": "㈜부경환경산업",
+            "address": "부산광역시 남구 신선로 213-1",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2018-05-16",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_purge_outside1_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:bcd613a2c9a9:st_purge_outside1_distanceKm",
+                "ref:snapshot:44f25514a3aa"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_7266f53a97@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_e1e1a7a14d",
+            "name": "현대실업(주)",
+            "address": "부산광역시 금정구 공단로8번길15 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "40-02-06",
+                "name": null
+              },
+              {
+                "code": "40-02-07",
+                "name": null
+              },
+              {
+                "code": "40-02-08",
+                "name": null
+              },
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2008-07-10",
+            "phone": "051-521-1003",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_purge_outside2_distanceKm",
+              "kind": "number",
+              "value": 29.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:01cd7e32d044:st_purge_outside2_distanceKm",
+                "ref:snapshot:d70d30257c5e"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e1e1a7a14d@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_5239777c61",
+            "name": "(주)현대자원",
+            "address": "부산광역시 금정구 반송로490번길27 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2014-02-27",
+            "phone": "051-522-3367",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_purge_outside3_distanceKm",
+              "kind": "number",
+              "value": 30.1,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:3c1e58bd634f:st_purge_outside3_distanceKm",
+                "ref:snapshot:c52f78a840d5"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_5239777c61@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_2bc75926d1",
+            "name": "태양재활용산업",
+            "address": "경상남도 창원시 의창구 북면 백월로 233-5",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2009-08-05",
+            "phone": "055-255-6605",
+            "agency": "경상남도 창원시 의창구청",
+            "asOf": "2025-02-13",
+            "distance": {
+              "id": "st_purge_outside4_distanceKm",
+              "kind": "number",
+              "value": 31.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:eeb3692a42de:st_purge_outside4_distanceKm",
+                "ref:snapshot:dadefd1275ec"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2bc75926d1@2025-02-13"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_637c017f1a",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로376(송정동)",
+            "business": "폐기물중간재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2005-05-19",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_purge_outside5_distanceKm",
+              "kind": "number",
+              "value": 3.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:6fc28d129db4:st_purge_outside5_distanceKm",
+                "ref:snapshot:2fa88211ccc4"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2013-05-10",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_purge_outside6_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:5184b929677c:st_purge_outside6_distanceKm",
+                "ref:snapshot:a9b408df5251"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_2f44dd5e8d",
+            "name": "성우케미칼",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-9(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2012-06-21",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_purge_outside7_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:529ec313c94a:st_purge_outside7_distanceKm",
+                "ref:snapshot:b6a10c4a0f82"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          }
+        ],
+        "total": 70,
+        "confirmedTotal": 15,
+        "reason": null,
+        "changed": [],
+        "removed": false
+      },
+      {
+        "streamId": "st_sprue",
+        "codes": [
+          {
+            "code": "51-03-01",
+            "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+          },
+          {
+            "code": "51-03-00",
+            "name": "폐합성고분자화합물"
+          }
+        ],
+        "candidates": [
+          {
+            "id": "pv_e14c39f95c",
+            "name": "원일상사",
+            "address": "부산광역시 남구 신선로 211",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2015-12-03",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_sprue_outside0_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:c8e3e0cceb27:st_sprue_outside0_distanceKm",
+                "ref:snapshot:d72675f41749"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e14c39f95c@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_7266f53a97",
+            "name": "㈜부경환경산업",
+            "address": "부산광역시 남구 신선로 213-1",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-00",
+                "name": "폐합성고분자화합물"
+              }
+            ],
+            "permitDate": "2018-05-16",
+            "phone": null,
+            "agency": "부산광역시 남구청",
+            "asOf": "2026-09-30",
+            "distance": {
+              "id": "st_sprue_outside1_distanceKm",
+              "kind": "number",
+              "value": 23.9,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:f1b3d0558a4c:st_sprue_outside1_distanceKm",
+                "ref:snapshot:44f25514a3aa"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_7266f53a97@2026-09-30"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_e1e1a7a14d",
+            "name": "현대실업(주)",
+            "address": "부산광역시 금정구 공단로8번길15 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "40-02-06",
+                "name": null
+              },
+              {
+                "code": "40-02-07",
+                "name": null
+              },
+              {
+                "code": "40-02-08",
+                "name": null
+              },
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2008-07-10",
+            "phone": "051-521-1003",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_sprue_outside2_distanceKm",
+              "kind": "number",
+              "value": 29.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:6d89386b04f7:st_sprue_outside2_distanceKm",
+                "ref:snapshot:d70d30257c5e"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_e1e1a7a14d@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_5239777c61",
+            "name": "(주)현대자원",
+            "address": "부산광역시 금정구 반송로490번길27 (금사동)",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2014-02-27",
+            "phone": "051-522-3367",
+            "agency": "부산광역시 금정구청",
+            "asOf": "2026-07-21",
+            "distance": {
+              "id": "st_sprue_outside3_distanceKm",
+              "kind": "number",
+              "value": 30.1,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:e565985064d0:st_sprue_outside3_distanceKm",
+                "ref:snapshot:c52f78a840d5"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_5239777c61@2026-07-21"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_2bc75926d1",
+            "name": "태양재활용산업",
+            "address": "경상남도 창원시 의창구 북면 백월로 233-5",
+            "business": "폐기물중간재활용업",
+            "match": "confirmed",
+            "matchedCodes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "codes": [
+              {
+                "code": "51-03-01",
+                "name": "폐합성수지류(폐염화비닐수지류는 제외한다)"
+              }
+            ],
+            "permitDate": "2009-08-05",
+            "phone": "055-255-6605",
+            "agency": "경상남도 창원시 의창구청",
+            "asOf": "2025-02-13",
+            "distance": {
+              "id": "st_sprue_outside4_distanceKm",
+              "kind": "number",
+              "value": 31.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:f7a94a2aeb69:st_sprue_outside4_distanceKm",
+                "ref:snapshot:dadefd1275ec"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2bc75926d1@2025-02-13"
+            ],
+            "note": null,
+            "sameComplex": false
+          },
+          {
+            "id": "pv_637c017f1a",
+            "name": "대호수지",
+            "address": "부산광역시 강서구 녹산산업중로376(송정동)",
+            "business": "폐기물중간재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2005-05-19",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_sprue_outside5_distanceKm",
+              "kind": "number",
+              "value": 3.2,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:8fd89a69ab45:st_sprue_outside5_distanceKm",
+                "ref:snapshot:2fa88211ccc4"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_637c017f1a@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_346c59cb8b",
+            "name": "나성폴리머",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-19(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2013-05-10",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_sprue_outside6_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:b38df93a9eca:st_sprue_outside6_distanceKm",
+                "ref:snapshot:a9b408df5251"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_346c59cb8b@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          },
+          {
+            "id": "pv_2f44dd5e8d",
+            "name": "성우케미칼",
+            "address": "부산광역시 강서구 녹산산단 381로12번길43-9(송정동)",
+            "business": "폐기물종합재활용업",
+            "match": "check",
+            "matchedCodes": [],
+            "codes": [],
+            "permitDate": "2012-06-21",
+            "phone": null,
+            "agency": "부산광역시 강서구",
+            "asOf": "2026-09-09",
+            "distance": {
+              "id": "st_sprue_outside7_distanceKm",
+              "kind": "number",
+              "value": 3.5,
+              "unit": "km",
+              "evidence": [
+                "calc:find_outside_vendors:20e2f834d277:st_sprue_outside7_distanceKm",
+                "ref:snapshot:b6a10c4a0f82"
+              ]
+            },
+            "evidence": [
+              "ref:허가업체명부:pv_2f44dd5e8d@2026-09-09"
+            ],
+            "note": "공공데이터에 적힌 처리 폐기물을 믿기 어려워 상호로 고른 곳입니다. 처리 품목을 먼저 확인해 주세요.",
+            "sameComplex": true
+          }
+        ],
+        "total": 70,
+        "confirmedTotal": 15,
+        "reason": null,
+        "changed": [],
+        "removed": false
+      }
+    ]
+  }
+}
