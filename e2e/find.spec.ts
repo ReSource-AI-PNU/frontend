@@ -7,6 +7,7 @@
  * 이메일·비밀번호 가입은 백엔드 계정 API가 있을 때만 돈다(E2E_ACCOUNTS=1).
  */
 import { expect, test, type Page } from "@playwright/test";
+import demoView from "../src/lib/v3/fixture-data/view.json";
 
 const API = (process.env.E2E_API ?? "http://localhost:8000/api/v3").replace(/\/$/, "");
 const WON = /[+−-]?\d{1,3}(,\d{3})*원/;
@@ -68,8 +69,8 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await answerQuestions(page);
 
   const result = page.getByRole("region", { name: "결과" });
-  await expect(result.getByRole("heading", { level: 2 })).toContainText("보낼 곳을 찾았습니다");
-  const rows = result.getByRole("listitem");
+  await expect(result.getByRole("heading", { level: 2 })).toContainText("처리 후보를 찾았습니다");
+  const rows = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem");
   await expect(rows).toHaveCount(4);
   for (const name of ["불량 사출품", "포장 필름", "퍼지 덩어리", "스프루·런너"]) {
     await expect(rows.filter({ hasText: name })).toContainText(WON);
@@ -80,7 +81,7 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
 
   // 순비용의 내역: 매각 수익, 운반비, 전처리 인건비
   const sprue = rows.filter({ hasText: "스프루·런너" });
-  await sprue.getByRole("button", { name: /조건 확정|조건 확인 뒤 확정|계산 내역/ }).click();
+  await sprue.getByRole("button", { name: /매입표 기준 충족|매입 조건 확인 필요|계산 내역/ }).click();
   await expect(sprue.getByText("매각 수익")).toBeVisible();
   await expect(sprue.getByText("운반비", { exact: true })).toBeVisible();
   await expect(sprue.getByText("전처리 인건비")).toBeVisible();
@@ -225,6 +226,41 @@ test("체험하기는 로그인 없이 시연 회사를 읽기 전용으로 보�
   await expect(page.getByRole("button", { name: "승인하고 진행" })).toHaveCount(0);
   const find = page.getByRole("button", { name: "받아 줄 곳 찾기" });
   if ((await find.count()) > 0) await expect(find).toBeDisabled();
+});
+
+test("체험 결과에서 매입 기준, 수거 확인, 반입 검수와 승인을 따로 표시한다", async ({ page }) => {
+  const view = structuredClone(demoView);
+  const defectApproval = view.approvals.find((item) => item.streamIds.includes("st_defect"));
+  if (!defectApproval) throw new Error("시연 데이터에 불량품 승인 상태가 있어야 합니다.");
+  defectApproval.emitter = true;
+  const purgeThreadId = view.result.assignments.find((item) => item.streamId === "st_purge")?.threadId;
+  view.approvals = view.approvals.filter((item) => item.threadId !== purgeThreadId);
+  view.threads = view.threads.filter((item) => item.id !== purgeThreadId);
+
+  await page.route("**/api/v3-demo/sessions", (route) => route.fulfill({ json: [view.session] }));
+  await page.route(`**/api/v3-demo/sessions/${view.session.id}`, (route) => route.fulfill({ json: view }));
+  await page.goto("/demo");
+
+  const result = page.getByRole("region", { name: "결과" });
+  await expect(result.getByRole("heading", { level: 2 })).toHaveText("4개 품목의 처리 후보를 찾았습니다");
+  const sprue = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem").filter({ hasText: "스프루·런너" });
+  await expect(sprue).toContainText("한 달 600 kg");
+  await expect(sprue).toContainText("+354,000원");
+  await expect(sprue).toContainText("매입표 기준 충족");
+  await expect(sprue).toContainText("업체 수거 확인 전");
+  await expect(sprue).toContainText("양측 승인 전");
+  await expect(sprue).toContainText("화·목 수거 일정을 업체에 확인");
+  const conditional = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem").filter({ hasText: "불량 사출품" });
+  await expect(conditional).toContainText("매입 조건 확인 필요");
+  await expect(conditional).toContainText("반입 검수 필요");
+  await expect(conditional).toContainText("배출 기업 승인 완료 · 업체 승인 전");
+  const unknown = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem").filter({ hasText: "퍼지 덩어리" });
+  await expect(unknown).toContainText("양측 승인 상태 확인 필요");
+  await expect(unknown).toContainText("수거 가능 여부와 일정을 업체에 확인");
+  await expect(result).not.toContainText("인수 확정");
+
+  await sprue.getByRole("button", { name: /매입 kg당 340원/ }).click();
+  await expect(page.getByRole("dialog", { name: "근거" })).toBeVisible();
 });
 
 test("이메일로 가입하면 회사를 등록하고 빈 상태에서 폐기물 등록으로 시작한다", async ({ page }) => {

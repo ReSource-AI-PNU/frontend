@@ -860,6 +860,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
             onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
             busy={d.busy}
             threads={view.threads}
+            approvals={view.approvals}
           />
         ) : null}
 

@@ -13,7 +13,7 @@ export type PreviewRow = {
   /** "한 달 400 kg" */
   amount: string | null;
   vendor: string;
-  /** "조건 확인 뒤 확정" 같은 상태. 옮길 곳이 없으면 null */
+  /** "매입 조건 확인 필요" 같은 상태. 옮길 곳이 없으면 null */
   state: string | null;
   price: string | null;
   /** "+180,000원" */
@@ -34,8 +34,8 @@ export type DemoPreview = {
 };
 
 const STATUS_WORD: Record<string, string> = {
-  calculated: "조건 확정",
-  conditional: "조건 확인 뒤 확정",
+  calculated: "매입표 기준 충족",
+  conditional: "매입 조건 확인 필요",
   needs_information: "값 확인 필요",
 };
 
