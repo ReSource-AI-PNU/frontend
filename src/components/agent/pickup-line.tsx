@@ -58,7 +58,7 @@ export function PickupBrief({ pickup, committed }: { pickup: Pickup; committed?:
   else if (kind === "missing") fee = <span className="text-warn">운반비 별도 · 금액 확인 필요</span>;
   else if (kind === "undecided")
     fee =
-      pickup.status === "check" && pickup.routeBasis === "included" ? (
+      pickup.status === "check" && !pickup.detail && pickup.routeBasis === "included" ? (
         "운반비 포함(노선 수거 조건)"
       ) : (
         <span className="text-warn">운반비 미정</span>
@@ -68,6 +68,7 @@ export function PickupBrief({ pickup, committed }: { pickup: Pickup; committed?:
       {fee}
       {fee ? " · " : null}
       {status}
+      {pickup.detail ? <span className="block">{pickup.detail}</span> : null}
     </span>
   );
 }
@@ -104,7 +105,7 @@ export function TransportRows({ assignment, onOpenTalk }: { assignment: Assignme
               ) : null}
               {pickup.paidBy === "emitter" ? " · 공장 부담" : null}
             </>
-          ) : pickup.status === "check" && pickup.routeBasis === "included" ? (
+          ) : pickup.status === "check" && !pickup.detail && pickup.routeBasis === "included" ? (
             "노선 수거는 운반비 포함이지만 이 공장은 노선 밖이라 운반비가 정해지지 않았습니다"
           ) : (
             "업체가 이 공장의 운반비를 밝히지 않았습니다"

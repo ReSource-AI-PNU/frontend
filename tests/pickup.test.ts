@@ -87,3 +87,18 @@ test("수거 불가는 운반비를 보지 않고, 손익분기 상대 이름은
 test("모르는 수거 상태는 화면 모양 검사에서 막는다", () => {
   assert.throws(() => pickup({ status: "teleport" as Pickup["status"] }));
 });
+
+test("노선과 범위 충돌 사유를 결과와 승인에 같은 문구로 표시한다", () => {
+  const detail = "지역명은 기존 수거 노선과 일치하지만, 공장까지 거리가 업체가 밝힌 최대 수거 거리를 넘습니다.";
+  const check = pickup({
+    status: "check",
+    label: "주소 또는 수거 가능 여부 확인",
+    detail,
+    basis: "undecided",
+    paidBy: null,
+    pending: true,
+  });
+  assert.equal(pickupStatusText(check, false), check.label);
+  assert.equal(pickupTodo({ pickup: check, transportPending: true })[0], detail);
+  assert.equal(feeKind(check), "undecided");
+});
