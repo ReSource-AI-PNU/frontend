@@ -113,7 +113,7 @@ try {
   assert.doesNotMatch(documents, /다음 등급|현행 처리 단가가 없어/);
   steps.push("One approval left transaction pending; both approvals generated three consistent draft documents");
   await v.getByLabel("실제 등급").selectOption("A");
-  await v.getByLabel("실제 단가", { exact: true }).fill("330");
+  await v.getByLabel("실제 단가", { exact: true }).fill("300");
   await v.getByLabel("실제 중량 (kg)").fill("900");
   await v.getByLabel("실제 처리 방식").selectOption("재활용");
   await v.getByLabel("계량표 번호 (선택)").fill("LOCAL-TEST-001");
@@ -126,7 +126,7 @@ try {
     await expect(v.getByText("920 kg", { exact: true }).first()).toBeVisible();
   });
   await e.goto("/app/report");
-  await expect(e.getByRole("button", { name: "303,600원", exact: true })).toBeVisible();
+  await expect(e.getByRole("button", { name: "276,000원", exact: true })).toBeVisible();
   await expect(e.getByText("산정 보류", { exact: true })).toBeVisible();
   await expect(e.getByText("정정 전 900 kg", { exact: true })).toBeVisible();
   const downloading = e.waitForEvent("download");
@@ -136,12 +136,14 @@ try {
   const chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
   const csv = Buffer.concat(chunks).toString("utf8");
-  assert.match(csv, /,920,330,303600,,계산하지 않음/);
+  assert.match(csv, /,920,300,276000,,계산하지 않음/);
   assert.match(csv, /1판 중량 900kg/);
   assert.match(csv, /가상 계량표 오기 수정/);
-  steps.push("Inspection 900kg -> corrected 920kg; report and CSV both 303600 KRW, carbon held, original revision retained");
-  const emitterOrg = (await (await e.request.get("/api/v3/orgs")).json())[0].id;
-  assert.ok([403,404].includes((await v.request.get(`/api/v3/orgs/${emitterOrg}/streams`)).status()));
+  steps.push("Inspection 900kg -> corrected 920kg; report and CSV both 276000 KRW, carbon held, original revision retained");
+  const emitterOrg = (await (await e.request.get("/api/v3/orgs")).json()).find((org) => org.name === `가상검증 emitter ${run}`);
+  assert.ok(emitterOrg, "Find the test emitter by identity, not list order");
+  const privateResponse = await v.request.get(`/api/v3/orgs/${emitterOrg.id}/streams`);
+  assert.ok([403,404].includes(privateResponse.status()), `Private endpoint status: ${privateResponse.status()}`);
   steps.push("Vendor account denied emitter's private stream endpoint");
   console.log(JSON.stringify({ status: "passed", mode: "local BFF; rule model; synthetic text documents; browser UI", screenshots: false, steps }, null, 2));
 } finally {

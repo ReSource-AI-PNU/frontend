@@ -134,6 +134,9 @@ function EvidenceCard({
             <div key={key} className="contents"><dt className="text-muted">{label}</dt><dd>{key === "evidenceClass" ? ({ measured: "① 사용자 실측·증빙", official: "② 공식 자료", literature: "③ 적용 조건이 있는 문헌 추정", assumption: "④ 계산 가정", policy: "⑤ 운영 정책", hold: "⑥ 산정 보류" }[String(item.meta[key])] ?? String(item.meta[key])) : String(item.meta[key])}</dd></div>
         ) : null)}
       </dl>
+      {policy && item.meta.policyApproval ? (
+        <details className="mt-3 text-[13px] text-ink-2"><summary className="cursor-pointer">정책 승인 기록</summary><pre className="mt-1 whitespace-pre-wrap break-all">{JSON.stringify(item.meta.policyApproval, null, 2)}</pre></details>
+      ) : null}
       {["conditions", "caveats", "excludes"].map((key) => Array.isArray(item.meta[key]) ? (
         <div key={key} className="mt-3 text-[13px] text-ink-2">
           <p className="font-semibold">{key === "conditions" ? "적용 조건" : key === "excludes" ? "제외 조건" : "해석 시 주의"}</p>
