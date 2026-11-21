@@ -22,3 +22,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **단추**: `components/ui/button`의 `Button`·`ButtonLink`·`buttonClass`를 쓴다. 한 화면에 채운 단추(primary)는 하나다.
 - **E2E**: 로그인 뒤 첫 화면은 홈이다. 찾기 화면의 검사는 `/app/find`(체험하기는 `/demo/find`)로 가서 한다. 접힌 칸은 제목을 눌러 편 뒤 확인한다.
 
+## 설문 후속 구현
+
+2026-11-22 사용자 승인 범위: 공개 범위 단가와 거래별 좁히기, 수거 기준 선택, 기록 없는 공장 입력, 계량 CSV, 선택한 문의 상대에게 사진 공유, 확정 방문 대비 추가 노선비.
+
+- S1: 공개 범위와 내부 협상 한도를 구분하고, 담당자가 확인한 단일 제안을 상대가 수락한 뒤 기존 승인으로 연결한다.
+- S2: 처음 등록할 때 모르는 재질·형태·물량·발생 유형을 임의로 채우지 않는다.
+- S3: 계량 CSV는 선택한 월만 합산하며 재업로드 결과를 표시한다. 품질 측정값을 요구하지 않는다.
+- S4: 사진 공유는 직접 선택한 문의 상대에 한정하고 취소할 수 있다.
+- S5: 업체 수거 기준과 업체에게만 보이는 추가 노선비를 지원한다. 예상 금액의 계산 근거와 가정을 표시한다.
+
+검증: `node --test tests/*.test.ts`, `npx tsc --noEmit`, `npm run lint`, `NEXT_PUBLIC_API_BASE=/api/v3 npm run build`, 로컬 가상 서버 대상 `npm run test:e2e`. 결과는 `docs/verification.md`에 기록한다. 실제 설문 응답자 연락처는 저장소에 넣지 않는다.

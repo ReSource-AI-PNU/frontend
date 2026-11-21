@@ -192,6 +192,13 @@ export const api = {
     request<ScenarioPreview>(`/sessions/${enc(id)}/scenarios/preview`, org, json(body)),
   applyScenario: (id: string, org: string, body: ScenarioOptions & { token: string }) =>
     request<{ sessionId: string }>(`/sessions/${enc(id)}/scenarios/apply`, org, json(body)),
+  survey: <T>(orgId: string, path = "", body?: unknown) =>
+    request<T>(`/survey${path}`, orgId, body === undefined ? {} : json(body)),
+  surveyUpload: <T>(orgId: string, path: string, file: File, fields: Record<string, string>) => {
+    const form = new FormData(); form.set("file", file);
+    for (const [key, value] of Object.entries(fields)) form.set(key, value);
+    return request<T>(`/survey/${path}`, orgId, { method: "POST", body: form });
+  },
   /** 서버가 살아 있는지 */
   health: () => request<{ ok: boolean }>("/health", null),
   listOrgs: () => request<Org[]>("/orgs", null),

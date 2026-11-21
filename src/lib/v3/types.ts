@@ -270,7 +270,11 @@ export type VendorProfile = {
   orgId: string;
   name?: string;
   permits: { wasteItem: string; materials: string[]; evidence: string[]; entrySource?: "manual"; code?: string }[];
+  collectionPolicy?: "quantity" | "distance_vehicle" | "combined";
   criteria: {
+    priceLow?: number | null;
+    priceHigh?: number | null;
+    rangeEvidence?: string[];
     id: string;
     material: string;
     grade: string | null;
@@ -418,6 +422,8 @@ export type CriteriaRowInput = {
   form: string | null;
   priceMode: CriterionPriceMode;
   unitPriceKrwPerKg: number | null;
+  priceLow?: number;
+  priceHigh?: number;
   minMonthlyKg: number | null;
   maxContaminationPct: number | null;
   maxMoisturePct: number | null;

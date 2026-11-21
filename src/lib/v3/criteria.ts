@@ -38,6 +38,7 @@ export type CriteriaRowState = {
   /** 고칠 칸을 펼쳤는지 */
   open: boolean;
   saved: boolean;
+  rangeSelected?: boolean;
   page: number | null;
   /** 문서에 적힌 그 행 */
   quote: string | null;
@@ -182,8 +183,8 @@ export function rowProblems(row: CriteriaRowState): string[] {
   if (v.grade.trim().length > 40) out.push("등급은 40자 이내로 적어 주세요.");
   if (v.priceMode !== "negotiated") {
     const price = numberInput(v.price);
-    if (price === null || Number.isNaN(price) || price < 0) out.push("kg당 단가를 숫자 하나로 적어 주세요.");
-    else if (price > PRICE_LIMIT) out.push(`kg당 단가가 ${formatNumber(PRICE_LIMIT)}원을 넘습니다. 톤당 값이면 1,000으로 나눠 적어 주세요.`);
+    if (!row.rangeSelected && (price === null || Number.isNaN(price) || price < 0)) out.push("kg당 단가를 숫자 하나로 적어 주세요.");
+    else if (price !== null && price > PRICE_LIMIT) out.push(`kg당 단가가 ${formatNumber(PRICE_LIMIT)}원을 넘습니다. 톤당 값이면 1,000으로 나눠 적어 주세요.`);
     if (!v.direction) out.push("매입인지 처리비인지 골라 주세요.");
   }
   const quantity = numberInput(v.minMonthlyKg);
@@ -276,7 +277,8 @@ export function rowPayload(row: CriteriaRowState): CriteriaRowInput | null {
     grade: v.grade.trim() || null,
     form: v.form.trim() || null,
     priceMode: v.priceMode ?? "fixed",
-    unitPriceKrwPerKg: v.priceMode === "negotiated" ? null : v.direction === "fee" ? -price : price,
+    unitPriceKrwPerKg: v.priceMode === "negotiated" || row.rangeSelected ? null : v.direction === "fee" ? -price : price,
+    ...(v.priceMode !== "negotiated" && row.rangeSelected && row.candidates?.length === 2 ? {priceLow: v.direction === "fee" ? -row.candidates[1] : row.candidates[0], priceHigh: v.direction === "fee" ? -row.candidates[0] : row.candidates[1]} : {}),
     minMonthlyKg: value(v.minMonthlyKg),
     maxContaminationPct: value(v.maxContaminationPct),
     maxMoisturePct: value(v.maxMoisturePct),
@@ -300,6 +302,8 @@ export function rowSummary(row: CriteriaRowState): string {
     v.grade ? `${v.grade === "등외" ? "등외" : `${v.grade}등급`}` : null,
     v.priceMode === "negotiated"
       ? "담당자 견적 필요"
+      : row.rangeSelected && row.candidates
+      ? `${v.direction === "fee" ? "처리비" : "매입"} 공개 범위 kg당 ${row.candidates.join("~")}원`
       : price === null || Number.isNaN(price) || !v.direction
       ? "단가 확인 필요"
       : `${v.direction === "buy" ? "매입" : "처리비"} kg당 ${formatNumber(price)}원`,
