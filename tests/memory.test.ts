@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { assignmentSchema, contractReviewSchema, orgMemorySchema } from "../src/lib/v3/schema.ts";
+import { assignmentSchema, contractReviewSchema, orgMemorySchema, vendorMemorySchema } from "../src/lib/v3/schema.ts";
 
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/v3-memory.json", import.meta.url), "utf8"));
 
@@ -54,4 +54,12 @@ test("결과 한 줄에 회사 기록 반영 예상 단가가 근거와 함께 �
   // 다른 제안도 같은 기준의 예상 단가가 있고, 한 달 값은 보정 전이라고 밝힌다
   const other = row.alternatives.find((a) => a.personalUnitPrice);
   assert.ok(other && other.note.includes("회사 기록 보정 전"));
+});
+
+test("처리 업체는 자기 검수 기록을 배출 기업별로 본다", () => {
+  const memory = vendorMemorySchema.parse(fixture.vendorMemory);
+  assert.equal(memory.role, "vendor");
+  const hanbit = memory.emitters.find((e) => e.emitterOrgId === "org_hanbit");
+  assert.ok(hanbit && hanbit.inspections.status === "below");
+  assert.ok(hanbit.inspectionRows.every((row) => row.streamName.length > 0));
 });

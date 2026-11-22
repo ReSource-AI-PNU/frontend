@@ -162,7 +162,9 @@ function Row({
           ) : assignment.unitPrice ? (
             <>
               <ClaimValue claim={assignment.unitPrice} display={priceText(assignment.unitPrice)} className="!font-normal" />
-              {isEmitter && assignment.personal?.expectedUnitPrice ? (
+              {isEmitter &&
+              assignment.personal?.expectedUnitPrice &&
+              assignment.personal.expectedUnitPrice.value !== assignment.unitPrice.value ? (
                 <span className="block text-[13px] text-ink-2">
                   회사 기록 반영 예상{" "}
                   <ClaimValue
@@ -372,7 +374,7 @@ function Row({
                             <ClaimValue claim={item.unitPrice} display={priceText(item.unitPrice)} className="!font-normal" />
                           </>
                         ) : null}
-                        {isEmitter && item.personalUnitPrice ? (
+                        {isEmitter && item.personalUnitPrice && item.personalUnitPrice.value !== item.unitPrice?.value ? (
                           <>
                             {" · 기록 반영 예상 "}
                             <ClaimValue claim={item.personalUnitPrice} display={priceText(item.personalUnitPrice)} className="!font-normal" />

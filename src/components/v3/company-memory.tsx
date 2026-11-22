@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
 import { api } from "@/lib/v3/api";
-import type { MemoryInspection, MemoryStream, OrgMemory } from "@/lib/v3/types";
+import type { MemoryInspection, MemoryStream, OrgMemory, VendorMemory } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
@@ -31,7 +31,16 @@ function Compare({ value }: { value: MemoryInspection["grade"] }) {
   return null;
 }
 
-function InspectionTable({ rows }: { rows: MemoryInspection[] }) {
+function InspectionTable({
+  rows,
+  label = "업체",
+  nameOf = (row) => row.vendorName ?? "업체",
+}: {
+  rows: MemoryInspection[];
+  /** 둘째 칸 머리(배출 기업 화면은 업체, 업체 화면은 폐기물) */
+  label?: string;
+  nameOf?: (row: MemoryInspection) => string;
+}) {
   if (rows.length === 0) return null;
   return (
     <div className="mt-3 overflow-x-auto">
@@ -39,7 +48,7 @@ function InspectionTable({ rows }: { rows: MemoryInspection[] }) {
         <thead className="text-[12.5px] text-muted">
           <tr className="border-b border-line">
             <th className="py-2 pr-3 font-medium">검수일</th>
-            <th className="py-2 pr-3 font-medium">업체</th>
+            <th className="py-2 pr-3 font-medium">{label}</th>
             <th className="py-2 pr-3 font-medium">등급 (합의 → 실제)</th>
             <th className="py-2 font-medium">단가 (합의 → 실제)</th>
           </tr>
@@ -48,7 +57,7 @@ function InspectionTable({ rows }: { rows: MemoryInspection[] }) {
           {rows.map((row) => (
             <tr key={row.inspectionId} className="border-b border-line align-top last:border-0">
               <td className={`py-2 pr-3 ${num}`}>{row.inspectedOn}</td>
-              <td className="py-2 pr-3">{row.vendorName ?? "업체"}</td>
+              <td className="py-2 pr-3">{nameOf(row)}</td>
               <td className="py-2 pr-3">
                 {row.agreedGrade ?? "확인 필요"} → {row.actualGrade ?? "기록 없음"}
                 <Compare value={row.grade} />
@@ -374,6 +383,86 @@ export function CompanyMemory() {
           }}
         />
       ) : null}
+    </section>
+  );
+}
+
+/**
+ * 처리 업체의 기록(자료 화면 맨 아래, 업체만). 자기가 기록한 검수를 배출 기업별로 합의와 견줘 보인다.
+ * 판정에 쓰지 않고 보여 주기만 한다. 같은 기록은 배출 기업의 계약 검토(지난 검수 기록)에도 보인다.
+ */
+function VendorMemoryBody({ memory }: { memory: VendorMemory }) {
+  const s = memory.summary;
+  if (s.inspections + s.deals === 0) {
+    return (
+      <p className="mt-4 text-sm text-muted">
+        아직 쌓인 기록이 없습니다. 확정한 거래의 반입 검수 결과를 기록하면 배출 기업별로 여기에 모입니다.
+      </p>
+    );
+  }
+  const below = memory.emitters.filter((e) => e.inspections.status === "below");
+  return (
+    <>
+      <p className="mt-4 text-[15px] text-ink-2">
+        거래한 배출 기업 <span className={num}>{s.emitters}</span>곳 · 확정 <span className={num}>{s.deals}</span>번 · 검수{" "}
+        <span className={num}>{s.inspections}</span>건
+      </p>
+      {below.length > 0 ? (
+        <div role="status" className="mt-4 rounded-md bg-warn-bg px-4 py-3 text-sm text-warn">
+          {below.map((e) => e.emitterName ?? "배출 기업").join(", ")}: 검수에서 합의한 등급이나 단가보다 낮게 나온 건이 절반
+          이상입니다. 다음 합의 때 계약 검토 담당이 양쪽에 반입 검수 조건을 확인하도록 요청합니다.
+        </div>
+      ) : null}
+      <MoreDetails className="mt-3" hint={`배출 기업 ${memory.emitters.length}곳`}>
+        <div className="divide-y divide-line">
+          {memory.emitters.map((emitter) => (
+            <div key={emitter.emitterOrgId} className="py-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-[16px] font-semibold tracking-[-0.01em]">{emitter.emitterName ?? "배출 기업"}</h3>
+                <StatusChip summary={emitter.inspections} />
+              </div>
+              <p className="mt-1 text-[13px] text-muted">
+                확정 <span className={num}>{emitter.deals}</span>번 · 검수 <span className={num}>{emitter.inspections.count}</span>건
+              </p>
+              <InspectionTable
+                rows={emitter.inspectionRows}
+                label="폐기물"
+                nameOf={(row) => ("streamName" in row ? String(row.streamName) : "폐기물")}
+              />
+            </div>
+          ))}
+        </div>
+      </MoreDetails>
+    </>
+  );
+}
+
+export function VendorMemoryPanel() {
+  const { mode, org } = useV3();
+  const remote = useRemote(`vendor-memory:${org.id}`, mode === "live" && org.role === "vendor", () =>
+    api.getVendorMemory(org.id),
+  );
+  if (org.role !== "vendor" || mode !== "live") return null;
+  return (
+    <section aria-labelledby="vendor-memory-title" className="mt-12 border-t border-line pt-8">
+      <h2 id="vendor-memory-title" className="text-[20px] leading-[1.35] font-semibold tracking-[-0.02em]">
+        거래한 배출 기업 기록
+      </h2>
+      <p className="mt-1 text-sm text-muted">
+        확정한 거래에서 기록한 반입 검수를 배출 기업별로 합의와 견줘 모았습니다. 다른 업체는 이 기록을 볼 수 없습니다.
+      </p>
+      {remote.loading ? <p className="mt-4 text-sm text-muted">기록을 불러오는 중입니다.</p> : null}
+      {remote.error ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <p role="alert" className="text-sm text-loss">
+            잠시 연결이 원활하지 않습니다. 다시 시도해 주세요.
+          </p>
+          <Button variant="secondary" size="sm" onClick={remote.reload}>
+            다시 시도
+          </Button>
+        </div>
+      ) : null}
+      {remote.data ? <VendorMemoryBody memory={remote.data} /> : null}
     </section>
   );
 }

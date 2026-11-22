@@ -1486,7 +1486,9 @@ export const memoryInspectionSchema = obj({
   sessionId: z.string(),
   streamId: z.string(),
   vendorOrgId: z.string(),
-  vendorName: z.string().nullable(),
+  /** 2026-11-22 뒤 응답 */
+  emitterOrgId: z.string().optional(),
+  vendorName: z.string().nullable().optional(),
   agreedGrade: z.string().nullable(),
   actualGrade: z.string().nullable(),
   grade: memoryCompareSchema,
@@ -1524,6 +1526,8 @@ export const memoryCorrectionSchema = obj({
 /** GET·PUT /orgs/{orgId}/memory: 회사별 기록(지난 답변·검수·교정·거래). 배출 기업 본인만 본다 */
 export const orgMemorySchema = obj({
   orgId: z.string(),
+  /** 2026-11-22 뒤 응답. 업체의 기록(vendorMemorySchema)과 가른다 */
+  role: z.literal("emitter").optional(),
   /** false면 계약 검토에 쓰지 않는다(기록은 그대로 둔다) */
   enabled: z.boolean(),
   dataOrigin: z.enum(["real", "demo"]),
@@ -1568,6 +1572,24 @@ export const orgMemorySchema = obj({
       }),
     ),
   }).optional(),
+});
+
+/** GET /orgs/{orgId}/memory(처리 업체): 자기가 기록한 검수와 함께 확정한 거래를 배출 기업별로 묶은 것. 판정에는 쓰지 않는다 */
+export const vendorMemorySchema = obj({
+  orgId: z.string(),
+  role: z.literal("vendor"),
+  dataOrigin: z.enum(["real", "demo"]),
+  minRecords: z.number(),
+  summary: obj({ emitters: z.number(), inspections: z.number(), below: z.number(), deals: z.number() }),
+  emitters: z.array(
+    obj({
+      emitterOrgId: z.string(),
+      emitterName: z.string().nullable(),
+      deals: z.number(),
+      inspections: memorySummarySchema,
+      inspectionRows: z.array(memoryInspectionSchema.extend({ streamName: z.string() })),
+    }),
+  ),
 });
 
 export const reportSchema = obj({

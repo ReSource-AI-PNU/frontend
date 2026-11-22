@@ -75,7 +75,7 @@ import type {
 } from "@/lib/v3/types";
 import { Dots } from "@/components/agent/dots";
 import { ClaimValue } from "./claim";
-import { CompanyMemory } from "./company-memory";
+import { CompanyMemory, VendorMemoryPanel } from "./company-memory";
 import { useV3 } from "./context";
 import { CriteriaReview } from "./criteria-review";
 import { PermitEditor } from "./permit-editor";
@@ -2238,6 +2238,7 @@ export function MaterialsView() {
       {mode === "loading" ? <p className="text-sm text-muted">불러오는 중입니다.</p> : null}
       {mode !== "loading" && org.role === "emitter" ? <EmitterMaterials /> : null}
       {mode !== "loading" && org.role === "vendor" ? <VendorMaterials /> : null}
+      {mode !== "loading" && org.role === "vendor" ? <VendorMemoryPanel /> : null}
     </div>
   );
 }

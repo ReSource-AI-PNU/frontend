@@ -461,6 +461,26 @@ function RetrainBody({ retrain, orgId, today }: { retrain: RetrainTable; orgId: 
         </dl>
       </div>
 
+      {retrain.personalStrength ? (
+        <div>
+          <h3 className="text-label text-muted">회사 기록 보정 강도</h3>
+          <p className="mt-1">
+            지금 쓰는 값 <span className="font-mono tabular-nums">{retrain.personalStrength.current}</span>건 · 실제 검수로 낸 제안{" "}
+            {retrain.personalStrength.suggested == null ? (
+              <span className="text-warn">없음</span>
+            ) : (
+              <span className="font-mono tabular-nums">{retrain.personalStrength.suggested}</span>
+            )}
+          </p>
+          <p className="mt-1 text-[13px] text-muted">
+            묶음 <span className="tabular-nums">{retrain.personalStrength.groups}</span>/
+            <span className="tabular-nums">{retrain.personalStrength.minGroups}</span> · 검수{" "}
+            <span className="tabular-nums">{retrain.personalStrength.records}</span>/
+            <span className="tabular-nums">{retrain.personalStrength.minRecords}</span> · {retrain.personalStrength.reason}
+          </p>
+        </div>
+      ) : null}
+
       <div>
         <h3 className="text-label text-muted">실제 단가와 매입 기준표의 차이 ({retrain.calibration.count}건)</h3>
         <p className="mt-1 text-[13px] text-muted">

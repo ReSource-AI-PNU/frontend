@@ -1,6 +1,7 @@
 {
   "memory": {
     "orgId": "org_hanbit",
+    "role": "emitter",
     "enabled": true,
     "dataOrigin": "demo",
     "minRecords": 3,
@@ -150,6 +151,7 @@
             "sessionId": "ses_1",
             "streamId": "st_sprue",
             "vendorOrgId": "org_saegil",
+            "emitterOrgId": "org_hanbit",
             "agreedGrade": "A",
             "actualGrade": "B",
             "grade": "lower",
@@ -194,6 +196,7 @@
             "sessionId": "ses_1",
             "streamId": "st_sprue",
             "vendorOrgId": "org_saegil",
+            "emitterOrgId": "org_hanbit",
             "agreedGrade": "A",
             "actualGrade": "C",
             "grade": "lower",
@@ -238,6 +241,7 @@
             "sessionId": "ses_1",
             "streamId": "st_sprue",
             "vendorOrgId": "org_saegil",
+            "emitterOrgId": "org_hanbit",
             "agreedGrade": "A",
             "actualGrade": "C",
             "grade": "lower",
@@ -303,7 +307,7 @@
     ],
     "calibration": {
       "applied": {
-        "evidence": "human:org_hanbit:회사기록-판정반영-승인-484c7accd4ef",
+        "evidence": "human:org_hanbit:회사기록-판정반영-승인-13e53570e984",
         "strength": 3,
         "approvedOn": "2026-11-17"
       },
@@ -438,14 +442,14 @@
       "value": 183000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:64dfac873ec8:s3MonthlyAfter",
-        "calc:optimize_assignment:cca83877ec5b:s3Revenue",
-        "calc:optimize_assignment:1fe0927c5472:s3ExpectedUnitPrice",
+        "calc:optimize_assignment:261da46c2229:s3MonthlyAfter",
+        "calc:optimize_assignment:2929d9b17be9:s3Revenue",
+        "calc:optimize_assignment:9a448613783e:s3ExpectedUnitPrice",
         "doc:snapshot:2e1513d2d198",
         "doc:snapshot:ec2a3facd183",
         "doc:snapshot:e88c189c0320",
         "doc:snapshot:cc6b999bf4b1",
-        "calc:optimize_assignment:e1f7eb17e4fd:s3Transport"
+        "calc:optimize_assignment:33f5ec20a4b4:s3Transport"
       ],
       "label": "변경 뒤 월 손익",
       "role": "monthlyAfter"
@@ -456,7 +460,7 @@
       "value": -150000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:c80f0902fad0:s3MonthlyNow",
+        "calc:optimize_assignment:4ee9f304294c:s3MonthlyNow",
         "doc:snapshot:556377687150"
       ],
       "label": "현행 월 손익",
@@ -468,7 +472,7 @@
       "value": 333000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:6c01d1df4272:s3Difference",
+        "calc:optimize_assignment:5399dfa51867:s3Difference",
         "doc:snapshot:2e1513d2d198",
         "doc:snapshot:ec2a3facd183",
         "doc:snapshot:e88c189c0320",
@@ -484,8 +488,8 @@
       "value": 183000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:cca83877ec5b:s3Revenue",
-        "calc:optimize_assignment:1fe0927c5472:s3ExpectedUnitPrice",
+        "calc:optimize_assignment:2929d9b17be9:s3Revenue",
+        "calc:optimize_assignment:9a448613783e:s3ExpectedUnitPrice",
         "doc:snapshot:2e1513d2d198",
         "doc:snapshot:ec2a3facd183",
         "doc:snapshot:e88c189c0320",
@@ -500,7 +504,7 @@
       "value": 0.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:e1f7eb17e4fd:s3Transport"
+        "calc:optimize_assignment:33f5ec20a4b4:s3Transport"
       ],
       "label": "월 운반비",
       "role": "transport"
@@ -922,8 +926,8 @@
           "value": 193.75,
           "unit": "원/kg",
           "evidence": [
-            "calc:optimize_assignment:99c4579d1a78:s3Alt0ExpectedUnitPrice",
-            "calc:optimize_assignment:078670305822:s3Alt0PersonalRate",
+            "calc:optimize_assignment:ea8100276fbd:s3Alt0ExpectedUnitPrice",
+            "calc:optimize_assignment:eea6a04fbada:s3Alt0PersonalRate",
             "doc:snapshot:3ed7fe168b59",
             "doc:snapshot:01a7f3ecfa65",
             "doc:snapshot:0171b3082709",
@@ -1053,8 +1057,8 @@
           "value": -61.875,
           "unit": "원/kg",
           "evidence": [
-            "calc:optimize_assignment:0da7f8e30223:s3Alt1ExpectedUnitPrice",
-            "calc:optimize_assignment:078670305822:s3Alt1PersonalRate",
+            "calc:optimize_assignment:46bd79ddf124:s3Alt1ExpectedUnitPrice",
+            "calc:optimize_assignment:eea6a04fbada:s3Alt1PersonalRate",
             "doc:snapshot:f060750ef6be",
             "doc:snapshot:3af2d2a96434",
             "doc:snapshot:c5c1309ada7b",
@@ -1073,16 +1077,16 @@
         "value": -4.6875,
         "unit": "%",
         "evidence": [
-          "calc:optimize_assignment:9f275ad17e59:s3PersonalRate",
-          "human:snapshot:bcad78cbe4ce",
+          "calc:optimize_assignment:fb691fb3da8c:s3PersonalRate",
+          "human:snapshot:defb711c0abe",
           "calc:judge_route:3d162486c422:unitPrice",
           "doc:snapshot:2e1513d2d198",
           "doc:snapshot:ec2a3facd183",
           "doc:snapshot:e88c189c0320",
           "doc:snapshot:cc6b999bf4b1",
-          "human:snapshot:c6854f1af137",
-          "human:snapshot:397f3e264aeb",
-          "human:snapshot:788ad2dd8e34"
+          "human:snapshot:93d07818e9bd",
+          "human:snapshot:d9fc869a0e7c",
+          "human:snapshot:51e6ffadfcc5"
         ]
       },
       "expectedUnitPrice": {
@@ -1091,8 +1095,8 @@
         "value": 305.0,
         "unit": "원/kg",
         "evidence": [
-          "calc:optimize_assignment:1fe0927c5472:s3ExpectedUnitPrice",
-          "calc:optimize_assignment:9f275ad17e59:s3PersonalRate",
+          "calc:optimize_assignment:9a448613783e:s3ExpectedUnitPrice",
+          "calc:optimize_assignment:fb691fb3da8c:s3PersonalRate",
           "doc:snapshot:2e1513d2d198",
           "doc:snapshot:ec2a3facd183",
           "doc:snapshot:e88c189c0320",
@@ -1104,5 +1108,180 @@
       "records": 3,
       "streamRecords": 3
     }
+  },
+  "vendorMemory": {
+    "orgId": "org_saegil",
+    "role": "vendor",
+    "dataOrigin": "demo",
+    "minRecords": 3,
+    "summary": {
+      "emitters": 1,
+      "inspections": 3,
+      "below": 3,
+      "deals": 1
+    },
+    "emitters": [
+      {
+        "emitterOrgId": "org_hanbit",
+        "emitterName": "(주)한빛정밀",
+        "deals": 1,
+        "inspections": {
+          "count": 3,
+          "gradeLower": 3,
+          "priceLower": 3,
+          "below": 3,
+          "status": "below",
+          "minRecords": 3,
+          "evidence": [
+            "human:org_saegil:검수-insp-e633cf09a0cf-r1-등급",
+            "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가",
+            "human:org_saegil:검수-insp-e633cf09a0cf-r1-중량",
+            "human:org_saegil:검수-insp-ea108c1ec781-r1-등급",
+            "human:org_saegil:검수-insp-ea108c1ec781-r1-단가",
+            "human:org_saegil:검수-insp-ea108c1ec781-r1-중량",
+            "human:org_saegil:검수-insp-9e39a3ae429b-r1-등급",
+            "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가",
+            "human:org_saegil:검수-insp-9e39a3ae429b-r1-중량"
+          ]
+        },
+        "inspectionRows": [
+          {
+            "inspectionId": "insp-e633cf09a0cf",
+            "inspectedOn": "2026-11-16",
+            "sessionId": "ses_1",
+            "streamId": "st_sprue",
+            "vendorOrgId": "org_saegil",
+            "emitterOrgId": "org_hanbit",
+            "agreedGrade": "A",
+            "actualGrade": "B",
+            "grade": "lower",
+            "agreedPrice": {
+              "id": "agreedUnitPrice",
+              "kind": "number",
+              "value": 320.0,
+              "unit": "원/kg",
+              "evidence": [
+                "calc:judge_route:3d162486c422:unitPrice",
+                "doc:snapshot:2e1513d2d198",
+                "doc:snapshot:ec2a3facd183",
+                "doc:snapshot:e88c189c0320",
+                "doc:snapshot:cc6b999bf4b1"
+              ],
+              "label": "합의 단가",
+              "role": "unitPrice"
+            },
+            "actualPrice": {
+              "id": "actualUnitPrice",
+              "kind": "number",
+              "value": 300.0,
+              "unit": "원/kg",
+              "evidence": [
+                "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가"
+              ],
+              "label": "실제 단가(검수)",
+              "role": "unitPrice"
+            },
+            "price": "lower",
+            "evidence": [
+              "human:org_saegil:검수-insp-e633cf09a0cf-r1-등급",
+              "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가",
+              "human:org_saegil:검수-insp-e633cf09a0cf-r1-중량"
+            ],
+            "dataOrigin": "demo",
+            "streamName": "PP 스프루·러너"
+          },
+          {
+            "inspectionId": "insp-ea108c1ec781",
+            "inspectedOn": "2026-11-16",
+            "sessionId": "ses_1",
+            "streamId": "st_sprue",
+            "vendorOrgId": "org_saegil",
+            "emitterOrgId": "org_hanbit",
+            "agreedGrade": "A",
+            "actualGrade": "C",
+            "grade": "lower",
+            "agreedPrice": {
+              "id": "agreedUnitPrice",
+              "kind": "number",
+              "value": 320.0,
+              "unit": "원/kg",
+              "evidence": [
+                "calc:judge_route:3d162486c422:unitPrice",
+                "doc:snapshot:2e1513d2d198",
+                "doc:snapshot:ec2a3facd183",
+                "doc:snapshot:e88c189c0320",
+                "doc:snapshot:cc6b999bf4b1"
+              ],
+              "label": "합의 단가",
+              "role": "unitPrice"
+            },
+            "actualPrice": {
+              "id": "actualUnitPrice",
+              "kind": "number",
+              "value": 300.0,
+              "unit": "원/kg",
+              "evidence": [
+                "human:org_saegil:검수-insp-ea108c1ec781-r1-단가"
+              ],
+              "label": "실제 단가(검수)",
+              "role": "unitPrice"
+            },
+            "price": "lower",
+            "evidence": [
+              "human:org_saegil:검수-insp-ea108c1ec781-r1-등급",
+              "human:org_saegil:검수-insp-ea108c1ec781-r1-단가",
+              "human:org_saegil:검수-insp-ea108c1ec781-r1-중량"
+            ],
+            "dataOrigin": "demo",
+            "streamName": "PP 스프루·러너"
+          },
+          {
+            "inspectionId": "insp-9e39a3ae429b",
+            "inspectedOn": "2026-11-16",
+            "sessionId": "ses_1",
+            "streamId": "st_sprue",
+            "vendorOrgId": "org_saegil",
+            "emitterOrgId": "org_hanbit",
+            "agreedGrade": "A",
+            "actualGrade": "C",
+            "grade": "lower",
+            "agreedPrice": {
+              "id": "agreedUnitPrice",
+              "kind": "number",
+              "value": 320.0,
+              "unit": "원/kg",
+              "evidence": [
+                "calc:judge_route:3d162486c422:unitPrice",
+                "doc:snapshot:2e1513d2d198",
+                "doc:snapshot:ec2a3facd183",
+                "doc:snapshot:e88c189c0320",
+                "doc:snapshot:cc6b999bf4b1"
+              ],
+              "label": "합의 단가",
+              "role": "unitPrice"
+            },
+            "actualPrice": {
+              "id": "actualUnitPrice",
+              "kind": "number",
+              "value": 300.0,
+              "unit": "원/kg",
+              "evidence": [
+                "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가"
+              ],
+              "label": "실제 단가(검수)",
+              "role": "unitPrice"
+            },
+            "price": "lower",
+            "evidence": [
+              "human:org_saegil:검수-insp-9e39a3ae429b-r1-등급",
+              "human:org_saegil:검수-insp-9e39a3ae429b-r1-단가",
+              "human:org_saegil:검수-insp-9e39a3ae429b-r1-중량"
+            ],
+            "dataOrigin": "demo",
+            "streamName": "PP 스프루·러너"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -75,6 +75,7 @@ export type Improvement = z.infer<typeof s.improvementSchema>;
 export type ImprovementActionKey = z.infer<typeof s.improvementActionKeySchema>;
 export type Report = z.infer<typeof s.reportSchema>;
 export type OrgMemory = z.infer<typeof s.orgMemorySchema>;
+export type VendorMemory = z.infer<typeof s.vendorMemorySchema>;
 export type MemoryStream = OrgMemory["streams"][number];
 export type MemoryInspection = z.infer<typeof s.memoryInspectionSchema>;
 export type ReportRecord = z.infer<typeof s.reportRecordSchema>;
@@ -479,6 +480,21 @@ export type RetrainTable = {
         difference: Claim | null;
       }[];
     }[];
+  };
+  /**
+   * 회사 기록 보정 강도 제안(2026-11-22 뒤 응답). 실제 회사의 검수로 묶음 안 흔들림 ÷ 묶음 사이 차이를 낸다.
+   * 판정에 자동으로 쓰지 않는다. suggested가 null이면 reason에 까닭이 있다
+   */
+  personalStrength?: {
+    records: number;
+    groups: number;
+    minGroups: number;
+    minRecords: number;
+    withinVariance: number | null;
+    betweenVariance: number | null;
+    suggested: number | null;
+    current: number;
+    reason: string;
   };
   /** 시연(가상) 회사 사이에서 쌓인 기록. 수집 과정을 보이려고 세기만 하고 위 건수와 게이트에는 넣지 않는다 */
   demo?: { outcomes: number; gradeLabels: number; corrections: number; note: string };
