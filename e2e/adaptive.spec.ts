@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-const API = process.env.E2E_API || 'http://localhost:8097/api/v3';
+const API = process.env.E2E_API || 'http://localhost:8000/api/v3';
 const headers = { 'X-Org-Id': 'org_hanbit' };
 test('조건 비교는 원본을 보존하고 적용하면 새 재협상과 알림으로 연결된다', async ({ page, request }) => {
   await request.post(`${API}/demo/reset`, { headers: { 'X-Org-Id': 'org_admin' } });
