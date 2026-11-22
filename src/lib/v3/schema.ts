@@ -555,6 +555,8 @@ export const assignmentSchema = obj({
   transportPending: z.boolean().optional(),
   currentAssumed: z.boolean(),
   costPending: z.boolean().optional(),
+  /** 전처리 인건비가 회사 시급이 아니라 법정 최저 시급으로 넣은 하한이다(2026-11-22 뒤 결과) */
+  laborFloor: z.boolean().optional(),
   /**
    * 묶음 때문에 현행보다 불리한 배정(2026-11-22 뒤 결과). 이 폐기물의 현행 대비 차이(loss, 음수)와 같은 업체로
    * 함께 보내는 폐기물 전체의 현행 대비 차이(bundle). 운반비·작업비가 모두 확인됐을 때만 온다. 업체 뷰에서는 null

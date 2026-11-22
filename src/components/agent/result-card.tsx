@@ -251,7 +251,10 @@ function Row({
                       <dt className="text-ink-2">전처리 인건비</dt>
                       <dd className="text-right">
                         {assignment.labor ? (
-                          <ClaimValue claim={assignment.labor} display={`−${won(assignment.labor)}`} className="!font-normal" />
+                          <>
+                            {assignment.laborFloor ? <span className="mr-1.5 text-[12px] text-warn">최저임금 기준 하한</span> : null}
+                            <ClaimValue claim={assignment.labor} display={`−${won(assignment.labor)}`} className="!font-normal" />
+                          </>
                         ) : (
                           <span className="text-ink-2">넣지 않음</span>
                         )}
