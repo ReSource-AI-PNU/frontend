@@ -138,7 +138,7 @@ export function ComplexPartnersSection({
 
   if (!partners.complex) {
     return (
-      <section aria-label="같은 단지 자원순환 후보" className="border-t border-line pt-6">
+      <section aria-label="같은 단지 공개 명부" className="border-t border-line pt-6">
         <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{complexHeadline(partners)}</h2>
         <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{partners.reason}</p>
       </section>
@@ -160,7 +160,7 @@ export function ComplexPartnersSection({
   };
 
   return (
-    <section aria-label="같은 단지 자원순환 후보" className="border-t border-line pt-6">
+    <section aria-label="같은 단지 공개 명부" className="border-t border-line pt-6">
       <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{complexHeadline(partners)}</h2>
       <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{COMPLEX_LEAD}</p>
       {partners.stats ? <ComplexStats stats={partners.stats} /> : null}
@@ -186,7 +186,10 @@ export function ComplexPartnersSection({
                 <p className="mt-1 text-[14px] text-ink-2">{group.reason ?? "같은 단지에서 맞는 곳을 찾지 못했습니다."}</p>
               ) : (
                 <>
-                  <h4 className="mt-2 text-[13px] font-semibold text-ink-2">{TAKES_TITLE}</h4>
+                  <h4 className="mt-2 text-[13px] font-semibold text-ink-2">
+                    {TAKES_TITLE}
+                    {group.takesTotal > 0 ? ` ${group.takesTotal}곳` : ""}
+                  </h4>
                   {group.takes.length > 0 ? (
                     <PartnerList candidates={group.takes} total={group.takesTotal} onRequest={requestFor(group.streamIds)} />
                   ) : (

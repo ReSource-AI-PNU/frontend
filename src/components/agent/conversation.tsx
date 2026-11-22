@@ -15,7 +15,7 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
-import { carbonText, clearedApprovalsText, currentBundle, questionIntro, THREAD_LABEL } from "@/lib/v3/format";
+import { THREAD_LABEL, carbonText, clearedApprovalsText, currentBundle, placedCount, questionIntro } from "@/lib/v3/format";
 import { DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
 import { pickupTodo } from "@/lib/v3/pickup";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
@@ -40,7 +40,6 @@ import { RunLog } from "./run-log";
 import { ImprovementsSection } from "./improvements";
 import { RegulationSection } from "./regulation";
 import { OutsideVendorsSection } from "./outside-vendors";
-import { uniquePartners } from "@/lib/v3/complex";
 import { ComplexPartnersSection } from "./complex-partners";
 import { Dots } from "./dots";
 import { CircularEffects } from "./circular-effects";
@@ -632,6 +631,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const canContinue = isEmitter && status === "idle" && !ended && openQuestions.length === 0;
   const unknown = answered.filter((item) => item.unknown).length;
   const result = holding ? null : view.result;
+  // 받아 줄 곳이 하나도 없으면 바꾼 뒤와 비교할 것이 없다. 효과와 흐름은 보이지 않고 지금 비용만 둔다
+  const hasRoute = result !== null && placedCount(result.assignments) > 0;
   const liveThreads = threads.filter((item) => item.messages.length > 0 || item.typing);
   const openTalk = (id: string) => {
     setThreadId(id);
@@ -877,12 +878,12 @@ export function Conversation({ d }: { d: Diagnosis }) {
         {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
         {result && isEmitter && !holding ? (
           <FoldGroup className="[&_section]:border-0 [&_section]:pt-0">
-            {result.circular ? (
+            {hasRoute && result.circular ? (
               <Fold title="자원순환 효과" summary={carbonText(result.totals.carbon, true)} icon={<ReportIcon />}>
                 <CircularEffects circular={result.circular} />
               </Fold>
             ) : null}
-            {view.streams.length > 0 ? (
+            {hasRoute && view.streams.length > 0 ? (
               <Fold title="처리 흐름" summary={`${view.streams.length}가지`} icon={<TruckIcon />}>
                 <FlowChart result={result} streams={view.streams} />
               </Fold>
@@ -917,11 +918,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
               </Fold>
             ) : null}
             {result.complexPartners ? (
-              <Fold
-                title="같은 단지 자원순환 후보"
-                summary={result.complexPartners.complex ? `${uniquePartners(result.complexPartners)}곳` : undefined}
-                icon={<FactoryIcon />}
-              >
+              <Fold title="같은 단지 공개 명부" icon={<FactoryIcon />}>
                 <ComplexPartnersSection
                   partners={result.complexPartners}
                   outside={result.outsideVendors ?? null}
