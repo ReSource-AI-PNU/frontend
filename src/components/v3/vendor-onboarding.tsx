@@ -20,7 +20,11 @@ function MarkerDot() {
  * 업체 정보 AI 도우미. 업체 측 AI가 공공 허가 명부와 담당자 대화로 업체 정보 초안을 채우고,
  * 담당자가 고른 항목만 저장한다. 업체 담당자에게만 보이며, 서버에 이 기능이 없으면(404) 아무것도 그리지 않는다.
  */
-export function VendorOnboarding({ orgId, onSaved }: { orgId: string; onSaved: (profile: VendorProfile) => void }) {
+export function VendorOnboarding({ orgId, discoverable, onSaved }: {
+  orgId: string;
+  discoverable: boolean;
+  onSaved: (profile: VendorProfile) => void;
+}) {
   const [state, setState] = useState<OnboardingState | null>(null);
   const [hidden, setHidden] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -144,7 +148,7 @@ export function VendorOnboarding({ orgId, onSaved }: { orgId: string; onSaved: (
           <h2 id="vendor-onboarding-title" className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">
             AI와 함께 업체 정보 채우기
           </h2>
-          <p className="mt-1 text-sm text-ink-2">{checkSummary(state.checks, state.discoverable)}</p>
+          <p className="mt-1 text-sm text-ink-2">{checkSummary(discoverable)}</p>
         </div>
         <Button size="sm" variant="ghost" className="!text-ink-2" aria-expanded={Boolean(open)} onClick={() => setOpen(!open)}>
           {open ? "간단히 보기" : state.draft.length > 0 ? `대화 열기 · 확인할 초안 ${state.draft.length}가지` : "대화 열기"}

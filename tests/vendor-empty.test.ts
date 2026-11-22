@@ -23,12 +23,12 @@ test("허가 품목이나 매입 기준이 있으면 '아직 들어온 문의가
   }
 });
 
-test("허가 품목과 매입 기준이 없거나 프로필이 없으면 허가증·매입 기준표 올리기를 주 행동으로 둔다", () => {
+test("허가 품목과 매입 기준이 없거나 프로필이 없으면 업체 정보 등록을 주 행동으로 둔다", () => {
   for (const profile of [null, { permits: [], criteria: [] }, { permits: null, criteria: undefined }]) {
     assert.equal(vendorReady(profile), false);
     const copy = vendorEmptyCopy(profile, "inquiries");
-    assert.equal(copy.title, "허가증과 매입 기준표를 올려 주세요");
-    assert.equal(copy.action.label, "허가증·매입 기준표 올리기");
+    assert.equal(copy.title, "허가 품목 또는 매입 기준을 추가해 주세요");
+    assert.equal(copy.action.label, "업체 정보 등록");
     assert.equal(copy.action.upload, true);
   }
 });

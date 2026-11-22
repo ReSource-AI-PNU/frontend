@@ -43,7 +43,7 @@ export function Inquiries() {
         <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">{vendor ? "받은 문의" : "찾기 기록"}</h1>
         <p className="mt-2 text-[15px] text-ink-2">
           {vendor
-            ? "배출 기업이 받아 줄 곳을 찾을 때, 허가 품목과 매입 기준에 맞는 물량이면 여기에 문의가 들어옵니다."
+            ? "허가 품목 또는 매입 기준을 등록하면 문의 후보군에 포함됩니다. 실제 문의는 물량별 품목과 조건에 따라 들어옵니다."
             : "지금까지 받아 줄 곳을 찾은 기록입니다. 누르면 결과와 대화를 다시 볼 수 있습니다."}
         </p>
       </header>

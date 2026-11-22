@@ -12,7 +12,7 @@ const input =
 
 const KINDS = [
   { value: "emitter", title: "배출 기업", body: "공장에서 나오는 폐기물을 받아 줄 곳을 찾습니다", icon: FactoryIcon },
-  { value: "vendor", title: "처리 업체", body: "조건에 맞는 물량 문의를 받습니다", icon: TruckIcon },
+  { value: "vendor", title: "처리 업체", body: "파일 없이 허가 품목이나 매입 기준을 등록하고 물량 문의를 받을 수 있습니다", icon: TruckIcon },
 ] as const;
 
 function FieldError({ message }: { message?: string }) {

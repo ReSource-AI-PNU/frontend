@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { authorLabel, checkSummary, groupDraft, selectedKeys, startOpen } from "../src/lib/v3/onboarding.ts";
+import { authorLabel, checkSummary, vendorRegistrationSummary, groupDraft, selectedKeys, startOpen } from "../src/lib/v3/onboarding.ts";
 import type { OnboardingDraftItem } from "../src/lib/v3/types.ts";
 
 const item = (key: string, section: OnboardingDraftItem["section"]): OnboardingDraftItem => ({
@@ -28,13 +28,8 @@ test("초안은 허가 품목 → 처리 방식 → AI가 지킬 범위 → 노�
 });
 
 test("요약 한 줄은 탐색에 나오면 그 사실만, 아니면 남은 항목 이름을 적는다", () => {
-  const checks = [
-    { key: "permits", label: "허가 품목", done: false, note: "" },
-    { key: "criteria", label: "매입 기준", done: false, note: "" },
-    { key: "fleet", label: "차고지", done: true, note: "" },
-  ];
-  assert.equal(checkSummary(checks, false), "업체 탐색에 나오려면 2가지가 남았습니다 · 허가 품목, 매입 기준");
-  assert.equal(checkSummary(checks, true), "배출 기업이 찾기를 하면 이 업체가 후보로 나옵니다.");
+  assert.equal(checkSummary(false), "문의 후보군에 포함되려면 허가 품목 또는 매입 기준을 추가해 주세요.");
+  assert.equal(checkSummary(true), "문의 후보군에 포함됩니다. 실제 문의는 물량별 품목과 조건에 따라 결정됩니다.");
 });
 
 test("탐색에 나오고 확인할 초안도 없을 때만 접어서 시작한다", () => {
@@ -53,4 +48,19 @@ test("모델 없이 답한 안내는 AI라고 부르지 않는다", () => {
   assert.equal(authorLabel({ provider: "rule", name: "rule" }, "업체 측 AI"), "자동 안내");
   assert.equal(authorLabel({ provider: "ollama", name: "x" }, "업체 측 AI"), "업체 측 AI");
   assert.equal(authorLabel(null, "업체 측 AI"), "업체 측 AI");
+});
+
+test("업체 정보 저장, 후보군 등록, 물량별 거래 확정을 각각 안내한다", () => {
+  const blank = vendorRegistrationSummary({ saved: false, permits: [], criteria: [] });
+  assert.equal(blank.saved, "업체 정보 저장 전");
+  assert.match(blank.candidates, /허가 품목 또는 매입 기준/);
+  for (const profile of [
+    { permits: [{ entrySource: "manual" }], criteria: [] },
+    { permits: [], criteria: [{ priceMode: "negotiated" }] },
+  ]) {
+    const summary = vendorRegistrationSummary({ ...profile, saved: true });
+    assert.equal(summary.saved, "업체 정보 저장됨");
+    assert.match(summary.candidates, /후보군에 포함 · 실제 문의는 물량별/);
+    assert.match(summary.confirmation, /허가증 원본.*대조와 양측 승인/);
+  }
 });
