@@ -606,7 +606,7 @@ export type ScanStage = z.infer<typeof s.scanStageSchema>;
 
 // 업체 정보 AI 도우미 (2026-11-22). 업체 측 AI가 공공 허가 명부와 담당자 대화로 업체 정보 초안을 채운다.
 // 초안은 담당자가 고른 항목만 저장된다(POST /vendors/{orgId}/onboarding/confirm).
-export type OnboardingSection = "permits" | "fleet" | "guardrails" | "process";
+export type OnboardingSection = "permits" | "criteria" | "fleet" | "guardrails" | "process";
 export type OnboardingMessage = {
   id: string;
   role: "assistant" | "user";
@@ -622,7 +622,8 @@ export type OnboardingDraftItem = {
   value: unknown;
   /** 화면에 보일 값 한 줄 */
   text: string;
-  source: { kind: "registry" | "conversation"; label: string; quote: string | null };
+  /** registry: 공공 허가 명부, conversation: 담당자 답변, agent: 외부에 연결한 에이전트가 제출 */
+  source: { kind: "registry" | "conversation" | "agent"; label: string; quote: string | null };
 };
 export type OnboardingCheck = { key: string; label: string; done: boolean; note: string };
 export type OnboardingState = {
@@ -634,4 +635,8 @@ export type OnboardingState = {
   checks: OnboardingCheck[];
   discoverable: boolean;
 };
-export type OnboardingConfirmResult = { profile: VendorProfile; onboarding: OnboardingState };
+export type OnboardingConfirmResult = { profile: VendorProfile; onboarding: OnboardingState; keys?: string[] };
+/** 외부 AI 에이전트 연결 키. 키 원문은 만든 응답(token)에만 한 번 온다 */
+export type McpKey = { id: string; label: string; prefix: string; createdAt: string; lastUsedAt: string | null };
+export type McpKeyList = { path: string; limit: number; keys: McpKey[] };
+export type McpKeyCreated = { path: string; key: McpKey; token: string };

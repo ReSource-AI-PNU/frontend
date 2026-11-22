@@ -64,3 +64,15 @@ test("업체 정보 저장, 후보군 등록, 물량별 거래 확정을 각각 
     assert.match(summary.confirmation, /허가증 원본.*대조와 양측 승인/);
   }
 });
+
+test("매입 기준 묶음은 허가 품목 다음, 연결한 에이전트 초안을 가린다", async () => {
+  const { groupDraft: group, fromAgent } = await import("../src/lib/v3/onboarding.ts");
+  const rows: OnboardingDraftItem[] = [
+    { key: "fleet.vehicleCount", section: "fleet", label: "차량 수", value: 2, text: "2대", source: { kind: "conversation", label: "담당자 답변", quote: "2대" } },
+    { key: "criteria", section: "criteria", label: "매입 기준", value: [], text: "PP · kg당 200원 매입\nPE · 협의", source: { kind: "agent", label: "연결한 에이전트(사내 AI)가 제출", quote: "PP 200원" } },
+    { key: "permits", section: "permits", label: "허가 품목", value: [], text: "폐플라스틱", source: { kind: "registry", label: "공공 허가 명부", quote: null } },
+  ];
+  assert.deepEqual(group(rows).map((g) => g.section), ["permits", "criteria", "fleet"]);
+  assert.equal(fromAgent(rows[1]), true);
+  assert.equal(fromAgent(rows[0]), false);
+});

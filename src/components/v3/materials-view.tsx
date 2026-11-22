@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { ComplexSelect } from "@/components/onboarding/complex-select";
 import { Button, buttonClass } from "@/components/ui/button";
@@ -58,6 +58,7 @@ import {
   type PendingDocument,
 } from "@/lib/v3/intake";
 import { vendorReady, vendorRegistrationSummary } from "@/lib/v3/onboarding";
+import { carryEdits, refreshedFields, type VendorFormDraft } from "@/lib/v3/vendor-form-carry";
 import { AI_NAME } from "@/lib/v3/labels";
 import type {
   CsvUploadResult,
@@ -80,6 +81,7 @@ import { PermitEditor } from "./permit-editor";
 import { OffRouteTerms } from "./off-route-terms";
 import { StorageScan } from "./storage-scan";
 import { useRemote } from "./use-remote";
+import { VendorMcpKeys } from "./vendor-mcp-keys";
 import { VendorOnboarding } from "./vendor-onboarding";
 
 const field =
@@ -1388,27 +1390,34 @@ function VendorForm({
   summary,
   note,
   setNote,
+  carry,
+  draftRef,
 }: {
   profile: VendorProfile;
   canAct: boolean;
+  /** 다시 그릴 때 이어받을 칸(담당자가 고쳐 두고 저장하지 않은 칸). 없으면 저장값으로 시작한다 */
+  carry?: VendorFormDraft | null;
+  /** 지금 폼의 칸과 그릴 때의 저장값. 부모가 다시 그릴 때 고친 칸을 가려내는 데 쓴다 */
+  draftRef?: React.RefObject<{ start: VendorFormDraft; current: VendorFormDraft } | null>;
   /** 저장하고 저장된 프로필을 돌려준다 */
   onSave: (profile: Partial<VendorProfile>) => Promise<VendorProfile>;
   onAddPermits: (rows: ManualPermitInput[]) => Promise<void>;
   summary: ReturnType<typeof vendorRegistrationSummary>;
   /** 문서에서 확인한 값이 업체 정보에 들어갔다 */
   onConfirmed: (result: DocumentConfirmResult) => void;
-  /** 저장 결과 한 줄. 처음 저장하면 폼을 새로 그리므로(key) 위에서 들고 있는다 */
+  /** 저장 결과 한 줄. AI 도우미가 저장하면 폼을 새로 그리므로(key) 위에서 들고 있는다 */
   note: string | null;
   setNote: (note: string | null) => void;
 }) {
   const { openEvidence } = useV3();
-  const [floor, setFloor] = useState(
-    profile.guardrails.floorPriceKrwPerKg != null ? String(profile.guardrails.floorPriceKrwPerKg) : "",
-  );
-  const [days, setDays] = useState(profile.guardrails.days.join(", "));
-  const [fallbackGrade, setFallbackGrade] = useState(profile.inspectionFallbackCriterionId ?? "");
-  const [process, setProcess] = useState(profile.process ?? "");
-  const [fleet, setFleet] = useState<FleetDraft>(() => fleetDraft(profile.fleet, COMPLEXES));
+  // 그릴 때의 저장값(고친 칸을 가리는 기준)과 첫 값(이어받은 칸이 있으면 그것)
+  const [start] = useState(() => vendorFormDraft(profile));
+  const [init] = useState(() => carry ?? start);
+  const [floor, setFloor] = useState(init.floor);
+  const [days, setDays] = useState(init.days);
+  const [fallbackGrade, setFallbackGrade] = useState(init.fallbackGrade);
+  const [process, setProcess] = useState(init.process);
+  const [fleet, setFleet] = useState<FleetDraft>(() => init.fleet as FleetDraft);
   const [fleetIssues, setFleetIssues] = useState<FleetErrors>({});
   // 새로 더한 노선의 목록 열쇠
   const [routeSeq, setRouteSeq] = useState(0);
@@ -1418,17 +1427,20 @@ function VendorForm({
     setFleet({ ...fleet, routes: fleet.routes.map((route, at) => (at === index ? { ...route, ...patch } : route)) });
   // 노선 밖 공장 수거 조건(transport.offRoute). 노선 수거의 운반 조건은 저장된 그대로 돌려보낸다
   const savedTransport = (profile as VendorProfile & { transport?: TransportTerms | null }).transport;
-  const [offRoute, setOffRoute] = useState<OffRouteDraft>(() => offRouteDraft(savedTransport));
+  const [offRoute, setOffRoute] = useState<OffRouteDraft>(() => init.offRoute as OffRouteDraft);
   const [offRouteIssues, setOffRouteIssues] = useState<OffRouteErrors>({});
-  const [pickups, setPickups] = useState(
-    profile.guardrails.minPickupsPerMonth != null ? String(profile.guardrails.minPickupsPerMonth) : "",
-  );
-  const [decline, setDecline] = useState(profile.guardrails.autoDecline.join(", "));
-  const [ceiling, setCeiling] = useState(
-    profile.guardrails.ceilingPriceKrwPerKg != null ? String(profile.guardrails.ceilingPriceKrwPerKg) : "",
-  );
+  const [pickups, setPickups] = useState(init.pickups);
+  const [decline, setDecline] = useState(init.decline);
+  const [ceiling, setCeiling] = useState(init.ceiling);
   // 매입 기준표의 단가(기준 ID → 입력한 글자). 배출 기업 기준이라 양수는 매입, 음수는 처리비다
-  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [prices, setPrices] = useState<Record<string, string>>(init.prices);
+  useEffect(() => {
+    if (!draftRef) return;
+    draftRef.current = {
+      start,
+      current: { floor, ceiling, days, pickups, decline, process, fallbackGrade, fleet, offRoute, prices },
+    };
+  });
   const list = (text: string) =>
     text
       .split(",")
@@ -1939,6 +1951,23 @@ function FleetNumber({
   );
 }
 
+/** 저장된 프로필로 그린 폼 칸의 글(다시 그릴 때 고친 칸을 가리는 기준) */
+function vendorFormDraft(profile: VendorProfile): VendorFormDraft {
+  const text = (value: number | null | undefined) => (value != null ? String(value) : "");
+  return {
+    floor: text(profile.guardrails.floorPriceKrwPerKg),
+    ceiling: text(profile.guardrails.ceilingPriceKrwPerKg),
+    days: profile.guardrails.days.join(", "),
+    pickups: text(profile.guardrails.minPickupsPerMonth),
+    decline: profile.guardrails.autoDecline.join(", "),
+    process: profile.process ?? "",
+    fallbackGrade: profile.inspectionFallbackCriterionId ?? "",
+    fleet: fleetDraft(profile.fleet, COMPLEXES) as unknown as Record<string, unknown>,
+    offRoute: offRouteDraft((profile as VendorProfile & { transport?: TransportTerms | null }).transport),
+    prices: {},
+  };
+}
+
 /** 처음 가입한 업체에는 프로필이 없다. 빈 프로필로 시작해 문서를 올리고 범위를 정한다(모델 설정은 보내지 않는다). */
 function emptyProfile(orgId: string, name: string): VendorProfile {
   return {
@@ -1992,8 +2021,11 @@ function VendorMaterials() {
   const { mode, canWrite, org } = useV3();
   const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
   const [note, setNote] = useState<string | null>(null);
-  // AI 도우미가 업체 정보를 저장하면 폼을 새로 그려 저장된 값으로 시작한다(폼 칸은 처음 그릴 때의 프로필로 정해진다)
+  // AI 도우미가 업체 정보를 저장하면 폼을 새로 그린다(폼 칸은 처음 그릴 때의 프로필로 정해진다).
+  // 이때 담당자가 고쳐 두고 저장하지 않은 칸은 이어받고, 도우미가 저장한 칸만 새 값으로 바꾼다(vendor-form-carry.ts)
   const [revision, setRevision] = useState(0);
+  const [carry, setCarry] = useState<{ revision: number; draft: VendorFormDraft } | null>(null);
+  const formRef = useRef<{ start: VendorFormDraft; current: VendorFormDraft } | null>(null);
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   const profile = remote.data ?? emptyProfile(org.id, org.name);
@@ -2004,18 +2036,28 @@ function VendorMaterials() {
           <VendorOnboarding
             orgId={org.id}
             discoverable={vendorReady(profile)}
-            onSaved={(saved) => {
-              remote.set(normalizeProfile(saved, org.id, org.name));
-              setRevision((before) => before + 1);
+            onSaved={(saved, keys) => {
+              const next = normalizeProfile(saved, org.id, org.name);
+              const form = formRef.current;
+              const nextRevision = revision + 1;
+              setCarry(
+                form ? { revision: nextRevision, draft: carryEdits(form.start, form.current, vendorFormDraft(next), refreshedFields(keys)) } : null,
+              );
+              remote.set(next);
+              setRevision(nextRevision);
               remote.reload();
             }}
           />
+          <VendorMcpKeys orgId={org.id} />
         </div>
       ) : null}
       <VendorForm
-        key={`${profile.orgId}:${remote.data ? "saved" : "new"}:${revision}`}
+        /* 처음 저장(허가 품목 추가, 매입 기준 추가 포함)으로는 다시 그리지 않는다. 다시 그리면 적어 둔 칸이 지워진다 */
+        key={`${profile.orgId}:${revision}`}
         profile={profile}
         canAct={canWrite}
+        carry={carry?.revision === revision ? carry.draft : null}
+        draftRef={formRef}
         note={note}
         setNote={setNote}
         summary={vendorRegistrationSummary({ saved: remote.data != null, permits: profile.permits, criteria: profile.criteria })}

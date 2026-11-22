@@ -31,6 +31,8 @@ import type {
   OutcomeInput,
   OutcomeResult,
   QuoteRequest,
+  McpKeyCreated,
+  McpKeyList,
   OnboardingConfirmResult,
   OnboardingState,
   OrgMemory,
@@ -232,6 +234,14 @@ export const api = {
   /** 대화와 초안을 비운다(저장한 업체 정보는 그대로다) */
   resetOnboarding: (orgId: string) =>
     request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding`, orgId, { method: "DELETE" }),
+  /** 외부 AI 에이전트 연결 키 목록(키 원문은 없다) */
+  listMcpKeys: (orgId: string) => request<McpKeyList>(`/vendors/${enc(orgId)}/mcp-keys`, orgId),
+  /** 연결 키를 만든다. 응답의 token은 이때 한 번만 온다 */
+  createMcpKey: (orgId: string, label: string) =>
+    request<McpKeyCreated>(`/vendors/${enc(orgId)}/mcp-keys`, orgId, json({ label })),
+  /** 연결 키를 지운다(그 키로 붙은 에이전트는 더 이상 쓰지 못한다) */
+  deleteMcpKey: (orgId: string, keyId: string) =>
+    request<McpKeyList>(`/vendors/${enc(orgId)}/mcp-keys/${enc(keyId)}`, orgId, { method: "DELETE" }),
 
   /** 내가 당사자인 찾기 목록. 다른 기기에서 들어와도 이어 볼 수 있게 한다. */
   listSessions: (orgId: string) => request<SessionSummary[]>("/sessions", orgId),

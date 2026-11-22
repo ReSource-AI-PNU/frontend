@@ -5,7 +5,7 @@ import { Dots } from "@/components/agent/dots";
 import { Button } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/v3/api";
 import { AI_NAME } from "@/lib/v3/labels";
-import { authorLabel, checkSummary, groupDraft, selectedKeys, startOpen } from "@/lib/v3/onboarding";
+import { authorLabel, checkSummary, draftSignature, fromAgent, groupDraft, selectedKeys, startOpen } from "@/lib/v3/onboarding";
 import type { OnboardingState, VendorProfile } from "@/lib/v3/types";
 
 const field =
@@ -23,7 +23,8 @@ function MarkerDot() {
 export function VendorOnboarding({ orgId, discoverable, onSaved }: {
   orgId: string;
   discoverable: boolean;
-  onSaved: (profile: VendorProfile) => void;
+  /** 저장한 프로필과 저장한 초안 키(폼이 그 칸만 새 값으로 바꾸게) */
+  onSaved: (profile: VendorProfile, keys: string[]) => void;
 }) {
   const [state, setState] = useState<OnboardingState | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -58,6 +59,40 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
       alive = false;
     };
   }, [orgId, attempt]);
+
+  // 외부에 연결한 에이전트가 넣은 초안이 보이도록, 열어 둔 동안 창에 돌아오면 그리고 30초마다 다시 읽는다.
+  // 보내거나 저장하는 중에는 읽지 않고, 초안과 대화가 그대로면 화면을 바꾸지 않는다
+  const quiet = useRef({ sending: false, busy: false });
+  useEffect(() => {
+    quiet.current = { sending: Boolean(sending), busy };
+  }, [sending, busy]);
+  useEffect(() => {
+    if (!open || hidden) return;
+    let alive = true;
+    const refresh = () => {
+      if (document.visibilityState === "hidden" || quiet.current.sending || quiet.current.busy) return;
+      api.getOnboarding(orgId).then(
+        (next) => {
+          if (!alive || quiet.current.sending || quiet.current.busy) return;
+          setState((before) =>
+            before &&
+            draftSignature(before.draft) === draftSignature(next.draft) &&
+            before.messages.length === next.messages.length
+              ? before
+              : next,
+          );
+        },
+        () => {},
+      );
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [open, hidden, orgId]);
 
   const messageCount = state?.messages.length ?? 0;
   useEffect(() => {
@@ -111,7 +146,7 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
       setState(result.onboarding);
       setUnselected(new Set());
       setNote(`${picked.length}가지를 업체 정보에 저장했습니다. 아래 칸에 반영했습니다.`);
-      onSaved(result.profile);
+      onSaved(result.profile, picked);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "저장하지 못했습니다. 다시 시도해 주세요.");
     } finally {
@@ -225,7 +260,7 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
               aria-label={`${AI_NAME.vendor}에게 보낼 말`}
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="예: 차량은 5톤 두 대이고 월·수·금에 수거합니다"
+              placeholder="예: 차량은 5톤 두 대이고, 깨끗한 PP는 kg당 200원에 매입합니다"
               disabled={Boolean(sending) || busy}
               maxLength={2000}
               className={field}
@@ -247,7 +282,8 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
                 AI 초안 · 담당자 확인 전
               </p>
               <p className="mt-1 text-sm text-muted">
-                AI가 공공 허가 명부와 대화 내용으로 채운 초안입니다. 확인한 항목만 저장됩니다.
+                AI가 공공 허가 명부와 대화 내용으로 채운 초안입니다. 연결한 에이전트가 넣은 값도 여기에 들어옵니다. 확인한 항목만
+                저장됩니다.
               </p>
               {groups.map((group) => (
                 <fieldset key={group.section} className="mt-4">
@@ -264,11 +300,23 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
                             className="mt-1 size-[18px] shrink-0 accent-ink"
                           />
                           <span className="min-w-0">
-                            <span className="block text-[15px]">
-                              <span className="font-medium">{item.label}</span>
-                              <span className="text-ink-2"> · {item.text}</span>
-                            </span>
+                            {item.section === "criteria" ? (
+                              <span className="block text-[15px]">
+                                <span className="font-medium">{item.label}</span>
+                                <span className="mt-0.5 block text-ink-2 whitespace-pre-line">{item.text}</span>
+                              </span>
+                            ) : (
+                              <span className="block text-[15px]">
+                                <span className="font-medium">{item.label}</span>
+                                <span className="text-ink-2"> · {item.text}</span>
+                              </span>
+                            )}
                             <span className="mt-0.5 block text-[12.5px] text-muted">
+                              {fromAgent(item) ? (
+                                <span className="mr-1.5 inline-block rounded-full border border-line-strong px-2 py-px text-[12px] text-ink-2">
+                                  연결한 에이전트
+                                </span>
+                              ) : null}
                               {item.source.label}
                               {item.source.quote ? ` · “${item.source.quote}”` : ""}
                             </span>

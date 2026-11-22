@@ -4,10 +4,11 @@
  */
 import type { OnboardingDraftItem, OnboardingSection, OnboardingState } from "./types";
 
-/** 초안 묶음의 순서와 이름. 업체 정보 화면의 순서(허가 품목 → AI가 지킬 범위 → 노선·차량)를 따른다 */
-export const SECTION_ORDER: OnboardingSection[] = ["permits", "process", "guardrails", "fleet"];
+/** 초안 묶음의 순서와 이름. 업체 정보 화면의 순서(허가 품목 → 매입 기준 → AI가 지킬 범위 → 노선·차량)를 따른다 */
+export const SECTION_ORDER: OnboardingSection[] = ["permits", "criteria", "process", "guardrails", "fleet"];
 export const SECTION_LABEL: Record<OnboardingSection, string> = {
   permits: "허가 품목",
+  criteria: "매입 기준",
   process: "처리 방식",
   guardrails: "AI가 지킬 범위",
   fleet: "노선·차량",
@@ -20,6 +21,16 @@ export function groupDraft(draft: OnboardingDraftItem[]): { section: OnboardingS
     label: SECTION_LABEL[section],
     items: draft.filter((item) => item.section === section),
   })).filter((group) => group.items.length > 0);
+}
+
+/** 외부에 연결한 에이전트가 넣은 초안인지. 담당자 답변·공공 명부와 구별해 표시한다 */
+export function fromAgent(item: Pick<OnboardingDraftItem, "source">): boolean {
+  return item.source.kind === "agent";
+}
+
+/** 외부 에이전트가 넣은 초안이 있는지(초안 수가 같아도 새 항목이 들어왔는지 보려고 키·글을 함께 본다) */
+export function draftSignature(draft: OnboardingDraftItem[]): string {
+  return draft.map((item) => `${item.key}=${item.text}`).join("|");
 }
 
 /** 업체 탐색 후보군과 물량별 문의 조건을 안내한다. */
