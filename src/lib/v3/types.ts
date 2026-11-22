@@ -59,6 +59,7 @@ export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
 export type OutsideCandidate = z.infer<typeof s.outsideCandidateSchema>;
 export type ComplexPartners = z.infer<typeof s.complexPartnersSchema>;
 export type ComplexCandidate = z.infer<typeof s.complexCandidateSchema>;
+export type ComplexPlan = z.infer<typeof s.complexPlanSchema>;
 export type Billing = z.infer<typeof s.billingSchema>;
 export type Regulation = z.infer<typeof s.regulationSchema>;
 export type Circular = z.infer<typeof s.circularSchema>;

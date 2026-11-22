@@ -194,6 +194,18 @@
     }
   }
 
+  /* 단지 평면도: 우리 폐기물을 받아 줄 수 있는 곳의 핀에서 고리가 퍼진다 */
+  @keyframes rs-halo {
+    from {
+      transform: scale(0.7);
+      opacity: 0.55;
+    }
+    to {
+      transform: scale(1.9);
+      opacity: 0;
+    }
+  }
+
   @keyframes rs-flow {
     from {
       stroke-dashoffset: 0;

@@ -11,6 +11,7 @@ import { UNAVAILABLE, userMessage } from "./errors";
 import { looksLikeScanList, looksLikeScanView } from "./scan";
 import type {
   AdminStatus,
+  ComplexPlan,
   CorrectionInput,
   CorrectionResult,
   CriteriaRowInput,
@@ -261,6 +262,9 @@ export const api = {
       `/sessions/${enc(sessionId)}/quote-request?streamId=${enc(streamId)}&vendorId=${enc(vendorId)}`,
       orgId,
     ),
+  /** 같은 단지 평면도. 서버가 지도 서비스를 실시간으로 불러 만든다(1~3초) */
+  complexPlan: (sessionId: string, orgId: string) =>
+    request<ComplexPlan>(`/sessions/${enc(sessionId)}/complex-plan`, orgId),
   run: (sessionId: string, orgId: string) =>
     request<DiagnosisView>(`/sessions/${enc(sessionId)}/run`, orgId, { method: "POST" }),
   /**
