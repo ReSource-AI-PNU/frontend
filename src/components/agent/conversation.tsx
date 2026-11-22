@@ -43,6 +43,7 @@ import { Dots } from "./dots";
 import { CircularEffects } from "./circular-effects";
 import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
+import { AdaptivePanel } from "@/components/v3/adaptive-panel";
 
 export { Dots };
 
@@ -837,6 +838,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
             </ul>
           </div>
         ) : null}
+
+        {isEmitter && !readOnly ? <AdaptivePanel key={view.session.id} view={view} busy={d.busy || working} /> : null}
 
         {blocked.map((approval) => (
           <BlockedNotice

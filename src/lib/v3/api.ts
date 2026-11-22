@@ -1,3 +1,4 @@
+import type { AdaptiveState, ScenarioOptions, ScenarioPreview } from "./adaptive";
 /**
  * 계약 8장 API 클라이언트.
  * 운영에서는 NEXT_PUBLIC_API_BASE=/api/v3(프런트 서버의 통로, src/app/api/v3)이고, 회사는 세션의 활성 회사로 서버가 정한다.
@@ -178,6 +179,11 @@ const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.strin
 const enc = encodeURIComponent;
 
 export const api = {
+  adaptive: (id: string, org: string) => request<AdaptiveState>(`/sessions/${enc(id)}/adaptive`, org),
+  previewScenario: (id: string, org: string, body: ScenarioOptions) =>
+    request<ScenarioPreview>(`/sessions/${enc(id)}/scenarios/preview`, org, json(body)),
+  applyScenario: (id: string, org: string, body: ScenarioOptions & { token: string }) =>
+    request<{ sessionId: string }>(`/sessions/${enc(id)}/scenarios/apply`, org, json(body)),
   /** 서버가 살아 있는지 */
   health: () => request<{ ok: boolean }>("/health", null),
   listOrgs: () => request<Org[]>("/orgs", null),
