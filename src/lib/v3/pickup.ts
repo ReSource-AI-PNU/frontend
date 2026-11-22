@@ -2,7 +2,10 @@
  * 결과 한 줄의 수거·운반(백엔드 judge/pickup.py)을 화면 말로 푼다. 수거 상태와 운반비 조건은 따로 본다.
  * 네트워크도 React도 부르지 않는 순수 함수다(결과 카드, 승인 화면, 대화 패널이 같이 쓴다).
  */
+import { numberOf } from "./money.ts";
 import type { Assignment, Pickup } from "./types";
+
+export const TRANSPORT_PROVISIONAL = "별도 운반비 반영 전 · 잠정";
 
 export type PickupStatus = Pickup["status"];
 
@@ -94,4 +97,47 @@ export function roomAgainstName(pickup: Pickup, vendorName: (id: string) => stri
   if (!against) return "다른 선택지";
   if (against.vendorOrgId) return vendorName(against.vendorOrgId) ?? "다른 업체";
   return against.route === "reuse" ? "사내 공정 재투입" : "지금 방식";
+}
+
+
+type Alternative = Assignment["alternatives"][number];
+
+function comparableVendor(item: Alternative): boolean {
+  return Boolean(item.vendorOrgId) && item.pickupStatus !== "unavailable" && item.permit?.status !== "unmet";
+}
+
+export function transportComparison(assignment: Pick<Assignment, "pickup" | "transportPending" | "costPending" | "alternatives">) {
+  if (!assignment.transportPending) return null;
+  const { pickup, alternatives, costPending } = assignment;
+  const vendors = alternatives.filter(comparableVendor);
+  const againstId = pickup?.roomAgainst?.vendorOrgId;
+  const against = vendors.find((item) => item.vendorOrgId === againstId);
+  const incomplete = vendors.filter((item) => item.transportPending || item.costPending || numberOf(item.monthlyAfter) === null);
+  if (!costPending && pickup?.room && numberOf(pickup.room) !== null &&
+      (againstId ? against && !incomplete.includes(against) : incomplete.length === 0)) {
+    return { room: pickup.room, name: roomAgainstName(pickup, () => against?.vendorName) };
+  }
+  const otherCosts = costPending || incomplete.some((item) => !item.transportPending);
+  const reason = incomplete.length
+    ? otherCosts ? "두 업체의 운반 견적과 미확인 비용을 확인해 비교해 주세요." : "두 업체의 운반 견적을 확인해 비교해 주세요."
+    : otherCosts ? "운반 견적과 미확인 비용을 확인한 뒤 월 손익을 비교해 주세요." : "이 업체의 운반 견적을 확인한 뒤 월 손익을 비교해 주세요.";
+  return { reason };
+}
+
+export function monthlyComparison(
+  assignment: Assignment,
+  alternative: Alternative,
+  resultAssignments: readonly Assignment[],
+): "same" | "selected" | "alternative" | null {
+  if (!assignment.vendorOrgId || !comparableVendor(alternative) ||
+      assignment.transportPending !== false || assignment.costPending !== false ||
+      alternative.transportPending !== false || alternative.costPending !== false) return null;
+  // 선택된 행의 운반비는 배정된 품목끼리 나눈 값이며, 대안은 이 품목만 보낼 때의 값이다.
+  if (resultAssignments.some(({ streamId, vendorOrgId }) =>
+    streamId !== assignment.streamId && (vendorOrgId === assignment.vendorOrgId || vendorOrgId === alternative.vendorOrgId))) return null;
+  const selected = numberOf(assignment.monthlyAfter);
+  const other = numberOf(alternative.monthlyAfter);
+  if (selected === null || other === null) return null;
+  if (selected === other) return "same";
+  return selected > other ? "selected" : "alternative";
 }

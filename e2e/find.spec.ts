@@ -373,3 +373,85 @@ test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 �
   await expect(criteria.getByLabel("PS A등급 분쇄 단가 (원/kg)")).toHaveValue("125");
   await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
 });
+
+test("월 운반비 견적 전에는 손익분기와 확인할 비용을 표시하고 견적 뒤에는 월 손익을 비교한다", async ({ page }) => {
+  const cases = [
+    { fee: null, aProfit: 320000, bPending: false, message: "별도 운반비가 월 70,000원이면 B사와 월 손익이 같고, 그보다 높으면 B사가 월 손익에서 유리합니다." },
+    { fee: 69000, aProfit: 251000, bPending: false, message: "A사가 월 손익에서 유리합니다." },
+    { fee: 70000, aProfit: 250000, bPending: false, message: "두 업체의 월 손익이 같습니다." },
+    { fee: 71000, aProfit: 249000, bPending: false, message: "B사가 월 손익에서 유리합니다." },
+    { fee: null, aProfit: 320000, bPending: true, message: "두 업체의 운반 견적을 확인해 비교해 주세요." },
+  ];
+  let view = structuredClone(demoView);
+  await page.route("**/api/v3-demo/sessions", (route) => route.fulfill({ json: [view.session] }));
+  await page.route(`**/api/v3-demo/sessions/${view.session.id}`, (route) => route.fulfill({ json: view }));
+  const money = (id: string, value: number, unit = "원/월") =>
+    ({ id, kind: "number", value, unit, evidence: [`calc:${id}`] });
+
+  for (const sample of cases) {
+    view = structuredClone(demoView);
+    const assignment = view.result.assignments.find((item) => item.streamId === "st_sprue")!;
+    const stream = view.streams.find((item) => item.id === "st_sprue")!;
+    stream.monthlyKg!.value = 1000;
+    const aChosen = sample.aProfit >= 250000;
+    const chosen = aChosen ? "A사" : "B사";
+    const other = aChosen ? "B사" : "A사";
+    const profit = aChosen ? sample.aProfit : 250000;
+    const pending = sample.fee === null;
+    Object.assign(assignment, {
+      vendorOrgId: chosen,
+      vendorName: chosen,
+      unitPrice: money("price", aChosen ? 320 : 250, "원/kg"),
+      monthlyAfter: money("selected-after", profit),
+      monthlyNow: money("current", -250000),
+      difference: money("difference", profit + 250000),
+      transport: aChosen && sample.fee !== null ? money("known-fee", sample.fee) : null,
+      transportPending: pending,
+      costPending: false,
+      pickup: {
+        status: "visit",
+        label: null,
+        days: [],
+        basis: aChosen ? "separate" : "included",
+        basisLabel: null,
+        routeBasis: null,
+        source: null,
+        paidBy: aChosen ? "emitter" : "vendor",
+        unit: aChosen ? "per_month" : null,
+        fee: aChosen && sample.fee !== null ? money("quoted-fee", sample.fee) : null,
+        pickups: null,
+        monthly: aChosen && sample.fee !== null ? money("monthly-fee", sample.fee) : null,
+        room: pending && !sample.bPending ? money("threshold", 70000) : null,
+        roomAgainst: pending && !sample.bPending ? { vendorOrgId: other, route: "sell" } : null,
+        pending,
+        seq: null,
+      },
+      alternatives: [{
+        vendorOrgId: other,
+        vendorName: other,
+        route: "sell",
+        unitPrice: money("other-price", aChosen ? 250 : 320, "원/kg"),
+        monthlyAfter: money("other-after", aChosen ? 250000 : sample.aProfit),
+        transportPending: sample.bPending,
+        costPending: sample.bPending,
+        pickupStatus: "visit",
+        note: "같은 물량 비교",
+      }],
+    });
+    await page.goto("/demo");
+    const result = page.getByRole("region", { name: "결과", exact: true });
+    const row = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem").filter({ hasText: "스프루·런너" });
+    await expect(row).toContainText(chosen);
+    if (pending) {
+      await expect(row).toContainText("월 손익 +320,000원 · 별도 운반비 반영 전 · 잠정");
+      await expect(row).toContainText(sample.message);
+      if (sample.bPending) await expect(row).not.toContainText(/별도 운반비가 월 [\d,]+원이면/);
+      else await expect(row).toContainText("최종 배정에는 탄소와 수거 조건 등도 반영됩니다.");
+    } else {
+      await row.getByRole("button", { name: /매입표 기준 충족|매입 조건 확인 필요|계산 내역/ }).first().click();
+      await expect(row).toContainText(sample.message);
+      await expect(row).toContainText("+250,000원");
+      await expect(row).toContainText(`+${sample.aProfit.toLocaleString("ko-KR")}원`);
+    }
+  }
+});

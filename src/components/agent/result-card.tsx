@@ -9,9 +9,10 @@ import { josa } from "@/lib/josa";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
+import { TRANSPORT_PROVISIONAL } from "@/lib/v3/pickup";
 import type { Approval, Assignment, OrgRole, PermitCheckInput, Result, Thread, ViewStream } from "@/lib/v3/types";
 import { BlockedRoutes, PermitChip, PermitDetail, PermitSummary } from "./permit-check";
-import { PickupBrief, RoomNote, TransportRows } from "./pickup-line";
+import { MonthlyComparisonNote, PickupBrief, RoomNote, TransportRows } from "./pickup-line";
 
 const CHECK_WORD = { met: "충족", conditional: "확인 필요", unmet: "맞지 않음", needs_information: "값 없음" } as const;
 const STATUS_WORD = { calculated: "매입표 기준 충족", conditional: "매입 조건 확인 필요", needs_information: "값 확인 필요" } as const;
@@ -23,6 +24,7 @@ function isEmitterRole(role: OrgRole) {
 
 function Row({
   assignment,
+  assignments,
   stream,
   role,
   onOpenTalk,
@@ -32,6 +34,7 @@ function Row({
   thread,
 }: {
   assignment: Assignment;
+  assignments: readonly Assignment[];
   stream: ViewStream | undefined;
   role: OrgRole;
   onOpenTalk: (threadId: string) => void;
@@ -104,7 +107,7 @@ function Row({
             <>
               <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
               {(assignment.transportPending || assignment.costPending) ? (
-                <span className="block text-[12px] text-warn">미확인 비용 반영 전</span>
+                <span className="block text-[12px] text-warn">{assignment.transportPending ? TRANSPORT_PROVISIONAL : "미확인 비용 반영 전"}</span>
               ) : assignment.bundleBelowCurrent?.bundle ? (
                 <span className="block text-[12px] text-warn">
                   묶음 전체{" "}
@@ -200,6 +203,7 @@ function Row({
         </p>
       </div>
 
+      {isEmitter ? <RoomNote assignment={assignment} /> : null}
       {permit ? <PermitSummary permit={permit} /> : null}
       {isEmitter ? <BlockedRoutes routes={blockedRoutes} placedName={placed ? assignment.vendorName : null} /> : null}
 
@@ -214,12 +218,6 @@ function Row({
                   vendorOrgId={assignment.vendorOrgId}
                   onRecord={isEmitter ? onPermitCheck : undefined}
                   disabled={busy}
-                />
-              ) : null}
-              {isEmitter ? (
-                <RoomNote
-                  assignment={assignment}
-                  vendorName={(id) => assignment.alternatives.find((item) => item.vendorOrgId === id)?.vendorName}
                 />
               ) : null}
               {isEmitter && assignment.revenue ? (
@@ -262,7 +260,7 @@ function Row({
                   ) : null}
                   <dt className="mt-1 border-t border-line pt-2 font-medium">
                     옮긴 뒤 한 달
-                    {(assignment.transportPending || assignment.costPending) ? <span className="ml-1.5 text-[12px] font-normal text-warn">미확인 비용 반영 전</span> : null}
+                    {(assignment.transportPending || assignment.costPending) ? <span className="ml-1.5 text-[12px] font-normal text-warn">{assignment.transportPending ? TRANSPORT_PROVISIONAL : "미확인 비용 반영 전"}</span> : null}
                   </dt>
                   <dd className="mt-1 border-t border-line pt-2 text-right font-medium">
                     {assignment.monthlyAfter ? (
@@ -372,6 +370,7 @@ function Row({
                           </>
                         ) : null}
                         {item.note ? <span className="block text-[13px] text-muted">{item.note}</span> : null}
+                        {isEmitter ? <MonthlyComparisonNote assignment={assignment} alternative={item} assignments={assignments} /> : null}
                       </li>
                     ))}
                   </ul>
@@ -587,6 +586,7 @@ export function ResultCard({
             <Row
               key={assignment.streamId}
               assignment={assignment}
+              assignments={result.assignments}
               stream={streams.find((item) => item.id === assignment.streamId)}
               role={role}
               onOpenTalk={onOpenTalk}

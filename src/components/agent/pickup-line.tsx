@@ -3,8 +3,8 @@
 import { ClaimValue } from "@/components/v3/claim";
 import { josa } from "@/lib/josa";
 import { formatNumber } from "@/lib/v3/format";
-import { numberOf, won } from "@/lib/v3/money";
-import { feeKind, pickupStatusText, pickupUnconfirmed, roomAgainstName } from "@/lib/v3/pickup";
+import { numberOf, signedWon, won } from "@/lib/v3/money";
+import { feeKind, monthlyComparison, pickupStatusText, pickupUnconfirmed, transportComparison, TRANSPORT_PROVISIONAL } from "@/lib/v3/pickup";
 import type { Assignment, Claim, Pickup } from "@/lib/v3/types";
 
 function Count({ claim }: { claim: Claim | null }) {
@@ -124,29 +124,48 @@ export function TransportRows({ assignment, onOpenTalk }: { assignment: Assignme
   );
 }
 
-/** 운반비가 정해지지 않은 줄: 운반비가 한 달 얼마를 넘으면 다음 선택지가 나은지 한 문장으로. */
-export function RoomNote({
-  assignment,
-  vendorName,
-}: {
-  assignment: Assignment;
-  vendorName: (id: string) => string | null | undefined;
-}) {
-  const pickup = assignment.pickup;
-  if (!pickup || !assignment.transportPending) return null;
-  const against = roomAgainstName(pickup, vendorName);
+/** 월 손익 비교에 필요한 운반 견적 또는 손익분기 계산을 보여 준다. */
+export function RoomNote({ assignment }: { assignment: Assignment }) {
+  const comparison = transportComparison(assignment);
+  if (!comparison) return null;
   return (
-    <p className="mb-4 rounded-lg bg-warn-bg px-3 py-2 text-[14px] leading-relaxed text-ink-2">
-      <span className="font-medium text-warn">별도 운반비 반영 전 금액입니다.</span>{" "}
-      {pickup.room ? (
-        <>
-          운반비가 한 달{" "}
-          <ClaimValue claim={pickup.room} display={won(pickup.room)} className="!font-normal" />을 넘으면{" "}
-          {josa(against, "이/가")} 낫습니다.
-        </>
-      ) : (
-        "업체가 운반비를 밝히면 다시 계산합니다."
-      )}
-    </p>
+    <div className="mt-2 rounded-lg bg-warn-bg px-3 py-2 text-[13px] leading-relaxed text-ink-2">
+      <p className="font-medium text-warn">
+        {assignment.monthlyAfter ? (
+          <>
+            월 손익 <ClaimValue claim={assignment.monthlyAfter} signed display={signedWon(assignment.monthlyAfter)} />{" · "}
+          </>
+        ) : null}
+        {TRANSPORT_PROVISIONAL}
+        {assignment.costPending ? " · 전처리비 확인 필요" : ""}
+      </p>
+      <p>
+        {"reason" in comparison ? comparison.reason : (numberOf(comparison.room) ?? 0) < 0 ? (
+          <>별도 운반비 반영 전에도 {josa(comparison.name, "이/가")} 월 손익에서 유리합니다.</>
+        ) : (
+          <>
+            별도 운반비가 월{" "}
+            <ClaimValue claim={comparison.room} display={won(comparison.room)} className="!font-normal" />
+            이면 {josa(comparison.name, "와/과")} 월 손익이 같고, 그보다 높으면 {josa(comparison.name, "이/가")} 월 손익에서 유리합니다.
+          </>
+        )}
+      </p>
+      {"room" in comparison ? <p className="mt-0.5 text-muted">최종 배정에는 탄소와 수거 조건 등도 반영됩니다.</p> : null}
+    </div>
+  );
+}
+
+export function MonthlyComparisonNote({ assignment, alternative, assignments }: {
+  assignment: Assignment;
+  alternative: Assignment["alternatives"][number];
+  assignments: readonly Assignment[];
+}) {
+  const result = monthlyComparison(assignment, alternative, assignments);
+  if (!result) return null;
+  const name = result === "selected" ? assignment.vendorName : alternative.vendorName;
+  return (
+    <span className="block text-[13px] text-ink-2">
+      {result === "same" ? "두 업체의 월 손익이 같습니다." : `${josa(name ?? "해당 업체", "이/가")} 월 손익에서 유리합니다.`}
+    </span>
   );
 }

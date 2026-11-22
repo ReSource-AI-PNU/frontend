@@ -1,8 +1,9 @@
 "use client";
 
-import { PickupBrief } from "@/components/agent/pickup-line";
+import { MonthlyComparisonNote, PickupBrief, RoomNote } from "@/components/agent/pickup-line";
 import { useId, useState } from "react";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, carbonText, fieldLabel, formatValue } from "@/lib/v3/format";
+import { TRANSPORT_PROVISIONAL } from "@/lib/v3/pickup";
 import { processLabel } from "@/lib/v3/flow";
 import type { Assignment, Check, CheckStatus, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
@@ -94,11 +95,13 @@ function splitChecks(checks: Check[]) {
  */
 function AssignmentRows({
   item,
+  assignments,
   source,
   full,
   vendorName,
 }: {
   item: Assignment;
+  assignments: readonly Assignment[];
   source: ViewStream | undefined;
   full: boolean;
   vendorName: (orgId: string | null) => string;
@@ -141,11 +144,11 @@ function AssignmentRows({
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.monthlyAfter} signed />
-              {(item.transportPending || item.costPending) ? <p className="text-[12px] font-semibold text-warn">미확인 비용 반영 전</p> : null}
+              {(item.transportPending || item.costPending) ? <p className="text-[12px] font-semibold text-warn">{item.transportPending ? TRANSPORT_PROVISIONAL : "미확인 비용 반영 전"}</p> : null}
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.difference} signed />
-              {(item.transportPending || item.costPending) ? <p className="text-[12px] font-semibold text-warn">미확인 비용 반영 전</p> : null}
+              {(item.transportPending || item.costPending) ? <p className="text-[12px] font-semibold text-warn">{item.transportPending ? TRANSPORT_PROVISIONAL : "미확인 비용 반영 전"}</p> : null}
             </td>
             <td className="py-3 pr-3 text-right whitespace-nowrap">
               <ClaimValue claim={item.carbon} />
@@ -214,6 +217,7 @@ function AssignmentRows({
               ) : null}
             </div>
           ) : null}
+          {full ? <RoomNote assignment={item} /> : null}
           {item.alternatives.length > 0 ? (
             <ul className="mt-2 space-y-1 text-[13px] text-muted">
               {item.alternatives.map((alt, index) => (
@@ -222,6 +226,8 @@ function AssignmentRows({
                   {" · "}
                   {ROUTE_LABEL[alt.route] ?? alt.route} <ClaimValue claim={alt.unitPrice} price /> → 월{" "}
                   <ClaimValue claim={alt.monthlyAfter} signed /> {alt.note ? `(${alt.note})` : ""}
+                  {alt.transportPending || alt.costPending ? <span className="block text-warn">미확인 비용 반영 전</span> : null}
+                  {full ? <MonthlyComparisonNote assignment={item} alternative={alt} assignments={assignments} /> : null}
                 </li>
               ))}
             </ul>
@@ -367,6 +373,7 @@ export function ResultSheet({
               <AssignmentRows
                 key={item.streamId}
                 item={item}
+                assignments={result.assignments}
                 source={stream(item.streamId)}
                 full={full}
                 vendorName={vendorName}
