@@ -46,6 +46,7 @@ import { Dots } from "./dots";
 import { CircularEffects } from "./circular-effects";
 import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
+import { AdaptivePanel } from "@/components/v3/adaptive-panel";
 
 export { Dots };
 
@@ -654,7 +655,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
     if (new URLSearchParams(window.location.search).get("present") !== "1") return;
     autoPresent.current = true;
     window.history.replaceState(null, "", window.location.pathname);
-    present();
+    // 효과 안에서 곧바로 상태를 바꾸지 않고(react-hooks/set-state-in-effect) 다음 틱에 연다
+    window.setTimeout(present, 0);
     // present는 렌더마다 새로 만든다. 한 번만 부른다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [working, d.canReplay]);
@@ -842,6 +844,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
             </ul>
           </div>
         ) : null}
+
+        {isEmitter && !readOnly ? <AdaptivePanel key={view.session.id} view={view} busy={d.busy || working} /> : null}
 
         {blocked.map((approval) => (
           <BlockedNotice

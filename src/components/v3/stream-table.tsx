@@ -148,6 +148,46 @@ function Basis({ basis, claim }: { basis: ViewStream["contaminationBasis"]; clai
   return note ? <p className="text-[12px] text-muted">{note}</p> : null;
 }
 
+const REFERENCE_BASIS: Record<string, string> = {
+  measured: "측정값",
+  answered: "담당자 답",
+  photo_estimate: "사진 추정",
+  photo_unverified: "검증 안 된 사진 추정",
+};
+
+/**
+ * 참고 등급. 업체 매입 기준이 없을 때 "이 정도면 보통 어느 수준인가"를 알려 준다. 팀이 정한 기준값(가정값)으로 낸
+ * 것이라 판정과 배정에는 쓰지 않고, 값 옆에 "가정값" 꼬리표를 붙인다.
+ */
+function ReferenceGrade({
+  name,
+  reference,
+}: {
+  name: string;
+  reference: NonNullable<ViewStream["grade"]["reference"]>;
+}) {
+  const { openEvidence } = useV3();
+  return (
+    <div className="mt-1.5 text-[12px] text-muted">
+      <p>
+        참고{" "}
+        <button
+          type="button"
+          disabled={reference.evidence.length === 0}
+          onClick={() => openEvidence(reference.evidence, `${name} 참고 등급`)}
+          className="font-mono font-semibold text-ink-2 underline decoration-line-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+        >
+          {reference.grade}
+        </button>{" "}
+        <span className="text-warn">가정값</span>
+        {reference.basis ? ` · ${REFERENCE_BASIS[reference.basis] ?? reference.basis}` : ""}
+      </p>
+      {reference.meaning ? <p>{reference.meaning}</p> : null}
+      <p>판정과 배정에는 쓰지 않습니다.</p>
+    </div>
+  );
+}
+
 /** ① 식별·분류 결과: 흐름마다 물량, 오염도, 수분, 등급, 현행 처리. 값마다 근거가 열린다. */
 export function StreamTable({
   streams,
@@ -202,6 +242,19 @@ export function StreamTable({
                   {stream.contaminants.length > 0 ? (
                     <p className="text-[12px] text-muted">혼입물: {stream.contaminants.join(", ")}</p>
                   ) : null}
+                  {stream.materialBasis === "label" ? (
+                    <p className="text-[12px] text-muted">
+                      재질 출처:{" "}
+                      <button
+                        type="button"
+                        disabled={(stream.materialEvidence ?? []).length === 0}
+                        onClick={() => openEvidence(stream.materialEvidence ?? [], `${stream.name} 재질 표기`)}
+                        className="underline decoration-line-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+                      >
+                        포장 표기
+                      </button>
+                    </p>
+                  ) : null}
                 </td>
                 <td className="py-2.5 pr-3 text-right whitespace-nowrap">
                   <ClaimValue claim={stream.monthlyKg} />
@@ -218,7 +271,11 @@ export function StreamTable({
                   ) : stream.photoContamination ? (
                     <>
                       <ClaimValue claim={stream.photoContamination} />
-                      <p className="text-[12px] text-muted">사진 추정</p>
+                      {stream.photoReliable === false ? (
+                        <p className="text-[12px] text-warn">사진 추정 · 검증 안 됨</p>
+                      ) : (
+                        <p className="text-[12px] text-muted">사진 추정</p>
+                      )}
                     </>
                   ) : (
                     <ClaimValue claim={null} />
@@ -243,6 +300,9 @@ export function StreamTable({
                     <ClaimValue claim={null} />
                   )}
                   {stream.grade.value ? <p className="text-[12px] text-muted">{stream.grade.label}</p> : null}
+                  {!stream.grade.value && stream.grade.reference ? (
+                    <ReferenceGrade name={stream.name} reference={stream.grade.reference} />
+                  ) : null}
                   {[...unknown].filter((item) => item !== "moisturePct").length > 0 ? (
                     <p className="text-[12px] text-muted">
                       모르는 값:{" "}

@@ -251,6 +251,8 @@ export const stageSchema = obj({
 
 /** 오염도·수분 값의 출처: 측정 | 담당자가 질문에 답한 값 | 사진 추정 */
 export const valueBasisSchema = z.enum(["measured", "answered", "photo_estimate"]);
+/** 참고 등급에 쓴 값의 출처. photo_unverified는 탐지 모델이 검증 안 된 참고값이라고 표시한 사진 추정값이다 */
+export const referenceBasisSchema = z.enum(["measured", "answered", "photo_estimate", "photo_unverified"]);
 
 /**
  * 차량·횟수 단위나 월 정액으로 받은 현행 처리비 계약(백엔드가 월 발생량으로 kg당 처리비로 바꾼 원래 꼴).
@@ -270,6 +272,9 @@ export const viewStreamSchema = obj({
   process: z.string().nullable(),
   wasteItem: z.string().nullable(),
   material: z.string().nullable(),
+  /** 재질의 출처. label은 사진 속 표기를 담당자가 등록한 것이다. 이 기능 전 뷰에는 없다 */
+  materialBasis: z.enum(["label", "estimated"]).nullable().optional(),
+  materialEvidence: z.array(z.string()).optional(),
   origin: z.string().nullable(),
   form: z.string().nullable(),
   lot: z.string().nullable(),
@@ -280,6 +285,8 @@ export const viewStreamSchema = obj({
   contamination: claimOrNull,
   /** 탐지 모델이 사진에서 추정한 오염 비율 */
   photoContamination: claimOrNull,
+  /** 탐지 모델이 그 값을 검증 안 된 참고값이라고 표시했으면 false. 이 기능 전 뷰에는 없다 */
+  photoReliable: z.boolean().nullable().optional(),
   moisture: claimOrNull,
   /** contamination·moisture 값의 출처. 담당자 답이면 claim 이름이 "오염도(담당자 답)"처럼 온다 */
   contaminationBasis: valueBasisSchema.nullable().optional(),
@@ -291,6 +298,19 @@ export const viewStreamSchema = obj({
     basis: z.enum(["measured", "photo_estimate"]).nullable(),
     label: z.string(),
     evidence: z.array(z.string()),
+    /**
+     * 참고 등급. 팀이 정한 기준값(가정값)으로 낸 것이라 판정과 배정에는 쓰지 않는다. 배출 기업이 보는 뷰에만 오고,
+     * 오염도나 수분이 없으면 null이다. 이 기능 전 뷰에는 없다
+     */
+    reference: obj({
+      grade: z.string(),
+      basis: referenceBasisSchema.nullable(),
+      meaning: z.string().nullable(),
+      note: z.string().nullable(),
+      evidence: z.array(z.string()),
+    })
+      .nullable()
+      .optional(),
   }),
   /** 업체가 보는 뷰에서는 null이다 */
   currentTreatment: obj({
@@ -690,6 +710,41 @@ export const complexPartnersSchema = obj({
       reason: z.string().nullable(),
     }),
   ),
+});
+
+/**
+ * 같은 단지 평면도(GET /sessions/{id}/complex-plan, 2026-11-22). 화면을 열 때마다 서버가 지도 서비스에서 실시간으로
+ * 받아 만들고 저장하지 않는다. 건물 꼭짓점은 bbox 서남쪽 모서리 기준 정수([x, y, x, y, …], 1/scale 도 단위)다.
+ */
+const planPlaceSchema = obj({
+  location: z.tuple([z.number(), z.number()]),
+  buildingId: z.string().nullable(),
+  /** registry: 허가 명부 좌표 · kakao: 카카오 주소 검색 · vworld: VWorld 지오코더 · org: 회사 정보의 위치 */
+  source: z.enum(["registry", "kakao", "vworld", "org"]),
+});
+
+export const complexPlanSchema = obj({
+  complex: obj({ id: z.string(), name: z.string(), basis: z.enum(["region", "location"]) }).nullable(),
+  /** [서, 남, 동, 북]. 위치를 하나도 찾지 못하면 null */
+  bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).nullable(),
+  scale: z.number(),
+  self: planPlaceSchema.nullable(),
+  /** 후보 ID(complexPartners의 id) → 자리 */
+  places: z.record(z.string(), planPlaceSchema),
+  buildings: z.array(
+    obj({
+      rings: z.array(z.array(z.number())),
+      floors: z.number().nullable(),
+      /** 회사가 든 건물에만 있다 */
+      id: z.string().optional(),
+      address: z.string().nullable().optional(),
+      name: z.string().nullable().optional(),
+    }),
+  ),
+  /** 위치를 찾지 못한 후보 ID */
+  missing: z.array(z.string()),
+  notes: obj({ buildings: z.string().nullable(), locations: z.string().nullable() }),
+  sources: z.array(z.string()),
 });
 
 /** ③ 규정 확인의 법령 조항 인용. 조문 원문의 부분 문자열이고 label은 조항 이름이다 */

@@ -23,11 +23,12 @@ import {
 } from "@/lib/v3/complex";
 import { groupTitle } from "@/lib/v3/outside";
 import type { ComplexCandidate, ComplexPartners, OutsideVendors, ViewStream } from "@/lib/v3/types";
+import { ComplexPlanView } from "./complex-plan";
 import { itemsOf, QuoteSheet, type QuoteTarget } from "./outside-vendors";
 
 const SHOWN = 3;
 
-function PartnerRow({ candidate, onRequest }: { candidate: ComplexCandidate; onRequest?: () => void }) {
+export function PartnerRow({ candidate, onRequest }: { candidate: ComplexCandidate; onRequest?: () => void }) {
   const { openEvidence } = useV3();
   const permit = candidate.role === "takes" ? permitChip(candidate) : null;
   const resin = resinChip(candidate);
@@ -144,7 +145,18 @@ export function ComplexPartnersSection({
     <section aria-label="같은 단지 자원순환 후보" className="border-t border-line pt-6">
       <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{complexHeadline(partners)}</h2>
       <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{COMPLEX_LEAD}</p>
-      <div className="mt-4 space-y-7">
+      <div className="mt-4">
+        <ComplexPlanView
+          partners={partners}
+          streams={streams}
+          sessionId={sessionId}
+          orgId={orgId}
+          renderDetail={(candidate, streamIds) => (
+            <PartnerRow key={candidate.id} candidate={candidate} onRequest={requestFor(streamIds)(candidate)} />
+          )}
+        />
+      </div>
+      <div className="mt-6 space-y-7">
         {groupComplex(partners).map((group) => {
           const key = group.streamIds.join("|");
           const empty = group.takes.length === 0 && group.uses.length === 0;
