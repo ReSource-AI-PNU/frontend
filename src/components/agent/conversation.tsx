@@ -47,7 +47,6 @@ import { CircularEffects } from "./circular-effects";
 import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
 import { VendorComparison } from "./vendor-comparison";
-import { MvpMatches } from "./mvp-matches";
 import { AdaptivePanel } from "@/components/v3/adaptive-panel";
 
 export { Dots };
@@ -644,8 +643,6 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const result = holding ? null : view.result;
   // 받아 줄 곳이 하나도 없으면 바꾼 뒤와 비교할 것이 없다. 효과와 흐름은 보이지 않고 지금 비용만 둔다
   const hasRoute = result !== null && placedCount(result.assignments) > 0;
-  const pilot = result && isEmitter && !readOnly ? (view.mvpMatches ?? []) : [];
-  const onlyPilot = Boolean(result && pilot.length > 0 && pilot.length === result.assignments.length);
   // 받은 견적이 있는 폐기물 수(업체 견적 비교 접는 칸의 오른쪽 값)
   const quoted = result ? result.assignments.filter((item) => item.vendorOrgId && item.unitPrice).length : 0;
   const liveThreads = threads.filter((item) => item.messages.length > 0 || item.typing);
@@ -845,9 +842,9 @@ export function Conversation({ d }: { d: Diagnosis }) {
           </div>
         ) : null}
 
-        {(ended && !onlyPilot) || closed.length > 0 ? (
+        {ended || closed.length > 0 ? (
           <div role="status" className="rounded-xl bg-ground px-4 py-3.5 text-sm text-ink-2">
-            {ended && !onlyPilot ? <p className="font-medium text-ink">조건이 맞는 곳이 남지 않아 찾기를 마쳤습니다. 아래 사유를 보고 자료를 고쳐 다시 찾아 보세요.</p> : null}
+            {ended ? <p className="font-medium text-ink">조건이 맞는 곳이 남지 않아 찾기를 마쳤습니다. 아래 사유를 보고 자료를 고쳐 다시 찾아 보세요.</p> : null}
             <ul className={ended ? "mt-1.5 space-y-1" : "space-y-1"}>
               {closed.map((item) => (
                 <li key={item.id}>
@@ -876,7 +873,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
           />
         ))}
 
-        {result && !onlyPilot ? (
+        {result ? (
           <ResultCard
             result={result}
             streams={view.streams}
@@ -889,8 +886,6 @@ export function Conversation({ d }: { d: Diagnosis }) {
             approvals={view.approvals}
           />
         ) : null}
-
-        {pilot.length > 0 ? <MvpMatches items={pilot} /> : null}
 
         {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
         {result && isEmitter && !holding ? (
