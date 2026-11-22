@@ -10,14 +10,29 @@ import {
 } from "@/lib/v3/circular";
 import type { Circular, CircularTotal } from "@/lib/v3/types";
 
-function MetricTile({ metric, total }: { metric: CircularMetricKey; total?: CircularTotal }) {
+function effectLabel(metric: CircularMetricKey, massEstimate: boolean): string {
+  return massEstimate && metric === "energy" ? "예상 원료 생산 에너지 절감량" : METRIC_LABEL[metric];
+}
+
+function MetricTile({ metric, total, massEstimate }: {
+  metric: CircularMetricKey;
+  total?: CircularTotal;
+  massEstimate: boolean;
+}) {
   const text = metricText(metric, total?.total);
+  const label = effectLabel(metric, massEstimate);
+  const notes = {
+    ...METRIC_NOTE,
+    ghg: "에너지 회수 소각과 기계적 재활용의 전 과정 배출 차이",
+    energy: "같은 양의 신재와 재생원료를 만드는 데 드는 에너지 차이",
+  };
+  const note = (massEstimate ? notes : METRIC_NOTE)[metric];
   return (
     <div className="border-t border-line-strong pt-3">
-      <p className="text-label text-muted">{METRIC_LABEL[metric]}</p>
+      <p className="text-label text-muted">{label}</p>
       <p className="mt-1 text-[24px] leading-tight font-semibold tracking-[-0.02em] sm:text-[26px]">
         {total?.total && text ? (
-          <ClaimValue claim={total.total} display={text} title={`${METRIC_LABEL[metric]} 추정 계산`} />
+          <ClaimValue claim={total.total} display={text} title={`${label} 추정 계산`} />
         ) : total?.status === "zero" ? (
           <span className="text-ink-2">변화 없음</span>
         ) : (
@@ -30,7 +45,7 @@ function MetricTile({ metric, total }: { metric: CircularMetricKey; total?: Circ
           <> · <ClaimValue claim={total.countedKg} display={kgText(total.countedKg) ?? undefined} className="!font-normal" /> 기준 부분합</>
         ) : null}
       </p>
-      <p className="mt-1 text-[12px] leading-snug text-muted">{metric === "ghg" ? "비교 기준 대비, 원료 생산부터 처리까지 전 과정 배출의 차이" : METRIC_NOTE[metric]}</p>
+      <p className="mt-1 text-[12px] leading-snug text-muted">{note}</p>
     </div>
   );
 }
@@ -91,31 +106,36 @@ export function CircularEffects({ circular }: { circular: Circular }) {
   if (!a) return null;
   const reference = circular.reference;
   const totals = reference?.totals ?? a.totals;
-  const assumptions = Array.from(new Set(reference?.rows.filter((row) => row.value).flatMap((row) => row.assumptions) ?? []));
+  const monthlyKg = reference?.monthlyKg;
   return (
     <section aria-label="자원순환 효과" className="border-t border-line pt-6">
-      <h2 className="text-[20px] leading-snug font-semibold tracking-[-0.02em]">자원순환 효과</h2>
       <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">
-        월 발생량과 연구 자료를 바탕으로 계산한 예상 효과입니다.
-        {assumptions.length > 0 ? " 미확인 조건에는 문헌의 처리 조건을 적용했습니다." : ""}
+        {monthlyKg ? (
+          <>매칭된 월 <ClaimValue claim={monthlyKg} display={kgText(monthlyKg) ?? undefined} />을 기계적으로 재활용할 경우의 문헌 추정치입니다.</>
+        ) : (
+          <>월 발생량과 연구 자료를 바탕으로 계산한 예상 효과입니다.</>
+        )}
       </p>
       <div className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3">
-        {CIRCULAR_METRICS.map((metric) => <MetricTile key={metric} metric={metric} total={totals[metric]} />)}
+        {CIRCULAR_METRICS.map((metric) => <MetricTile key={metric} metric={metric} total={totals[metric]} massEstimate={Boolean(monthlyKg)} />)}
       </div>
       <MoreDetails label="추정 기준과 계산 내역 보기" className="mt-3">
         <div className="space-y-3 rounded-xl bg-ground px-4 py-3 text-[13px] leading-relaxed text-ink-2">
-          <p>EU JRC의 온실가스·신재 대체 계수와 미국 EPA WARM의 순에너지 계수를 각각 적용합니다. 해외 연구 조건에 따른 추정이며 사업장의 실측·인증 감축량이 아닙니다. 세 지표는 합산하지 않습니다.</p>
-          {assumptions.length > 0 ? <ul className="list-disc space-y-1 pl-4">{assumptions.map((line) => <li key={line}>{line}</li>)}</ul> : null}
+          {monthlyKg ? (
+            <p>온실가스는 에너지 회수 소각과 비교합니다. 에너지는 재생원료와 신재의 생산 단계만 비교합니다. 각 값은 해외 연구 조건으로 환산한 참고 추정치입니다.</p>
+          ) : (
+            <p>각 값은 해외 연구 조건으로 환산한 참고 추정치입니다.</p>
+          )}
           {reference?.rows.map((row) => (
             <p key={`${row.streamId}-${row.metric}`}>
-              <span className="font-medium">{row.streamName ?? row.streamId} · {METRIC_LABEL[row.metric]}</span>{" — "}
+              <span className="font-medium">{row.streamName ?? row.streamId} · {effectLabel(row.metric, Boolean(monthlyKg))}</span>{" — "}
               {row.value ? <ClaimValue claim={row.value} display={metricText(row.metric, row.value) ?? undefined} /> : row.status === "zero" ? "변화 없음" : row.reason || "적용 계수 없음"}
               {row.value && row.assumptions.length > 0 ? <span className="block text-muted">{row.assumptions.join(" · ")}</span> : null}
             </p>
           ))}
           {CIRCULAR_METRICS.map((metric) => {
             const total = totals[metric];
-            return total?.heldStreams.length ? <p key={metric}>{METRIC_LABEL[metric]} 계산 제외: {total.heldStreams.map((row) => row.streamName ?? row.streamId).join(", ")}. 제외 항목을 0으로 계산하지 않습니다.</p> : null;
+            return total?.heldStreams.length ? <p key={metric}>{effectLabel(metric, Boolean(monthlyKg))} 계산 제외: {total.heldStreams.map((row) => row.streamName ?? row.streamId).join(", ")}. 제외 항목을 0으로 계산하지 않습니다.</p> : null;
           })}
           {circular.excluded.length > 0 ? <p>계산 제외: {circular.excluded.map((row) => `${row.streamName ?? row.streamId} (${row.reason ?? "입력 확인 필요"})`).join(", ")}</p> : null}
         </div>
