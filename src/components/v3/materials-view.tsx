@@ -57,6 +57,7 @@ import {
   setRows,
   type PendingDocument,
 } from "@/lib/v3/intake";
+import { vendorReady, vendorRegistrationSummary } from "@/lib/v3/onboarding";
 import { AI_NAME } from "@/lib/v3/labels";
 import type {
   CsvUploadResult,
@@ -66,6 +67,7 @@ import type {
   DocumentUploadResult,
   ExtractedField,
   MediaUploadResult,
+  ManualPermitInput,
   StreamRecord,
   VendorProfile,
 } from "@/lib/v3/types";
@@ -74,6 +76,7 @@ import { ClaimValue } from "./claim";
 import { CompanyMemory } from "./company-memory";
 import { useV3 } from "./context";
 import { CriteriaReview } from "./criteria-review";
+import { PermitEditor } from "./permit-editor";
 import { OffRouteTerms } from "./off-route-terms";
 import { StorageScan } from "./storage-scan";
 import { useRemote } from "./use-remote";
@@ -341,18 +344,23 @@ function DocumentUpload({
   kinds,
   canAct,
   label,
+  uploadText = "파일 올리기",
+  pendingLabel = label,
   onConfirmed,
 }: {
   kinds: DocumentKind[];
   canAct: boolean;
   label: string;
+  uploadText?: string;
+  pendingLabel?: string;
   /** 확인한 값을 등록한 뒤(업체는 응답의 profile로 허가 품목·매입 기준을 바로 다시 그린다) */
   onConfirmed?: (result: DocumentConfirmResult) => void;
 }) {
   const { org, openEvidence } = useV3();
   const upload = useUpload<DocumentUploadResult>(canAct);
   const [kind, setKind] = useState<DocumentKind>(kinds[0]);
-  const [pending, update] = usePending(pendingKey(org.id, label));
+  const [documents, update] = usePending(pendingKey(org.id, pendingLabel));
+  const pending = documents.filter((item) => kinds.includes(item.result.kind));
   const [registered, setRegistered] = useState<{ filename: string; evidence: string[]; profile: DocumentProfileSummary | null } | null>(null);
   // AI가 읽지 못했을 때 "다시 읽기"로 같은 파일을 다시 보낸다(새로 고치면 잃는다)
   const [lastFile, setLastFile] = useState<{ file: File; kind: DocumentKind } | null>(null);
@@ -373,7 +381,7 @@ function DocumentUpload({
   return (
     <div className="space-y-2 text-sm">
       <div className="flex flex-wrap items-center gap-3">
-        <select
+        {kinds.length > 1 ? <select
           value={kind}
           onChange={(event) => setKind(event.target.value as DocumentKind)}
           className={field}
@@ -384,13 +392,13 @@ function DocumentUpload({
               {DOC_KIND_LABEL[item]}
             </option>
           ))}
-        </select>
-        <FileButton text="파일 올리기" label={label} disabled={!canAct || upload.state.busy} onFile={(file) => send(file, kind)} />
+        </select> : null}
         {kind === "purchase_criteria" ? (
-          <Button size="sm" variant="ghost" className="!text-ink-2" disabled={!canAct || upload.state.busy} onClick={() => writeByHand("직접 적은 매입 기준")}>
-            직접 적기
+          <Button size="sm" variant="secondary" disabled={!canAct || upload.state.busy} onClick={() => writeByHand("직접 적은 매입 기준")}>
+            매입 기준 추가
           </Button>
         ) : null}
+        <FileButton text={uploadText} label={label} disabled={!canAct || upload.state.busy} onFile={(file) => send(file, kind)} />
       </div>
       <UploadStatus
         state={upload.state}
@@ -1375,14 +1383,18 @@ function VendorForm({
   profile,
   canAct,
   onSave,
+  onAddPermits,
   onConfirmed,
+  summary,
   note,
   setNote,
 }: {
   profile: VendorProfile;
   canAct: boolean;
   /** 저장하고 저장된 프로필을 돌려준다 */
-  onSave: (profile: VendorProfile) => Promise<VendorProfile>;
+  onSave: (profile: Partial<VendorProfile>) => Promise<VendorProfile>;
+  onAddPermits: (rows: ManualPermitInput[]) => Promise<void>;
+  summary: ReturnType<typeof vendorRegistrationSummary>;
   /** 문서에서 확인한 값이 업체 정보에 들어갔다 */
   onConfirmed: (result: DocumentConfirmResult) => void;
   /** 저장 결과 한 줄. 처음 저장하면 폼을 새로 그리므로(key) 위에서 들고 있는다 */
@@ -1416,11 +1428,7 @@ function VendorForm({
     profile.guardrails.ceilingPriceKrwPerKg != null ? String(profile.guardrails.ceilingPriceKrwPerKg) : "",
   );
   // 매입 기준표의 단가(기준 ID → 입력한 글자). 배출 기업 기준이라 양수는 매입, 음수는 처리비다
-  const [prices, setPrices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      profile.criteria.map((row) => [row.id, row.unitPriceKrwPerKg != null ? String(row.unitPriceKrwPerKg) : ""]),
-    ),
-  );
+  const [prices, setPrices] = useState<Record<string, string>>({});
   const list = (text: string) =>
     text
       .split(",")
@@ -1429,7 +1437,7 @@ function VendorForm({
   const num = (text: string) => (text.trim() === "" ? null : Number(text));
   // 문서 확인으로 새로 들어온 기준은 입력한 적이 없으므로 받은 단가에서 시작한다(빈 칸으로 저장해 단가를 지우지 않게)
   const priceText = (row: VendorProfile["criteria"][number]) =>
-    prices[row.id] ?? (row.unitPriceKrwPerKg != null ? String(row.unitPriceKrwPerKg) : "");
+    row.priceMode === "negotiated" ? "" : prices[row.id] ?? String(row.unitPriceKrwPerKg ?? "");
 
   const save = async () => {
     const floorValue = num(floor);
@@ -1461,8 +1469,9 @@ function VendorForm({
     const transport = transportBody(savedTransport, offRoute);
     try {
       await onSave({
-        ...profile,
-        criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })),
+        ...(profile.criteria.some((row, index) => priceValues[index] !== (row.unitPriceKrwPerKg ?? null))
+          ? { criteria: profile.criteria.map((row, index) => ({ ...row, unitPriceKrwPerKg: priceValues[index] })) }
+          : {}),
         inspectionFallbackCriterionId: fallbackGrade || null,
         process: process || null,
         guardrails: {
@@ -1478,6 +1487,7 @@ function VendorForm({
         // 운반 조건도 계약의 항목만 담는다(근거는 서버가 정한다). 보낼 것이 없으면 키를 빼서 바꾸지 않는다
         transport: transport as VendorProfile["transport"],
       });
+      setPrices({});
       setNote("저장했습니다.");
     } catch (error) {
       // 백엔드 문장이 항목 이름(예: vehicleCount)을 괄호로 덧붙이므로 그 부분만 뺀다
@@ -1503,25 +1513,32 @@ function VendorForm({
 
   return (
     <div className="divide-y divide-line">
-      <section className="pb-8">
-        <h2 className={sectionTitle}>허가증·매입 기준표 올리기</h2>
-        <p className="mt-1 text-sm text-muted">문서에서 뽑은 값은 담당자가 확인한 것만 아래 표에 근거로 들어갑니다.</p>
-        <div className="mt-4">
-          <DocumentUpload kinds={["permit", "purchase_criteria"]} canAct={canAct} label="업체 문서" onConfirmed={onConfirmed} />
-        </div>
-      </section>
+      <ul className="space-y-1 pb-6 text-sm text-ink-2" aria-label="업체 등록 상태">
+        <li>{summary.saved}</li>
+        <li>{summary.candidates}</li>
+        <li>{summary.confirmation}</li>
+      </ul>
 
-      <section className="py-8">
+      <section className="space-y-3 py-8">
         <h2 className={sectionTitle}>허가 품목</h2>
-        <p className="mt-1 text-sm text-muted">허가 품목이 맞는 폐기물만 문의가 옵니다.</p>
+        <PermitEditor canAct={canAct} onSave={onAddPermits}>
+          <DocumentUpload kinds={["permit"]} canAct={canAct} label="허가증 업로드" uploadText="허가증 업로드"
+            pendingLabel="업체 문서" onConfirmed={onConfirmed} />
+        </PermitEditor>
         {profile.permits.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-2">아직 등록된 허가 품목이 없습니다. 위에서 허가증을 올려 주세요.</p>
+          <p className="mt-3 text-sm text-ink-2">등록된 허가 품목이 없습니다. 공공 명부에 없어도 목록에서 선택하거나 직접 입력할 수 있습니다.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line border-y border-line text-[15px]">
             {profile.permits.map((permit, index) => (
               <li key={index} className="flex flex-wrap items-baseline gap-x-3 py-2.5">
                 <span className="font-medium">{permit.wasteItem}</span>
-                <span className="min-w-0 flex-1 text-ink-2">{permit.materials.join(", ")}</span>
+                {permit.code ? <span className="text-muted">{permit.code}</span> : null}
+                <span className="min-w-0 flex-1 text-ink-2">
+                  {permit.materials.join(", ") || (permit.entrySource === "manual" ? "재질 확인 필요" : "")}
+                </span>
+                {permit.entrySource === "manual" || !permit.evidence.some((id) => id.startsWith("doc:") || id.startsWith("registry:")) ? (
+                  <span className="text-[13px] text-warn">담당자 입력 · 허가증 원본 확인 필요</span>
+                ) : null}
                 <span className="text-[13px] text-muted">
                   <EvidenceLink ids={permit.evidence} />
                 </span>
@@ -1534,10 +1551,14 @@ function VendorForm({
       <section className="py-8">
         <h2 className={sectionTitle}>매입 기준표</h2>
         <p className="mt-1 text-sm text-muted">
-          AI는 이 표에 있는 조건과 단가로만 답합니다. 단가는 고쳐서 저장할 수 있습니다.
+          고정 단가는 자동 견적에 쓰이며, 건별 협의는 담당자가 견적을 냅니다.
         </p>
+        <div className="mt-3">
+          <DocumentUpload kinds={["purchase_criteria"]} canAct={canAct} label="기준표 업로드" uploadText="기준표 업로드"
+            pendingLabel="업체 문서" onConfirmed={onConfirmed} />
+        </div>
         {profile.criteria.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-2">아직 등록된 매입 기준이 없습니다. 위에서 매입 기준표를 올려 주세요.</p>
+          <p className="mt-3 text-sm text-ink-2">등록된 매입 기준이 없습니다. 기준표가 없어도 매입 기준을 추가할 수 있습니다.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[720px] text-[15px]">
@@ -1563,7 +1584,9 @@ function VendorForm({
                     <td className="py-2.5 pr-3 text-right">{row.maxContaminationPct != null ? `${row.maxContaminationPct}%` : "-"}</td>
                     <td className="py-2.5 pr-3 text-right">{row.maxMoisturePct != null ? `${row.maxMoisturePct}%` : "-"}</td>
                     <td className="py-2.5 pr-3 text-right">
-                      {canAct ? (
+                      {row.priceMode === "negotiated" ? (
+                        <span className="text-[13px] text-warn">담당자 견적 필요</span>
+                      ) : canAct ? (
                         <span className="inline-flex items-center justify-end gap-2">
                           <span className="text-[13px] text-muted">
                             {Number.isFinite(num(priceText(row))) && num(priceText(row)) !== null
@@ -1980,6 +2003,7 @@ function VendorMaterials() {
         <div className="mb-8 border-b border-line">
           <VendorOnboarding
             orgId={org.id}
+            discoverable={vendorReady(profile)}
             onSaved={(saved) => {
               remote.set(normalizeProfile(saved, org.id, org.name));
               setRevision((before) => before + 1);
@@ -1994,12 +2018,16 @@ function VendorMaterials() {
         canAct={canWrite}
         note={note}
         setNote={setNote}
+        summary={vendorRegistrationSummary({ saved: remote.data != null, permits: profile.permits, criteria: profile.criteria })}
+        onAddPermits={async (appendPermits) => {
+          remote.set(normalizeProfile(await api.putVendor(org.id, { appendPermits }), org.id, org.name));
+        }}
         onSave={async (next) => {
           // 업체가 고른 모델 설정은 운영 화면 몫이다. 읽은 값이 있을 때만 그대로 돌려보낸다.
           // 차량 정보가 없으면 보내지 않는다(빈 값을 근거로 등록하지 않게)
           const { model, fleet, ...rest } = next;
           const body = { ...rest, ...(model?.provider ? { model } : {}), ...(fleet ? { fleet } : {}) };
-          const saved = normalizeProfile(await api.putVendor(org.id, body as VendorProfile), org.id, org.name);
+          const saved = normalizeProfile(await api.putVendor(org.id, body), org.id, org.name);
           remote.set(saved);
           return saved;
         }}
@@ -2027,7 +2055,7 @@ export function MaterialsView() {
           {org.role === "emitter"
             ? "지금 처리 방법과 단가, 사진, 측정값을 넣을수록 업체가 조건을 정확히 내놓습니다. 없는 것은 비워 둬도 됩니다."
             : org.role === "vendor"
-              ? "허가증과 매입 기준표를 올려 두면, 맞는 물량에만 AI가 매입 기준표의 조건으로 대신 답합니다."
+              ? "허가 품목과 매입 기준을 파일 없이 등록할 수 있습니다. 허가증이나 기준표가 있으면 올려서 확인할 수 있습니다."
               : "자료는 배출 기업과 처리 업체 계정에서 올립니다."}
         </p>
         {readOnly ? (

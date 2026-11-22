@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/v3/api";
 import {
@@ -70,7 +70,8 @@ function RowEditor({
   onChange: (values: Partial<CriteriaValues>) => void;
 }) {
   const v = row.values;
-  const id = (key: string) => `criteria-${row.key}-${key}`;
+  const rowId = useId();
+  const id = (key: string) => `${rowId}-${key}`;
   const price = (text: string) => {
     const parsed = numberInput(text.split(" ").pop() ?? "");
     return parsed === null || Number.isNaN(parsed) ? text : `kg당 ${formatNumber(parsed)}원`;
@@ -79,14 +80,24 @@ function RowEditor({
     <div className="mt-3 grid gap-x-4 gap-y-4 sm:grid-cols-2">
       <label className={label} htmlFor={id("material")}>
         재질
-        <select id={id("material")} value={v.material} disabled={disabled} onChange={(event) => onChange({ material: event.target.value })} className={input}>
-          <option value="">골라 주세요</option>
-          {MATERIALS.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+        {row.origin === "manual" ? (
+          <>
+            <input id={id("material")} list={id("material-list")} value={v.material} maxLength={40} disabled={disabled}
+              onChange={(event) => onChange({ material: event.target.value })} className={input} />
+            <datalist id={id("material-list")}>
+              {MATERIALS.map((value) => <option key={value} value={value} />)}
+            </datalist>
+          </>
+        ) : (
+          <select id={id("material")} value={v.material} disabled={disabled} onChange={(event) => onChange({ material: event.target.value })} className={input}>
+            <option value="">골라 주세요</option>
+            {MATERIALS.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        )}
         <FieldNotes row={row} keys={["material"]} />
       </label>
       <div className="grid grid-cols-[1fr_7rem] gap-3">
@@ -97,70 +108,94 @@ function RowEditor({
         </label>
         <label className={label} htmlFor={id("grade")}>
           등급
-          <select id={id("grade")} value={v.grade} disabled={disabled} onChange={(event) => onChange({ grade: event.target.value })} className={input}>
-            <option value="">없음</option>
-            {GRADES.map((grade) => (
-              <option key={grade} value={grade}>
-                {grade}
-              </option>
-            ))}
-          </select>
+          {row.origin === "manual" ? (
+            <>
+              <input id={id("grade")} list={id("grade-list")} value={v.grade} maxLength={40} disabled={disabled}
+                onChange={(event) => onChange({ grade: event.target.value })} className={input} />
+              <datalist id={id("grade-list")}>
+                {GRADES.map((value) => <option key={value} value={value} />)}
+              </datalist>
+            </>
+          ) : (
+            <select id={id("grade")} value={v.grade} disabled={disabled} onChange={(event) => onChange({ grade: event.target.value })} className={input}>
+              <option value="">없음</option>
+              {GRADES.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </select>
+          )}
           <FieldNotes row={row} keys={["grade"]} />
         </label>
       </div>
       <fieldset className="min-w-0 sm:col-span-2">
-        <legend className="text-[13px] font-medium text-ink-2">kg당 단가</legend>
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          {/* 자료 화면의 처리비 입력과 같은 칸 나눔 선택(DESIGN.md "처리비 입력") */}
-          <div role="radiogroup" aria-label={`${number}번째 줄 돈의 방향`} className="inline-flex rounded-md bg-sunken p-[3px]">
-            {(
-              [
-                ["buy", "매입(업체가 줌)"],
-                ["fee", "처리비(우리가 냄)"],
-              ] as const
-            ).map(([value, text]) => (
-              <label key={value}>
-                <input
-                  type="radio"
-                  name={`direction-${row.key}`}
-                  value={value}
-                  checked={v.direction === value}
-                  disabled={disabled}
-                  onChange={() => onChange({ direction: value })}
-                  className="peer sr-only"
-                />
-                <span className={segment}>{text}</span>
-              </label>
-            ))}
-          </div>
-          <span className="inline-flex items-center gap-2">
-            <input
-              id={id("price")}
-              aria-label={`${number}번째 줄 kg당 단가(원)`}
-              value={v.price}
-              inputMode="decimal"
-              disabled={disabled}
-              placeholder="예: 320"
-              onChange={(event) => onChange({ price: event.target.value })}
-              className={`${input} !w-32 text-right`}
-            />
-            <span className="text-[13px] text-muted">원/kg</span>
-          </span>
-          {row.candidates && row.candidates.length === 2 && !disabled
-            ? row.candidates.map((value) => (
-                <Button key={value} size="sm" variant="secondary" onClick={() => onChange({ price: String(value) })}>
-                  {formatNumber(value)}원으로
-                </Button>
-              ))
-            : null}
+        <legend className="text-[13px] font-medium text-ink-2">단가 방식</legend>
+        <div className="mt-1.5 inline-flex rounded-md bg-sunken p-[3px]">
+          {(["fixed", "negotiated"] as const).map((mode) => (
+            <label key={mode}>
+              <input type="radio" name={id("price-mode")} className="peer sr-only"
+                checked={(v.priceMode ?? "fixed") === mode} disabled={disabled}
+                onChange={() => onChange({ priceMode: mode })} />
+              <span className={segment}>{mode === "fixed" ? "고정 단가" : "건별 협의"}</span>
+            </label>
+          ))}
         </div>
+        {v.priceMode === "negotiated" ? (
+          <p className="mt-2 text-sm text-ink-2">담당자 견적 필요</p>
+        ) : (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {/* 자료 화면의 처리비 입력과 같은 칸 나눔 선택(DESIGN.md "처리비 입력") */}
+            <div role="radiogroup" aria-label={`${number}번째 줄 돈의 방향`} className="inline-flex rounded-md bg-sunken p-[3px]">
+              {(
+                [
+                  ["buy", "매입(업체가 줌)"],
+                  ["fee", "처리비(배출 기업이 냄)"],
+                ] as const
+              ).map(([value, text]) => (
+                <label key={value}>
+                  <input
+                    type="radio"
+                    name={id("direction")}
+                    value={value}
+                    checked={v.direction === value}
+                    disabled={disabled}
+                    onChange={() => onChange({ direction: value })}
+                    className="peer sr-only"
+                  />
+                  <span className={segment}>{text}</span>
+                </label>
+              ))}
+            </div>
+            <span className="inline-flex items-center gap-2">
+              <input
+                id={id("price")}
+                aria-label={`${number}번째 줄 kg당 단가(원)`}
+                value={v.price}
+                inputMode="decimal"
+                disabled={disabled}
+                placeholder="예: 320"
+                onChange={(event) => onChange({ price: event.target.value })}
+                className={`${input} !w-32 text-right`}
+              />
+              <span className="text-[13px] text-muted">원/kg</span>
+            </span>
+            {row.candidates && row.candidates.length === 2 && !disabled
+              ? row.candidates.map((value) => (
+                  <Button key={value} size="sm" variant="secondary" onClick={() => onChange({ price: String(value) })}>
+                    {formatNumber(value)}원으로
+                  </Button>
+                ))
+              : null}
+          </div>
+        )}
         <span className="mt-1.5 block">
           <FieldNotes row={row} keys={["direction", "price"]} show={price} />
         </span>
       </fieldset>
       <label className={label} htmlFor={id("min")}>
         한 달 최소 물량 (kg)
-        <input id={id("min")} value={v.minMonthlyKg} inputMode="decimal" disabled={disabled} placeholder="문서에 없으면 비워 둡니다" onChange={(event) => onChange({ minMonthlyKg: event.target.value })} className={`${input} text-right`} />
+        <input id={id("min")} value={v.minMonthlyKg} inputMode="decimal" disabled={disabled} placeholder="모르면 비워 두세요" onChange={(event) => onChange({ minMonthlyKg: event.target.value })} className={`${input} text-right`} />
         <FieldNotes row={row} keys={["minMonthlyKg"]} />
       </label>
       <div className="grid grid-cols-2 gap-3">
@@ -246,7 +281,11 @@ export function CriteriaReview({
   const changeValues = (row: CriteriaRowState, values: Partial<CriteriaValues>) => {
     const next = { ...row, values: { ...row.values, ...values } };
     // 고칠 것이 남은 줄은 고를 수 없다. 담당자가 값을 정하면 직접 고른다
-    change(row.key, { values: next.values, include: rowProblems(next).length === 0 ? row.include : false });
+    const correctedManual = row.origin === "manual" && rowProblems(row).length > 0;
+    change(row.key, {
+      values: next.values,
+      include: rowProblems(next).length === 0 && (row.include || correctedManual),
+    });
   };
 
   const save = async () => {
@@ -273,7 +312,7 @@ export function CriteriaReview({
   return (
     <div className="space-y-3 rounded-xl bg-ground px-4 py-4">
       <p className="text-[13px]">
-        <span className="tabular-nums">{item.result.filename}</span> · 매입 기준표
+        <span className="tabular-nums">{item.result.filename}</span>
         <span className="text-muted"> · 확인을 기다립니다</span>
       </p>
       <p className="text-[15px] font-medium leading-snug">{draftHeadline(rows, draft?.reader?.by)}</p>
