@@ -11,6 +11,7 @@ import {
   COMPLEX_LEAD,
   complexHeadline,
   complexSourceLine,
+  complexStatsLead,
   complexStreamIds,
   groupComplex,
   moreLine,
@@ -110,4 +111,27 @@ test("화면 문구에 개발자 말과 숫자를 지어낸 말이 없다", () =
   assert.match(complexSourceLine(partners), /한국산업단지공단/);
   assert.equal(moreLine(18, 5), "그 밖에 13곳이 더 있습니다.");
   assert.equal(moreLine(5, 5), null);
+});
+
+
+test("단지 집계: 단지 전체 합계라고 밝히고 출처 줄에 통계 이름과 연도를 더한다", () => {
+  const claim = (id: string, value: number) => ({ id, kind: "number" as const, value, unit: "톤/년", evidence: [`ref:${id}`] });
+  const stats = {
+    sheetName: "(국가)부산 명지녹산국가산업단지",
+    waste: "폐합성수지류",
+    dataYear: "2024",
+    values: {
+      generated: claim("g", 8029.59),
+      recycled: claim("r", 6554.13),
+      incinerated: claim("i", 1435.27),
+      landfilled: claim("l", 0),
+    },
+    note: "단지 전체 합계",
+    source: { name: "전국 폐기물 발생 및 처리현황", url: "https://example.com", publishedOn: "2025-12-31" },
+  };
+  const base = partners as ComplexPartners;
+  const withStats = complexPartnersSchema.parse({ ...(fixture.complexPartners as object), stats }) as ComplexPartners;
+  assert.match(complexStatsLead(withStats.stats!), /2024년.*단지 전체 합계/);
+  assert.match(complexSourceLine(withStats), /전국 폐기물 발생 및 처리현황\(2024년 실적, 공표 2025-12-31\)/);
+  assert.doesNotMatch(complexSourceLine(base), /단지 집계/);
 });

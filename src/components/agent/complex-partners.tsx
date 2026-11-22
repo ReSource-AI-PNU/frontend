@@ -4,12 +4,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
 import { useV3 } from "@/components/v3/context";
+import { ClaimValue } from "@/components/v3/claim";
 import { StatusChip } from "@/components/v3/status-chip";
+import { formatNumber } from "@/lib/v3/format";
 import {
   candidateLine,
   COMPLEX_LEAD,
   complexHeadline,
   complexSourceLine,
+  complexStatsLead,
   complexStreamIds,
   groupComplex,
   moreLine,
@@ -27,6 +30,21 @@ import { ComplexPlanView } from "./complex-plan";
 import { itemsOf, QuoteSheet, type QuoteTarget } from "./outside-vendors";
 
 const SHOWN = 3;
+
+/** 단지 전체 폐합성수지 발생·처리(2024 공공 통계). 값을 누르면 통계표 원문 근거가 열린다. 회사 계산에는 쓰지 않는다 */
+function ComplexStats({ stats }: { stats: NonNullable<ComplexPartners["stats"]> }) {
+  const { generated, recycled, incinerated } = stats.values;
+  const tons = (claim: typeof generated) =>
+    typeof claim.value === "number" ? `${formatNumber(Math.round(claim.value))}톤` : "확인 필요";
+  return (
+    <p className="mt-3 rounded-[10px] bg-ground px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
+      {complexStatsLead(stats)}: 연 <ClaimValue claim={generated} display={tons(generated)} title="단지 폐합성수지 발생량" /> · 재활용{" "}
+      <ClaimValue claim={recycled} display={tons(recycled)} title="단지 폐합성수지 재활용" /> · 소각{" "}
+      <ClaimValue claim={incinerated} display={tons(incinerated)} title="단지 폐합성수지 소각" />
+      <span className="text-muted"> · 회사별 값이 아니며 계산에는 쓰지 않습니다.</span>
+    </p>
+  );
+}
 
 export function PartnerRow({ candidate, onRequest }: { candidate: ComplexCandidate; onRequest?: () => void }) {
   const { openEvidence } = useV3();
@@ -145,6 +163,7 @@ export function ComplexPartnersSection({
     <section aria-label="같은 단지 자원순환 후보" className="border-t border-line pt-6">
       <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{complexHeadline(partners)}</h2>
       <p className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{COMPLEX_LEAD}</p>
+      {partners.stats ? <ComplexStats stats={partners.stats} /> : null}
       <div className="mt-4">
         <ComplexPlanView
           partners={partners}
