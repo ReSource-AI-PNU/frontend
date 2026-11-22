@@ -77,3 +77,20 @@ test("거래 단계: 합의하면 승인 차례, 확정하면 검수 차례, 검
   assert.equal(progressOf({ stage: "confirmed", inspected: true }).current, null);
   assert.equal(progressOf({ stage: "declined", inspected: false }).stopped, "거절");
 });
+
+
+test("같은 업체와 같은 폐기물을 새로 찾으면 앞선 찾기의 끝나지 않은 거래는 빠진다", () => {
+  // 같은 찾기를 하루 뒤에 다시 한 것으로 만든다(찾기 번호와 시각만 다르다)
+  const later = JSON.parse(JSON.stringify(agreed).replaceAll("2026-11-2", "2026-12-2")) as DiagnosisView;
+  later.session = { ...later.session, id: `${agreed.session.id}_next` };
+  const deals = collectDeals([later, agreed]);
+  assert.equal(deals.length, collectDeals([agreed]).length);
+  assert.ok(deals.every((deal) => deal.sessionId === later.session.id));
+  // 할 일도 새 찾기의 것만 남는다
+  const tasks = tasksOf([later, agreed], "emitter");
+  assert.ok(tasks.length > 0);
+  assert.ok(tasks.every((task) => task.sessionId === later.session.id));
+  // 확정한 거래는 새 찾기가 있어도 남는다
+  const kept = collectDeals([later, confirmed]).filter((deal) => deal.sessionId === confirmed.session.id);
+  assert.ok(kept.every((deal) => deal.stage === "confirmed"));
+});

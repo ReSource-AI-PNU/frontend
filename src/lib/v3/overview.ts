@@ -232,17 +232,45 @@ export function dealsOf(view: DiagnosisView): Deal[] {
   return out;
 }
 
-/** 여러 찾기의 거래를 모은다. 같은 업체와의 거래가 여러 찾기에 있으면 모두 두되, 최근 것이 앞에 온다 */
+/**
+ * 새 찾기에 밀려난 거래의 열쇠. 같은 배출 기업과 같은 업체가 같은 폐기물을 두고 더 나중의 찾기에서 다시 대화했다면,
+ * 앞선 찾기의 끝나지 않은 거래는 더 볼 것이 아니다(홈과 거래 목록에 같은 업체가 두 번 나오지 않게 한다).
+ * 확정한 거래는 실제 합의이므로 밀려나지 않는다.
+ */
+export function supersededKeys(deals: Deal[]): Set<string> {
+  const hidden = new Set<string>();
+  for (const old of deals) {
+    if (old.stage === "confirmed") continue;
+    const streams = new Set(old.items.map((item) => item.streamId));
+    const replaced = deals.some(
+      (next) =>
+        next.sessionId !== old.sessionId &&
+        next.emitterOrgId === old.emitterOrgId &&
+        next.vendorOrgId === old.vendorOrgId &&
+        (next.updatedAt ?? "") > (old.updatedAt ?? "") &&
+        next.items.some((item) => streams.has(item.streamId)),
+    );
+    if (replaced) hidden.add(old.key);
+  }
+  return hidden;
+}
+
+/** 여러 찾기의 거래를 모은다. 새 찾기에 밀려난 거래는 빼고, 최근 것이 앞에 온다 */
 export function collectDeals(views: DiagnosisView[]): Deal[] {
   const order: Record<DealStage, number> = { agreed: 0, talking: 1, handoff: 2, confirmed: 3, declined: 4 };
-  return views.flatMap(dealsOf).sort((a, b) => order[a.stage] - order[b.stage] || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+  const all = views.flatMap(dealsOf);
+  const hidden = supersededKeys(all);
+  return all
+    .filter((deal) => !hidden.has(deal.key))
+    .sort((a, b) => order[a.stage] - order[b.stage] || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
 }
 
 /** 사람이 해야 할 일. 내가 누구냐(배출 기업·처리 업체)에 따라 다르다 */
 export function tasksOf(views: DiagnosisView[], side: Side, nameOf: (orgId: string) => string = () => "배출 기업"): Task[] {
   const tasks: Task[] = [];
+  const hidden = supersededKeys(views.flatMap(dealsOf));
   for (const view of views) {
-    const deals = dealsOf(view);
+    const deals = dealsOf(view).filter((deal) => !hidden.has(deal.key));
     const open = view.questions.filter((question) => !question.answered);
     if (side === "emitter" && open.length > 0) {
       const names = [
