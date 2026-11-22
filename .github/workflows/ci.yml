@@ -84,9 +84,20 @@ jobs:
             exit 1
           fi
           url="https://x-access-token:${BACKEND_READ_TOKEN}@github.com/ReSource-AI-PNU/backend.git"
-          if git ls-remote --exit-code --heads "$url" "$HEAD_REF" >/dev/null 2>&1; then ref="$HEAD_REF"; else ref=main; fi
+          # checkout의 프런트 전용 인증 헤더가 서버 읽기 토큰을 덮어쓰지 않게 한다.
+          # 브랜치가 없는 경우(2)만 main으로 대체하고, 인증/연결 오류는 실패로 남긴다.
+          lookup_status=0
+          git -c http.https://github.com/.extraheader= ls-remote --exit-code --heads "$url" "$HEAD_REF" >/dev/null 2>&1 || lookup_status=$?
+          if [ "$lookup_status" -eq 0 ]; then
+            ref="$HEAD_REF"
+          elif [ "$lookup_status" -eq 2 ]; then
+            ref=main
+          else
+            echo "::error::서버 브랜치를 조회하지 못했습니다. BACKEND_READ_TOKEN과 연결 상태를 확인하세요."
+            exit "$lookup_status"
+          fi
           echo "backend ref: $ref"
-          git clone --quiet --depth 1 --branch "$ref" "$url" backend
+          git -c http.https://github.com/.extraheader= clone --quiet --depth 1 --branch "$ref" "$url" backend
           git -C backend remote set-url origin https://github.com/ReSource-AI-PNU/backend.git
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
