@@ -87,6 +87,25 @@ export async function createCompany(_prev: CompanyFormState, formData: FormData)
   redirect(parsed.data.kind === "vendor" ? "/app/materials" : "/app");
 }
 
+/** 같은 계정으로 테스트 회사를 만들거나 다시 연다. */
+export async function openNegotiationTest(): Promise<{ error?: string }> {
+  const session = await sessionUser();
+  let company: { id?: string };
+  try {
+    company = await callBackend<{ id?: string }>("/orgs/negotiation-test", {
+      method: "POST",
+      body: {},
+      userId: session.user.id,
+    });
+  } catch (error) {
+    if (error instanceof BackendError) return { error: "지금은 협상 테스트 회사를 열 수 없습니다." };
+    throw error;
+  }
+  if (!company.id) return { error: "협상 테스트 회사를 찾지 못했습니다." };
+  await unstable_update({ activeOrgId: company.id });
+  redirect("/app");
+}
+
 /** 사이드바의 회사 바꾸기. 소속 목록에 있는 회사만 고를 수 있다(auth.ts의 jwt 콜백이 다시 확인한다). */
 export async function switchCompany(orgId: string): Promise<void> {
   const session = await sessionUser();
