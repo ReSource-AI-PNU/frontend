@@ -23,6 +23,7 @@ import {
   type ViewBox,
 } from "@/lib/v3/complex-plan";
 import type { ComplexCandidate, ComplexPartners, ComplexPlan, ViewStream } from "@/lib/v3/types";
+import { fetchBuildings, type PlanBuilding } from "@/lib/v3/vworld";
 
 /** 이름표 자리(핀 단추 44px의 가운데 기준, 핀 반지름 10px + 틈 4px) */
 const SIDE_CLASS: Record<LabelSide, string> = {
@@ -31,6 +32,9 @@ const SIDE_CLASS: Record<LabelSide, string> = {
   top: "bottom-[calc(50%+14px)] left-1/2 -translate-x-1/2 text-center",
   bottom: "top-[calc(50%+14px)] left-1/2 -translate-x-1/2 text-center",
 };
+
+/** 브라우저가 VWorld 건물을 받지 못했을 때(해외 접속이나 VWorld 장애) */
+const BUILDINGS_FAILED = "건물 도형을 받지 못해 건물 없이 위치만 그렸습니다. 국내 인터넷에서 다시 열면 건물이 보입니다.";
 
 type Loaded = { plan: ComplexPlan | null; error: string | null };
 
@@ -119,12 +123,30 @@ export function ComplexPlanView({
   }, [sessionId, orgId, attempt]);
 
   const plan = loaded?.plan ?? null;
+  // 건물 도형은 브라우저가 VWorld에서 받는다(서버는 해외 IP라 끊긴다). 화면에만 쓰고 저장하지 않는다
+  const [shapes, setShapes] = useState<{ plan: ComplexPlan; buildings: PlanBuilding[]; failed: boolean } | null>(null);
+  useEffect(() => {
+    const layer = plan?.buildingLayer;
+    if (!plan || !plan.bbox || !layer) return;
+    let alive = true;
+    fetchBuildings(layer, plan.bbox)
+      .then((buildings) => alive && setShapes({ plan, buildings, failed: false }))
+      .catch(() => alive && setShapes({ plan, buildings: [], failed: true }));
+    return () => {
+      alive = false;
+    };
+  }, [plan]);
+  const shown = shapes && shapes.plan === plan ? shapes : null;
+  const shapesLoading = Boolean(plan?.buildingLayer && plan.bbox && !shown);
   const proj = useMemo(() => (plan ? projection(plan) : null), [plan]);
-  const nodes = useMemo(() => (plan ? planNodes(plan, partners, streamId) : []), [plan, partners, streamId]);
+  const nodes = useMemo(
+    () => (plan ? planNodes(plan, partners, streamId, shown?.buildings ?? []) : []),
+    [plan, partners, streamId, shown],
+  );
   const roles = useMemo(() => buildingRoles(nodes), [nodes]);
   const buildings = useMemo(
-    () => (plan && proj ? plan.buildings.map((building) => ({ ...building, d: building.rings.map(proj.ring).join("") })) : []),
-    [plan, proj],
+    () => (proj && shown ? shown.buildings.map((building) => ({ ...building, d: building.rings.map(proj.ring).join("") })) : []),
+    [proj, shown],
   );
 
   const nameOf = (id: string) => streams.find((item) => item.id === id)?.name ?? "폐기물";
@@ -274,7 +296,8 @@ export function ComplexPlanView({
       <div className="mt-2 space-y-1">
         <Legend />
         {missingLine(plan) ? <p className="text-[12.5px] text-muted">{missingLine(plan)}</p> : null}
-        {[plan.notes.locations, plan.notes.buildings].filter(Boolean).map((note) => (
+        {shapesLoading ? <p className="text-[12.5px] text-muted">건물 도형을 불러오고 있습니다.</p> : null}
+        {[plan.notes.locations, plan.notes.buildings, shown?.failed ? BUILDINGS_FAILED : null].filter(Boolean).map((note) => (
           <p key={note} className="text-[12.5px] text-warn">
             {note}
           </p>

@@ -783,6 +783,21 @@ export const complexPlanSchema = obj({
       name: z.string().nullable().optional(),
     }),
   ),
+  /**
+   * 브라우저가 건물 도형을 받을 VWorld 데이터 API 값(2026-11-22 뒤). 서버는 해외 IP라 VWorld가 끊어 건물을 받지 않는다.
+   * 열쇠는 발급 도메인에 묶인 웹용 열쇠다. 열쇠가 없으면 null이고 notes.buildings에 이유가 있다
+   */
+  buildingLayer: obj({
+    provider: z.literal("vworld"),
+    url: z.string(),
+    layer: z.string(),
+    key: z.string(),
+    domain: z.string().nullable(),
+    pageSize: z.number(),
+    maxPages: z.number(),
+  })
+    .nullable()
+    .optional(),
   /** 위치를 찾지 못한 후보 ID */
   missing: z.array(z.string()),
   notes: obj({ buildings: z.string().nullable(), locations: z.string().nullable() }),

@@ -3,6 +3,7 @@
  * 지도는 위도에 따른 경도 축소(cos)만 넣은 단순 평면 투영이다. 단지 하나(수 km)에서는 왜곡이 눈에 띄지 않는다.
  */
 import type { ComplexCandidate, ComplexPartners, ComplexPlan } from "./types.ts";
+import type { PlanBuilding } from "./vworld.ts";
 
 /** 평면도 좌표계의 폭(SVG viewBox 단위). 높이는 범위의 비율로 정한다 */
 export const PLAN_WIDTH = 1000;
@@ -14,26 +15,58 @@ export type Projection = {
   height: number;
   /** [경도, 위도] → [x, y] (평면도 단위, 위가 북쪽) */
   point: (lonLat: readonly [number, number]) => [number, number];
-  /** 건물 꼭짓점 정수 배열([x, y, x, y, …]) → SVG path d */
-  ring: (flat: number[]) => string;
+  /** 건물 꼭짓점([경도, 위도] 목록) → SVG path d */
+  ring: (points: [number, number][]) => string;
 };
 
-export function projection(plan: Pick<ComplexPlan, "bbox" | "scale">): Projection | null {
+export function projection(plan: Pick<ComplexPlan, "bbox">): Projection | null {
   if (!plan.bbox) return null;
   const [x0, y0, x1, y1] = plan.bbox;
   const kx = Math.cos((((y0 + y1) / 2) * Math.PI) / 180);
   const unit = PLAN_WIDTH / ((x1 - x0) * kx);
   const height = (y1 - y0) * unit;
   const point = ([lon, lat]: readonly [number, number]): [number, number] => [(lon - x0) * kx * unit, (y1 - lat) * unit];
-  const ring = (flat: number[]) => {
-    const parts: string[] = [];
-    for (let i = 0; i + 1 < flat.length; i += 2) {
-      const [x, y] = point([x0 + flat[i] / plan.scale, y0 + flat[i + 1] / plan.scale]);
-      parts.push(`${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`);
-    }
+  const ring = (points: [number, number][]) => {
+    const parts = points.map((lonLat, i) => {
+      const [x, y] = point(lonLat);
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    });
     return parts.length > 0 ? `${parts.join("")}Z` : "";
   };
   return { width: PLAN_WIDTH, height, point, ring };
+}
+
+/** 좌표가 건물 안인가(짝홀 규칙) */
+function inside([x, y]: readonly [number, number], ring: [number, number][]): boolean {
+  let hit = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-12) + xi) hit = !hit;
+  }
+  return hit;
+}
+
+function meters(a: readonly [number, number], b: readonly [number, number]): number {
+  const lat = (((a[1] + b[1]) / 2) * Math.PI) / 180;
+  return Math.hypot((a[0] - b[0]) * 111_320 * Math.cos(lat), (a[1] - b[1]) * 110_540);
+}
+
+/** 좌표가 든 건물, 없으면 nearM(기본 40m) 안에서 가장 가까운 건물(꼭짓점 평균 기준). 없으면 null */
+export function buildingOf(point: readonly [number, number], buildings: PlanBuilding[], nearM = 40): string | null {
+  for (const building of buildings) if (building.rings.some((ring) => inside(point, ring))) return building.id;
+  let best: string | null = null;
+  let bestM = nearM;
+  for (const building of buildings) {
+    const ring = building.rings[0];
+    const center: [number, number] = [ring.reduce((a, p) => a + p[0], 0) / ring.length, ring.reduce((a, p) => a + p[1], 0) / ring.length];
+    const m = meters(point, center);
+    if (m < bestM) {
+      best = building.id;
+      bestM = m;
+    }
+  }
+  return best;
 }
 
 export type PlanNode = {
@@ -53,7 +86,7 @@ export type PlanNode = {
  * 그릴 회사. 우리 회사 하나와, 위치를 찾은 후보(받는 곳이 쓰는 곳보다 앞). streamId를 주면 그 폐기물의 후보만 둔다.
  * 같은 회사가 어떤 폐기물에는 받는 곳, 다른 폐기물에는 쓰는 곳이면 받는 곳으로 본다.
  */
-export function planNodes(plan: ComplexPlan, partners: ComplexPartners, streamId: string | null): PlanNode[] {
+export function planNodes(plan: ComplexPlan, partners: ComplexPartners, streamId: string | null, buildings: PlanBuilding[] = []): PlanNode[] {
   const proj = projection(plan);
   if (!proj) return [];
   const byId = new Map<string, { candidate: ComplexCandidate; role: PlanRole; streamIds: string[] }>();
@@ -72,7 +105,8 @@ export function planNodes(plan: ComplexPlan, partners: ComplexPartners, streamId
   const nodes: PlanNode[] = [];
   if (plan.self) {
     const [x, y] = proj.point(plan.self.location);
-    nodes.push({ id: "__self__", name: "우리 회사", role: "self", x, y, buildingId: plan.self.buildingId, streamIds: [], candidate: null });
+    const buildingId = plan.self.buildingId ?? buildingOf(plan.self.location, buildings);
+    nodes.push({ id: "__self__", name: "우리 회사", role: "self", x, y, buildingId, streamIds: [], candidate: null });
   }
   const rank: Record<PlanRole, number> = { self: 0, takes: 1, uses: 2 };
   const partnersOut = [...byId.entries()]
@@ -80,7 +114,8 @@ export function planNodes(plan: ComplexPlan, partners: ComplexPartners, streamId
       const place = plan.places[id];
       if (!place) return [];
       const [x, y] = proj.point(place.location);
-      return [{ id, name: item.candidate.name, role: item.role, x, y, buildingId: place.buildingId, streamIds: item.streamIds, candidate: item.candidate }];
+      const buildingId = place.buildingId ?? buildingOf(place.location, buildings);
+      return [{ id, name: item.candidate.name, role: item.role, x, y, buildingId, streamIds: item.streamIds, candidate: item.candidate }];
     })
     .sort((a, b) => rank[a.role] - rank[b.role] || a.name.localeCompare(b.name, "ko"));
   return [...nodes, ...partnersOut];
