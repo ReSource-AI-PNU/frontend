@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FactoryIcon, GearIcon, PlusIcon, ReportIcon, StampIcon, TruckIcon } from "@/components/icons";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FactoryIcon, GearIcon, PlusIcon, ReportIcon, StampIcon, TalkIcon, TruckIcon } from "@/components/icons";
 import { Fold, FoldGroup } from "@/components/ui/fold";
 import { Button } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
@@ -886,7 +886,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
           />
         ) : null}
 
-        {result && isEmitter && !readOnly && view.vendorComparison ? (
+        {/* 예시 견적: 실제 후보가 없을 때는 이것이 볼 것의 전부라 펼쳐 두고, 실제 후보가 있으면 아래 접는 칸에 넣는다 */}
+        {result && isEmitter && !readOnly && view.vendorComparison && !hasRoute ? (
           <VendorComparison comparison={view.vendorComparison} />
         ) : null}
 
@@ -923,6 +924,11 @@ export function Conversation({ d }: { d: Diagnosis }) {
             {result.improvements && result.improvements.length > 0 ? (
               <Fold title="분리 개선 안내" summary={`${result.improvements.length}가지`} icon={<ArrowUpIcon />}>
                 <ImprovementsSection items={result.improvements} streams={view.streams} />
+              </Fold>
+            ) : null}
+            {hasRoute && !readOnly && view.vendorComparison && view.vendorComparison.items.length > 0 ? (
+              <Fold title="예시 업체 견적 비교" summary={`${view.vendorComparison.items.length}가지`} icon={<TalkIcon />}>
+                <VendorComparison comparison={view.vendorComparison} />
               </Fold>
             ) : null}
             {result.outsideVendors ? (
