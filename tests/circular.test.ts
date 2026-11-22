@@ -12,6 +12,7 @@ import {
   baselineSummary,
   bundleSentence,
   metricText,
+  metricRangeText,
   scenarioOf,
   totalStatusText,
 } from "../src/lib/v3/circular.ts";
@@ -101,6 +102,11 @@ test("값 글: 감축은 양수, 늘어남은 낱말로 밝히고, 작은 탄소
   assert.equal(metricText("virgin", claim(137.97, "kg/월")), "138 kg/월");
   assert.equal(metricText("virgin", null), null);
   assert.equal(totalStatusText(undefined), "계산하지 않음");
+});
+
+test("PET 등급별 추정 범위를 한 단위로 표시한다", () => {
+  assert.equal(metricRangeText("ghg", claim(0.886, "tCO2e/월"), claim(1.2588, "tCO2e/월")), "0.89~1.26 tCO2e/월");
+  assert.equal(metricRangeText("virgin", claim(140, "kg/월")), "140 kg/월");
 });
 
 test("화면 문장에 개발자 말이 없다", () => {

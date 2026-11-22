@@ -5,7 +5,7 @@ import { ClaimValue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import {
   CIRCULAR_METRICS, METRIC_LABEL, METRIC_NOTE,
-  kgText, metricText, scenarioOf, sourceBaseline, sourceHead,
+  kgText, metricRangeText, scenarioOf, sourceBaseline, sourceHead,
   type CircularMetricKey,
 } from "@/lib/v3/circular";
 import type { Circular, CircularTotal } from "@/lib/v3/types";
@@ -19,11 +19,11 @@ function MetricTile({ metric, total, massEstimate }: {
   total?: CircularTotal;
   massEstimate: boolean;
 }) {
-  const text = metricText(metric, total?.total);
+  const text = metricRangeText(metric, total?.total, total?.upper);
   const label = effectLabel(metric, massEstimate);
   const notes = {
     ...METRIC_NOTE,
-    ghg: "에너지 회수 소각과 기계적 재활용의 전 과정 배출 차이",
+    ghg: "에너지 회수 소각과 기계적 재활용의 문헌 배출 차이",
     energy: "같은 양의 신재와 재생원료를 만드는 데 드는 에너지 차이",
   };
   const note = (massEstimate ? notes : METRIC_NOTE)[metric];
@@ -122,14 +122,14 @@ export function CircularEffects({ circular }: { circular: Circular }) {
       <MoreDetails label="추정 기준과 계산 내역 보기" className="mt-3">
         <div className="space-y-3 rounded-xl bg-ground px-4 py-3 text-[13px] leading-relaxed text-ink-2">
           {monthlyKg ? (
-            <p>온실가스는 에너지 회수 소각과 비교합니다. 에너지는 재생원료와 신재의 생산 단계만 비교합니다. 각 값은 해외 연구 조건으로 환산한 참고 추정치입니다.</p>
+            <p>온실가스는 에너지 회수 소각과 비교합니다. 에너지는 재생원료와 신재의 생산 단계만 비교합니다. 각 값은 해외 연구 조건으로 환산한 참고 추정치입니다. 범위는 재질·등급별 문헌 시나리오를 나타냅니다.</p>
           ) : (
             <p>각 값은 해외 연구 조건으로 환산한 참고 추정치입니다.</p>
           )}
           {reference?.rows.map((row) => (
             <p key={`${row.streamId}-${row.metric}`}>
               <span className="font-medium">{row.streamName ?? row.streamId} · {effectLabel(row.metric, Boolean(monthlyKg))}</span>{" — "}
-              {row.value ? <ClaimValue claim={row.value} display={metricText(row.metric, row.value) ?? undefined} /> : row.status === "zero" ? "변화 없음" : row.reason || "적용 계수 없음"}
+              {row.value ? <ClaimValue claim={row.value} display={metricRangeText(row.metric, row.value, row.upper) ?? undefined} /> : row.status === "zero" ? "변화 없음" : row.reason || "적용 계수 없음"}
               {row.value && row.assumptions.length > 0 ? <span className="block text-muted">{row.assumptions.join(" · ")}</span> : null}
             </p>
           ))}

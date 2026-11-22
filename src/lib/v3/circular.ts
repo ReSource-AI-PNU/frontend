@@ -72,6 +72,22 @@ export function metricText(metric: CircularMetricKey, claim: Claim | null | unde
   return `${text} ${worse}`;
 }
 
+/** 같은 문헌 지표의 두 시나리오를 한 줄로 표시한다. */
+export function metricRangeText(
+  metric: CircularMetricKey,
+  lower: Claim | null | undefined,
+  upper?: Claim | null,
+): string | null {
+  const first = metricText(metric, lower);
+  const last = metricText(metric, upper);
+  if (!first || !last || first === last) return first;
+  const [number, ...unit] = first.split(" ");
+  const lastUnit = last.split(" ").slice(1).join(" ");
+  return unit.length === 1 && unit[0] === lastUnit
+    ? `${number}~${last}`
+    : `${first} ~ ${last}`;
+}
+
 export function kgText(claim: Claim | null | undefined): string | null {
   const value = numeric(claim);
   return value === null ? null : `${formatNumber(Math.round(value))} kg`;

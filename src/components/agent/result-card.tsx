@@ -7,6 +7,7 @@ import { MoreDetails } from "@/components/ui/more-details";
 import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { josa } from "@/lib/josa";
+import { metricRangeText } from "@/lib/v3/circular";
 import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedCount, placedHeadline } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
@@ -564,6 +565,8 @@ export function ResultCard({
 }) {
   const { openEvidence } = useV3();
   const { totals } = result;
+  const carbonEstimate = result.circular?.reference?.totals.ghg;
+  const showEstimate = !totals.carbon && Boolean(carbonEstimate?.total);
   const count = result.assignments.length;
   const placed = placedCount(result.assignments);
   const assumptionIds = result.assumptions.map((item) => item.id);
@@ -594,8 +597,10 @@ export function ResultCard({
           <Figure label={pending.length > 0 ? "한 달 차이 · 잠정" : "한 달 차이"} glow>
             <ClaimValue claim={totals.difference} signed display={signedWon(totals.difference)} />
           </Figure>
-          <Figure label="탄소 변화" small>
-            {totals.carbon ? <ClaimValue claim={totals.carbon} /> : <span className="font-semibold">확인 필요</span>}
+          <Figure label={showEstimate ? `재활용 탄소 추정${carbonEstimate?.status === "partial" ? " · 일부 품목" : ""}` : "탄소 변화"} small>
+            {totals.carbon ? <ClaimValue claim={totals.carbon} /> : showEstimate ? (
+              <ClaimValue claim={carbonEstimate?.total ?? null} display={metricRangeText("ghg", carbonEstimate?.total, carbonEstimate?.upper) ?? undefined} />
+            ) : <span className="font-semibold">확인 필요</span>}
           </Figure>
         </div>
       ) : isEmitter ? (
