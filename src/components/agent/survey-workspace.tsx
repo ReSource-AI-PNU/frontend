@@ -417,7 +417,7 @@ function QuoteCard({
       {q.status === "accepted" && (
         <p className="text-sm text-ink-2">
           단가 제안을 수락했습니다.{" "}
-          <Link className="underline" href={basePath}>
+          <Link className="underline" href={`${basePath}/find`}>
             다시 찾기
           </Link>
           에서 허가·수거·검수 조건을 대조한 뒤 양쪽이 승인해야 거래가
