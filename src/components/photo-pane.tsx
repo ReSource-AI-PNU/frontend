@@ -10,7 +10,6 @@ export function PhotoPane({ photo, children, className = "" }: { photo: Photo; c
         <Image src={photo.src} alt={photo.alt} fill unoptimized sizes="(min-width: 1024px) 55vw, 100vw" className="-z-10 object-cover" />
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgb(8_10_12/0.82)_0%,rgb(8_10_12/0.1)_55%)]" />
         {children}
-        <p className="mt-6 text-[12px] text-white/70">사진 {photo.by} · Unsplash</p>
       </div>
     </aside>
   );

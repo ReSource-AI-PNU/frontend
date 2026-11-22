@@ -79,7 +79,6 @@ export function DemoPreview() {
                     </span>
                     <span>
                       <span className="block font-medium">{row.vendor}</span>
-                      {row.state ? <span className="block text-[13px] text-muted">{row.state}</span> : null}
                     </span>
                     <span className="col-span-2 text-[15px] text-ink-2 sm:col-span-1">{row.price ?? "단가 확인 필요"}</span>
                   </li>
@@ -100,7 +99,6 @@ export function DemoPreview() {
         </div>
       </div>
       <figcaption className="mt-3 text-[13px] text-muted">
-        {preview ? "체험하기의 시연 회사가 실제로 찾은 결과입니다. 회사·업체·금액은 모두 가상입니다. " : "시연 회사로 실제 찾기 결과를 볼 수 있습니다. "}
         <Link href="/demo" className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-ink">
           체험하기에서 전체 화면 보기
         </Link>
