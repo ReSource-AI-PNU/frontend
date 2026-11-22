@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ChevronDownIcon } from "@/components/icons";
+import { ChevronDownIcon, ChevronRightIcon } from "@/components/icons";
 import { ComplexSelect } from "@/components/onboarding/complex-select";
 import { Button, buttonClass } from "@/components/ui/button";
 import { COMPLEXES } from "@/lib/complexes";
@@ -85,7 +85,7 @@ import { StorageScan } from "./storage-scan";
 import { useRemote } from "./use-remote";
 import { VendorMcpKeys } from "./vendor-mcp-keys";
 import { VendorOnboarding } from "./vendor-onboarding";
-import { navSpot } from "@/components/agent/nav-spot";
+import { streamHref } from "@/components/agent/nav-pages";
 
 const field =
   "min-h-11 min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
@@ -1258,6 +1258,7 @@ function StreamCard({
   onSave,
   onChanged,
 }: {
+  /** 폐기물 하나의 화면(/materials/streams/[id])에 그린다. 이름은 화면 제목(h1)이 적는다 */
   stream: StreamRecord;
   canAct: boolean;
   onSave: (stream: StreamRecord) => Promise<void>;
@@ -1308,12 +1309,8 @@ function StreamCard({
     : "아직 없음";
 
   return (
-    <article
-      {...navSpot(`stream-${stream.id}`, stream.name, "폐기물", stream.monthlyKg != null ? `${formatNumber(stream.monthlyKg)} kg` : undefined)}
-      className="mb-4 rounded-xl border border-line bg-surface px-5 pt-5 pb-1"
-    >
-      <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">{stream.name}</h2>
-      <p className="mt-0.5 text-sm text-muted">
+    <article aria-label={stream.name} className="mb-4 rounded-xl border border-line bg-surface px-5 pt-5 pb-1">
+      <p className="text-sm text-muted">
         {facts.join(" · ")}
         {stream.contaminants && stream.contaminants.length > 0
           ? ` · 섞인 것 ${stream.contaminants.map((item) => item.name).join(", ")}`
@@ -1504,9 +1501,49 @@ function StreamCard({
   );
 }
 
-function EmitterMaterials() {
-  const { mode, canWrite, org, basePath } = useV3();
-  const remote = useRemote(`streams:${org.id}`, mode === "live", () => api.listStreams(org.id));
+/** 폐기물 목록의 한 줄. 누르면 그 폐기물의 화면(사진·측정값·문서·지금 처리)이 열린다 */
+function StreamRow({ stream, href }: { stream: StreamRecord; href: string }) {
+  const facts = [
+    stream.material,
+    stream.form,
+    stream.monthlyKg != null
+      ? `한 달 ${formatNumber(stream.monthlyKg)} kg${stream.monthlyKgBasis === "estimated" ? " (추정)" : ""}`
+      : "한 달 양 확인 필요",
+  ].filter(Boolean);
+  return (
+    <li>
+      <Link href={href} className="rs-press group flex min-h-16 items-center gap-3 px-5 py-3 hover:bg-sunken">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold">{stream.name}</span>
+          <span className="block truncate text-[13px] text-ink-2">{facts.join(" · ")}</span>
+          <span className="block truncate text-[13px] text-muted">
+            지금 처리 · {stream.currentTreatment?.method?.trim() || "아직 없음"}
+          </span>
+        </span>
+        <ChevronRightIcon className="shrink-0 text-muted group-hover:text-ink" />
+      </Link>
+    </li>
+  );
+}
+
+/** 배출 기업 자료의 하위 화면. 폐기물 목록(첫 주소), 폐기물 하나, 3D 스캔, 우리 회사 기록 */
+/** 목록·폐기물 하나·3D 스캔이 같은 폐기물 목록을 읽는다. 화면을 옮겨도 받아 둔 것을 먼저 보이고 뒤에서 새로 읽는다(keep) */
+function useStreams(enabled: boolean) {
+  const { mode, org, basePath } = useV3();
+  return useRemote(`streams:${basePath}:${org.id}`, mode === "live" && enabled, () => api.listStreams(org.id), { keep: true });
+}
+
+function EmitterMaterials({
+  part,
+  streamId,
+  remote,
+}: {
+  part: MaterialsPart;
+  streamId?: string;
+  remote: ReturnType<typeof useStreams>;
+}) {
+  const { canWrite, org, basePath } = useV3();
+  if (part === "memory") return <CompanyMemory standalone />;
   const streams = remote.data;
   if (remote.loading) return <p className="text-sm text-muted">등록한 폐기물을 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
@@ -1515,7 +1552,11 @@ function EmitterMaterials() {
       <div className="flex flex-col items-start gap-4 rounded-xl border border-dashed border-line-strong px-6 py-10">
         <div>
           <p className="text-[19px] font-semibold tracking-[-0.02em]">아직 등록한 폐기물이 없습니다</p>
-          <p className="mt-1 text-sm text-muted">폐기물을 먼저 등록하면 사진, 측정값, 문서를 폐기물마다 올릴 수 있습니다.</p>
+          <p className="mt-1 text-sm text-muted">
+            {part === "scan"
+              ? "폐기물을 먼저 등록하면 보관장을 찍어 폐기물마다 부피와 무게를 잴 수 있습니다."
+              : "폐기물을 먼저 등록하면 사진, 측정값, 문서를 폐기물마다 올릴 수 있습니다."}
+          </p>
         </div>
         {canWrite ? (
           <Link href={`${basePath}/find`} className={buttonClass("primary", "md")}>
@@ -1525,29 +1566,58 @@ function EmitterMaterials() {
       </div>
     );
   }
+  if (part === "scan") return <StorageScan streams={streams} standalone />;
+  if (part === "stream") {
+    const stream = streams.find((item) => item.id === streamId);
+    if (!stream) {
+      return (
+        <div className="rounded-xl border border-dashed border-line-strong px-6 py-10">
+          <p className="text-[17px] font-semibold">이 폐기물을 찾지 못했습니다</p>
+          <p className="mt-1 text-sm text-muted">지워졌거나 다른 회사의 폐기물일 수 있습니다.</p>
+          <Link href={`${basePath}/materials`} className={buttonClass("secondary", "md", "mt-4")}>
+            폐기물 목록으로
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <StreamCard
+        key={stream.id}
+        stream={stream}
+        canAct={canWrite}
+        onChanged={remote.reload}
+        onSave={async (next) => {
+          await api.putStream(org.id, next);
+          remote.reload();
+        }}
+      />
+    );
+  }
   return (
-    <>
-      <div>
-        {streams.map((stream) => (
-          <StreamCard
-            key={stream.id}
-            stream={stream}
-            canAct={canWrite}
-            onChanged={remote.reload}
-            onSave={async (next) => {
-              await api.putStream(org.id, next);
-              remote.reload();
-            }}
-          />
-        ))}
-      </div>
-      <StorageScan streams={streams} />
-      <CompanyMemory />
-    </>
+    <ul aria-label="폐기물 목록" className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+      {streams.map((stream) => (
+        <StreamRow key={stream.id} stream={stream} href={streamHref(basePath, stream.id)} />
+      ))}
+    </ul>
   );
 }
 
+/** 업체 정보의 저장 단추 옆 안내. 저장은 폼 전체를 보내지만, 다른 화면의 칸은 저장된 값 그대로다 */
+const SAVE_NOTE: Record<VendorFormPart, string> = {
+  permits: "",
+  criteria: "매입 기준표의 단가를 저장합니다.",
+  scope: "AI가 지킬 범위를 저장합니다.",
+  fleet: "노선·차량과 노선 밖 공장 수거 조건을 저장합니다.",
+};
+
+type VendorFormPart = "permits" | "criteria" | "scope" | "fleet";
+
+/**
+ * 업체 정보의 칸. part의 구역(허가 품목, 매입 기준표, AI가 지킬 범위, 노선·차량)만 그린다.
+ * 다른 구역의 칸은 저장된 값으로 시작하고 그대로 보내므로, 한 화면에서 저장해도 다른 화면의 값은 바뀌지 않는다.
+ */
 function VendorForm({
+  part,
   profile,
   canAct,
   onSave,
@@ -1559,6 +1629,7 @@ function VendorForm({
   carry,
   draftRef,
 }: {
+  part: VendorFormPart;
   profile: VendorProfile;
   canAct: boolean;
   /** 다시 그릴 때 이어받을 칸(담당자가 고쳐 두고 저장하지 않은 칸). 없으면 저장값으로 시작한다 */
@@ -1686,19 +1757,20 @@ function VendorForm({
       <span className="text-warn">확인 필요</span>
     );
 
-  const sectionTitle = "text-[17px] leading-snug font-bold tracking-[-0.02em]";
   const fieldLabel = "flex flex-col gap-1.5 text-[13px] font-medium text-ink-2";
 
   return (
     <div>
+      {part === "permits" ? (
       <ul className="space-y-1 pb-5 text-sm text-ink-2" aria-label="업체 등록 상태">
         <li>{summary.saved}</li>
         <li>{summary.candidates}</li>
         <li>{summary.confirmation}</li>
       </ul>
+      ) : null}
 
-      <section {...navSpot("permits", "허가 품목", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6 space-y-3">
-        <h2 className={sectionTitle}>허가 품목</h2>
+      {part === "permits" ? (
+      <section aria-label="허가 품목" className="mb-3 rounded-xl border border-line bg-surface px-5 py-6 space-y-3">
         <PermitEditor canAct={canAct} onSave={onAddPermits}>
           <DocumentUpload kinds={["permit"]} canAct={canAct} label="허가증 업로드" uploadText="허가증 업로드"
             pendingLabel="업체 문서" onConfirmed={onConfirmed} />
@@ -1725,9 +1797,10 @@ function VendorForm({
           </ul>
         )}
       </section>
+      ) : null}
 
-      <section {...navSpot("criteria", "매입 기준표", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
-        <h2 className={sectionTitle}>매입 기준표</h2>
+      {part === "criteria" ? (
+      <section aria-label="매입 기준표" className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <p className="mt-1 text-sm text-muted">
           고정 단가는 자동 견적에 쓰이며, 건별 협의는 담당자가 견적을 냅니다.
         </p>
@@ -1809,9 +1882,10 @@ function VendorForm({
           </p>
         ) : null}
       </section>
+      ) : null}
 
-      <section {...navSpot("scope", "AI가 지킬 범위", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
-        <h2 className={sectionTitle}>AI가 지킬 범위</h2>
+      {part === "scope" ? (
+      <section aria-label="AI가 지킬 범위" className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <label className={`${fieldLabel} mt-3`}>
           업체가 적용할 처리 방식
           <select aria-label="업체가 적용할 처리 방식" value={process} onChange={(event) => setProcess(event.target.value)} className={field} disabled={!canAct}>
@@ -1858,9 +1932,10 @@ function VendorForm({
         </div>
 
       </section>
+      ) : null}
 
-      <section {...navSpot("fleet", "노선·차량", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
-        <h2 className={sectionTitle}>노선·차량</h2>
+      {part === "fleet" ? (
+      <section aria-label="노선·차량" className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <p className="mt-1 text-sm text-muted">
           차고지와 차량 적재량, km당 운송비로 {AI_NAME.vendor}가 수거 횟수와 운반비를 계산합니다. 모르는 칸은 비워 두면
           &lsquo;확인 필요&rsquo;로 남습니다.
@@ -2071,15 +2146,18 @@ function VendorForm({
           areas={fleet.serviceAreas}
         />
       </section>
+      ) : null}
 
+      {part === "permits" ? null : (
       <div className="flex flex-wrap items-center gap-3 pt-6">
         <Button disabled={!canAct} onClick={save}>
           저장
         </Button>
         <span role="status" className={`text-sm ${note && !note.startsWith("저장했습니다.") ? "text-loss" : "text-muted"}`}>
-          {note ?? (canAct ? "매입 기준표의 단가, AI가 지킬 범위, 노선·차량, 노선 밖 공장 수거 조건을 함께 저장합니다." : "체험 중에는 저장할 수 없습니다.")}
+          {note ?? (canAct ? SAVE_NOTE[part] : "체험 중에는 저장할 수 없습니다.")}
         </span>
       </div>
+      )}
     </div>
   );
 }
@@ -2190,22 +2268,36 @@ export function loadVendorProfile(orgId: string, name = "") {
   );
 }
 
-function VendorMaterials() {
-  const { mode, canWrite, org } = useV3();
-  const remote = useRemote(`vendor:${org.id}`, mode === "live", () => loadVendorProfile(org.id, org.name));
+/** 처리 업체 정보의 하위 화면. 허가 품목(첫 주소), 매입 기준표, AI가 지킬 범위, 노선·차량, AI 도우미로 등록, 거래한 배출 기업 기록 */
+function VendorMaterials({ part }: { part: MaterialsPart }) {
+  const { mode, canWrite, org, basePath } = useV3();
+  // 업체 정보의 화면들이 같은 프로필을 읽는다. 화면을 옮겨도 받아 둔 것을 먼저 보이고 뒤에서 새로 읽는다(keep)
+  const remote = useRemote(
+    `vendor:${basePath}:${org.id}`,
+    mode === "live" && part !== "memory",
+    () => loadVendorProfile(org.id, org.name),
+    { keep: true },
+  );
   const [note, setNote] = useState<string | null>(null);
   // AI 도우미가 업체 정보를 저장하면 폼을 새로 그린다(폼 칸은 처음 그릴 때의 프로필로 정해진다).
   // 이때 담당자가 고쳐 두고 저장하지 않은 칸은 이어받고, 도우미가 저장한 칸만 새 값으로 바꾼다(vendor-form-carry.ts)
   const [revision, setRevision] = useState(0);
   const [carry, setCarry] = useState<{ revision: number; draft: VendorFormDraft } | null>(null);
   const formRef = useRef<{ start: VendorFormDraft; current: VendorFormDraft } | null>(null);
+  if (part === "memory") return <VendorMemoryPanel standalone />;
+  // 업체 정보 첫 주소(main)는 허가 품목이다
+  const formPart: VendorFormPart | null =
+    part === "main" ? "permits" : part === "criteria" || part === "scope" || part === "fleet" ? part : null;
   if (remote.loading) return <p className="text-sm text-muted">업체 정보를 불러오는 중입니다.</p>;
   if (remote.error) return <p role="alert" className="text-sm text-loss">{remote.error}</p>;
   const profile = remote.data ?? emptyProfile(org.id, org.name);
   return (
     <>
-      {mode === "live" && canWrite ? (
-        <div {...navSpot("assistant", "AI 도우미로 등록", "도우미")} className="mb-8 border-b border-line">
+      {part === "assistant" && !canWrite ? (
+        <p className="text-sm text-muted">AI 도우미는 로그인한 업체 계정에서 쓸 수 있습니다.</p>
+      ) : null}
+      {part === "assistant" && mode === "live" && canWrite ? (
+        <div>
           <VendorOnboarding
             orgId={org.id}
             discoverable={vendorReady(profile)}
@@ -2224,9 +2316,11 @@ function VendorMaterials() {
           <VendorMcpKeys orgId={org.id} />
         </div>
       ) : null}
+      {formPart ? (
       <VendorForm
         /* 처음 저장(허가 품목 추가, 매입 기준 추가 포함)으로는 다시 그리지 않는다. 다시 그리면 적어 둔 칸이 지워진다 */
         key={`${profile.orgId}:${revision}`}
+        part={formPart}
         profile={profile}
         canAct={canWrite}
         carry={carry?.revision === revision ? carry.draft : null}
@@ -2254,19 +2348,50 @@ function VendorMaterials() {
           remote.reload();
         }}
       />
+      ) : null}
     </>
   );
 }
 
-export function MaterialsView() {
-  const { org, mode, readOnly } = useV3();
+/**
+ * 자료(배출 기업)·업체 정보(처리 업체)의 하위 화면. main은 갈래 첫 주소다(배출 기업은 폐기물 목록, 업체는 허가 품목).
+ * 배출 기업: main · stream(폐기물 하나) · scan · memory. 업체: main · criteria · scope · fleet · assistant · memory.
+ */
+export type MaterialsPart = "main" | "stream" | "scan" | "memory" | "criteria" | "scope" | "fleet" | "assistant";
+
+const EMITTER_TITLE: Partial<Record<MaterialsPart, string>> = {
+  main: "폐기물 목록",
+  scan: "보관장 3D 스캔",
+  memory: "우리 회사 기록",
+};
+const VENDOR_TITLE: Partial<Record<MaterialsPart, string>> = {
+  main: "허가 품목",
+  criteria: "매입 기준표",
+  scope: "AI가 지킬 범위",
+  fleet: "노선·차량",
+  assistant: "AI 도우미로 등록",
+  memory: "거래한 배출 기업 기록",
+};
+
+export function MaterialsView({ part = "main", streamId }: { part?: MaterialsPart; streamId?: string }) {
+  const { org, mode, readOnly, basePath } = useV3();
+  const vendor = org.role === "vendor";
+  const streams = useStreams(org.role === "emitter" && part !== "memory");
+  const stream = part === "stream" ? streams.data?.find((item) => item.id === streamId) : undefined;
+  // 폐기물 하나의 화면은 폐기물 이름이 제목이다
+  const title = part === "stream" ? (stream?.name ?? "폐기물") : (vendor ? VENDOR_TITLE : EMITTER_TITLE)[part];
   return (
     <div className="mx-auto w-full max-w-[860px] px-5 pt-8 pb-16">
       <header className="mb-5">
-        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">
-          {org.role === "vendor" ? "업체 정보" : "자료"}
-        </h1>
-        <p className="mt-2 text-[15px] text-ink-2">
+        {part === "stream" ? (
+          <Link href={`${basePath}/materials`} className="-my-2 inline-flex min-h-11 items-center gap-1 text-[13px] text-muted hover:text-ink">
+            ← 폐기물 목록
+          </Link>
+        ) : (
+          <p className="text-[13px] text-muted">{vendor ? "업체 정보" : "자료"}</p>
+        )}
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">{title ?? (vendor ? "업체 정보" : "자료")}</h1>
+        <p className={`mt-2 text-[15px] text-ink-2 ${part === "main" ? "" : "hidden"}`}>
           {org.role === "emitter"
             ? "지금 처리 방법과 단가, 사진, 측정값을 넣을수록 업체가 조건을 정확히 내놓습니다. 없는 것은 비워 둬도 됩니다."
             : org.role === "vendor"
@@ -2283,9 +2408,8 @@ export function MaterialsView() {
         ) : null}
       </header>
       {mode === "loading" ? <p className="text-sm text-muted">불러오는 중입니다.</p> : null}
-      {mode !== "loading" && org.role === "emitter" ? <EmitterMaterials /> : null}
-      {mode !== "loading" && org.role === "vendor" ? <VendorMaterials /> : null}
-      {mode !== "loading" && org.role === "vendor" ? <VendorMemoryPanel /> : null}
+      {mode !== "loading" && org.role === "emitter" ? <EmitterMaterials part={part} streamId={streamId} remote={streams} /> : null}
+      {mode !== "loading" && org.role === "vendor" ? <VendorMaterials part={part} /> : null}
     </div>
   );
 }

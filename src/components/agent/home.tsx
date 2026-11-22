@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { useV3 } from "@/components/v3/context";
@@ -10,6 +11,7 @@ import { loadVendorProfile } from "@/components/v3/materials-view";
 import { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { vendorEmptyCopy } from "@/lib/v3/vendor-empty";
 import { Conversation } from "./conversation";
+import { FIND_PARTS, findHref, findPartOf } from "./nav-pages";
 import { Dots } from "./dots";
 import { Start } from "./start";
 
@@ -52,9 +54,14 @@ function VendorEmpty({ error }: { error: string | null }) {
   );
 }
 
-/** 에이전트 화면의 첫 화면. 보는 회사의 종류와 진단 유무에 따라 한 가지만 보여 준다. */
+/**
+ * 찾기 화면. 보는 회사의 종류와 진단 유무에 따라 한 가지만 보여 준다.
+ * 주소가 찾기 한 건의 어느 화면인지 정한다(/find 진행·결과, /find/approve 승인 …, nav-pages.ts FIND_PARTS).
+ * 찾기 레이아웃이 그리므로 하위 화면을 옮겨 다녀도 같은 진단과 실시간 진행을 그대로 쓴다.
+ */
 export function AgentHome() {
   const { mode, readOnly, basePath, setSessionId, dropSession, failedSessions } = useV3();
+  const part = findPartOf(usePathname(), basePath);
   const d = useDiagnosis();
   const stale = Boolean(d.sessionId) && !d.view && !d.loading && Boolean(d.error);
 
@@ -85,7 +92,7 @@ export function AgentHome() {
     );
   }
 
-  if (d.view) return <Conversation d={d} />;
+  if (d.view) return <Conversation d={d} part={part} />;
 
   if (d.org.role === "admin") {
     return (
@@ -99,6 +106,25 @@ export function AgentHome() {
   }
 
   if (d.org.role === "vendor") return <VendorEmpty error={d.error ?? recent.error} />;
+
+  // 찾기의 하위 화면(승인, 서류 …)은 연 찾기가 있어야 보인다. 없으면 찾기 첫 화면으로 보낸다
+  if (part !== "main") {
+    return (
+      <Centered title={FIND_PARTS.find((item) => item.part === part)?.label ?? "찾기"}>
+        <p>{latest ? "지금 연 찾기가 없습니다. 지난번에 찾은 결과를 열면 여기에서 볼 수 있습니다." : "아직 연 찾기가 없습니다. 받아 줄 곳을 먼저 찾아 주세요."}</p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          {latest ? (
+            <button type="button" onClick={() => setSessionId(latest.id)} className={buttonClass("secondary", "md")}>
+              지난번에 찾은 결과 보기
+            </button>
+          ) : null}
+          <Link href={findHref(basePath, "main")} className={buttonClass(latest ? "ghost" : "secondary", "md")}>
+            찾기 화면으로
+          </Link>
+        </div>
+      </Centered>
+    );
+  }
 
   return (
     <Start

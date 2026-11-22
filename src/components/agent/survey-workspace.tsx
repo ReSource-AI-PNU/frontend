@@ -16,7 +16,6 @@ import {
   type SurveyData,
 } from "@/lib/v3/survey";
 import type { StreamRecord, VendorProfile } from "@/lib/v3/types";
-import { navSpot } from "@/components/agent/nav-spot";
 
 const field =
   "min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[15px] tabular-nums";
@@ -75,8 +74,7 @@ function VendorRanges({
     );
   }
   return (
-    <section {...navSpot("public-terms", "공개할 매입 조건", "이 화면")} className={section}>
-      <h2 className="text-xl font-semibold">공개할 매입 조건</h2>
+    <section aria-label="공개할 매입 조건" className={section}>
       <p className="text-sm text-muted">
         범위로 등록하면 상대에게 범위만 보이고 확정 손익에는 쓰지 않습니다.
         거래마다 자료를 확인하며 좁혀 주세요. 범위는 배출 기업이 받는 돈
@@ -535,20 +533,40 @@ function PhotoCard({
   );
 }
 
-export function SurveyWorkspace() {
-  const { org, mode, canWrite, openEvidence } = useV3();
-  const remote = useRemote(`survey:${org.id}`, mode === "live", () =>
-    api.survey<SurveyData>(org.id),
+/**
+ * 단가·사전 문의의 하위 화면. main은 첫 주소다(배출 기업은 범위 단가를 공개한 업체, 업체는 공개할 매입 조건).
+ * weights(배출 기업만) · quotes · photos가 더 있다.
+ */
+export type SurveyPart = "main" | "weights" | "quotes" | "photos";
+
+function partTitle(part: SurveyPart, vendor: boolean): string {
+  if (part === "main") return vendor ? "공개할 매입 조건" : "범위 단가를 공개한 업체";
+  if (part === "weights") return "기존 계량 기록으로 월 물량 채우기";
+  if (part === "quotes") return "거래별 단가 확인";
+  return "수거 전 확인 사진";
+}
+
+export function SurveyWorkspace({ part = "main" }: { part?: SurveyPart }) {
+  const { org, mode, canWrite, openEvidence, basePath } = useV3();
+  // 하위 화면들이 같은 문의 자료를 읽는다. 화면을 옮겨도 받아 둔 것을 먼저 보이고 뒤에서 새로 읽는다(keep).
+  // 폐기물 목록과 업체 정보는 자료 화면과 같은 키를 쓴다
+  const remote = useRemote(
+    `survey:${basePath}:${org.id}`,
+    mode === "live",
+    () => api.survey<SurveyData>(org.id),
+    { keep: true },
   );
   const streams = useRemote(
-    `survey-streams:${org.id}`,
-    mode === "live" && org.role === "emitter",
+    `streams:${basePath}:${org.id}`,
+    mode === "live" && org.role === "emitter" && part === "photos",
     () => api.listStreams(org.id),
+    { keep: true },
   );
   const profile = useRemote(
-    `survey-vendor:${org.id}`,
-    mode === "live" && org.role === "vendor",
+    `vendor:${basePath}:${org.id}`,
+    mode === "live" && org.role === "vendor" && part === "main",
     () => loadVendorProfile(org.id, org.name),
+    { keep: true },
   );
   const [month, setMonth] = useState(monthInSeoul());
   const [streamId, setStreamId] = useState("");
@@ -580,10 +598,13 @@ export function SurveyWorkspace() {
     );
   return (
     <main className="mx-auto w-full max-w-[960px] px-5 pt-8 pb-16">
-      <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">단가·사전 문의</h1>
-      <p className="mt-2 text-[15px] text-ink-2">
-        가격 범위에서 시작해 자료를 확인하고, 상대와 거래 조건을 좁힙니다.
-      </p>
+      <p className="text-[13px] text-muted">단가·사전 문의</p>
+      <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">{partTitle(part, org.role === "vendor")}</h1>
+      {part === "main" ? (
+        <p className="mt-2 text-[15px] text-ink-2">
+          가격 범위에서 시작해 자료를 확인하고, 상대와 거래 조건을 좁힙니다.
+        </p>
+      ) : null}
       {remote.loading && (
         <p className="py-6 text-sm text-muted">
           문의 자료를 불러오는 중입니다.
@@ -597,7 +618,7 @@ export function SurveyWorkspace() {
           </Button>
         </div>
       )}
-      {org.role === "vendor" && profile.data && (
+      {part === "main" && org.role === "vendor" && profile.data && (
         <VendorRanges
           key={org.id}
           profile={profile.data}
@@ -612,11 +633,8 @@ export function SurveyWorkspace() {
           {profile.error}
         </p>
       )}
-      {org.role === "emitter" && (
-        <section {...navSpot("weigh-csv", "계량 기록으로 물량 채우기", "이 화면")} className={`${section} mt-6`}>
-          <h2 className="text-xl font-semibold">
-            기존 계량 기록으로 월 물량 채우기
-          </h2>
+      {part === "weights" && org.role === "emitter" && (
+        <section aria-label="계량 기록으로 물량 채우기" className={`${section} mt-6`}>
           <p className="text-sm text-muted">
             CSV 열: 폐기물 이름, 계량일, 중량(kg), 계량번호(선택). 등록한 폐기물
             이름을 사용해 주세요. 선택한 월만 합산하고, 같은 기록을 다시 올려도
@@ -655,9 +673,8 @@ export function SurveyWorkspace() {
           </label>
         </section>
       )}
-      {data && org.role === "emitter" && (
-        <section {...navSpot("range-vendors", "범위 단가를 공개한 업체", "이 화면")} className={section}>
-          <h2 className="text-xl font-semibold">범위 단가를 공개한 업체</h2>
+      {part === "main" && data && org.role === "emitter" && (
+        <section aria-label="범위 단가를 공개한 업체" className={section}>
           {data.candidates.length === 0 && (
             <p className="text-sm text-muted">
               지금 자료와 허가 품목이 맞는 범위 단가 업체가 없습니다. 자료를
@@ -720,9 +737,8 @@ export function SurveyWorkspace() {
           ))}
         </section>
       )}
-      {data && (
-        <section {...navSpot("quotes", "거래별 단가 확인", "이 화면")} className={section}>
-          <h2 className="text-xl font-semibold">거래별 단가 확인</h2>
+      {part === "quotes" && data && (
+        <section aria-label="거래별 단가 확인" className={section}>
           {data.quotes.length === 0 && (
             <p className="text-sm text-muted">아직 사전 문의가 없습니다.</p>
           )}
@@ -735,9 +751,8 @@ export function SurveyWorkspace() {
           ))}
         </section>
       )}
-      {data && (
-        <section {...navSpot("pickup-photos", "수거 전 확인 사진", "이 화면")} className={section}>
-          <h2 className="text-xl font-semibold">수거 전 확인 사진</h2>
+      {part === "photos" && data && (
+        <section aria-label="수거 전 확인 사진" className={section}>
           {org.role === "emitter" && (
             <>
               <label className={label}>
@@ -799,6 +814,17 @@ export function SurveyWorkspace() {
           className="sticky bottom-4 border border-line-strong bg-surface p-4 text-sm"
         >
           {message}
+          {/* 만든 사전 문의와 공유할 사진은 다른 화면에 있다 */}
+          {part === "main" && org.role === "emitter" ? (
+            <span className="mt-1 flex flex-wrap gap-x-4">
+              <Link href={`${basePath}/conditions/quotes`} className="inline-flex min-h-11 items-center underline underline-offset-4">
+                거래별 단가 확인
+              </Link>
+              <Link href={`${basePath}/conditions/photos`} className="inline-flex min-h-11 items-center underline underline-offset-4">
+                수거 전 확인 사진
+              </Link>
+            </span>
+          ) : null}
         </p>
       )}
     </main>

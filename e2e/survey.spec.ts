@@ -10,15 +10,14 @@ async function signIn(page: Page) {
   await page.getByRole("button", { name: "개발용 계정으로 들어가기" }).click();
   await page.waitForURL(/\/app$/);
 }
-async function company(page: Page, id: string) {
+/** 회사를 바꾸고 단가·사전 문의의 하위 화면(첫 화면, /quotes, /photos, /weights)을 연다 */
+async function company(page: Page, id: string, path = "/app/conditions") {
   const select = page.getByRole("combobox", { name: "회사" });
   await select.selectOption(id);
   await expect(page.locator(`[data-active-org="${id}"]`)).toBeVisible();
   await expect(select).toBeEnabled();
-  await page.goto("/app/conditions");
-  await expect(
-    page.getByRole("heading", { name: "단가·사전 문의", exact: true }),
-  ).toBeVisible();
+  await page.goto(path);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 }
 test("공개 범위 등록 → 사진 선택 공유 → 범위 좁힘 → 단일 제안 수락", async ({
   page,
@@ -50,6 +49,9 @@ test("공개 범위 등록 → 사진 선택 공유 → 범위 좁힘 → 단일
   await candidate
     .getByRole("button", { name: "이 조건으로 사전 문의" })
     .click();
+  await expect(page.getByText("사전 문의를 만들었습니다.", { exact: false })).toBeVisible();
+  // 만든 사전 문의는 "거래별 단가 확인", 공유할 사진은 "수거 전 확인 사진" 화면에 있다
+  await page.getByRole("status").getByRole("link", { name: "거래별 단가 확인" }).click();
   const quote = page
     .locator("article")
     .filter({
@@ -59,6 +61,7 @@ test("공개 범위 등록 → 사진 선택 공유 → 범위 좁힘 → 단일
       }),
     });
   await expect(quote).toContainText("범위 확인 중");
+  await page.goto("/app/conditions/photos");
   await page.getByLabel("사진을 올릴 폐기물").selectOption("st_sprue");
   await page
     .getByLabel("사진 올리기", { exact: true })
@@ -75,11 +78,12 @@ test("공개 범위 등록 → 사진 선택 공유 → 범위 좁힘 → 단일
   ).toBeVisible();
   await page.getByLabel("(주)새길자원", { exact: true }).check();
   await page.getByRole("button", { name: "사진 공유 대상 저장" }).click();
-  await company(page, "org_saegil");
+  await company(page, "org_saegil", "/app/conditions/photos");
   await page.getByRole("button", { name: "사진 보기", exact: true }).click();
   await expect(
     page.getByRole("img", { name: "수거 전 확인을 위해 공유한 폐기물 사진" }),
   ).toBeVisible();
+  await page.goto("/app/conditions/quotes");
   await page.getByLabel("새 하한 (원/kg)").fill("310");
   await page.getByLabel("새 상한 (원/kg)").fill("330");
   await page.getByLabel("재질 자료 확인", { exact: true }).check();
@@ -97,7 +101,7 @@ test("공개 범위 등록 → 사진 선택 공유 → 범위 좁힘 → 단일
     .fill("반입 검수와 단가 포함 운반 조건을 확인했습니다.");
   await page.getByRole("button", { name: "확인한 범위 제안" }).click();
   await expect(quote).toContainText("단일 단가 제안");
-  await company(page, "org_hanbit");
+  await company(page, "org_hanbit", "/app/conditions/quotes");
   await page.getByRole("button", { name: "이 단가 제안 수락" }).click();
   await expect(quote).toContainText("제안 수락 · 거래 확정 전");
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -131,7 +135,7 @@ test("기존 계량 CSV를 품질 수치 없이 월별로 합산하고 재업로
     ).ok(),
   ).toBeTruthy();
   await signIn(page);
-  await company(page, "org_hanbit");
+  await company(page, "org_hanbit", "/app/conditions/weights");
   await page.getByLabel("합산할 월").fill("2026-11");
   const f = {
     name: "weigh.csv",

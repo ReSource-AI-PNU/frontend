@@ -35,7 +35,6 @@ import {
 import type { ScanList, ScanPile, ScanView, StreamRecord } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
-import { navSpot } from "@/components/agent/nav-spot";
 
 const ScanViewer = dynamic(() => import("./scan-viewer").then((module) => module.ScanViewer), {
   ssr: false,
@@ -798,9 +797,9 @@ function useScanList(orgId: string, enabled: boolean) {
 }
 
 /**
- * "보관장 3D 스캔" 절. 등록한 폐기물이 있을 때 자료 화면 아래에 붙는다.
+ * "보관장 3D 스캔" 절. 자료의 "3D 스캔" 화면(/materials/scan)에 홀로 그린다(standalone: 위 선과 제목을 화면 제목에 맡긴다).
  */
-export function StorageScan({ streams }: { streams: StreamRecord[] }) {
+export function StorageScan({ streams, standalone = false }: { streams: StreamRecord[]; standalone?: boolean }) {
   const { org, mode, canWrite, readOnly } = useV3();
   const remote = useScanList(org.id, mode === "live");
   const [local, setLocal] = useState<Local>({ phase: "idle" });
@@ -842,11 +841,14 @@ export function StorageScan({ streams }: { streams: StreamRecord[] }) {
     };
   }, [processingId, org.id, poll.tick, stalled, reload]);
 
-  if (mode !== "live" || remote.loading) return null;
+  if (mode !== "live" || remote.loading) {
+    return standalone ? <p className="text-sm text-muted">3D 스캔을 불러오는 중입니다.</p> : null;
+  }
   const canAct = canWrite && !readOnly;
+  const frame = standalone ? "" : "mt-12 border-t border-line pt-8";
   const heading = (
     <>
-      <h2 id="storage-scan-title" className="text-[20px] font-semibold tracking-[-0.02em]">
+      <h2 id="storage-scan-title" className={standalone ? "sr-only" : "text-[20px] font-semibold tracking-[-0.02em]"}>
         보관장 3D 스캔
       </h2>
       <p className="mt-1 text-[15px] text-ink-2">
@@ -857,7 +859,7 @@ export function StorageScan({ streams }: { streams: StreamRecord[] }) {
   if (!list) {
     // 처음 불러오기에 실패했다
     return (
-      <section aria-labelledby="storage-scan-title" {...navSpot("scan", "3D 스캔", "보관장")} className="mt-12 border-t border-line pt-8">
+      <section aria-labelledby="storage-scan-title" className={frame}>
         {heading}
         <div role="alert" className="mt-4 flex flex-wrap items-center gap-3 text-[13.5px] text-ink-2">
           <span>보관장 3D 스캔을 불러오지 못했습니다. {remote.error ?? UNAVAILABLE}</span>
@@ -937,7 +939,7 @@ export function StorageScan({ streams }: { streams: StreamRecord[] }) {
           : "";
 
   return (
-    <section aria-labelledby="storage-scan-title" {...navSpot("scan", "3D 스캔", "보관장")} className="mt-12 border-t border-line pt-8">
+    <section aria-labelledby="storage-scan-title" className={frame}>
       {heading}
       <p aria-live="polite" className="sr-only">
         {liveText}

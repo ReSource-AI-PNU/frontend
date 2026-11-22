@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { ChevronRightIcon, DocIcon, PlusIcon, TalkIcon } from "@/components/icons";
+import { ChevronRightIcon, DocIcon, PlusIcon } from "@/components/icons";
 import { buttonClass } from "@/components/ui/button";
-import { Fold, FoldGroup } from "@/components/ui/fold";
 import { Steps } from "@/components/ui/steps";
 import { ClaimValue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
@@ -15,7 +14,6 @@ import { signedWon } from "@/lib/v3/money";
 import { DOC_LABEL } from "@/lib/v3/labels";
 import { DEAL_STEPS, progressOf, type Activity, type Deal, type Task, type TaskKind } from "@/lib/v3/overview";
 import { Dots } from "./dots";
-import { navSpot } from "@/components/agent/nav-spot";
 
 const TAG_TONE: Record<TaskKind, string> = {
   blocked: "bg-loss-bg text-loss",
@@ -111,9 +109,9 @@ function ActivityRow({ item, href }: { item: Activity; href: string | null }) {
   );
 }
 
-function Card({ id, title, aside, children }: { id: string; title: string; aside?: React.ReactNode; children: React.ReactNode }) {
+function Card({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section {...navSpot(id, title, "오늘")} className="overflow-hidden rounded-xl border border-line bg-surface">
+    <section aria-label={title} className="overflow-hidden rounded-xl border border-line bg-surface">
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-5">
         <h2 className="text-[15px] font-bold">{title}</h2>
         {aside}
@@ -123,19 +121,28 @@ function Card({ id, title, aside, children }: { id: string; title: string; aside
   );
 }
 
+/** 홈의 하위 화면. 할 일(홈 첫 주소), 진행 중인 거래, 최근 바뀐 것, 서류 모음 */
+export type OverviewPart = "tasks" | "active" | "activity" | "documents";
+
+const PART_TITLE: Record<Exclude<OverviewPart, "tasks">, string> = {
+  active: "진행 중인 거래",
+  activity: "최근 바뀐 것",
+  documents: "서류 모음",
+};
+
 /**
- * 로그인한 뒤 첫 화면(대시보드). 숫자 넷, 할 일, 진행 중인 거래만 둔다. 최근 바뀐 것과 서류는 접어 둔다.
- * 자세한 근거와 대화는 거래·찾기·승인 화면으로 넘긴다.
+ * 로그인한 뒤 첫 화면(대시보드)과 그 하위 화면. 홈 첫 주소는 숫자 넷과 할 일만 두고, 진행 중인 거래·최근 바뀐 것·서류 모음은
+ * 소메뉴의 각 화면(자기 주소)에서 본다. 자세한 근거와 대화는 거래·찾기·승인 화면으로 넘긴다.
  */
-export function Overview() {
-  const { org, basePath, readOnly } = useV3();
+export function Overview({ part = "tasks" }: { part?: OverviewPart }) {
+  const { org, basePath, readOnly, setSessionId } = useV3();
   const router = useRouter();
   const w = useWorkspace();
   const emitter = w.side === "emitter";
   const dealHref = (key: string | null) => `${basePath}/deals${key ? `?deal=${encodeURIComponent(key)}` : ""}`;
 
   // 처음 들어온 배출 기업(찾기가 하나도 없음)은 홈 대신 폐기물 등록과 찾기 화면으로 보낸다
-  const fresh = emitter && !readOnly && w.ready && w.views.length === 0;
+  const fresh = part === "tasks" && emitter && !readOnly && w.ready && w.views.length === 0;
   useEffect(() => {
     if (fresh) router.replace(`${basePath}/find`);
   }, [fresh, router, basePath]);
@@ -151,6 +158,87 @@ export function Overview() {
   const h = w.headline;
   const empty = w.deals.length === 0 && w.tasks.length === 0;
   const talking = w.deals.filter((deal) => deal.stage === "talking" || deal.stage === "agreed").length;
+  const error = w.error ? (
+    <p role="alert" className="mt-5 rounded-lg bg-loss-bg px-4 py-3 text-sm text-loss">
+      {w.error}
+    </p>
+  ) : null;
+
+  if (part !== "tasks") {
+    return (
+      <div className="mx-auto w-full max-w-[860px] px-5 pt-8 pb-16 lg:px-8">
+        <header>
+          <p className="text-[13px] text-muted">{org.name}</p>
+          <h1 className="text-[26px] leading-tight font-bold tracking-[-0.03em]">{PART_TITLE[part]}</h1>
+        </header>
+        {error}
+        {part === "active" ? (
+          <div className="mt-6">
+            <Card
+              title={`거래 ${w.deals.length}건`}
+              aside={
+                <Link href={dealHref(null)} className="inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-accent hover:underline">
+                  모든 거래에서 보기
+                  <ChevronRightIcon className="size-3.5" />
+                </Link>
+              }
+            >
+              {w.deals.length > 0 ? (
+                <ul className="divide-y divide-line">
+                  {w.deals.map((deal) => (
+                    <DealRow key={deal.key} deal={deal} href={dealHref(deal.key)} emitter={emitter} name={emitter ? deal.vendorName : w.nameOf(deal.emitterOrgId)} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-5 py-8 text-center text-[14px] text-muted">아직 거래가 없습니다</p>
+              )}
+            </Card>
+          </div>
+        ) : null}
+        {part === "activity" ? (
+          <div className="mt-6 rounded-xl border border-line bg-surface px-5 py-3">
+            {w.activity.length > 0 ? (
+              <ol>
+                {w.activity.map((item) => (
+                  <ActivityRow key={item.id} item={item} href={item.dealKey ? dealHref(item.dealKey) : null} />
+                ))}
+              </ol>
+            ) : (
+              <p className="py-5 text-[14px] text-muted">아직 기록이 없습니다.</p>
+            )}
+          </div>
+        ) : null}
+        {part === "documents" ? (
+          <div className="mt-6 rounded-xl border border-line bg-surface px-5 py-3">
+            {w.documents.length > 0 ? (
+              <ul>
+                {w.documents.map((item) => (
+                  <li key={`${item.dealKey}:${item.doc.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // 승인·서류 화면은 열어 둔 찾기 하나를 본다. 이 서류의 찾기를 열어 두고 서류 화면으로 간다
+                        setSessionId(item.sessionId);
+                        router.push(`${basePath}/approval/documents`);
+                      }}
+                      className="flex min-h-11 w-full items-center gap-2.5 rounded-lg text-left text-[14px] hover:text-accent"
+                    >
+                      <DocIcon className="shrink-0 text-muted" />
+                      <span className="w-24 shrink-0 font-medium">{DOC_LABEL[item.doc.kind]}</span>
+                      <span className="min-w-0 flex-1 truncate text-ink-2">{emitter ? item.vendorName : w.nameOf(item.emitterOrgId)}</span>
+                      <span className="shrink-0 text-[12px] text-muted tabular-nums">{formatDateTime(item.doc.createdAt, "date")}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-5 text-[14px] text-muted">양쪽이 승인하면 요청서, 이행 계획서, 계약서 초안이 여기에 모입니다.</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-5 pt-8 pb-16 lg:px-8">
@@ -167,11 +255,7 @@ export function Overview() {
         ) : null}
       </header>
 
-      {w.error ? (
-        <p role="alert" className="mt-5 rounded-lg bg-loss-bg px-4 py-3 text-sm text-loss">
-          {w.error}
-        </p>
-      ) : null}
+      {error}
 
       <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-4">
         {emitter ? (
@@ -216,79 +300,19 @@ export function Overview() {
           </Link>
         </div>
       ) : (
-        <>
-          <div className="mt-6 grid items-start gap-5 lg:grid-cols-2">
-            <Card id="tasks" title="할 일" aside={<span className="text-[13px] text-muted">{w.tasks.length}건</span>}>
-              {w.tasks.length > 0 ? (
-                <ul className="divide-y divide-line">
-                  {w.tasks.map((task) => (
-                    <TaskRow key={task.id} task={task} onOpen={w.go} />
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-5 py-8 text-center text-[14px] text-muted">지금 할 일이 없습니다</p>
-              )}
-            </Card>
-
-            <Card
-              id="active-deals"
-              title="진행 중인 거래"
-              aside={
-                <Link href={dealHref(null)} className="inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-accent hover:underline">
-                  전체 보기
-                  <ChevronRightIcon className="size-3.5" />
-                </Link>
-              }
-            >
-              {w.deals.length > 0 ? (
-                <ul className="divide-y divide-line">
-                  {w.deals.map((deal) => (
-                    <DealRow key={deal.key} deal={deal} href={dealHref(deal.key)} emitter={emitter} name={emitter ? deal.vendorName : w.nameOf(deal.emitterOrgId)} />
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-5 py-8 text-center text-[14px] text-muted">아직 거래가 없습니다</p>
-              )}
-            </Card>
-          </div>
-
-          <div {...navSpot("records", "최근 바뀐 것 · 서류", "기록")} className="mt-5">
-            <FoldGroup className="!rounded-xl">
-              <Fold title="최근 바뀐 것" summary={`${w.activity.length}건`} icon={<TalkIcon />}>
-                {w.activity.length > 0 ? (
-                  <ol>
-                    {w.activity.map((item) => (
-                      <ActivityRow key={item.id} item={item} href={item.dealKey ? dealHref(item.dealKey) : null} />
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="text-[14px] text-muted">아직 기록이 없습니다.</p>
-                )}
-              </Fold>
-              <Fold title="서류" summary={`${w.documents.length}건`} icon={<DocIcon />}>
-                {w.documents.length > 0 ? (
-                  <ul>
-                    {w.documents.map((item) => (
-                      <li key={`${item.dealKey}:${item.doc.id}`}>
-                        <button
-                          type="button"
-                          onClick={() => w.go({ sessionId: item.sessionId, target: "approval", dealKey: item.dealKey })}
-                          className="flex min-h-11 w-full items-center gap-2.5 rounded-lg text-left text-[14px] hover:text-accent"
-                        >
-                          <span className="w-24 shrink-0 font-medium">{DOC_LABEL[item.doc.kind]}</span>
-                          <span className="min-w-0 flex-1 truncate text-ink-2">{emitter ? item.vendorName : w.nameOf(item.emitterOrgId)}</span>
-                          <span className="shrink-0 text-[12px] text-muted tabular-nums">{formatDateTime(item.doc.createdAt, "date")}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-[14px] text-muted">양쪽이 승인하면 요청서, 이행 계획서, 계약서 초안이 여기에 모입니다.</p>
-                )}
-              </Fold>
-            </FoldGroup>
-          </div>
-        </>
+        <div className="mt-6">
+          <Card title="할 일" aside={<span className="text-[13px] text-muted">{w.tasks.length}건</span>}>
+            {w.tasks.length > 0 ? (
+              <ul className="divide-y divide-line">
+                {w.tasks.map((task) => (
+                  <TaskRow key={task.id} task={task} onOpen={w.go} />
+                ))}
+              </ul>
+            ) : (
+              <p className="px-5 py-8 text-center text-[14px] text-muted">지금 할 일이 없습니다</p>
+            )}
+          </Card>
+        </div>
       )}
     </div>
   );

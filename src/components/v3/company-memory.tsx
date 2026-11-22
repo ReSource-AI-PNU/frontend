@@ -8,7 +8,6 @@ import type { MemoryInspection, MemoryStream, OrgMemory, VendorMemory } from "@/
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
-import { navSpot } from "@/components/agent/nav-spot";
 
 /**
  * 우리 회사 기록(자료 화면 맨 아래, 배출 기업만). 지난 찾기와 거래에서 남은 기록을 회사 단위로 모아 보인다.
@@ -350,15 +349,19 @@ function MemoryBody({ memory, onChange }: { memory: OrgMemory; onChange: (change
   );
 }
 
-export function CompanyMemory() {
-  const { mode, org } = useV3();
-  const remote = useRemote(`memory:${org.id}`, mode === "live" && org.role === "emitter", () =>
-    api.getMemory(org.id),
+/** 배출 기업의 우리 회사 기록. 자료의 "우리 회사 기록" 화면(/materials/memory)에 홀로 그린다(standalone: 위 선과 제목을 화면 제목에 맡긴다) */
+export function CompanyMemory({ standalone = false }: { standalone?: boolean }) {
+  const { mode, org, basePath } = useV3();
+  const remote = useRemote(
+    `memory:${basePath}:${org.id}`,
+    mode === "live" && org.role === "emitter",
+    () => api.getMemory(org.id),
+    { keep: true },
   );
   if (org.role !== "emitter" || mode !== "live") return null;
   return (
-    <section aria-labelledby="company-memory-title" {...navSpot("memory", "우리 회사 기록", "기록")} className="mt-12 border-t border-line pt-8">
-      <h2 id="company-memory-title" className="text-[20px] leading-[1.35] font-semibold tracking-[-0.02em]">
+    <section aria-labelledby="company-memory-title" className={standalone ? "" : "mt-12 border-t border-line pt-8"}>
+      <h2 id="company-memory-title" className={standalone ? "sr-only" : "text-[20px] leading-[1.35] font-semibold tracking-[-0.02em]"}>
         우리 회사 기록
       </h2>
       <p className="mt-1 text-sm text-muted">
@@ -389,7 +392,7 @@ export function CompanyMemory() {
 }
 
 /**
- * 처리 업체의 기록(자료 화면 맨 아래, 업체만). 자기가 기록한 검수를 배출 기업별로 합의와 견줘 보인다.
+ * 처리 업체의 기록(업체 정보의 "거래한 배출 기업 기록" 화면, 업체만). 자기가 기록한 검수를 배출 기업별로 합의와 견줘 보인다.
  * 판정에 쓰지 않고 보여 주기만 한다. 같은 기록은 배출 기업의 계약 검토(지난 검수 기록)에도 보인다.
  */
 function VendorMemoryBody({ memory }: { memory: VendorMemory }) {
@@ -438,15 +441,18 @@ function VendorMemoryBody({ memory }: { memory: VendorMemory }) {
   );
 }
 
-export function VendorMemoryPanel() {
-  const { mode, org } = useV3();
-  const remote = useRemote(`vendor-memory:${org.id}`, mode === "live" && org.role === "vendor", () =>
-    api.getVendorMemory(org.id),
+export function VendorMemoryPanel({ standalone = false }: { standalone?: boolean }) {
+  const { mode, org, basePath } = useV3();
+  const remote = useRemote(
+    `vendor-memory:${basePath}:${org.id}`,
+    mode === "live" && org.role === "vendor",
+    () => api.getVendorMemory(org.id),
+    { keep: true },
   );
   if (org.role !== "vendor" || mode !== "live") return null;
   return (
-    <section aria-labelledby="vendor-memory-title" className="mt-12 border-t border-line pt-8">
-      <h2 id="vendor-memory-title" className="text-[20px] leading-[1.35] font-semibold tracking-[-0.02em]">
+    <section aria-labelledby="vendor-memory-title" className={standalone ? "" : "mt-12 border-t border-line pt-8"}>
+      <h2 id="vendor-memory-title" className={standalone ? "sr-only" : "text-[20px] leading-[1.35] font-semibold tracking-[-0.02em]"}>
         거래한 배출 기업 기록
       </h2>
       <p className="mt-1 text-sm text-muted">

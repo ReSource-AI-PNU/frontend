@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { api } from "@/lib/v3/api";
 import { activityOf, collectDeals, documentsOf, headlineOf, tasksOf, type Side, type Task } from "@/lib/v3/overview";
 import type { DiagnosisView } from "@/lib/v3/types";
+import { approvalHref } from "@/components/agent/nav-pages";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
 
@@ -43,7 +44,10 @@ export function useWorkspace() {
     (task: Pick<Task, "sessionId" | "target" | "dealKey">) => {
       setSessionId(task.sessionId);
       if (task.target === "deals") router.push(`${basePath}/deals${task.dealKey ? `?deal=${encodeURIComponent(task.dealKey)}` : ""}`);
-      else router.push(`${basePath}/${task.target}`);
+      // 승인할 것은 그 업체의 승인 화면으로 바로 간다(거래 열쇠는 "찾기 번호:대화 번호")
+      else if (task.target === "approval" && task.dealKey?.startsWith(`${task.sessionId}:`)) {
+        router.push(approvalHref(basePath, task.dealKey.slice(task.sessionId.length + 1)));
+      } else router.push(`${basePath}/${task.target}`);
     },
     [basePath, router, setSessionId],
   );

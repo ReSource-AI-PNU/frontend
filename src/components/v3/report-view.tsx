@@ -34,7 +34,6 @@ import type { Claim, Report, ReportRecord } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
-import { navSpot } from "@/components/agent/nav-spot";
 
 const segment =
   "flex min-h-[38px] cursor-pointer items-center rounded-sm px-3.5 text-sm text-muted peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-[0_1px_0_var(--color-line-strong)] peer-focus-visible:outline-2 peer-focus-visible:outline-ink";
@@ -259,19 +258,53 @@ function Planned({ report }: { report: Report }) {
   );
 }
 
-/** 배출 기업의 재활용·탄소 실적. 원청·고객사에 낼 수 있게 인쇄와 CSV를 둔다 */
-export function ReportView() {
+/** 실적의 하위 화면. 요약(첫 주소), 검수 기록, 확정한 합의 · 한 달 예상 */
+export type ReportPart = "summary" | "inspections" | "plan";
+
+const PART_TITLE: Record<ReportPart, string> = {
+  summary: "요약",
+  inspections: "검수 기록",
+  plan: "확정한 합의 · 한 달 예상",
+};
+
+/**
+ * 하위 화면을 옮겨 다녀도 고른 기간과 기준일을 그대로 쓴다(회사·화면 주소의 머리마다). 탭을 닫거나 새로 고치면 처음(전체)으로 돌아간다
+ */
+const keptPeriod = new Map<string, { period: PeriodKey; today: string | null }>();
+
+/**
+ * 배출 기업의 재활용·탄소 실적. 원청·고객사에 낼 수 있게 인쇄와 CSV를 둔다.
+ * 화면에는 part의 구역만 보이고, 인쇄하면 어느 하위 화면에서든 실적 전체(요약 · 검수 기록 · 한 달 예상)가 나온다.
+ */
+export function ReportView({ part = "summary" }: { part?: ReportPart }) {
   const { org, mode, basePath, setSessionId } = useV3();
   const router = useRouter();
-  const [period, setPeriod] = useState<PeriodKey>("all");
-  const [today, setToday] = useState<string | null>(null);
+  const memo = `${basePath}:${org.id}`;
+  const [period, setPeriodState] = useState<PeriodKey>(() => keptPeriod.get(memo)?.period ?? "all");
+  const [today, setTodayState] = useState<string | null>(() => keptPeriod.get(memo)?.today ?? null);
+  const setPeriod = (next: PeriodKey) => {
+    keptPeriod.set(memo, { period: next, today });
+    setPeriodState(next);
+  };
   const range = today ? periodRange(period, today) : { from: null, to: null };
   const isEmitter = org.role === "emitter";
-  const remote = useRemote(`report:${org.id}:${range.from}:${range.to}`, mode === "live" && isEmitter, async () => {
-    const report = await api.getReport(org.id, range.from, range.to);
-    setToday((before) => before ?? report.generatedOn);
-    return report;
-  });
+  // 요약·검수 기록·한 달 예상은 같은 실적을 읽는다. 화면을 옮겨도 받아 둔 것을 먼저 보이고 뒤에서 새로 읽는다(keep)
+  const remote = useRemote(
+    `report:${basePath}:${org.id}:${range.from}:${range.to}`,
+    mode === "live" && isEmitter,
+    async () => {
+      const report = await api.getReport(org.id, range.from, range.to);
+      setTodayState((before) => {
+        const next = before ?? report.generatedOn;
+        keptPeriod.set(memo, { period: keptPeriod.get(memo)?.period ?? "all", today: next });
+        return next;
+      });
+      return report;
+    },
+    { keep: true },
+  );
+  // 화면에는 고른 구역만, 인쇄에는 모두 보인다
+  const shown = (key: ReportPart) => (part === key ? "" : "hidden print:block");
   const report = remote.data;
 
   if (!isEmitter) {
@@ -296,7 +329,11 @@ export function ReportView() {
   return (
     <div className="mx-auto w-full max-w-[960px] px-5 pt-10 pb-16 print:max-w-none print:px-0 print:pt-0">
       <header className="mb-6">
-        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">재활용 실적</h1>
+        <p className="text-[13px] text-muted print:hidden">재활용 실적</p>
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">
+          <span className="print:hidden">{PART_TITLE[part]}</span>
+          <span className="hidden print:inline">재활용 실적</span>
+        </h1>
         <p className="mt-1 text-[14px] text-muted">
           {org.name}
           {report ? ` · ${periodText(report.period)} · ${report.generatedOn} 기준` : ""}
@@ -348,7 +385,7 @@ export function ReportView() {
 
       {report ? (
         <div className="space-y-10">
-          <section aria-label="요약" {...navSpot("summary", "요약", "재활용 실적")}>
+          <section aria-label="요약" className={shown("summary")}>
             <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{reportHeadline(report)}</h2>
             {report.totals ? (
               <>
@@ -387,9 +424,15 @@ export function ReportView() {
             )}
           </section>
 
+          {part === "inspections" && report.records.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-line-strong px-5 py-6 text-[15px] text-ink-2 print:hidden">
+              아직 업체가 기록한 검수가 없습니다. 확정한 거래의 반입 검수를 업체가 기록하면 한 건씩 여기에 모입니다.
+            </p>
+          ) : null}
           {report.records.length > 0 ? (
-            <section aria-label="검수 기록" {...navSpot("inspections", "검수 기록", "재활용 실적")}>
-              <h2 className="mb-3 text-[17px] font-semibold tracking-[-0.02em]">검수 기록</h2>
+            <section aria-label="검수 기록" className={shown("inspections")}>
+              {/* 화면에서는 제목(h1)이 구역 이름이다. 인쇄할 때만 구역 제목을 보인다 */}
+              <h2 className="mb-3 hidden text-[17px] font-semibold tracking-[-0.02em] print:block">검수 기록</h2>
               <Records report={report} />
               <p className="mt-2 text-[13px] leading-relaxed text-muted">
                 실제 등급·무게·단가는 업체가 반입 검수 뒤 계량·기록한 값이고, 탄소 변화는 그 무게에 배출계수를 적용한 추정값입니다.
@@ -406,9 +449,14 @@ export function ReportView() {
             </section>
           ) : null}
 
+          {part === "plan" && report.planned.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-line-strong px-5 py-6 text-[15px] text-ink-2 print:hidden">
+              아직 확정한 합의가 없습니다. 양쪽이 승인한 합의의 한 달 예상이 여기에 보입니다.
+            </p>
+          ) : null}
           {report.planned.length > 0 ? (
-            <section aria-label="확정한 합의의 예상" {...navSpot("plan", "확정한 합의 · 한 달 예상", "재활용 실적")}>
-              <h2 className="text-[17px] font-semibold tracking-[-0.02em]">확정한 합의 · 한 달 예상</h2>
+            <section aria-label="확정한 합의의 예상" className={shown("plan")}>
+              <h2 className="hidden text-[17px] font-semibold tracking-[-0.02em] print:block">확정한 합의 · 한 달 예상</h2>
               <p className="mt-1 mb-3 hidden text-[13px] text-muted print:block">{PLANNED_LEAD}</p>
               <Planned report={report} />
               <div className="mt-2 flex flex-wrap gap-1 print:hidden">
@@ -419,7 +467,7 @@ export function ReportView() {
                     size="sm"
                     onClick={() => {
                       setSessionId(id);
-                      router.push(`${basePath}/approval`);
+                      router.push(`${basePath}/approval/documents`);
                     }}
                   >
                     {deals.length > 1 ? `합의 ${index + 1}의 조건과 이행 계획서 보기` : "합의 조건과 이행 계획서 보기"}

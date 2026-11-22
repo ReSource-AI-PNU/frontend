@@ -8,6 +8,12 @@ import { useLiveRun, type LiveMode, type LiveTarget } from "./use-live";
 
 type Loaded = { key: string; view: DiagnosisView | null; error: string | null };
 
+/**
+ * 키(화면 주소의 머리 · 연결 상태 · 회사 · 찾기)마다 마지막으로 읽은 진단 뷰. 승인·서류처럼 같은 찾기를 보는 하위 화면을 옮겨 다닐 때
+ * 이 값을 먼저 보이고 뒤에서 새로 읽는다(use-remote.ts의 keep과 같은 방식). 탭을 닫거나 새로 고치면 비워진다.
+ */
+const keptViews = new Map<string, DiagnosisView>();
+
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : "요청을 처리하지 못했습니다.";
 }
@@ -24,9 +30,19 @@ function baselineOf(view: DiagnosisView | null): LiveTarget["baseline"] {
  * 실행은 뒤에서 돌리고(POST /run?mode=async) 실시간 진행 스트림으로 지켜본다. 스트림을 쓸 수 없으면 뷰를 되풀이해 읽는다.
  */
 export function useDiagnosis() {
-  const { mode, canWrite, readOnly, org, sessionId, setSessionId } = useV3();
-  const key = `${mode}:${org.id}:${sessionId ?? ""}`;
-  const [loaded, setLoaded] = useState<Loaded>({ key: "", view: null, error: null });
+  const { mode, canWrite, readOnly, org, sessionId, setSessionId, basePath } = useV3();
+  // 체험하기와 로그인 화면은 같은 회사라도 보이는 범위가 달라 basePath로 키를 가른다
+  const keyOf = useCallback((id: string | null) => `${basePath}:${mode}:${org.id}:${id ?? ""}`, [basePath, mode, org.id]);
+  const key = keyOf(sessionId);
+  const [loaded, setLoadedState] = useState<Loaded>(() => {
+    const kept = keptViews.get(key);
+    return kept ? { key, view: kept, error: null } : { key: "", view: null, error: null };
+  });
+  const setLoaded = useCallback((next: Loaded) => {
+    if (next.view) keptViews.set(next.key, next.view);
+    else keptViews.delete(next.key);
+    setLoadedState(next);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
   // 실행·답변·승인이 거절됐을 때의 사유. 뷰를 다시 읽어도 다음 행동 전까지 남긴다
@@ -39,7 +55,9 @@ export function useDiagnosis() {
   const streamFailed = useRef(new Set<string>());
 
   const live = mode === "live";
-  const current = loaded.key === key ? loaded : null;
+  // 이 화면에서 아직 읽지 않았어도 다른 화면에서 같은 키로 읽어 둔 뷰가 있으면 먼저 보인다(뒤에서 새로 읽는다)
+  const keptView = keptViews.get(key);
+  const current = loaded.key === key ? loaded : keptView ? { key, view: keptView, error: null } : null;
   const view = live ? (current?.view ?? null) : null;
   const viewRef = useRef(view);
   useEffect(() => {
@@ -58,7 +76,7 @@ export function useDiagnosis() {
   const stream = useLiveRun(liveTarget, org.id, {
     poll: async (id) => {
       const next = await api.getView(id, org.id);
-      setLoaded({ key: `${mode}:${org.id}:${id}`, view: next, error: null });
+      setLoaded({ key: keyOf(id), view: next, error: null });
       return next.session.status === "running";
     },
     onDone: (failed) => {
@@ -97,7 +115,7 @@ export function useDiagnosis() {
       alive = false;
       if (timer) window.clearInterval(timer);
     };
-  }, [live, sessionId, org.id, key, running, streaming, tick, follow]);
+  }, [live, sessionId, org.id, key, running, streaming, tick, follow, setLoaded]);
 
   const act = useCallback(
     async (call: () => Promise<DiagnosisView>) => {
@@ -107,7 +125,7 @@ export function useDiagnosis() {
       try {
         const next = await call();
         if (next.session.id !== sessionId) setSessionId(next.session.id);
-        setLoaded({ key: `${mode}:${org.id}:${next.session.id}`, view: next, error: null });
+        setLoaded({ key: keyOf(next.session.id), view: next, error: null });
       } catch (error) {
         setActionError({ key, message: messageOf(error) });
         // 거절된 행동이 서버 상태를 바꿨을 수 있다(승인 막힘 등). 뷰를 다시 읽어 그 상태를 보여 준다
@@ -116,7 +134,7 @@ export function useDiagnosis() {
         setBusy(false);
       }
     },
-    [canWrite, mode, org.id, sessionId, setSessionId, key],
+    [canWrite, sessionId, setSessionId, key, keyOf, setLoaded],
   );
 
   /**
@@ -212,7 +230,7 @@ export function useDiagnosis() {
       setBusy(true);
       try {
         const next = await api.recordPermitCheck(sessionId, org.id, input);
-        setLoaded({ key: `${mode}:${org.id}:${next.session.id}`, view: next, error: null });
+        setLoaded({ key: keyOf(next.session.id), view: next, error: null });
         return null;
       } catch (error) {
         setTick((before) => before + 1);

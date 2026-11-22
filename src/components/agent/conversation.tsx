@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FactoryIcon, GearIcon, PlusIcon, ReportIcon, StampIcon, TalkIcon, TruckIcon } from "@/components/icons";
 import { Fold, FoldGroup } from "@/components/ui/fold";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
 import { useInView, useMediaQuery } from "@/components/use-media";
 import { BlockedNotice } from "@/components/v3/blocked-notice";
@@ -48,7 +49,7 @@ import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
 import { VendorComparison } from "./vendor-comparison";
 import { AdaptivePanel } from "@/components/v3/adaptive-panel";
-import { navSpot, TALK_HASH } from "@/components/agent/nav-spot";
+import { findHref, type FindPart, FIND_PARTS } from "@/components/agent/nav-pages";
 
 export { Dots };
 
@@ -142,11 +143,11 @@ function Progress({
 const TYPING_SHORT = { drafting: "작성 중", validating: "근거 확인 중", rewriting: "다시 쓰는 중" } as const;
 
 /** 실행 중 업체별 대화의 지금 상태. 누르면 그 대화를 연다 */
-function LiveThreads({ threads, onOpen }: { threads: TalkThread[]; onOpen: (id: string) => void }) {
+function LiveThreads({ threads, onOpen, title }: { threads: TalkThread[]; onOpen: (id: string) => void; title?: string }) {
   if (threads.length === 0) return null;
   return (
     <section aria-label="업체별 대화">
-      <h2 className="text-[15px] font-medium">업체 {threads.length}곳과 대화하고 있습니다</h2>
+      <h2 className="text-[15px] font-medium">{title ?? `업체 ${threads.length}곳과 대화하고 있습니다`}</h2>
       <ul className="mt-2 divide-y divide-line border-y border-line">
         {threads.map((thread) => {
           const line = thread.typing
@@ -179,6 +180,11 @@ function LiveThreads({ threads, onOpen }: { threads: TalkThread[]; onOpen: (id: 
       </ul>
     </section>
   );
+}
+
+/** 찾기의 하위 화면에 아직 보일 것이 없을 때 */
+function Empty({ children }: { children: ReactNode }) {
+  return <p className="rounded-xl border border-dashed border-line-strong px-5 py-8 text-center text-[15px] text-ink-2">{children}</p>;
 }
 
 const field =
@@ -343,7 +349,7 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
   const todoTotal = pending.reduce((count, item) => count + todoOf(item.threadId), 0);
 
   return (
-    <section aria-label="승인" {...navSpot("approve", "승인", "이번 찾기")}>
+    <section aria-label="승인">
       <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">
         {confirmed
           ? "양쪽이 승인해 확정됐습니다."
@@ -541,7 +547,7 @@ function Documents({ view }: { view: DiagnosisView }) {
   const { basePath } = useV3();
   if (view.documents.length === 0) return null;
   return (
-    <section aria-label="서류" {...navSpot("find-documents", "서류", "이번 찾기")}>
+    <section aria-label="서류">
       <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">서류 {view.documents.length}건을 만들었습니다.</h2>
       <ul className="mt-4 divide-y divide-line border-y border-line">
         {view.documents.map((document) => (
@@ -559,7 +565,7 @@ function Documents({ view }: { view: DiagnosisView }) {
       </ul>
       <p className="mt-2 text-[13px] text-muted">
         서류는 화면에만 만들고 밖으로 보내지 않습니다.{" "}
-        <Link href={`${basePath}/approval`} className="underline underline-offset-4 hover:text-ink">
+        <Link href={`${basePath}/approval/documents`} className="underline underline-offset-4 hover:text-ink">
           승인·서류에서 자세히 보기
         </Link>
       </p>
@@ -582,8 +588,14 @@ function circularSummary(circular: Circular): string | undefined {
   return text ? `재활용 추정 · ${text}` : undefined;
 }
 
-export function Conversation({ d }: { d: Diagnosis }) {
+/**
+ * part는 찾기 한 건의 어느 화면인지다(nav-pages.ts FIND_PARTS). 진행·결과(main)가 찾기 첫 주소이고, 자세한 내용·AI끼리 나눈 대화·
+ * 승인·서류·판단 표·근거는 각자 주소를 가진 화면이다. 찾기 레이아웃이 이 화면을 계속 그려 두므로, 하위 화면을 옮겨 다녀도 실시간 진행과
+ * 대화 패널이 끊기지 않는다(app/(agent)/app/find/layout.tsx).
+ */
+export function Conversation({ d, part = "main" }: { d: Diagnosis; part?: FindPart }) {
   const { orgs, basePath, readOnly } = useV3();
+  const router = useRouter();
   const view = d.view as DiagnosisView;
   const stream = d.stream;
   const live = stream.state;
@@ -651,17 +663,16 @@ export function Conversation({ d }: { d: Diagnosis }) {
     setThreadId(id);
     setTalkOpen(true);
   };
-  // 사이드바 소메뉴 "AI끼리 나눈 대화"(#talk)로 오면 대화 패널을 연다. 같은 줄을 다시 눌러도 열리게 주소 조각은 지운다
+  // "AI끼리 나눈 대화" 화면으로 오면 대화 패널을 연다(다른 화면에서 옮겨 올 때마다). 렌더 중에 앞의 화면과 견주어 고친다
+  const [shownPart, setShownPart] = useState<FindPart | null>(null);
+  if (shownPart !== part) {
+    setShownPart(part);
+    if (part === "talk" && view.threads.length > 0) setTalkOpen(true);
+  }
+  // 찾기 레이아웃이 화면을 계속 그려 두므로, 하위 화면을 옮기면 다른 화면처럼 맨 위에서 시작하게 직접 올린다
   useEffect(() => {
-    const fromHash = () => {
-      if (window.location.hash !== `#${TALK_HASH}`) return;
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-      setTalkOpen(true);
-    };
-    fromHash();
-    window.addEventListener("hashchange", fromHash);
-    return () => window.removeEventListener("hashchange", fromHash);
-  }, []);
+    window.scrollTo(0, 0);
+  }, [part]);
   const replay = () => {
     setThreadId(null);
     d.replay();
@@ -708,6 +719,11 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const placement = noticePlacement({ pending: pendingIds.length, talkOpen, formInView });
   const goToQuestions = () => {
     setTalkOpen(false);
+    // 질문 칸은 진행·결과 화면에 있다. 다른 화면에서는 그리로 옮긴다
+    if (part !== "main") {
+      router.push(findHref(basePath, "main"));
+      return;
+    }
     // 패널이 닫힌 뒤에 질문 칸으로 내려가 첫 입력 칸(답하기가 꺼져 있으면 머리말)에 초점을 둔다
     requestAnimationFrame(() => {
       if (!questionsNode) return;
@@ -746,7 +762,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
           </Link>
         </div>
       ) : null}
-      {isEmitter && d.canAct && !working ? (
+      {/* 새로 찾기는 진행·결과 화면에만 둔다(하위 화면에서 누르면 보던 화면이 비어 버린다) */}
+      {isEmitter && d.canAct && !working && part === "main" ? (
         <div className="flex justify-end px-3 pt-3">
           <button
             type="button"
@@ -760,255 +777,310 @@ export function Conversation({ d }: { d: Diagnosis }) {
         </div>
       ) : null}
       <div className="mx-auto w-full max-w-[820px] flex-1 space-y-7 px-5 pt-6 pb-10">
-        {isEmitter ? (
-          <Me>
-            폐기물 {view.streams.length}가지를 받아 줄 곳을 찾아 주세요.
-            <span className="mt-0.5 block text-[13px] text-muted">{view.streams.map((item) => item.name).join(", ")}</span>
-          </Me>
-        ) : null}
-
-        <Progress
-          stages={stages}
-          running={working}
-          title={title}
-          line={liveLine}
-          action={
-            replaying ? (
-              <button type="button" onClick={stream.skip} className="min-h-11 text-[13px] text-ink-2 underline underline-offset-4 hover:text-ink">
-                건너뛰기
-              </button>
-            ) : null
-          }
-        />
-
-        {working && stream.active && live ? <AgentStage live={live} onOpen={openTalk} /> : null}
-
-        {working ? <LiveThreads threads={liveThreads} onOpen={openTalk} /> : null}
-
-        {readOnly && d.canReplay && !working ? (
-          <div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <Button variant="secondary" onClick={replay}>
-                두 AI의 대화 다시 보기
-              </Button>
-              <button type="button" onClick={present} className="min-h-11 text-sm text-ink-2 underline underline-offset-4 hover:text-ink">
-                발표 화면으로 크게 보기
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {d.error ? (
-          <p role="alert" className="text-sm text-loss">
-            {d.error}
-          </p>
-        ) : null}
-
-        {!working && !started && isEmitter ? (
-          <div>
-            <p className="text-[17px] font-medium">아직 찾기를 시작하지 않았습니다.</p>
-            <Button className="mt-3" disabled={!d.canAct || d.busy} onClick={d.run}>
-              받아 줄 곳 찾기
-            </Button>
-          </div>
-        ) : null}
-
-        {isEmitter && !replaying ? (
-          <div ref={setQuestionsNode} id="questions" className="scroll-mt-20">
-            <Questions
-              questions={questions}
-              summary={holding ? null : view.questionBatch}
-              streams={view.streams}
-              disabled={!d.canAct || d.busy}
-              onAnswer={d.answerAndContinue}
-            />
-            {working && openQuestions.length > 0 ? (
-              <p className="mt-3 text-[13px] text-muted">진행이 끝나면 답할 수 있습니다.</p>
-            ) : null}
-          </div>
-        ) : null}
-        {isEmitter && !holding && answered.length > 0 && openQuestions.length === 0 && !view.result ? (
-          <p className="text-sm text-muted">
-            질문 {answered.length}개에 답했습니다{unknown > 0 ? ` (모름 ${unknown}개)` : ""}.
-          </p>
-        ) : null}
-
-        {canContinue && started && !working ? (
-          <div>
-            <p className="text-[17px] font-medium">이어서 찾을 수 있습니다.</p>
-            <Button className="mt-3" disabled={!d.canAct || d.busy} onClick={d.run}>
-              이어서 찾기
-            </Button>
-          </div>
-        ) : null}
-
-        {!isEmitter && !result && !working ? (
-          <div>
-            <p className="text-[17px] font-medium">{emitterName}에서 받아 줄 곳을 찾고 있습니다.</p>
-            <p className="mt-1 text-[15px] text-ink-2">
-              매입 기준에 맞는 물량이면 여기에 문의가 나타납니다.{" "}
-              <button type="button" onClick={d.reload} className="underline underline-offset-4 hover:text-ink">
-                새로 고침
-              </button>
+        {part === "main" ? null : (
+          <header>
+            <p className="text-[13px] text-muted">
+              {isEmitter ? `이번 찾기 · 폐기물 ${view.streams.length}가지` : `${emitterName}의 문의`} · {view.streams.map((item) => item.name).join(", ")}
             </p>
-          </div>
-        ) : null}
+            <h1 className="text-[24px] leading-tight font-bold tracking-[-0.03em]">{FIND_PARTS.find((item) => item.part === part)?.label}</h1>
+          </header>
+        )}
 
-        {ended || closed.length > 0 ? (
-          <div role="status" className="rounded-xl bg-ground px-4 py-3.5 text-sm text-ink-2">
-            {ended ? <p className="font-medium text-ink">조건이 맞는 곳이 남지 않아 찾기를 마쳤습니다. 아래 사유를 보고 자료를 고쳐 다시 찾아 보세요.</p> : null}
-            <ul className={ended ? "mt-1.5 space-y-1" : "space-y-1"}>
-              {closed.map((item) => (
-                <li key={item.id}>
-                  <span className="font-medium text-ink">
-                    {item.vendorName} · {THREAD_LABEL[item.status]}
-                  </span>
-                  {item.statusReason ? ` · ${item.statusReason}` : ""}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        {part === "main" ? (
+          <>
+            {isEmitter ? (
+              <Me>
+                폐기물 {view.streams.length}가지를 받아 줄 곳을 찾아 주세요.
+                <span className="mt-0.5 block text-[13px] text-muted">{view.streams.map((item) => item.name).join(", ")}</span>
+              </Me>
+            ) : null}
 
-        {isEmitter && !readOnly ? <AdaptivePanel key={view.session.id} view={view} busy={d.busy || working} /> : null}
-
-        {blocked.map((approval) => (
-          <BlockedNotice
-            key={approval.threadId}
-            codes={approval.blockedCodes}
-            reason={approval.blockedReason}
-            canRerun={isEmitter && d.canAct}
-            cleared={clearedApprovalsText(approval)}
-            busy={d.busy || working}
-            onRerun={d.run}
-            vendorName={view.threads.find((item) => item.id === approval.threadId)?.vendorName}
-          />
-        ))}
-
-        {result ? (
-          <div {...navSpot("result", "결과 요약", "이번 찾기")}>
-            <ResultCard
-              result={result}
-              streams={view.streams}
-              role={view.viewer.role}
-              counterpart={emitterName}
-              onOpenTalk={openTalk}
-              onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
-              busy={d.busy}
-              threads={view.threads}
-              approvals={view.approvals}
+            <Progress
+              stages={stages}
+              running={working}
+              title={title}
+              line={liveLine}
+              action={
+                replaying ? (
+                  <button type="button" onClick={stream.skip} className="min-h-11 text-[13px] text-ink-2 underline underline-offset-4 hover:text-ink">
+                    건너뛰기
+                  </button>
+                ) : null
+              }
             />
-          </div>
+
+            {working && stream.active && live ? <AgentStage live={live} onOpen={openTalk} /> : null}
+
+            {working ? <LiveThreads threads={liveThreads} onOpen={openTalk} /> : null}
+
+            {readOnly && d.canReplay && !working ? (
+              <div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <Button variant="secondary" onClick={replay}>
+                    두 AI의 대화 다시 보기
+                  </Button>
+                  <button type="button" onClick={present} className="min-h-11 text-sm text-ink-2 underline underline-offset-4 hover:text-ink">
+                    발표 화면으로 크게 보기
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {d.error ? (
+              <p role="alert" className="text-sm text-loss">
+                {d.error}
+              </p>
+            ) : null}
+
+            {!working && !started && isEmitter ? (
+              <div>
+                <p className="text-[17px] font-medium">아직 찾기를 시작하지 않았습니다.</p>
+                <Button className="mt-3" disabled={!d.canAct || d.busy} onClick={d.run}>
+                  받아 줄 곳 찾기
+                </Button>
+              </div>
+            ) : null}
+
+            {isEmitter && !replaying ? (
+              <div ref={setQuestionsNode} id="questions" className="scroll-mt-20">
+                <Questions
+                  questions={questions}
+                  summary={holding ? null : view.questionBatch}
+                  streams={view.streams}
+                  disabled={!d.canAct || d.busy}
+                  onAnswer={d.answerAndContinue}
+                />
+                {working && openQuestions.length > 0 ? (
+                  <p className="mt-3 text-[13px] text-muted">진행이 끝나면 답할 수 있습니다.</p>
+                ) : null}
+              </div>
+            ) : null}
+            {isEmitter && !holding && answered.length > 0 && openQuestions.length === 0 && !view.result ? (
+              <p className="text-sm text-muted">
+                질문 {answered.length}개에 답했습니다{unknown > 0 ? ` (모름 ${unknown}개)` : ""}.
+              </p>
+            ) : null}
+
+            {canContinue && started && !working ? (
+              <div>
+                <p className="text-[17px] font-medium">이어서 찾을 수 있습니다.</p>
+                <Button className="mt-3" disabled={!d.canAct || d.busy} onClick={d.run}>
+                  이어서 찾기
+                </Button>
+              </div>
+            ) : null}
+
+            {!isEmitter && !result && !working ? (
+              <div>
+                <p className="text-[17px] font-medium">{emitterName}에서 받아 줄 곳을 찾고 있습니다.</p>
+                <p className="mt-1 text-[15px] text-ink-2">
+                  매입 기준에 맞는 물량이면 여기에 문의가 나타납니다.{" "}
+                  <button type="button" onClick={d.reload} className="underline underline-offset-4 hover:text-ink">
+                    새로 고침
+                  </button>
+                </p>
+              </div>
+            ) : null}
+
+            {ended || closed.length > 0 ? (
+              <div role="status" className="rounded-xl bg-ground px-4 py-3.5 text-sm text-ink-2">
+                {ended ? <p className="font-medium text-ink">조건이 맞는 곳이 남지 않아 찾기를 마쳤습니다. 아래 사유를 보고 자료를 고쳐 다시 찾아 보세요.</p> : null}
+                <ul className={ended ? "mt-1.5 space-y-1" : "space-y-1"}>
+                  {closed.map((item) => (
+                    <li key={item.id}>
+                      <span className="font-medium text-ink">
+                        {item.vendorName} · {THREAD_LABEL[item.status]}
+                      </span>
+                      {item.statusReason ? ` · ${item.statusReason}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {isEmitter && !readOnly ? <AdaptivePanel key={view.session.id} view={view} busy={d.busy || working} /> : null}
+
+            {blocked.map((approval) => (
+              <BlockedNotice
+                key={approval.threadId}
+                codes={approval.blockedCodes}
+                reason={approval.blockedReason}
+                canRerun={isEmitter && d.canAct}
+                cleared={clearedApprovalsText(approval)}
+                busy={d.busy || working}
+                onRerun={d.run}
+                vendorName={view.threads.find((item) => item.id === approval.threadId)?.vendorName}
+              />
+            ))}
+
+            {result ? (
+              <div>
+                <ResultCard
+                  result={result}
+                  streams={view.streams}
+                  role={view.viewer.role}
+                  counterpart={emitterName}
+                  onOpenTalk={openTalk}
+                  onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
+                  busy={d.busy}
+                  threads={view.threads}
+                  approvals={view.approvals}
+                />
+              </div>
+            ) : null}
+
+            {result && !holding && (view.approvals.length > 0 || view.documents.length > 0) ? (
+              <nav aria-label="다음 할 일" className="flex flex-wrap gap-2">
+                {view.approvals.length > 0 ? (
+                  <Link href={findHref(basePath, "approve")} className={buttonClass("secondary", "md")}>
+                    {status === "confirmed" ? "승인 상태 보기" : "승인하러 가기"}
+                  </Link>
+                ) : null}
+                {view.documents.length > 0 ? (
+                  <Link href={findHref(basePath, "documents")} className={buttonClass("secondary", "md")}>
+                    서류 {view.documents.length}건 보기
+                  </Link>
+                ) : null}
+              </nav>
+            ) : null}
+          </>
         ) : null}
 
-        {/* 사이드바 소메뉴 "AI끼리 나눈 대화": 누르면 #talk로 와서 대화 패널을 연다(위 useEffect) */}
-        {view.threads.length > 0 ? <span hidden {...navSpot(TALK_HASH, "AI끼리 나눈 대화", "이번 찾기")} /> : null}
-
-        {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
-        {result && isEmitter && !holding ? (
-          <FoldGroup {...navSpot("result-more", "자세한 내용", "이번 찾기")} className="[&_section]:border-0 [&_section]:pt-0">
-            {/* 받은 견적 비교는 결과 표의 자세한 내용이라 다른 것처럼 접어 둔다(AGENTS.md 화면 규칙 "접기") */}
-            {!readOnly && !d.org.demo && !d.org.synthetic && quoted > 0 ? (
-              <Fold title="업체 견적 비교" summary={`${quoted}가지`} icon={<TalkIcon />}>
-                <VendorComparison assignments={result.assignments} streams={view.streams} threads={view.threads} onOpenTalk={openTalk} />
-              </Fold>
-            ) : null}
-            {hasRoute && result.circular ? (
-              <Fold
-                title="자원순환 효과"
-                summary={circularSummary(result.circular) ?? carbonText(result.totals.carbon, true)}
-                icon={<ReportIcon />}
-              >
-                <CircularEffects circular={result.circular} />
-              </Fold>
-            ) : null}
-            {hasRoute && view.streams.length > 0 ? (
-              <Fold title="처리 흐름" summary={`${view.streams.length}가지`} icon={<TruckIcon />}>
-                <FlowChart result={result} streams={view.streams} />
-              </Fold>
-            ) : null}
-            {result.regulation && result.regulation.length > 0 ? (
-              <Fold
-                title="법령 요건"
-                summary={
-                  view.approvals.some((item) => item.permitHold) ? (
-                    <span className="font-semibold text-warn">허가증 대조 {view.approvals.filter((item) => item.permitHold).length}곳</span>
-                  ) : undefined
-                }
-                icon={<StampIcon />}
-              >
-                <RegulationSection sections={result.regulation} streams={view.streams} />
-              </Fold>
-            ) : null}
-            {result.improvements && result.improvements.length > 0 ? (
-              <Fold title="분리 개선 안내" summary={`${result.improvements.length}가지`} icon={<ArrowUpIcon />}>
-                <ImprovementsSection items={result.improvements} streams={view.streams} />
-              </Fold>
-            ) : null}
-            {result.outsideVendors ? (
-              <Fold title="가입하지 않은 업체" icon={<FactoryIcon />}>
-                <OutsideVendorsSection
-                  outside={result.outsideVendors}
-                  streams={view.streams}
-                  sessionId={view.session.id}
-                  orgId={d.org.id}
-                  onSearchAgain={d.canAct ? d.forget : undefined}
-                />
-              </Fold>
-            ) : null}
-            {result.complexPartners ? (
-              <Fold title="같은 단지 공개 명부" icon={<FactoryIcon />}>
-                <ComplexPartnersSection
-                  partners={result.complexPartners}
-                  outside={result.outsideVendors ?? null}
-                  streams={view.streams}
-                  sessionId={view.session.id}
-                  orgId={d.org.id}
-                  onSearchAgain={d.canAct ? d.forget : undefined}
-                />
-              </Fold>
-            ) : null}
-            {view.events.length > 0 && !working ? (
-              <Fold title="AI가 한 일" summary={`기록 ${view.events.length}건`} icon={<GearIcon />}>
-                <RunLog events={view.events} />
-              </Fold>
-            ) : null}
-          </FoldGroup>
+        {part === "details" ? (
+          <>
+            {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
+            {result && isEmitter && !holding ? (
+              <FoldGroup className="[&_section]:border-0 [&_section]:pt-0">
+                {/* 받은 견적 비교는 결과 표의 자세한 내용이라 다른 것처럼 접어 둔다(AGENTS.md 화면 규칙 "접기") */}
+                {!readOnly && !d.org.demo && !d.org.synthetic && quoted > 0 ? (
+                  <Fold title="업체 견적 비교" summary={`${quoted}가지`} icon={<TalkIcon />}>
+                    <VendorComparison assignments={result.assignments} streams={view.streams} threads={view.threads} onOpenTalk={openTalk} />
+                  </Fold>
+                ) : null}
+                {hasRoute && result.circular ? (
+                  <Fold
+                    title="자원순환 효과"
+                    summary={circularSummary(result.circular) ?? carbonText(result.totals.carbon, true)}
+                    icon={<ReportIcon />}
+                  >
+                    <CircularEffects circular={result.circular} />
+                  </Fold>
+                ) : null}
+                {hasRoute && view.streams.length > 0 ? (
+                  <Fold title="처리 흐름" summary={`${view.streams.length}가지`} icon={<TruckIcon />}>
+                    <FlowChart result={result} streams={view.streams} />
+                  </Fold>
+                ) : null}
+                {result.regulation && result.regulation.length > 0 ? (
+                  <Fold
+                    title="법령 요건"
+                    summary={
+                      view.approvals.some((item) => item.permitHold) ? (
+                        <span className="font-semibold text-warn">허가증 대조 {view.approvals.filter((item) => item.permitHold).length}곳</span>
+                      ) : undefined
+                    }
+                    icon={<StampIcon />}
+                  >
+                    <RegulationSection sections={result.regulation} streams={view.streams} />
+                  </Fold>
+                ) : null}
+                {result.improvements && result.improvements.length > 0 ? (
+                  <Fold title="분리 개선 안내" summary={`${result.improvements.length}가지`} icon={<ArrowUpIcon />}>
+                    <ImprovementsSection items={result.improvements} streams={view.streams} />
+                  </Fold>
+                ) : null}
+                {result.outsideVendors ? (
+                  <Fold title="가입하지 않은 업체" icon={<FactoryIcon />}>
+                    <OutsideVendorsSection
+                      outside={result.outsideVendors}
+                      streams={view.streams}
+                      sessionId={view.session.id}
+                      orgId={d.org.id}
+                      onSearchAgain={d.canAct ? d.forget : undefined}
+                    />
+                  </Fold>
+                ) : null}
+                {result.complexPartners ? (
+                  <Fold title="같은 단지 공개 명부" icon={<FactoryIcon />}>
+                    <ComplexPartnersSection
+                      partners={result.complexPartners}
+                      outside={result.outsideVendors ?? null}
+                      streams={view.streams}
+                      sessionId={view.session.id}
+                      orgId={d.org.id}
+                      onSearchAgain={d.canAct ? d.forget : undefined}
+                    />
+                  </Fold>
+                ) : null}
+                {view.events.length > 0 && !working ? (
+                  <Fold title="AI가 한 일" summary={`기록 ${view.events.length}건`} icon={<GearIcon />}>
+                    <RunLog events={view.events} />
+                  </Fold>
+                ) : null}
+              </FoldGroup>
+            ) : (
+              <Empty>{isEmitter ? "결과가 나오면 업체 견적 비교, 자원순환 효과, 처리 흐름, 법령 요건 같은 자세한 내용을 볼 수 있습니다." : "자세한 내용은 배출 기업의 화면입니다."}</Empty>
+            )}
+          </>
         ) : null}
 
-        {result ? <Approvals view={view} d={d} nameOf={nameOf} /> : null}
-        {holding ? null : <Documents view={view} />}
+        {part === "talk" ? (
+          liveThreads.length > 0 ? (
+            <LiveThreads threads={liveThreads} onOpen={openTalk} title={working ? undefined : `업체 ${liveThreads.length}곳과 나눈 대화`} />
+          ) : (
+            <Empty>아직 AI끼리 나눈 대화가 없습니다. 찾기를 시작하면 업체마다 대화가 여기에 모입니다.</Empty>
+          )
+        ) : null}
 
-        {result && !working ? (
-          <details {...navSpot("trace", "판단 표·근거", "이번 찾기")} className="group border-t border-line pt-3">
-            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
-              판단 과정 전체 보기 (자료 표, 판단 그래프, 계산표)
-              <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="mt-4 space-y-8">
-              <section aria-label="자료 표" className="overflow-hidden rounded-xl border border-line">
-                <StreamTable
-                  streams={view.streams}
-                  unresolved={view.unresolved}
-                  corrections={view.feedback.corrections}
-                  onCorrect={
-                    isEmitter && d.canAct
-                      ? async (body) => {
-                          await api.recordCorrection(view.session.id, d.org.id, body);
-                          d.reload();
-                        }
-                      : undefined
-                  }
-                />
-              </section>
-              <section aria-label="판단 그래프" className="overflow-hidden rounded-xl border border-line">
-                <JudgementGraph nodes={view.graph.nodes} edges={view.graph.edges} />
-              </section>
-              <section aria-label="계산표" className="overflow-hidden rounded-xl border border-line">
-                <ResultSheet result={result} streams={view.streams} unresolved={view.unresolved} role={view.viewer.role} vendorName={nameOf} />
-              </section>
-            </div>
-          </details>
+        {part === "approve" ? (
+          result ? (
+            <Approvals view={view} d={d} nameOf={nameOf} />
+          ) : (
+            <Empty>결과가 나오면 여기에서 승인합니다.</Empty>
+          )
+        ) : null}
+
+        {part === "documents" ? (
+          !holding && view.documents.length > 0 ? (
+            <Documents view={view} />
+          ) : (
+            <Empty>양쪽이 승인하면 요청서, 이행 계획서, 계약서 초안이 만들어집니다.</Empty>
+          )
+        ) : null}
+
+        {part === "trace" ? (
+          <>
+            {result && !working ? (
+              <div>
+                <p className="text-[13px] text-muted">판단 과정 전체 (자료 표, 판단 그래프, 계산표)</p>
+                <div className="mt-4 space-y-8">
+                  <section aria-label="자료 표" className="overflow-hidden rounded-xl border border-line">
+                    <StreamTable
+                      streams={view.streams}
+                      unresolved={view.unresolved}
+                      corrections={view.feedback.corrections}
+                      onCorrect={
+                        isEmitter && d.canAct
+                          ? async (body) => {
+                              await api.recordCorrection(view.session.id, d.org.id, body);
+                              d.reload();
+                            }
+                          : undefined
+                      }
+                    />
+                  </section>
+                  <section aria-label="판단 그래프" className="overflow-hidden rounded-xl border border-line">
+                    <JudgementGraph nodes={view.graph.nodes} edges={view.graph.edges} />
+                  </section>
+                  <section aria-label="계산표" className="overflow-hidden rounded-xl border border-line">
+                    <ResultSheet result={result} streams={view.streams} unresolved={view.unresolved} role={view.viewer.role} vendorName={nameOf} />
+                  </section>
+                </div>
+              </div>
+            ) : (
+              <Empty>결과가 나오면 판단 과정 전체(자료 표, 판단 그래프, 계산표)를 볼 수 있습니다.</Empty>
+            )}
+          </>
         ) : null}
       </div>
 

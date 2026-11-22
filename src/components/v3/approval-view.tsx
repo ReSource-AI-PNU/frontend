@@ -41,7 +41,8 @@ import { ContractReviewBox, needsAck, reviewBlocked } from "./contract-review";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
 import { useRemote } from "./use-remote";
-import { navSpot } from "@/components/agent/nav-spot";
+import { approvalHref } from "@/components/agent/nav-pages";
+import { ChevronRightIcon } from "@/components/icons";
 
 
 function Side({ label, done }: { label: string; done: boolean }) {
@@ -627,8 +628,20 @@ function OutcomeForm({
   );
 }
 
-/** 양쪽 담당자 승인. 근거 확인에 실패한 항목이 있으면 승인 버튼을 끈다. */
-export function ApprovalView() {
+/** 승인·서류의 하위 화면. 업체별 승인 목록(첫 주소), 업체 하나의 승인, 조건이 맞지 않은 곳, 서류 */
+export type ApprovalPart = "list" | "vendor" | "unmatched" | "documents";
+
+const PART_TITLE: Record<Exclude<ApprovalPart, "vendor">, string> = {
+  list: "업체별 승인",
+  unmatched: "조건이 맞지 않은 곳",
+  documents: "요청서 · 이행 계획서 · 계약서 초안",
+};
+
+/**
+ * 양쪽 담당자 승인. 근거 확인에 실패한 항목이 있으면 승인 버튼을 끈다.
+ * part가 하위 화면을 정한다: 업체별 승인 목록(list), 업체 하나의 승인(vendor, threadId), 조건이 맞지 않은 곳, 서류.
+ */
+export function ApprovalView({ part = "list", threadId }: { part?: ApprovalPart; threadId?: string }) {
   const d = useDiagnosis();
   const { org, mode, readOnly, basePath, setSessionId, failedSessions } = useV3();
   const { view } = d;
@@ -636,7 +649,8 @@ export function ApprovalView() {
   const [acks, setAcks] = useState<Record<string, boolean>>({});
   // 이 회사로 아직 연 찾기가 없으면 서버에 남은 최근 찾기를 연다(다른 기기에서 들어왔거나 회사를 바꿨을 때)
   const lookUp = mode === "live" && !d.sessionId;
-  const recent = useRemote(`sessions:${org.id}`, lookUp, () => api.listSessions(org.id));
+  // 승인·서류의 하위 화면이 같은 목록을 읽는다. 화면을 옮겨도 받아 둔 것을 먼저 보인다(keep)
+  const recent = useRemote(`sessions:${basePath}:${org.id}`, lookUp, () => api.listSessions(org.id), { keep: true });
   const latest = lookUp ? (recent.data?.find((item) => !failedSessions.includes(item.id))?.id ?? null) : null;
   useEffect(() => {
     if (latest) setSessionId(latest);
@@ -668,21 +682,34 @@ export function ApprovalView() {
   }
   const streamName = (id: string) => view.streams.find((item) => item.id === id)?.name ?? id;
   const role = view.viewer.role;
-  // 한 화면에 먹색 버튼은 하나만 둔다: 지금 승인할 수 있는 첫 합의에만 쓴다
+  // 한 화면에 먹색 버튼은 하나만 둔다
   // 허가증 원문 대조가 끝나지 않은 합의는 배출 기업이 승인할 수 없다(서버도 409 PERMIT_UNVERIFIED로 막는다)
   const permitHeld = (approval: (typeof view.approvals)[number]) =>
     role === "emitter" && Boolean(approval.permitHold) && !(approval.emitter && approval.vendor);
-  const firstActionable = view.approvals.find((approval) => {
+  // 업체 하나의 승인 화면에는 합의가 하나뿐이므로, 그 합의를 지금 승인할 수 있을 때만 먹색으로 쓴다
+  const actionable = (approval: (typeof view.approvals)[number]) => {
     const mine = role === "emitter" ? approval.emitter : approval.vendor;
     return !approval.blocked && !reviewBlocked(approval.review) && !mine && !permitHeld(approval);
-  })?.threadId;
+  };
   // 승인 칸은 합의·확정 대화에만 있다. 담당자에게 넘어갔거나 거절된 대화는 사유와 함께 따로 적는다
   const closed = view.threads.filter((item) => item.status === "handoff" || item.status === "declined");
+  // 업체 하나의 승인 화면(/approval/vendors/[threadId])
+  const vendorApproval = part === "vendor" ? (view.approvals.find((item) => item.threadId === threadId) ?? null) : null;
+  const vendorThread = part === "vendor" ? (view.threads.find((item) => item.id === threadId) ?? null) : null;
   const ended = view.session.status === "idle" && view.session.phase === "done";
   return (
     <div className="mx-auto w-full max-w-[860px] px-5 pt-8 pb-16">
       <header className="mb-5">
-        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">승인·서류</h1>
+        {part === "vendor" ? (
+          <Link href={`${basePath}/approval`} className="-my-2 inline-flex min-h-11 items-center gap-1 text-[13px] text-muted hover:text-ink">
+            ← 업체별 승인
+          </Link>
+        ) : (
+          <p className="text-[13px] text-muted">승인·서류</p>
+        )}
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">
+          {part === "vendor" ? (vendorThread?.vendorName ?? "업체") : PART_TITLE[part]}
+        </h1>
         {readOnly ? (
           <p className="mt-2 text-[13px] text-muted">
             체험 중에는 승인할 수 없습니다.{" "}
@@ -697,9 +724,12 @@ export function ApprovalView() {
           {d.error}
         </p>
       ) : null}
-      {closed.length > 0 ? (
-        <section {...navSpot("unmatched", "조건이 맞지 않은 곳", "승인")} className="mb-4 rounded-xl border border-line bg-surface px-5 py-5">
-          <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">조건이 맞지 않은 곳</h2>
+      {part === "unmatched" && closed.length === 0 ? (
+        <EmptyState title="조건이 맞지 않은 곳이 없습니다" description="담당자에게 넘어갔거나 거절된 대화가 생기면 사유와 함께 여기에 적습니다." />
+      ) : null}
+      {part === "unmatched" && closed.length > 0 ? (
+        <section aria-label="조건이 맞지 않은 곳" className="mb-4 rounded-xl border border-line bg-surface px-5 py-5">
+          <p className="text-[13px] text-muted">승인 대상이 아닌 대화 {closed.length}건</p>
           <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
             {closed.map((item) => (
               <li key={item.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
@@ -714,7 +744,7 @@ export function ApprovalView() {
           </ul>
         </section>
       ) : null}
-      {view.approvals.length === 0 ? (
+      {part === "list" && view.approvals.length === 0 ? (
         <EmptyState
           title={ended ? "승인할 곳이 남지 않았습니다" : "아직 승인할 것이 없습니다"}
           description={
@@ -724,7 +754,77 @@ export function ApprovalView() {
           }
         />
       ) : null}
-      {view.approvals.map((approval) => {
+      {part === "list" && view.approvals.length > 0 ? (
+        <ul aria-label="업체별 승인" className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+          {view.approvals.map((approval) => {
+            const thread = view.threads.find((item) => item.id === approval.threadId);
+            const rows = (view.result?.assignments ?? []).filter(
+              (item) => item.threadId === approval.threadId && approval.streamIds.includes(item.streamId),
+            );
+            const confirmed = thread?.status === "confirmed";
+            const todos = rows.reduce((count, item) => count + pickupTodo(item).length, 0);
+            const failed = thread?.messages.some((message) => !message.validation.ok) ?? false;
+            const stopped = approval.blocked || failed || reviewBlocked(approval.review);
+            const mine = role === "emitter" ? approval.emitter : role === "vendor" ? approval.vendor : true;
+            return (
+              <li key={approval.threadId}>
+                <Link
+                  href={approvalHref(basePath, approval.threadId)}
+                  className="rs-press group flex min-h-16 items-center gap-3 px-5 py-3 hover:bg-sunken"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-semibold">{thread?.vendorName ?? "업체"}</span>
+                    <span className="block truncate text-[13px] text-ink-2">
+                      {approval.streamIds.map(streamName).join(", ") || "배정된 폐기물 없음"}
+                      {thread ? ` · ${THREAD_LABEL[thread.status]}` : ""}
+                    </span>
+                    <span className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <Side label="배출 기업" done={approval.emitter} />
+                      <Side label="처리 업체" done={approval.vendor} />
+                    </span>
+                    <span className="mt-1.5 flex flex-wrap gap-1.5 empty:hidden">
+                      {stopped ? (
+                        <span className="inline-flex h-6 items-center rounded-[6px] bg-loss-bg px-2 text-[13px] font-medium text-loss">막힘</span>
+                      ) : null}
+                      {approval.permitHold && !confirmed ? (
+                        <span className="inline-flex h-6 items-center rounded-[6px] bg-warn-bg px-2 text-[13px] font-medium text-warn">허가증 대조 필요</span>
+                      ) : null}
+                      {todos > 0 && !confirmed ? (
+                        <span className="inline-flex h-6 items-center rounded-[6px] bg-warn-bg px-2 text-[13px] font-medium text-warn">수거·운반 확인 {todos}</span>
+                      ) : null}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[13px] font-medium text-ink-2">
+                    {role === "admin" || readOnly ? "보기" : mine ? "승인함" : stopped || permitHeld(approval) ? "확인하기" : "승인하기"}
+                  </span>
+                  <ChevronRightIcon className="shrink-0 text-muted group-hover:text-ink" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {part === "list" && closed.length > 0 ? (
+        <p className="mt-3 text-[13px] text-muted">
+          승인 대상이 아닌 대화 {closed.length}건은{" "}
+          <Link href={`${basePath}/approval/unmatched`} className="underline underline-offset-4 hover:text-ink">
+            조건이 맞지 않은 곳
+          </Link>
+          에 사유와 함께 적었습니다.
+        </p>
+      ) : null}
+      {part === "vendor" && !vendorApproval ? (
+        <EmptyState
+          title="이 업체의 승인을 찾지 못했습니다"
+          description="다른 찾기의 합의이거나, 조건이 맞지 않아 승인 대상이 아닌 대화일 수 있습니다."
+          action={
+            <Link href={`${basePath}/approval`} className="text-sm font-medium underline underline-offset-4">
+              업체별 승인으로
+            </Link>
+          }
+        />
+      ) : null}
+      {(part === "vendor" && vendorApproval ? [vendorApproval] : []).map((approval) => {
         const thread = view.threads.find((item) => item.id === approval.threadId);
         const failed = thread?.messages.filter((message) => !message.validation.ok) ?? [];
         const rows = (view.result?.assignments ?? []).filter(
@@ -752,11 +852,10 @@ export function ApprovalView() {
         return (
           <section
             key={approval.threadId}
-            {...navSpot(`approve-${approval.threadId}`, thread?.vendorName ?? "업체", "승인")}
+            aria-label={`${thread?.vendorName ?? "업체"} 승인`}
             className="mb-4 rounded-xl border border-line bg-surface px-5 py-5"
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">{thread?.vendorName ?? "업체"}</h2>
               <span className={`text-sm ${todos.length > 0 && thread?.status === "agreed" ? "text-warn" : "text-muted"}`}>
                 {headline}
               </span>
@@ -891,7 +990,7 @@ export function ApprovalView() {
             ) : readOnly ? null : (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button
-                  variant={approval.threadId === firstActionable ? "primary" : "secondary"}
+                  variant={actionable(approval) ? "primary" : "secondary"}
                   disabled={!d.canAct || d.busy || blocked || mine || reviewStops || unchecked || permitHeld(approval)}
                   onClick={() => d.approve(approval.threadId)}
                 >
@@ -953,8 +1052,8 @@ export function ApprovalView() {
         );
       })}
 
-      <section {...navSpot("documents", "요청서 · 이행 계획서 · 계약서", "서류")} className="mt-8">
-        <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">요청서 · 이행 계획서 · 계약서 초안</h2>
+      {part === "documents" ? (
+      <section aria-label="요청서 · 이행 계획서 · 계약서 초안">
         {view.documents.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
             양쪽이 승인하면 여기에 만들어집니다. 아직 만들어진 서류가 없습니다.
@@ -985,6 +1084,7 @@ export function ApprovalView() {
           </div>
         )}
       </section>
+      ) : null}
     </div>
   );
 }

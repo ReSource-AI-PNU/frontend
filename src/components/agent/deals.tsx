@@ -16,6 +16,7 @@ import { DEAL_STEPS, progressOf, type Deal } from "@/lib/v3/overview";
 import type { DiagnosisView } from "@/lib/v3/types";
 import { Bubble, ReviewNote } from "./agent-talk";
 import { Dots } from "./dots";
+import { approvalHref } from "./nav-pages";
 
 type Tab = "talk" | "terms" | "docs";
 
@@ -141,7 +142,11 @@ function Detail({ deal, view, name, emitterName }: { deal: Deal; view: Diagnosis
               허가증 대조하기
             </Link>
           ) : deal.stage === "agreed" || deal.stage === "confirmed" ? (
-            <Link onClick={pin} href={`${basePath}/approval`} className={buttonClass(needsMe && !readOnly ? "primary" : "secondary", "md")}>
+            <Link
+              onClick={pin}
+              href={deal.stage === "confirmed" ? `${basePath}/approval/documents` : approvalHref(basePath, deal.threadId)}
+              className={buttonClass(needsMe && !readOnly ? "primary" : "secondary", "md")}
+            >
               {deal.stage === "confirmed" ? "서류 보기" : needsMe ? "승인하기" : "승인 상태"}
             </Link>
           ) : null}

@@ -97,13 +97,6 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   // 처리 단계 탄소 합계가 비어 있을 때 요약에서 재활용 문헌 추정을 보여 준다
   await expect(result.getByText("재활용 탄소 추정", { exact: true })).toBeVisible();
   await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(1);
-  // 결과 표 아래의 자세한 내용은 접혀 있다. 제목을 눌러 편다
-  await page.getByRole("button", { name: /^자원순환 효과/ }).click();
-  const effects = page.getByRole("region", { name: "자원순환 효과" });
-  await expect(effects.getByText("문헌·입력값 기반 추정").first()).toBeVisible();
-  await expect(effects.getByText("폐기물마다 어떻게 순환하나요")).toHaveCount(0);
-  await expect(effects.getByText("시나리오 비교")).toHaveCount(0);
-
   // 순비용의 내역: 매각 수익, 운반비, 전처리 인건비
   const sprue = rows.filter({ hasText: "스프루·런너" });
   await sprue.getByRole("button", { name: /매입표 기준 충족|매입 조건 확인 필요|계산 내역/ }).click();
@@ -121,8 +114,16 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await expect(evidence.getByRole("heading", { name: "매입 단가", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
 
+  // 결과 표 아래의 자세한 내용은 찾기의 "자세한 내용" 화면(/app/find/details)에 접혀 있다. 제목을 눌러 편다
+  await page.getByRole("link", { name: "자세한 내용" }).click();
+  await page.waitForURL(/\/app\/find\/details$/);
+  await page.getByRole("button", { name: /^자원순환 효과/ }).click();
+  const effects = page.getByRole("region", { name: "자원순환 효과" });
+  await expect(effects.getByText("문헌·입력값 기반 추정").first()).toBeVisible();
+  await expect(effects.getByText("폐기물마다 어떻게 순환하나요")).toHaveCount(0);
+  await expect(effects.getByText("시나리오 비교")).toHaveCount(0);
+
   // 분리 개선 안내: 더 받는 기준과 한 달 차이(근거가 열린다), 섞인 재질을 나누면 받는 곳
-  // 결과 표 아래의 자세한 내용은 접혀 있다. 제목을 눌러 편다
   await page.getByRole("button", { name: /^분리 개선 안내/ }).click();
   const improve = page.getByRole("region", { name: "분리 개선 안내" });
   await expect(improve.getByRole("heading", { level: 2 })).toContainText("한 달 손익이 나아지는 폐기물");
@@ -140,6 +141,9 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
   await page.goto("/app/find");
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
   await answerQuestions(page);
+  // 승인은 찾기의 "승인" 화면(/app/find/approve)에 있다. 결과 아래 "승인하러 가기"로 간다
+  await page.getByRole("link", { name: "승인하러 가기" }).click();
+  await page.waitForURL(/\/app\/find\/approve$/);
   // 계약 검토 담당이 합의 조건을 대조했고, 확인할 것을 읽고 확인해야 승인 단추가 켜진다(안전장치)
   const approveAll = page.getByRole("button", { name: "승인하고 진행" });
   await expect(page.getByText(/승인 전에 두 AI가 합의한 조건을 항목마다 다시 대조했습니다/)).toBeVisible();
@@ -151,34 +155,41 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
 
   for (const vendor of ["org_saegil", "org_namhae", "org_miso"]) {
     await pickOrg(page, vendor);
+    // 승인·서류의 첫 화면은 업체별 승인 목록이고, 줄을 누르면 그 합의의 승인 화면(/app/approval/vendors/…)이 열린다
     await page.getByRole("link", { name: "승인·서류" }).click();
-    await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
-    const approve = page.getByRole("button", { name: "승인", exact: true });
-    await expect(approve.first()).toBeVisible();
-    if (vendor === "org_miso") {
-      // 시연 시드의 미소환경은 노선 밖 운반비가 정해지지 않았다. 계약 검토 담당이 필수 운반비 미정으로 막아
-      // 양쪽 모두 승인할 수 없다(견적이 오기 전에는 확정하지 않는다)
-      await expect(page.getByText(/필수 운반비가 미정입니다/).first()).toBeVisible();
-      await expect(page.getByText(/막힌 항목이 풀릴 때까지 양쪽 모두 승인할 수 없습니다/).first()).toBeVisible();
-      await expect(approve.first()).toBeDisabled();
-      continue;
-    }
-    while ((await approve.count()) > 0) {
+    await expect(page.getByRole("heading", { name: "업체별 승인" })).toBeVisible();
+    const rows = page.getByRole("list", { name: "업체별 승인" }).getByRole("link");
+    await expect(rows.first()).toBeVisible();
+    const hrefs = await rows.evaluateAll((items) => items.map((item) => item.getAttribute("href") ?? ""));
+    for (const href of hrefs) {
+      await page.goto(href);
+      const approve = page.getByRole("button", { name: "승인", exact: true });
+      // 승인 상자가 그려질 때까지 기다린 뒤 센다(이미 승인했으면 "승인했습니다"만 있다)
+      await expect(page.getByRole("button", { name: /^승인(했습니다)?$/ }).first()).toBeVisible();
+      if ((await approve.count()) === 0) continue;
+      if (vendor === "org_miso") {
+        // 시연 시드의 미소환경은 노선 밖 운반비가 정해지지 않았다. 계약 검토 담당이 필수 운반비 미정으로 막아
+        // 양쪽 모두 승인할 수 없다(견적이 오기 전에는 확정하지 않는다)
+        await expect(page.getByText(/필수 운반비가 미정입니다/).first()).toBeVisible();
+        await expect(page.getByText(/막힌 항목이 풀릴 때까지 양쪽 모두 승인할 수 없습니다/).first()).toBeVisible();
+        await expect(approve).toBeDisabled();
+        continue;
+      }
       // 업체 쪽도 계약 검토의 확인할 것을 확인해야 승인할 수 있다
       const ack = page.getByLabel(/확인할 것 \d+가지를 읽고 확인했습니다/).first();
       if (await ack.isVisible().catch(() => false)) await ack.check();
-      await expect(approve.first()).toBeEnabled();
-      await approve.first().click();
-      await page.waitForTimeout(800);
+      await expect(approve).toBeEnabled();
+      await approve.click();
+      await expect(page.getByRole("button", { name: "승인했습니다" })).toBeVisible();
     }
   }
 
   await pickOrg(page, "org_hanbit");
-  // 찾기에는 서류가 몇 건인지만 보이고, 서류 본문은 승인·서류에 있다
-  await page.goto("/app/find");
+  // 찾기의 서류 화면에는 서류가 몇 건인지만 보이고, 서류 본문은 승인·서류의 서류 화면에 있다
+  await page.goto("/app/find/documents");
   await expect(page.getByRole("heading", { name: /서류 \d+건을 만들었습니다/ })).toBeVisible();
-  await page.goto("/app/approval");
-  const documents = page.locator("section").filter({ has: page.getByRole("heading", { name: "요청서 · 이행 계획서 · 계약서 초안" }) });
+  await page.goto("/app/approval/documents");
+  const documents = page.getByRole("region", { name: "요청서 · 이행 계획서 · 계약서 초안" });
   await expect(documents.getByRole("article").first()).toBeVisible();
   await expect(documents.getByText("근거 확인됨").first()).toBeVisible();
   // 서류 본문은 접혀 있다. 모두 펼친 뒤 내용을 본다
@@ -190,12 +201,13 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
 
   // 확정한 합의는 실적 화면에 한 달 예상으로 보인다(검수 기록 전이라 합계는 없다)
   await page.getByRole("link", { name: "실적" }).click();
-  await expect(page.getByRole("heading", { name: "재활용 실적" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "요약", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "확정한 합의 · 한 달 예상" }).click();
   await expect(page.getByRole("heading", { name: "확정한 합의 · 한 달 예상" })).toBeVisible();
   // 합의의 이행 계획서: 조건 변경은 양쪽 승인 뒤 적용한다. 승인 기록이 있는 시세 변동 폭이 없으면 단가 재협의
   // 폭을 계약에 넣지 않는다(근거 없는 정책값을 쓰지 않는다)
   await page.getByRole("button", { name: "합의 조건과 이행 계획서 보기" }).click();
-  await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "요청서 · 이행 계획서 · 계약서 초안" })).toBeVisible();
   await openDocuments(page);
   await expect(page.getByText(/양쪽 담당자가 새 조건을 승인한 뒤에 적용합니다/).first()).toBeVisible();
   await expect(page.getByText(/넘게 오르거나 내리면 단가를 다시 협의합니다/)).toHaveCount(0);
@@ -341,7 +353,9 @@ test("배정할 곳이 없으면 현행 비용만 보여 주고 공개 명부는
   await expect(result).toContainText("지금 한 달");
   await expect(result).toContainText("지금 방식 그대로");
   await expect(result).not.toContainText(/바꾼 뒤|한 달 차이|한 달 합계|탄소를 가장 많이/);
-  // 비교할 것이 없으므로 효과와 흐름은 접는 칸으로도 두지 않는다
+  // 비교할 것이 없으므로 효과와 흐름은 접는 칸으로도 두지 않는다(자세한 내용 화면)
+  await page.goto("/demo/find/details");
+  await expect(page.getByRole("button", { name: /^같은 단지 공개 명부/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^자원순환 효과/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^처리 흐름/ })).toHaveCount(0);
 
@@ -382,6 +396,8 @@ test("홈에는 할 일과 진행 중인 거래가, 거래에는 진행 단계�
   await expect(page.getByRole("heading", { name: "할 일" })).toBeVisible();
   // 허가증 원문 대조가 남은 업체는 승인보다 먼저 대조하라고 뜬다(시연 시드의 남해열분해·미소환경)
   await expect(page.getByRole("button").filter({ hasText: "허가증 대조" }).first()).toBeVisible();
+  // 진행 중인 거래는 홈 소메뉴의 다른 화면이다
+  await page.getByRole("link", { name: "진행 중인 거래" }).click();
   await expect(page.getByRole("heading", { name: "진행 중인 거래" })).toBeVisible();
   for (const vendor of ["(주)새길자원", "(주)남해열분해", "(주)미소환경"]) {
     await expect(page.getByRole("main").getByRole("link", { name: new RegExp(vendor.replace(/[()]/g, "\\$&")) }).first()).toBeVisible();
@@ -407,11 +423,11 @@ test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 �
   await signIn(page);
   await pickOrg(page, orgId);
   await page.getByRole("link", { name: "업체 정보 등록" }).click();
-  await expect(page.getByRole("heading", { name: "업체 정보", exact: true })).toBeVisible();
-  const permits = page.locator("section").filter({ has: page.getByRole("heading", { name: "허가 품목", exact: true }) });
-  const criteria = page.locator("section").filter({ has: page.getByRole("heading", { name: "매입 기준표", exact: true }) });
+  // 업체 정보의 첫 화면은 허가 품목이고, 매입 기준표는 소메뉴의 다른 화면이다
+  await expect(page.getByRole("heading", { name: "허가 품목", exact: true })).toBeVisible();
+  const permits = page.getByRole("region", { name: "허가 품목" });
+  const criteria = page.getByRole("region", { name: "매입 기준표" });
   await expect(permits.getByLabel("허가증 업로드")).toBeEnabled();
-  await expect(criteria.getByLabel("기준표 업로드")).toBeEnabled();
 
   await permits.getByRole("button", { name: "목록에서 선택" }).click();
   const search = permits.getByRole("searchbox", { name: "품목명 또는 분류코드 검색" });
@@ -428,6 +444,8 @@ test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 �
   await permits.getByRole("button", { name: "허가 품목 저장" }).click();
   await expect(permits.getByText("폐목재", { exact: true })).toBeVisible();
 
+  await page.getByRole("link", { name: "매입 기준표" }).click();
+  await expect(criteria.getByLabel("기준표 업로드")).toBeEnabled();
   await criteria.getByRole("button", { name: "매입 기준 추가" }).click();
   await expect(criteria.getByText("실제로 적용하는 조건인지 확인한 뒤 저장해 주세요.")).toBeVisible();
   await criteria.getByRole("combobox", { name: "재질", exact: true }).fill("PP");
@@ -437,8 +455,9 @@ test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 �
   await criteria.getByRole("button", { name: "고른 1줄 저장" }).click();
   await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
   await page.reload();
-  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
   await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+  await page.getByRole("link", { name: "허가 품목" }).click();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
   await expect(page.getByText("업체 정보 저장됨")).toBeVisible();
   await expect(page.getByText(/문의 후보군에 포함 · 실제 문의는 물량별/)).toBeVisible();
   await expect(page.getByText(/거래 확정은 물량별 허가증 원본/)).toBeVisible();
@@ -458,6 +477,7 @@ test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 �
   await expect(permits.getByText("PS", { exact: true })).toBeVisible();
   await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
 
+  await page.getByRole("link", { name: "매입 기준표" }).click();
   await criteria.getByLabel("기준표 업로드").setInputFiles({
     name: "매입 기준표.txt", mimeType: "text/plain",
     buffer: Buffer.from("재질\t형태\t등급\t매입 단가(원/kg)\nPS\t분쇄\tA\t125"),
