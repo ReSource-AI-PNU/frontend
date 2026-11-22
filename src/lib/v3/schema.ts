@@ -548,6 +548,7 @@ export const assignmentSchema = obj({
   streamId: z.string(),
   vendorOrgId: z.string().nullable(),
   vendorName: z.string().nullable(),
+  vendorSearchNote: z.string().optional(),
   threadId: z.string().nullable(),
   route: z.string().nullable(),
   /** 처리 방식: 업체면 프로필의 처리 방식(재활용, 열분해), 지금 방식 그대로면 현행 처리. 이 기능 전 결과에는 없다 */
@@ -1283,16 +1284,22 @@ export const outcomeSchema = obj({
   dataOrigin: dataOriginSchema.optional(),
 });
 
-const exampleVendorQuoteSchema = obj({
+const mvpMatchSchema = obj({
+  streamId: z.string(),
   name: z.string(),
-  minimumKg: z.number(),
-  pickupDay: z.string(),
-  pickupFee: z.number(),
-  firstPrice: z.number().nullable(),
-  requestedPrice: z.number().nullable(),
-  finalPrice: z.number().nullable(),
-  selected: z.boolean(),
-  reason: z.string().nullable(),
+  quotes: z.array(obj({
+    name: z.string(),
+    minimumKg: z.number(),
+    maxContaminationPct: z.number(),
+    maxMoisturePct: z.number(),
+    pickupDay: z.string(),
+    pickupFee: z.number(),
+    firstPrice: z.number(),
+    requestedPrice: z.number().nullable(),
+    finalPrice: z.number(),
+    conditional: z.boolean(),
+    selected: z.boolean(),
+  })),
 });
 
 export const diagnosisViewSchema = obj({
@@ -1310,14 +1317,7 @@ export const diagnosisViewSchema = obj({
   threads: z.array(threadSchema),
   graph: obj({ nodes: z.array(graphNodeSchema), edges: z.array(graphEdgeSchema) }),
   result: resultSchema.nullable(),
-  vendorComparison: obj({
-    status: z.enum(["ready", "unavailable"]),
-    items: z.array(obj({
-      streamId: z.string(),
-      name: z.string(),
-      quotes: z.array(exampleVendorQuoteSchema),
-    })),
-  }).optional(),
+  mvpMatches: z.array(mvpMatchSchema).optional(),
   questions: z.array(questionSchema),
   /** 답을 기다리는 질문 묶음의 요약과 머리 문장(배출 기업에게만). 기다리는 질문이 없으면 null */
   questionBatch: obj({
