@@ -1283,6 +1283,18 @@ export const outcomeSchema = obj({
   dataOrigin: dataOriginSchema.optional(),
 });
 
+const exampleVendorQuoteSchema = obj({
+  name: z.string(),
+  minimumKg: z.number(),
+  pickupDay: z.string(),
+  pickupFee: z.number(),
+  firstPrice: z.number().nullable(),
+  requestedPrice: z.number().nullable(),
+  finalPrice: z.number().nullable(),
+  selected: z.boolean(),
+  reason: z.string().nullable(),
+});
+
 export const diagnosisViewSchema = obj({
   session: obj({
     id: z.string(),
@@ -1298,6 +1310,14 @@ export const diagnosisViewSchema = obj({
   threads: z.array(threadSchema),
   graph: obj({ nodes: z.array(graphNodeSchema), edges: z.array(graphEdgeSchema) }),
   result: resultSchema.nullable(),
+  vendorComparison: obj({
+    status: z.enum(["ready", "unavailable"]),
+    items: z.array(obj({
+      streamId: z.string(),
+      name: z.string(),
+      quotes: z.array(exampleVendorQuoteSchema),
+    })),
+  }).optional(),
   questions: z.array(questionSchema),
   /** 답을 기다리는 질문 묶음의 요약과 머리 문장(배출 기업에게만). 기다리는 질문이 없으면 null */
   questionBatch: obj({
