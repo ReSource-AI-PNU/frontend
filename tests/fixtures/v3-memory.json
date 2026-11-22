@@ -300,7 +300,32 @@
         "count": 1,
         "lastOn": "2026-11-17"
       }
-    ]
+    ],
+    "calibration": {
+      "applied": {
+        "evidence": "human:org_hanbit:회사기록-판정반영-승인-484c7accd4ef",
+        "strength": 3,
+        "approvedOn": "2026-11-17"
+      },
+      "strength": 3.0,
+      "proposedStrength": 3,
+      "streams": [
+        {
+          "streamId": "st_sprue",
+          "name": "PP 스프루·러너",
+          "records": 3,
+          "streamRatePct": -3.1,
+          "vendors": [
+            {
+              "vendorOrgId": "org_saegil",
+              "vendorName": "(주)새길자원",
+              "records": 3,
+              "ratePct": -4.7
+            }
+          ]
+        }
+      ]
+    }
   },
   "review": {
     "status": "needs_check",
@@ -358,7 +383,7 @@
         "key": "history",
         "title": "지난 검수 기록",
         "status": "check",
-        "text": "이 업체와의 지난 검수에서 PP 스프루·러너의 등급이나 단가가 합의보다 낮게 나온 건이 절반 이상입니다. 계약서 초안의 반입 검수 조건(검수 결과에 따른 단가 조정)을 양쪽이 확인한 뒤 승인해 주세요.",
+        "text": "이 업체와의 지난 검수에서 PP 스프루·러너의 등급이나 단가가 합의보다 낮게 나온 건이 절반 이상입니다. 합의한 등급과 단가가 실제로 나올지 양쪽이 확인한 뒤 승인해 주세요. 계약서 초안의 반입 검수 조건(기준을 벗어나면 반입을 보류하고 다시 협의)이 그대로 적용됩니다.",
         "evidence": [
           "human:org_saegil:검수-insp-e633cf09a0cf-r1-등급",
           "human:org_saegil:검수-insp-e633cf09a0cf-r1-단가",
@@ -382,6 +407,702 @@
     "reviewer": {
       "label": "계약 검토 담당",
       "kind": "rules"
+    }
+  },
+  "assignment": {
+    "streamId": "st_sprue",
+    "vendorOrgId": "org_saegil",
+    "vendorName": "(주)새길자원",
+    "threadId": "th_11",
+    "route": "sell",
+    "process": "재활용",
+    "status": "calculated",
+    "unitPrice": {
+      "id": "st_sprue_unitPrice",
+      "kind": "number",
+      "value": 320.0,
+      "unit": "원/kg",
+      "evidence": [
+        "calc:judge_route:3d162486c422:unitPrice",
+        "doc:snapshot:2e1513d2d198",
+        "doc:snapshot:ec2a3facd183",
+        "doc:snapshot:e88c189c0320",
+        "doc:snapshot:cc6b999bf4b1"
+      ],
+      "label": "매입 단가",
+      "role": "unitPrice"
+    },
+    "monthlyAfter": {
+      "id": "st_sprue_monthlyAfter",
+      "kind": "number",
+      "value": 183000.0,
+      "unit": "원/월",
+      "evidence": [
+        "calc:optimize_assignment:64dfac873ec8:s3MonthlyAfter",
+        "calc:optimize_assignment:cca83877ec5b:s3Revenue",
+        "calc:optimize_assignment:1fe0927c5472:s3ExpectedUnitPrice",
+        "doc:snapshot:2e1513d2d198",
+        "doc:snapshot:ec2a3facd183",
+        "doc:snapshot:e88c189c0320",
+        "doc:snapshot:cc6b999bf4b1",
+        "calc:optimize_assignment:e1f7eb17e4fd:s3Transport"
+      ],
+      "label": "변경 뒤 월 손익",
+      "role": "monthlyAfter"
+    },
+    "monthlyNow": {
+      "id": "st_sprue_monthlyNow",
+      "kind": "number",
+      "value": -150000.0,
+      "unit": "원/월",
+      "evidence": [
+        "calc:optimize_assignment:c80f0902fad0:s3MonthlyNow",
+        "doc:snapshot:556377687150"
+      ],
+      "label": "현행 월 손익",
+      "role": "monthlyNow"
+    },
+    "difference": {
+      "id": "st_sprue_difference",
+      "kind": "number",
+      "value": 333000.0,
+      "unit": "원/월",
+      "evidence": [
+        "calc:optimize_assignment:6c01d1df4272:s3Difference",
+        "doc:snapshot:2e1513d2d198",
+        "doc:snapshot:ec2a3facd183",
+        "doc:snapshot:e88c189c0320",
+        "doc:snapshot:cc6b999bf4b1",
+        "doc:snapshot:556377687150"
+      ],
+      "label": "현행 대비 차이",
+      "role": "difference"
+    },
+    "revenue": {
+      "id": "st_sprue_revenue",
+      "kind": "number",
+      "value": 183000.0,
+      "unit": "원/월",
+      "evidence": [
+        "calc:optimize_assignment:cca83877ec5b:s3Revenue",
+        "calc:optimize_assignment:1fe0927c5472:s3ExpectedUnitPrice",
+        "doc:snapshot:2e1513d2d198",
+        "doc:snapshot:ec2a3facd183",
+        "doc:snapshot:e88c189c0320",
+        "doc:snapshot:cc6b999bf4b1"
+      ],
+      "label": "월 매입액",
+      "role": "monthlyRevenue"
+    },
+    "transport": {
+      "id": "st_sprue_transport",
+      "kind": "number",
+      "value": 0.0,
+      "unit": "원/월",
+      "evidence": [
+        "calc:optimize_assignment:e1f7eb17e4fd:s3Transport"
+      ],
+      "label": "월 운반비",
+      "role": "transport"
+    },
+    "labor": null,
+    "transportPaidBy": "vendor",
+    "pickup": {
+      "status": "route",
+      "label": "기존 노선 포함",
+      "days": [
+        "화",
+        "목"
+      ],
+      "basis": "included",
+      "basisLabel": "단가에 포함",
+      "routeBasis": "included",
+      "paidBy": "vendor",
+      "unit": null,
+      "fee": null,
+      "pickups": null,
+      "monthly": null,
+      "room": null,
+      "roomAgainst": null,
+      "pending": false,
+      "seq": 4,
+      "source": "answer"
+    },
+    "transportPending": false,
+    "costPending": true,
+    "reuse": {
+      "eligible": true,
+      "status": "needs_information",
+      "reason": "재투입 후보입니다. 수율·대체율과 용도의 증빙, 신재 단가·분쇄비를 확인하면 계산합니다.",
+      "monthlyAfter": null,
+      "difference": null,
+      "checks": [
+        {
+          "key": "reuse_origin",
+          "status": "met",
+          "text": "공정에서 나온 것(PIR)입니다.",
+          "evidence": []
+        },
+        {
+          "key": "reuse_material",
+          "status": "met",
+          "text": "단일 재질이고 혼입물이 없습니다.",
+          "evidence": []
+        },
+        {
+          "key": "reuse_quality",
+          "status": "conditional",
+          "text": "측정값은 있지만 공통 품질 등급 기준이 검증되지 않아 재투입 품질을 확정하지 못했습니다.",
+          "evidence": [
+            "measure:org_hanbit:st_sprue:오염도@2026-11-10",
+            "measure:org_hanbit:st_sprue:수분@2026-11-10"
+          ]
+        },
+        {
+          "key": "reuse_inputs",
+          "status": "conditional",
+          "text": "신재 단가·재투입량·분쇄비·수율·품질 대체율·실제 용도·계량/시험 증빙과 수율 손실의 처리비가 필요합니다. 미정 비용을 무료로 두지 않았습니다.",
+          "evidence": []
+        }
+      ]
+    },
+    "carbon": null,
+    "carbonProcess": null,
+    "carbonTransport": null,
+    "transportKm": null,
+    "carbonValue": null,
+    "permit": {
+      "level": "verified",
+      "label": "허가증 대조 완료",
+      "status": "met",
+      "text": "(주)한빛정밀 담당자가 허가증 원문에서 폐플라스틱(PP)과 처리 방식 재활용(재활용업)을 대조해 맞다고 기록했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당합니다.",
+      "evidence": [
+        "doc:org_saegil:허가증:폐플라스틱",
+        "human:org_hanbit:허가증대조-org_saegil-pc_demo_saegil_a199f0",
+        "doc:org_saegil:허가증-AI판독:demo"
+      ],
+      "source": "check",
+      "wasteItem": "폐플라스틱",
+      "materials": [
+        "PP"
+      ],
+      "process": "재활용",
+      "need": "재활용업",
+      "business": "폐기물종합재활용업",
+      "check": {
+        "id": "pc_demo_saegil_a199f0",
+        "documentId": "pd_demo_saegil",
+        "document": "(주)새길자원 폐기물처리업 허가증(가상).pdf",
+        "page": 1,
+        "wasteItem": "폐플라스틱",
+        "materials": [
+          "PP"
+        ],
+        "process": "재활용",
+        "itemFound": true,
+        "processFits": true,
+        "itemQuote": "영업대상 폐기물: 폐플라스틱(PP, PE)",
+        "processQuote": "업종: 폐기물종합재활용업",
+        "checkedBy": {
+          "orgId": "org_hanbit",
+          "orgName": "(주)한빛정밀",
+          "userName": null
+        },
+        "checkedAt": "2026-11-01T10:00:00+00:00",
+        "evidence": "human:org_hanbit:허가증대조-org_saegil-pc_demo_saegil_a199f0"
+      },
+      "document": {
+        "id": "pd_demo_saegil",
+        "name": "(주)새길자원 폐기물처리업 허가증(가상).pdf",
+        "uploadedAt": "2026-11-01T09:00:00+00:00",
+        "pages": [
+          1
+        ],
+        "items": [
+          {
+            "wasteItem": "폐플라스틱",
+            "materials": [
+              "PP",
+              "PE"
+            ],
+            "page": 1,
+            "quote": "영업대상 폐기물: 폐플라스틱(PP, PE)"
+          },
+          {
+            "wasteItem": "포장재",
+            "materials": [
+              "LDPE",
+              "LLDPE"
+            ],
+            "page": 1,
+            "quote": "영업대상 폐기물: 폐포장재(LDPE, LLDPE 필름)"
+          }
+        ],
+        "business": {
+          "name": "폐기물종합재활용업",
+          "page": 1,
+          "quote": "업종: 폐기물종합재활용업"
+        },
+        "holder": {
+          "name": "(주)새길자원",
+          "address": "부산광역시 강서구 미음동",
+          "page": 1,
+          "quote": "상호 (주)새길자원 · 소재지 부산광역시 강서구 미음동",
+          "nameMatches": true,
+          "siteMatches": true
+        },
+        "evidence": [
+          "doc:org_saegil:허가증-AI판독:demo"
+        ]
+      },
+      "ignored": [],
+      "todo": null
+    },
+    "currentAssumed": false,
+    "bundleBelowCurrent": null,
+    "checks": [
+      {
+        "key": "labor_unknown",
+        "status": "conditional",
+        "text": "전처리·선별·세척 작업비 미확인: 표시 금액은 이 비용 반영 전이며 순손익이 아닙니다. 작업이 불필요함을 확인했다면 작업이 없다고 명시해 주세요.",
+        "evidence": []
+      },
+      {
+        "key": "transport_carbon",
+        "status": "conditional",
+        "text": "거리를 계산할 근거가 없어 운송 배출을 계산하지 못했습니다. 확인 필요.",
+        "evidence": []
+      },
+      {
+        "key": "carbon",
+        "status": "conditional",
+        "text": "배출계수가 없어 탄소를 계산하지 않았습니다. 확인 필요.",
+        "evidence": []
+      },
+      {
+        "key": "min_volume",
+        "status": "met",
+        "text": "합친 물량이 최소 물량 이상입니다.",
+        "claims": [
+          {
+            "id": "st_sprue_load_totalKg",
+            "kind": "number",
+            "value": 900.0,
+            "unit": "kg/월",
+            "evidence": [
+              "calc:check_loading:edc2ef413c59:totalKg"
+            ],
+            "label": "합친 월 물량",
+            "role": "totalKg"
+          },
+          {
+            "id": "st_sprue_load_minMonthlyKg",
+            "kind": "number",
+            "value": 500.0,
+            "unit": "kg/월",
+            "evidence": [
+              "calc:check_loading:3e8943e4b943:minMonthlyKg",
+              "doc:snapshot:cda1876654f3",
+              "doc:snapshot:aa1034befe3c",
+              "doc:snapshot:49634eac4cdf",
+              "doc:snapshot:134cb5463345"
+            ],
+            "label": "최소 물량",
+            "role": "threshold"
+          }
+        ],
+        "evidence": [
+          "doc:org_saegil:매입기준표:pc_saegil_pp_b-단가",
+          "doc:org_saegil:매입기준표:pc_saegil_pp_b-최소물량",
+          "doc:org_saegil:매입기준표:pc_saegil_pp_b-오염도상한",
+          "doc:org_saegil:매입기준표:pc_saegil_pp_b-수분상한"
+        ]
+      },
+      {
+        "key": "loading",
+        "status": "met",
+        "text": "한 번 수거량이 차량 중량 용량 안에 있습니다.",
+        "claims": [
+          {
+            "id": "st_sprue_load_pickupsPerMonth",
+            "kind": "number",
+            "value": 2.0,
+            "unit": "회/월",
+            "evidence": [
+              "calc:check_loading:1c2c32cbc83f:pickupsPerMonth"
+            ],
+            "label": "월 수거 횟수",
+            "role": "pickups"
+          },
+          {
+            "id": "st_sprue_load_perPickupKg",
+            "kind": "number",
+            "value": 450.0,
+            "unit": "kg",
+            "evidence": [
+              "calc:check_loading:68e7d49131ef:perPickupKg"
+            ],
+            "label": "한 번 수거량",
+            "role": "perPickup"
+          },
+          {
+            "id": "st_sprue_load_capacityKg",
+            "kind": "number",
+            "value": 5000.0,
+            "unit": "kg",
+            "evidence": [
+              "calc:check_loading:6aa4847c9f3b:capacityKg"
+            ],
+            "label": "차량 적재 중량",
+            "role": "capacity"
+          },
+          {
+            "id": "st_sprue_load_perPickupM3",
+            "kind": "number",
+            "value": 3.7,
+            "unit": "m3",
+            "evidence": [
+              "calc:check_loading:b08d1cdcb078:perPickupM3"
+            ],
+            "label": "한 번 수거 부피",
+            "role": "perPickup"
+          },
+          {
+            "id": "st_sprue_load_capacityM3",
+            "kind": "number",
+            "value": 20.0,
+            "unit": "m3",
+            "evidence": [
+              "calc:check_loading:08eb471cae4d:capacityM3"
+            ],
+            "label": "차량 적재 부피",
+            "role": "capacity"
+          }
+        ],
+        "evidence": []
+      },
+      {
+        "key": "pickup_route",
+        "status": "met",
+        "text": "업체가 밝힌 수거 노선이 이 공장 지역을 지나갑니다(운행 요일 화, 목).",
+        "evidence": []
+      },
+      {
+        "key": "permit_level",
+        "status": "met",
+        "text": "(주)한빛정밀 담당자가 허가증 원문에서 폐플라스틱(PP)과 처리 방식 재활용(재활용업)을 대조해 맞다고 기록했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당합니다.",
+        "evidence": [
+          "doc:org_saegil:허가증:폐플라스틱",
+          "human:org_hanbit:허가증대조-org_saegil-pc_demo_saegil_a199f0",
+          "doc:org_saegil:허가증-AI판독:demo"
+        ]
+      }
+    ],
+    "alternatives": [
+      {
+        "vendorOrgId": "org_miso",
+        "vendorName": "(주)미소환경",
+        "route": "sell",
+        "carbon": null,
+        "unitPrice": {
+          "id": "st_sprue_alt_org_miso_unitPrice",
+          "kind": "number",
+          "value": 200.0,
+          "unit": "원/kg",
+          "evidence": [
+            "calc:judge_route:5be8b3dc6eb2:unitPrice",
+            "doc:snapshot:3ed7fe168b59",
+            "doc:snapshot:01a7f3ecfa65",
+            "doc:snapshot:0171b3082709",
+            "doc:snapshot:83bce9bc7bdd"
+          ],
+          "label": "매입 단가",
+          "role": "unitPrice"
+        },
+        "monthlyAfter": {
+          "id": "st_sprue_alt_org_miso_monthlyAfter",
+          "kind": "number",
+          "value": 120000.0,
+          "unit": "원/월",
+          "evidence": [
+            "calc:cost_carbon:795f5202fe09:monthlyAfter",
+            "doc:snapshot:3ed7fe168b59",
+            "doc:snapshot:01a7f3ecfa65",
+            "doc:snapshot:0171b3082709",
+            "doc:snapshot:83bce9bc7bdd"
+          ],
+          "label": "변경 뒤 월 손익",
+          "role": "monthlyAfter"
+        },
+        "permit": {
+          "level": "verified",
+          "label": "허가증 대조 완료",
+          "status": "met",
+          "text": "(주)한빛정밀 담당자가 허가증 원문에서 폐플라스틱(PP)과 처리 방식 재활용(재활용업)을 대조해 맞다고 기록했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당합니다.",
+          "evidence": [
+            "human:org_miso:허가품목-폐플라스틱",
+            "human:org_hanbit:허가증대조-org_miso-pc_demo_miso_c10be5",
+            "doc:org_miso:허가증-AI판독:demo"
+          ],
+          "source": "check",
+          "wasteItem": "폐플라스틱",
+          "materials": [
+            "PP"
+          ],
+          "process": "재활용",
+          "need": "재활용업",
+          "business": null,
+          "check": {
+            "id": "pc_demo_miso_c10be5",
+            "documentId": "pd_demo_miso",
+            "document": "(주)미소환경 폐기물처리업 허가증(가상).pdf",
+            "page": 1,
+            "wasteItem": "폐플라스틱",
+            "materials": [
+              "PP"
+            ],
+            "process": "재활용",
+            "itemFound": true,
+            "processFits": true,
+            "itemQuote": "영업대상 폐기물: 폐플라스틱",
+            "processQuote": "업종: 폐기물종합재활용업",
+            "checkedBy": {
+              "orgId": "org_hanbit",
+              "orgName": "(주)한빛정밀",
+              "userName": null
+            },
+            "checkedAt": "2026-11-01T10:00:00+00:00",
+            "evidence": "human:org_hanbit:허가증대조-org_miso-pc_demo_miso_c10be5"
+          },
+          "document": {
+            "id": "pd_demo_miso",
+            "name": "(주)미소환경 폐기물처리업 허가증(가상).pdf",
+            "uploadedAt": "2026-11-01T09:00:00+00:00",
+            "pages": [
+              1
+            ],
+            "items": [
+              {
+                "wasteItem": "폐플라스틱",
+                "materials": [
+                  "PP",
+                  "ABS"
+                ],
+                "page": 1,
+                "quote": "영업대상 폐기물: 폐플라스틱"
+              }
+            ],
+            "business": {
+              "name": "폐기물종합재활용업",
+              "page": 1,
+              "quote": "업종: 폐기물종합재활용업"
+            },
+            "holder": {
+              "name": "(주)미소환경",
+              "address": "부산광역시 사상구 학장동",
+              "page": 1,
+              "quote": "상호 (주)미소환경 · 소재지 부산광역시 사상구 학장동",
+              "nameMatches": true,
+              "siteMatches": true
+            },
+            "evidence": [
+              "doc:org_miso:허가증-AI판독:demo"
+            ]
+          },
+          "ignored": [],
+          "todo": null
+        },
+        "transportPending": false,
+        "costPending": true,
+        "pickupStatus": "visit",
+        "note": "선택되지 않은 제안 · 한 달 값은 회사 기록 보정 전",
+        "personalUnitPrice": {
+          "id": "st_sprue_alt_org_miso_expectedUnitPrice",
+          "kind": "number",
+          "value": 193.75,
+          "unit": "원/kg",
+          "evidence": [
+            "calc:optimize_assignment:99c4579d1a78:s3Alt0ExpectedUnitPrice",
+            "calc:optimize_assignment:078670305822:s3Alt0PersonalRate",
+            "doc:snapshot:3ed7fe168b59",
+            "doc:snapshot:01a7f3ecfa65",
+            "doc:snapshot:0171b3082709",
+            "doc:snapshot:83bce9bc7bdd"
+          ],
+          "label": "회사 기록 반영 예상 단가",
+          "role": "unitPrice"
+        }
+      },
+      {
+        "vendorOrgId": "org_namhae",
+        "vendorName": "(주)남해열분해",
+        "route": "treat",
+        "carbon": null,
+        "unitPrice": {
+          "id": "st_sprue_alt_org_namhae_unitPrice",
+          "kind": "number",
+          "value": -60.0,
+          "unit": "원/kg",
+          "evidence": [
+            "calc:judge_route:c02abb53a457:unitPrice",
+            "doc:snapshot:f060750ef6be",
+            "doc:snapshot:3af2d2a96434",
+            "doc:snapshot:c5c1309ada7b",
+            "doc:snapshot:457a9f4731ab"
+          ],
+          "label": "처리비",
+          "role": "treatmentFee"
+        },
+        "monthlyAfter": {
+          "id": "st_sprue_alt_org_namhae_monthlyAfter",
+          "kind": "number",
+          "value": -66000.0,
+          "unit": "원/월",
+          "evidence": [
+            "calc:cost_carbon:b1f1e44b041a:monthlyAfter",
+            "doc:snapshot:f060750ef6be",
+            "doc:snapshot:3af2d2a96434",
+            "doc:snapshot:c5c1309ada7b",
+            "doc:snapshot:457a9f4731ab"
+          ],
+          "label": "변경 뒤 월 손익",
+          "role": "monthlyAfter"
+        },
+        "permit": {
+          "level": "verified",
+          "label": "허가증 대조 완료",
+          "status": "met",
+          "text": "(주)한빛정밀 담당자가 허가증 원문에서 폐플라스틱(PP)과 처리 방식 열분해(재활용업)를 대조해 맞다고 기록했습니다. 이 확인은 이 폐기물과 처리 방식에만 해당합니다.",
+          "evidence": [
+            "doc:org_namhae:허가증:폐플라스틱",
+            "human:org_hanbit:허가증대조-org_namhae-pc_demo_namhae_1646a0",
+            "doc:org_namhae:허가증-AI판독:demo"
+          ],
+          "source": "check",
+          "wasteItem": "폐플라스틱",
+          "materials": [
+            "PP"
+          ],
+          "process": "열분해",
+          "need": "재활용업",
+          "business": "폐기물종합재활용업",
+          "check": {
+            "id": "pc_demo_namhae_1646a0",
+            "documentId": "pd_demo_namhae",
+            "document": "(주)남해열분해 폐기물처리업 허가증(가상).pdf",
+            "page": 1,
+            "wasteItem": "폐플라스틱",
+            "materials": [
+              "PP"
+            ],
+            "process": "열분해",
+            "itemFound": true,
+            "processFits": true,
+            "itemQuote": "영업대상 폐기물: 폐플라스틱",
+            "processQuote": "업종: 폐기물종합재활용업",
+            "checkedBy": {
+              "orgId": "org_hanbit",
+              "orgName": "(주)한빛정밀",
+              "userName": null
+            },
+            "checkedAt": "2026-11-01T10:00:00+00:00",
+            "evidence": "human:org_hanbit:허가증대조-org_namhae-pc_demo_namhae_1646a0"
+          },
+          "document": {
+            "id": "pd_demo_namhae",
+            "name": "(주)남해열분해 폐기물처리업 허가증(가상).pdf",
+            "uploadedAt": "2026-11-01T09:00:00+00:00",
+            "pages": [
+              1
+            ],
+            "items": [
+              {
+                "wasteItem": "폐플라스틱",
+                "materials": [],
+                "page": 1,
+                "quote": "영업대상 폐기물: 폐합성수지"
+              }
+            ],
+            "business": {
+              "name": "폐기물종합재활용업",
+              "page": 1,
+              "quote": "업종: 폐기물종합재활용업"
+            },
+            "holder": {
+              "name": "(주)남해열분해",
+              "address": "경상남도 김해시 주촌면",
+              "page": 1,
+              "quote": "상호 (주)남해열분해 · 소재지 경상남도 김해시 주촌면",
+              "nameMatches": true,
+              "siteMatches": true
+            },
+            "evidence": [
+              "doc:org_namhae:허가증-AI판독:demo"
+            ]
+          },
+          "ignored": [],
+          "todo": null
+        },
+        "transportPending": false,
+        "costPending": true,
+        "pickupStatus": "route",
+        "note": "선택되지 않은 제안 · 한 달 값은 회사 기록 보정 전",
+        "personalUnitPrice": {
+          "id": "st_sprue_alt_org_namhae_expectedUnitPrice",
+          "kind": "number",
+          "value": -61.875,
+          "unit": "원/kg",
+          "evidence": [
+            "calc:optimize_assignment:0da7f8e30223:s3Alt1ExpectedUnitPrice",
+            "calc:optimize_assignment:078670305822:s3Alt1PersonalRate",
+            "doc:snapshot:f060750ef6be",
+            "doc:snapshot:3af2d2a96434",
+            "doc:snapshot:c5c1309ada7b",
+            "doc:snapshot:457a9f4731ab"
+          ],
+          "label": "처리비",
+          "role": "treatmentFee"
+        }
+      }
+    ],
+    "blockedRoutes": [],
+    "personal": {
+      "rate": {
+        "id": "st_sprue_personalRate",
+        "kind": "number",
+        "value": -4.6875,
+        "unit": "%",
+        "evidence": [
+          "calc:optimize_assignment:9f275ad17e59:s3PersonalRate",
+          "human:snapshot:bcad78cbe4ce",
+          "calc:judge_route:3d162486c422:unitPrice",
+          "doc:snapshot:2e1513d2d198",
+          "doc:snapshot:ec2a3facd183",
+          "doc:snapshot:e88c189c0320",
+          "doc:snapshot:cc6b999bf4b1",
+          "human:snapshot:c6854f1af137",
+          "human:snapshot:397f3e264aeb",
+          "human:snapshot:788ad2dd8e34"
+        ]
+      },
+      "expectedUnitPrice": {
+        "id": "st_sprue_expectedUnitPrice",
+        "kind": "number",
+        "value": 305.0,
+        "unit": "원/kg",
+        "evidence": [
+          "calc:optimize_assignment:1fe0927c5472:s3ExpectedUnitPrice",
+          "calc:optimize_assignment:9f275ad17e59:s3PersonalRate",
+          "doc:snapshot:2e1513d2d198",
+          "doc:snapshot:ec2a3facd183",
+          "doc:snapshot:e88c189c0320",
+          "doc:snapshot:cc6b999bf4b1"
+        ],
+        "label": "회사 기록 반영 예상 단가",
+        "role": "unitPrice"
+      },
+      "records": 3,
+      "streamRecords": 3
     }
   }
 }

@@ -149,3 +149,26 @@ test("코드가 바꾼 단위는 줄의 환산 근거로 남는다", () => {
   assert.ok(pp.conversions?.some((text) => text.includes("kg당 320원")));
   assert.ok(pp.conversions?.some((text) => text.includes("월 1,000kg")));
 });
+
+test("건별 협의는 0원 및 단가 미입력과 구분되고 선택 조건을 비울 수 있다", () => {
+  const row = emptyRow("manual");
+  row.values.material = "PP+ABS";
+  row.values.grade = "혼합";
+  assert.equal(rowPayload(row), null);
+  row.values.priceMode = "negotiated";
+  assert.deepEqual(rowProblems(row), []);
+  const payload = rowPayload(row);
+  assert.equal(payload?.priceMode, "negotiated");
+  assert.equal(payload?.unitPriceKrwPerKg, null);
+  assert.equal(payload?.minMonthlyKg, null);
+  assert.equal(payload?.maxContaminationPct, null);
+  assert.equal(payload?.maxMoisturePct, null);
+  assert.match(rowSummary(row), /담당자 견적 필요/);
+  row.values.priceMode = "fixed";
+  row.values.price = "0";
+  row.values.direction = "buy";
+  assert.equal(rowPayload(row)?.unitPriceKrwPerKg, 0);
+  row.values.price = "80";
+  row.values.direction = "fee";
+  assert.equal(rowPayload(row)?.unitPriceKrwPerKg, -80);
+});

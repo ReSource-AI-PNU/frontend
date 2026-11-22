@@ -85,7 +85,10 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await expect(result.getByText("한 달 합계")).toBeVisible();
   // 원문 경계를 확인한 배출계수와 실제 운송 조건이 없으면 탄소는 0으로 두지 않고 산정 보류로 보인다
   await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "자원순환 효과" }).getByText("산정 보류").first()).toBeVisible();
+  const effects = page.getByRole("region", { name: "자원순환 효과" });
+  await expect(effects.getByText("문헌·입력값 기반 추정").first()).toBeVisible();
+  await expect(effects.getByText("폐기물마다 어떻게 순환하나요")).toHaveCount(0);
+  await expect(effects.getByText("시나리오 비교")).toHaveCount(0);
 
   // 순비용의 내역: 매각 수익, 운반비, 전처리 인건비
   const sprue = rows.filter({ hasText: "스프루·런너" });
@@ -234,7 +237,7 @@ test("체험하기는 로그인 없이 시연 회사를 읽기 전용으로 보�
   await page.goto("/login");
   await page.getByRole("link", { name: /체험하기/ }).click();
   await page.waitForURL(/\/demo$/);
-  await expect(page.getByText("시연 회사의 가상 데이터입니다")).toBeVisible();
+  await expect(page.getByText("둘러보기 전용입니다.", { exact: false })).toBeVisible();
   await expect(page.getByRole("link", { name: "가입하기" })).toBeVisible();
   // 쓰기는 백엔드에 닿기 전에 막힌다
   const write = await request.post("/api/v3-demo/sessions", { data: {} });
@@ -296,4 +299,159 @@ test("이메일로 가입하면 회사를 등록하고 빈 상태에서 폐기�
   await page.waitForURL(/\/app$/);
   await expect(page.getByRole("heading", { name: "먼저 폐기물을 등록해 주세요" })).toBeVisible();
   await expect(page.getByRole("button", { name: "폐기물 등록" })).toBeVisible();
+});
+
+test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 기준을 저장할 수 있다", async ({ page, request }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
+  const orgId = "org_miso";
+  const headers = { "X-Org-Id": orgId };
+  const blank = await request.put(`${API}/vendors/${orgId}`, {
+    headers,
+    data: { permits: [], criteria: [] },
+  });
+  expect(blank.ok()).toBeTruthy();
+
+  await signIn(page);
+  await pickOrg(page, orgId);
+  await page.getByRole("link", { name: "업체 정보 등록" }).click();
+  await expect(page.getByRole("heading", { name: "업체 정보", exact: true })).toBeVisible();
+  const permits = page.locator("section").filter({ has: page.getByRole("heading", { name: "허가 품목", exact: true }) });
+  const criteria = page.locator("section").filter({ has: page.getByRole("heading", { name: "매입 기준표", exact: true }) });
+  await expect(permits.getByLabel("허가증 업로드")).toBeEnabled();
+  await expect(criteria.getByLabel("기준표 업로드")).toBeEnabled();
+
+  await permits.getByRole("button", { name: "목록에서 선택" }).click();
+  const search = permits.getByRole("searchbox", { name: "품목명 또는 분류코드 검색" });
+  await search.fill("51-03-01");
+  await permits.getByRole("checkbox", { name: /51-03-01 폐합성수지류/ }).check();
+  await search.fill("플라스틱폐포장재");
+  await permits.getByRole("checkbox", { name: /51-03-07 플라스틱폐포장재/ }).check();
+  await permits.getByLabel(/51-03-01.*재질/).fill("PP");
+  await permits.getByLabel(/51-03-07.*재질/).fill("LDPE");
+  await permits.getByRole("button", { name: "허가 품목 저장" }).click();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(2);
+  await permits.getByRole("button", { name: "직접 입력", exact: true }).click();
+  await permits.getByLabel("허가 품목명").fill("폐목재");
+  await permits.getByRole("button", { name: "허가 품목 저장" }).click();
+  await expect(permits.getByText("폐목재", { exact: true })).toBeVisible();
+
+  await criteria.getByRole("button", { name: "매입 기준 추가" }).click();
+  await expect(criteria.getByText("실제로 적용하는 조건인지 확인한 뒤 저장해 주세요.")).toBeVisible();
+  await criteria.getByRole("combobox", { name: "재질", exact: true }).fill("PP");
+  await criteria.getByRole("textbox", { name: "형태", exact: true }).fill("분쇄");
+  await criteria.getByRole("combobox", { name: "등급", exact: true }).fill("B");
+  await criteria.getByText("건별 협의", { exact: true }).click();
+  await criteria.getByRole("button", { name: "고른 1줄 저장" }).click();
+  await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+  await page.reload();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
+  await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+  await expect(page.getByText("업체 정보 저장됨")).toBeVisible();
+  await expect(page.getByText(/문의 후보군에 포함 · 실제 문의는 물량별/)).toBeVisible();
+  await expect(page.getByText(/거래 확정은 물량별 허가증 원본/)).toBeVisible();
+
+  const saved = await request.get(`${API}/vendors/${orgId}`, { headers });
+  expect(saved.ok()).toBeTruthy();
+  expect(await saved.json()).toMatchObject({
+    criteria: [{ material: "PP", form: "분쇄", grade: "B", priceMode: "negotiated", unitPriceKrwPerKg: null }],
+  });
+
+  await permits.getByLabel("허가증 업로드").setInputFiles({
+    name: "허가증.txt", mimeType: "text/plain",
+    buffer: Buffer.from("폐기물처리업 허가증\n상호: (주)미소환경\n업종: 폐기물 종합재활용업\n영업대상 폐기물: 폐플라스틱(PS)"),
+  });
+  await permits.getByRole("checkbox", { name: /허가 품목.*확인/ }).first().check();
+  await permits.getByRole("button", { name: "확인한 값 1개를 근거로 등록" }).click();
+  await expect(permits.getByText("PS", { exact: true })).toBeVisible();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
+
+  await criteria.getByLabel("기준표 업로드").setInputFiles({
+    name: "매입 기준표.txt", mimeType: "text/plain",
+    buffer: Buffer.from("재질\t형태\t등급\t매입 단가(원/kg)\nPS\t분쇄\tA\t125"),
+  });
+  await criteria.getByRole("button", { name: "고른 1줄 저장" }).click();
+  await expect(criteria.getByLabel("PS A등급 분쇄 단가 (원/kg)")).toHaveValue("125");
+  await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+});
+
+test("월 운반비 견적 전에는 손익분기와 확인할 비용을 표시하고 견적 뒤에는 월 손익을 비교한다", async ({ page }) => {
+  const cases = [
+    { fee: null, aProfit: 320000, bPending: false, message: "별도 운반비가 월 70,000원이면 B사와 월 손익이 같고, 그보다 높으면 B사가 월 손익에서 유리합니다." },
+    { fee: 69000, aProfit: 251000, bPending: false, message: "A사가 월 손익에서 유리합니다." },
+    { fee: 70000, aProfit: 250000, bPending: false, message: "두 업체의 월 손익이 같습니다." },
+    { fee: 71000, aProfit: 249000, bPending: false, message: "B사가 월 손익에서 유리합니다." },
+    { fee: null, aProfit: 320000, bPending: true, message: "두 업체의 운반 견적을 확인해 비교해 주세요." },
+  ];
+  let view = structuredClone(demoView);
+  await page.route("**/api/v3-demo/sessions", (route) => route.fulfill({ json: [view.session] }));
+  await page.route(`**/api/v3-demo/sessions/${view.session.id}`, (route) => route.fulfill({ json: view }));
+  const money = (id: string, value: number, unit = "원/월") =>
+    ({ id, kind: "number", value, unit, evidence: [`calc:${id}`] });
+
+  for (const sample of cases) {
+    view = structuredClone(demoView);
+    const assignment = view.result.assignments.find((item) => item.streamId === "st_sprue")!;
+    const stream = view.streams.find((item) => item.id === "st_sprue")!;
+    stream.monthlyKg!.value = 1000;
+    const aChosen = sample.aProfit >= 250000;
+    const chosen = aChosen ? "A사" : "B사";
+    const other = aChosen ? "B사" : "A사";
+    const profit = aChosen ? sample.aProfit : 250000;
+    const pending = sample.fee === null;
+    Object.assign(assignment, {
+      vendorOrgId: chosen,
+      vendorName: chosen,
+      unitPrice: money("price", aChosen ? 320 : 250, "원/kg"),
+      monthlyAfter: money("selected-after", profit),
+      monthlyNow: money("current", -250000),
+      difference: money("difference", profit + 250000),
+      transport: aChosen && sample.fee !== null ? money("known-fee", sample.fee) : null,
+      transportPending: pending,
+      costPending: false,
+      pickup: {
+        status: "visit",
+        label: null,
+        days: [],
+        basis: aChosen ? "separate" : "included",
+        basisLabel: null,
+        routeBasis: null,
+        source: null,
+        paidBy: aChosen ? "emitter" : "vendor",
+        unit: aChosen ? "per_month" : null,
+        fee: aChosen && sample.fee !== null ? money("quoted-fee", sample.fee) : null,
+        pickups: null,
+        monthly: aChosen && sample.fee !== null ? money("monthly-fee", sample.fee) : null,
+        room: pending && !sample.bPending ? money("threshold", 70000) : null,
+        roomAgainst: pending && !sample.bPending ? { vendorOrgId: other, route: "sell" } : null,
+        pending,
+        seq: null,
+      },
+      alternatives: [{
+        vendorOrgId: other,
+        vendorName: other,
+        route: "sell",
+        unitPrice: money("other-price", aChosen ? 250 : 320, "원/kg"),
+        monthlyAfter: money("other-after", aChosen ? 250000 : sample.aProfit),
+        transportPending: sample.bPending,
+        costPending: sample.bPending,
+        pickupStatus: "visit",
+        note: "같은 물량 비교",
+      }],
+    });
+    await page.goto("/demo");
+    const result = page.getByRole("region", { name: "결과", exact: true });
+    const row = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem").filter({ hasText: "스프루·런너" });
+    await expect(row).toContainText(chosen);
+    if (pending) {
+      await expect(row).toContainText("월 손익 +320,000원 · 별도 운반비 반영 전 · 잠정");
+      await expect(row).toContainText(sample.message);
+      if (sample.bPending) await expect(row).not.toContainText(/별도 운반비가 월 [\d,]+원이면/);
+      else await expect(row).toContainText("최종 배정에는 탄소와 수거 조건 등도 반영됩니다.");
+    } else {
+      await row.getByRole("button", { name: /매입표 기준 충족|매입 조건 확인 필요|계산 내역/ }).first().click();
+      await expect(row).toContainText(sample.message);
+      await expect(row).toContainText("+250,000원");
+      await expect(row).toContainText(`+${sample.aProfit.toLocaleString("ko-KR")}원`);
+    }
+  }
 });

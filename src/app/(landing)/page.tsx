@@ -82,14 +82,10 @@ const DIFFERENTIATORS: { title: string; body: string; link: { href: string; labe
   },
   {
     title: "공개 평가 점수",
-    body: "AI를 가상 시나리오로 시험한 결과를 목표와 신뢰구간과 함께 공개합니다. 목표에 못 미친 것과 아직 재지 못한 것도 그대로 적습니다.",
+    body: "AI의 시험 결과를 목표와 신뢰구간과 함께 공개합니다. 목표에 못 미친 것과 아직 재지 못한 것도 그대로 적습니다.",
     link: { href: "/trust", label: "AI 신뢰도 보기" },
   },
 ];
-
-function Credit({ photo, className = "" }: { photo: Photo; className?: string }) {
-  return <p className={`text-[12px] text-muted ${className}`}>사진 {photo.by} · Unsplash</p>;
-}
 
 /** 화면 폭을 거의 다 쓰는 큰 사진. 글은 사진 위에 얹지 않는다. */
 function Wide({ photo, priority = false, className = "" }: { photo: Photo; priority?: boolean; className?: string }) {
@@ -98,9 +94,6 @@ function Wide({ photo, priority = false, className = "" }: { photo: Photo; prior
       <div className={`relative overflow-hidden rounded-[20px] bg-sunken sm:rounded-[28px] ${className}`}>
         <Image src={photo.src} alt={photo.alt} fill unoptimized priority={priority} sizes="100vw" className="object-cover" />
       </div>
-      <figcaption className="mx-auto mt-2 max-w-[1160px] text-right">
-        <Credit photo={photo} />
-      </figcaption>
     </figure>
   );
 }
@@ -252,9 +245,6 @@ export default function LandingPage() {
               <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] bg-sunken sm:rounded-[28px]">
                 <Image src={side.photo.src} alt={side.photo.alt} fill unoptimized sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
               </div>
-              <figcaption className="mt-2 text-right">
-                <Credit photo={side.photo} />
-              </figcaption>
             </figure>
             <div className="max-w-[30rem]">
               <h3 className="text-[28px] leading-tight font-semibold tracking-[-0.03em] sm:text-[32px]">{side.title}</h3>
@@ -287,7 +277,6 @@ export default function LandingPage() {
             >
               시작하기
             </Link>
-            <p className="mt-10 text-[12px] text-white/70">사진 {PHOTOS.complexDusk.by} · Unsplash</p>
           </div>
         </div>
       </section>

@@ -368,6 +368,8 @@ export const checkKeySchema = z.enum([
   "transport_carbon",
   /** 이 폐기물만 보면 현행보다 불리하지만 같은 업체 묶음 전체가 나아 함께 보낸다(2026-11-22) */
   "bundle_below_current",
+  /** 전처리·선별·세척 작업비를 몰라 한 달 값이 그 비용 반영 전이다(백엔드 2026-11-21 정책) */
+  "labor_unknown",
 ]);
 
 export const checkSchema = obj({
@@ -394,6 +396,8 @@ export const alternativeSchema = obj({
   costPending: z.boolean().optional(),
   pickupStatus: pickupStatusSchema.nullable().optional(),
   note: z.string(),
+  /** 회사 기록 보정을 판정에 반영했을 때 이 업체의 예상 단가(2026-11-22 뒤 결과). 한 달 값은 보정 전이다 */
+  personalUnitPrice: claimOrNull.optional(),
 });
 
 /** 배출 기업 담당자가 업체가 올린 허가증 원문에서 품목과 처리 방법을 대조한 기록(2026-11-19) */
@@ -555,6 +559,8 @@ export const assignmentSchema = obj({
   transportPending: z.boolean().optional(),
   currentAssumed: z.boolean(),
   costPending: z.boolean().optional(),
+  /** 전처리 인건비가 회사 시급이 아니라 법정 최저 시급으로 넣은 하한이다(2026-11-22 뒤 결과) */
+  laborFloor: z.boolean().optional(),
   /**
    * 묶음 때문에 현행보다 불리한 배정(2026-11-22 뒤 결과). 이 폐기물의 현행 대비 차이(loss, 음수)와 같은 업체로
    * 함께 보내는 폐기물 전체의 현행 대비 차이(bundle). 운반비·작업비가 모두 확인됐을 때만 온다. 업체 뷰에서는 null
@@ -566,6 +572,16 @@ export const assignmentSchema = obj({
   }).nullable().optional(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
+  /**
+   * 회사 기록 보정(담당자가 판정 반영을 승인했을 때, 2026-11-22 뒤 결과). 계약 단가(unitPrice)는 그대로이고 매각 수익과
+   * 한 달 값은 예상 단가로 계산했다. records는 같은 업체 검수 건수, streamRecords는 이 폐기물 전체 검수 건수. 업체 뷰에서는 null
+   */
+  personal: obj({
+    rate: claimOrNull,
+    expectedUnitPrice: claimOrNull,
+    records: z.number(),
+    streamRecords: z.number(),
+  }).nullable().optional(),
   /** 허가 확인 결과 진행할 수 없는 경로(2026-11-19 뒤 결과) */
   blockedRoutes: z.array(blockedRouteSchema).optional(),
 });
@@ -838,6 +854,18 @@ export const circularSourceSchema = obj({
 /** 자원순환 효과와 네 시나리오(A 흐름별 최적안, B 묶음 없이, C 현행 유지, D 전부 매립). 배출 기업만 본다 */
 export const circularSchema = obj({
   scenarios: z.array(circularScenarioSchema),
+  reference: obj({
+    totals: z.partialRecord(z.enum(["ghg", "energy", "virgin"]), circularTotalSchema),
+    rows: z.array(obj({
+      streamId: z.string(),
+      streamName: z.string().nullable(),
+      metric: z.enum(["ghg", "energy", "virgin"]),
+      value: claimOrNull,
+      assumptions: z.array(z.string()),
+      reason: z.string(),
+      status: z.enum(["estimated", "hold", "zero"]),
+    })),
+  }).nullable().optional(),
   baselines: z.record(z.string(), z.number()),
   bundle: obj({
     available: z.boolean(),
@@ -1424,6 +1452,23 @@ export const orgMemorySchema = obj({
   deals: z.array(
     obj({ vendorOrgId: z.string(), vendorName: z.string().nullable(), count: z.number(), lastOn: z.string().nullable() }),
   ),
+  /** 회사 기록 보정(판정 반영). applied가 있으면 담당자가 승인한 것이고 다음 찾기부터 판정에 쓴다(2026-11-22 뒤 응답) */
+  calibration: obj({
+    applied: obj({ evidence: z.string(), strength: z.number(), approvedOn: z.string() }).nullable(),
+    strength: z.number(),
+    proposedStrength: z.number(),
+    streams: z.array(
+      obj({
+        streamId: z.string(),
+        name: z.string(),
+        records: z.number(),
+        streamRatePct: z.number().nullable(),
+        vendors: z.array(
+          obj({ vendorOrgId: z.string(), vendorName: z.string().nullable(), records: z.number(), ratePct: z.number() }),
+        ),
+      }),
+    ),
+  }).optional(),
 });
 
 export const reportSchema = obj({

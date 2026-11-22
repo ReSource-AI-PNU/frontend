@@ -4,7 +4,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { feeKind, feeWords, pickupStatusText, pickupTodo, pickupUnconfirmed, roomAgainstName } from "../src/lib/v3/pickup.ts";
+import { feeKind, feeWords, pickupStatusText, pickupTodo, pickupUnconfirmed, roomAgainstName, transportComparison } from "../src/lib/v3/pickup.ts";
 import { pickupSchema } from "../src/lib/v3/schema.ts";
 import type { Pickup } from "../src/lib/v3/types.ts";
 
@@ -101,4 +101,27 @@ test("노선과 범위 충돌 사유를 결과와 승인에 같은 문구로 표
   assert.equal(pickupStatusText(check, false), check.label);
   assert.equal(pickupTodo({ pickup: check, transportPending: true })[0], detail);
   assert.equal(feeKind(check), "undecided");
+});
+
+
+test("예전 결과에 현행 기준 손익분기가 있어도 업체 견적이 미정이면 견적 확인을 안내한다", () => {
+  const terms = pickup({
+    status: "visit",
+    basis: "separate",
+    pending: true,
+    room: claim("room", 570000, "원/월"),
+    roomAgainst: { vendorOrgId: null, route: "keep" },
+  });
+  const b = {
+    vendorOrgId: "org_b", vendorName: "B사", route: "sell", note: "",
+    unitPrice: null, monthlyAfter: claim("b", 250000, "원/월"),
+    transportPending: true, costPending: true,
+  };
+  const base = { pickup: terms, transportPending: true, costPending: false };
+  assert.deepEqual(transportComparison({ ...base, alternatives: [b] }), {
+    reason: "두 업체의 운반 견적을 확인해 비교해 주세요.",
+  });
+  assert.deepEqual(transportComparison({ ...base, alternatives: [{ ...b, transportPending: false }] }), {
+    reason: "두 업체의 운반 견적과 미확인 비용을 확인해 비교해 주세요.",
+  });
 });

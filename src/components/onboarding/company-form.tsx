@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { FactoryIcon, TruckIcon } from "@/components/icons";
 import { buttonClass } from "@/components/ui/button";
 import type { IndustrialComplex } from "@/lib/domain";
-import { createCompany, openInviteLink } from "@/lib/server/company-actions";
+import { createCompany, openInviteLink, openNegotiationTest } from "@/lib/server/company-actions";
 import { ComplexSelect } from "./complex-select";
 
 const input =
@@ -12,7 +12,7 @@ const input =
 
 const KINDS = [
   { value: "emitter", title: "배출 기업", body: "공장에서 나오는 폐기물을 받아 줄 곳을 찾습니다", icon: FactoryIcon },
-  { value: "vendor", title: "처리 업체", body: "조건에 맞는 물량 문의를 받습니다", icon: TruckIcon },
+  { value: "vendor", title: "처리 업체", body: "파일 없이 허가 품목이나 매입 기준을 등록하고 물량 문의를 받을 수 있습니다", icon: TruckIcon },
 ] as const;
 
 function FieldError({ message }: { message?: string }) {
@@ -150,6 +150,30 @@ export function InviteLinkForm() {
           {state.error}
         </p>
       ) : null}
+    </form>
+  );
+}
+
+export function NegotiationTestForm() {
+  const [state, action, pending] = useActionState(openNegotiationTest, {});
+  return (
+    <form action={action} className="grid gap-2">
+      <p className="text-sm text-ink-2">폐기물을 직접 등록하고 가상 업체 세 곳의 견적과 협상을 비교합니다.</p>
+      <details className="text-[13px] text-muted">
+        <summary className="min-h-8 cursor-pointer py-1.5">테스트 조건의 참고 자료</summary>
+        <p className="mt-1 leading-relaxed">
+          한국환경공단의 2026년 10월 경남 중간가공품 판매가와 재활용 업계의 필름 품질 기준을 참고했습니다.
+          인수 단가·최소 물량·운반비는 테스트 조건입니다.
+        </p>
+        <p className="mt-2 flex flex-wrap gap-x-3">
+          <a href="https://www.data.go.kr/data/3076421/fileData.do" className="underline underline-offset-4">한국환경공단 가격조사</a>
+          <a href="https://www.isrispecs.org/wp-content/uploads/2026/01/2026-January-ReMA_ISRI_Specifications.pdf" className="underline underline-offset-4">ReMA 품질 기준</a>
+        </p>
+      </details>
+      <button type="submit" disabled={pending} className={buttonClass("secondary", "md", "w-fit")}>
+        {pending ? "테스트 회사 여는 중" : "협상 테스트 회사 열기"}
+      </button>
+      <FieldError message={state.error} />
     </form>
   );
 }

@@ -225,18 +225,23 @@ export type OutcomeResult = { outcome: Outcome; evidence: string[]; replayed: bo
 /** 업체가 고르는 모델 설정. 실제로 어떤 구현이 답했는지는 진단 뷰의 vendorModel에 따로 온다. */
 export type ConfiguredModel = { provider: "foundry" | "ollama"; name: string };
 
+export type PermitCatalogItem = { code: string; name: string; wasteItem: string | null };
+export type ManualPermitInput = { code?: string; wasteItem?: string; materials: string[] };
+export type CriterionPriceMode = "fixed" | "negotiated";
+
 export type VendorProfile = {
   process?: string | null;
   processEvidence?: string[];
   inspectionFallbackCriterionId?: string | null;
   orgId: string;
   name?: string;
-  permits: { wasteItem: string; materials: string[]; evidence: string[] }[];
+  permits: { wasteItem: string; materials: string[]; evidence: string[]; entrySource?: "manual"; code?: string }[];
   criteria: {
     id: string;
     material: string;
-    grade: string;
+    grade: string | null;
     form: string | null;
+    priceMode?: CriterionPriceMode;
     maxContaminationPct: number | null;
     maxMoisturePct: number | null;
     /** 배출 기업이 받으면 양수(매입), 내면 음수(처리비) */
@@ -377,7 +382,8 @@ export type CriteriaRowInput = {
   material: string;
   grade: string | null;
   form: string | null;
-  unitPriceKrwPerKg: number;
+  priceMode: CriterionPriceMode;
+  unitPriceKrwPerKg: number | null;
   minMonthlyKg: number | null;
   maxContaminationPct: number | null;
   maxMoisturePct: number | null;
@@ -597,3 +603,40 @@ export type ScanPile = z.infer<typeof s.scanPileSchema>;
 export type ScanLayout = z.infer<typeof s.scanLayoutSchema>;
 export type ScanLayoutMetrics = z.infer<typeof s.scanLayoutMetricsSchema>;
 export type ScanStage = z.infer<typeof s.scanStageSchema>;
+
+// 업체 정보 AI 도우미 (2026-11-22). 업체 측 AI가 공공 허가 명부와 담당자 대화로 업체 정보 초안을 채운다.
+// 초안은 담당자가 고른 항목만 저장된다(POST /vendors/{orgId}/onboarding/confirm).
+export type OnboardingSection = "permits" | "criteria" | "fleet" | "guardrails" | "process";
+export type OnboardingMessage = {
+  id: string;
+  role: "assistant" | "user";
+  text: string;
+  at: string | null;
+  /** 이 답을 쓰며 AI가 한 일(예: 공공 허가 명부 조회). summary만 화면에 보인다 */
+  tools: { name: string; summary: string }[];
+};
+export type OnboardingDraftItem = {
+  key: string;
+  section: OnboardingSection;
+  label: string;
+  value: unknown;
+  /** 화면에 보일 값 한 줄 */
+  text: string;
+  /** registry: 공공 허가 명부, conversation: 담당자 답변, agent: 외부에 연결한 에이전트가 제출 */
+  source: { kind: "registry" | "conversation" | "agent"; label: string; quote: string | null };
+};
+export type OnboardingCheck = { key: string; label: string; done: boolean; note: string };
+export type OnboardingState = {
+  orgId: string;
+  /** 이 대화를 답한 구현. rule이면 모델 없이 정해 둔 안내 문장이다 */
+  model: { provider: "ollama" | "foundry" | "anthropic" | "rule"; name: string } | null;
+  messages: OnboardingMessage[];
+  draft: OnboardingDraftItem[];
+  checks: OnboardingCheck[];
+  discoverable: boolean;
+};
+export type OnboardingConfirmResult = { profile: VendorProfile; onboarding: OnboardingState; keys?: string[] };
+/** 외부 AI 에이전트 연결 키. 키 원문은 만든 응답(token)에만 한 번 온다 */
+export type McpKey = { id: string; label: string; prefix: string; createdAt: string; lastUsedAt: string | null };
+export type McpKeyList = { path: string; limit: number; keys: McpKey[] };
+export type McpKeyCreated = { path: string; key: McpKey; token: string };

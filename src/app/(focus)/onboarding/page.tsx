@@ -3,12 +3,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { OrgNoticeBanner } from "@/components/agent/membership-sync";
-import { CompanyForm, InviteLinkForm } from "@/components/onboarding/company-form";
+import { CompanyForm, InviteLinkForm, NegotiationTestForm } from "@/components/onboarding/company-form";
 import { PhotoPane } from "@/components/photo-pane";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { COMPLEXES } from "@/lib/complexes";
 import { orgNoticeText } from "@/lib/auth/membership-sync";
 import { PHOTOS } from "@/lib/photos";
+import { backendConfig } from "@/lib/server/backend";
 import { readOrgNotice } from "@/lib/server/org-notice";
 import { getWorkspace } from "@/lib/server/workspace";
 
@@ -22,6 +23,7 @@ async function Form() {
   const [workspace, notice] = await Promise.all([getWorkspace(), readOrgNotice()]);
   if (!workspace) redirect("/login?callbackUrl=/onboarding");
   const first = workspace.memberships.length === 0;
+  const backend = backendConfig();
   return (
     <div className="grid flex-1 lg:grid-cols-12">
       <PhotoPane photo={PHOTOS.plantFloor} className="hidden lg:col-span-6 lg:block">
@@ -46,6 +48,11 @@ async function Form() {
                 ? "일하시는 회사를 등록하거나 받은 초대 링크로 들어가면 바로 시작할 수 있습니다."
                 : `${workspace.user.name}님, 가입을 환영합니다. 일하시는 회사를 등록하면 바로 시작할 수 있습니다.`}
           </p>
+          {backend.ok && backend.mode === "bff" ? (
+            <div className="mb-8 rounded-xl border border-line p-4">
+              <NegotiationTestForm />
+            </div>
+          ) : null}
           <CompanyForm complexes={COMPLEXES} />
           <div className="mt-10 border-t border-line pt-6">
             <InviteLinkForm />

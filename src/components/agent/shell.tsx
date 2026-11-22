@@ -92,7 +92,7 @@ function DemoFooter() {
     <div className="space-y-3 px-2.5 pb-2">
       <p className="min-w-0">
         <span className="block truncate text-[14px] font-medium">{org.name}</span>
-        <span className="block text-[12px] text-muted">시연 회사 · {KIND_LABEL[org.role]}</span>
+        <span className="block text-[12px] text-muted">{KIND_LABEL[org.role]}</span>
       </p>
       <ButtonLink href="/signup" className="w-full">
         가입하고 시작하기
@@ -123,7 +123,12 @@ function Offline() {
  * 본문은 가운데 한 줄 폭으로 그린다. 좁은 화면에서는 사이드바가 서랍이 된다.
  * notice는 본문 위에 한 번 보이는 안내다(회사에서 나왔거나 빠졌을 때).
  */
-export function AgentShell({ account, notice, children }: { account?: ReactNode; notice?: ReactNode; children: ReactNode }) {
+export function AgentShell({ account, notice, simulation, children }: {
+  account?: ReactNode;
+  notice?: ReactNode;
+  simulation?: boolean;
+  children: ReactNode;
+}) {
   const { mode, org, readOnly, basePath } = useV3();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -219,11 +224,16 @@ export function AgentShell({ account, notice, children }: { account?: ReactNode;
             className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-ground px-5 py-2.5 text-sm text-ink-2"
           >
             <span>
-              <span className="font-medium text-ink">체험 중</span> · 시연 회사의 가상 데이터입니다. 둘러보기만 할 수 있습니다.
+              <span className="font-medium text-ink">체험 중</span> · 둘러보기 전용입니다.
             </span>
             <Link href="/signup" className="-my-2.5 inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-4">
               가입하기
             </Link>
+          </p>
+        ) : null}
+        {simulation ? (
+          <p role="note" className="bg-ground px-5 py-2.5 text-sm text-ink-2">
+            <span className="font-medium text-ink">협상 테스트</span> · 예시 폐기물을 등록하고 가상 업체의 견적을 비교하세요.
           </p>
         ) : null}
         {readOnly ? null : notice}

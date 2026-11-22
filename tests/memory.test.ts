@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { contractReviewSchema, orgMemorySchema } from "../src/lib/v3/schema.ts";
+import { assignmentSchema, contractReviewSchema, orgMemorySchema } from "../src/lib/v3/schema.ts";
 
 const fixture = JSON.parse(readFileSync(new URL("./fixtures/v3-memory.json", import.meta.url), "utf8"));
 
@@ -34,4 +34,24 @@ test("지난 검수가 합의보다 낮게 나왔으면 계약 검토가 확인�
   assert.equal(item.title, "지난 검수 기록");
   assert.ok((item.evidence ?? []).length > 0);
   assert.equal(review.status, "needs_check");
+});
+
+test("판정 반영을 승인하면 보정 미리 보기와 승인 기록이 온다", () => {
+  const memory = orgMemorySchema.parse(fixture.memory);
+  assert.ok(memory.calibration?.applied, "담당자 승인 근거가 있다");
+  assert.ok(memory.calibration.applied.evidence.startsWith("human:"));
+  const sprue = memory.calibration.streams.find((s) => s.streamId === "st_sprue");
+  assert.ok(sprue && sprue.vendors.length > 0 && sprue.vendors[0].ratePct < 0);
+});
+
+test("결과 한 줄에 회사 기록 반영 예상 단가가 근거와 함께 온다", () => {
+  const row = assignmentSchema.parse(fixture.assignment);
+  assert.ok(row.personal?.expectedUnitPrice, "예상 단가 claim");
+  assert.ok(row.personal.expectedUnitPrice.evidence.length > 0);
+  assert.equal(row.personal.expectedUnitPrice.role, "unitPrice");
+  // 계약 단가는 그대로이고 예상 단가가 더 낮다(지난 검수가 합의보다 낮았다)
+  assert.ok(row.unitPrice && Number(row.personal.expectedUnitPrice.value) < Number(row.unitPrice.value));
+  // 다른 제안도 같은 기준의 예상 단가가 있고, 한 달 값은 보정 전이라고 밝힌다
+  const other = row.alternatives.find((a) => a.personalUnitPrice);
+  assert.ok(other && other.note.includes("회사 기록 보정 전"));
 });

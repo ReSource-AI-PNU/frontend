@@ -83,6 +83,26 @@ export async function createCompany(_prev: CompanyFormState, formData: FormData)
     throw error;
   }
   await unstable_update({ activeOrgId: orgId });
+  // 처리 업체는 업체 정보(허가 품목·매입 기준)를 채워야 탐색에 나오므로 업체 정보 화면에서 시작한다
+  redirect(parsed.data.kind === "vendor" ? "/app/materials" : "/app");
+}
+
+/** 같은 계정으로 테스트 회사를 만들거나 다시 연다. */
+export async function openNegotiationTest(): Promise<{ error?: string }> {
+  const session = await sessionUser();
+  let company: { id?: string };
+  try {
+    company = await callBackend<{ id?: string }>("/orgs/negotiation-test", {
+      method: "POST",
+      body: {},
+      userId: session.user.id,
+    });
+  } catch (error) {
+    if (error instanceof BackendError) return { error: "지금은 협상 테스트 회사를 열 수 없습니다." };
+    throw error;
+  }
+  if (!company.id) return { error: "협상 테스트 회사를 찾지 못했습니다." };
+  await unstable_update({ activeOrgId: company.id });
   redirect("/app");
 }
 

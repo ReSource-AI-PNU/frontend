@@ -162,3 +162,47 @@ export function groupTitle(names: string[]): string {
   if (names.length === 0) return "폐기물";
   return names.length > 2 ? `${names.slice(0, 2).join(" · ")} 외 ${names.length - 2}가지` : names.join(" · ");
 }
+
+// ── 메일로 보내기 (2026-11-22) ──────────────────────────────────────────────
+// 앱은 메일을 보내지 않는다. 담당자가 확인·수정한 글로 담당자의 메일 프로그램(또는 Gmail 쓰기 창)을 열 뿐이다.
+// 공공 허가 명부에는 메일 주소가 없으므로 받는 주소는 담당자가 확인해 적고, 앱은 그 주소를 저장하지 않는다.
+
+/** 메일 제목. 시연 회사의 글이면 앞에 시연 표시를 붙인다 */
+export function mailSubject(letter: Pick<QuoteRequest, "demo" | "item">): string {
+  return `${letter.demo ? "[시연용] " : ""}[견적 문의] ${letter.item.name} 처리 조건을 여쭙니다`;
+}
+
+/** 받는 주소 하나인지(여러 주소·이름 붙은 주소·공백은 받지 않는다) */
+export function isEmail(value: string): boolean {
+  return /^[^\s@,;<>()"]+@[^\s@,;<>()"]+\.[^\s@,;<>()".]+$/.test(value.trim());
+}
+
+/** 보낼 본문. 시연 회사의 글은 담당자가 시연 표시를 지워도 처음과 끝에 다시 붙인다 */
+export function mailBody(body: string, demo: boolean): string {
+  let text = body.trim();
+  if (demo) {
+    if (!text.startsWith(DEMO_MARK)) text = `${DEMO_MARK}\n\n${text}`;
+    if (!text.endsWith(DEMO_MARK)) text = `${text}\n\n${DEMO_MARK}`;
+  }
+  return `${text}\n`;
+}
+
+function encodeAddress(to: string): string {
+  return to
+    .trim()
+    .split("@")
+    .map((part) => encodeURIComponent(part))
+    .join("@");
+}
+
+/** 기본 메일 프로그램을 여는 주소(RFC 6068. 줄바꿈은 CRLF로 적는다) */
+export function mailtoUrl(to: string, subject: string, body: string): string {
+  const crlf = body.replace(/\r?\n/g, "\r\n");
+  return `mailto:${encodeAddress(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(crlf)}`;
+}
+
+/** 기본 메일 프로그램이 없을 때 쓰는 Gmail 쓰기 창 주소 */
+export function gmailUrl(to: string, subject: string, body: string): string {
+  const query = new URLSearchParams({ view: "cm", fs: "1", to: to.trim(), su: subject, body });
+  return `https://mail.google.com/mail/?${query.toString()}`;
+}

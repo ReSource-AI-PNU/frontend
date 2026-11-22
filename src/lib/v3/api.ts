@@ -25,11 +25,17 @@ import type {
   EvidenceHit,
   ExtractedField,
   MediaUploadResult,
+  ManualPermitInput,
+  PermitCatalogItem,
   Org,
   OutcomeCorrection,
   OutcomeInput,
   OutcomeResult,
   QuoteRequest,
+  McpKeyCreated,
+  McpKeyList,
+  OnboardingConfirmResult,
+  OnboardingState,
   OrgMemory,
   Report,
   RetrainExport,
@@ -208,18 +214,40 @@ export const api = {
   /** 회사별 기록(지난 답변·검수·교정·거래). 배출 기업 본인만. 읽기라서 체험하기에서도 열린다 */
   getMemory: (orgId: string) => request<OrgMemory>(`/orgs/${enc(orgId)}/memory`, orgId),
   /** 회사별 기록을 계약 검토에 쓸지 정한다. 기록은 지우지 않는다 */
-  putMemory: (orgId: string, enabled: boolean) =>
+  putMemory: (orgId: string, change: { enabled?: boolean; applyToJudgment?: boolean }) =>
     request<OrgMemory>(`/orgs/${enc(orgId)}/memory`, orgId, {
       method: "PUT",
-      body: JSON.stringify({ enabled }),
+      body: JSON.stringify(change),
     }),
 
   getVendor: (orgId: string) => request<VendorProfile>(`/vendors/${enc(orgId)}`, orgId),
-  putVendor: (orgId: string, profile: VendorProfile) =>
+  permitCatalog: (orgId: string) =>
+    request<PermitCatalogItem[]>(`/vendors/${enc(orgId)}/permit-catalog`, orgId),
+  putVendor: (orgId: string, profile: Partial<VendorProfile> & { appendPermits?: ManualPermitInput[] }) =>
     request<VendorProfile>(`/vendors/${enc(orgId)}`, orgId, {
       method: "PUT",
       body: JSON.stringify(profile),
     }),
+
+  /** 업체 정보 AI 도우미. 대화가 없으면 저장하지 않은 인사 메시지(id "greeting") 하나가 온다 */
+  getOnboarding: (orgId: string) => request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding`, orgId),
+  /** 담당자 말 하나를 보내고 AI의 답과 새 초안을 받는다. 모델이 답하므로 1분 가까이 걸릴 수 있다 */
+  sendOnboardingMessage: (orgId: string, text: string) =>
+    request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding/messages`, orgId, json({ text })),
+  /** 담당자가 고른 초안 항목(keys)만 업체 정보에 저장한다 */
+  confirmOnboarding: (orgId: string, keys: string[]) =>
+    request<OnboardingConfirmResult>(`/vendors/${enc(orgId)}/onboarding/confirm`, orgId, json({ keys })),
+  /** 대화와 초안을 비운다(저장한 업체 정보는 그대로다) */
+  resetOnboarding: (orgId: string) =>
+    request<OnboardingState>(`/vendors/${enc(orgId)}/onboarding`, orgId, { method: "DELETE" }),
+  /** 외부 AI 에이전트 연결 키 목록(키 원문은 없다) */
+  listMcpKeys: (orgId: string) => request<McpKeyList>(`/vendors/${enc(orgId)}/mcp-keys`, orgId),
+  /** 연결 키를 만든다. 응답의 token은 이때 한 번만 온다 */
+  createMcpKey: (orgId: string, label: string) =>
+    request<McpKeyCreated>(`/vendors/${enc(orgId)}/mcp-keys`, orgId, json({ label })),
+  /** 연결 키를 지운다(그 키로 붙은 에이전트는 더 이상 쓰지 못한다) */
+  deleteMcpKey: (orgId: string, keyId: string) =>
+    request<McpKeyList>(`/vendors/${enc(orgId)}/mcp-keys/${enc(keyId)}`, orgId, { method: "DELETE" }),
 
   /** 내가 당사자인 찾기 목록. 다른 기기에서 들어와도 이어 볼 수 있게 한다. */
   listSessions: (orgId: string) => request<SessionSummary[]>("/sessions", orgId),
