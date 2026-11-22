@@ -154,7 +154,7 @@ function Calibration({
   const applied = calibration.applied;
   const strength = applied ? applied.strength : calibration.proposedStrength;
   return (
-    <div className="mt-6 rounded-[10px] border border-ink px-4 py-4">
+    <div className="mt-6 rounded-md border border-ink px-4 py-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[15px] font-semibold">회사 기록을 판정에 반영</p>
         {applied ? <span className={`${chip} bg-ink text-on-ink`}>반영 중</span> : null}
