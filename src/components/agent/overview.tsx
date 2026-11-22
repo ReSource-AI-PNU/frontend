@@ -11,6 +11,7 @@ import { ClaimValue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { useWorkspace } from "@/components/v3/use-workspace";
 import { formatDateTime, formatNumber } from "@/lib/v3/format";
+import { signedWon } from "@/lib/v3/money";
 import { DOC_LABEL } from "@/lib/v3/labels";
 import { DEAL_STEPS, progressOf, type Activity, type Deal, type Task, type TaskKind } from "@/lib/v3/overview";
 import { Dots } from "./dots";
@@ -27,9 +28,12 @@ const TAG_TONE: Record<TaskKind, string> = {
 
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="min-w-0 bg-surface px-5 py-4">
+    <div className="min-w-0 bg-surface px-4 py-4 sm:px-5">
       <p className="text-[13px] text-muted">{label}</p>
-      <p className="mt-1 text-[24px] leading-tight font-bold tracking-[-0.03em] whitespace-nowrap tabular-nums">{children}</p>
+      {/* 좁은 화면에서 금액이 칸을 넘으면 단위만 아래 줄로 내린다(숫자는 자르지 않는다) */}
+      <p className="mt-1 flex flex-wrap items-baseline text-[20px] leading-tight font-bold tracking-[-0.03em] tabular-nums sm:text-[24px]">
+        {children}
+      </p>
     </div>
   );
 }
@@ -171,7 +175,14 @@ export function Overview() {
       <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-4">
         {emitter ? (
           <Cell label={h.provisional ? "지금 대비 한 달 (잠정)" : "지금 대비 한 달"}>
-            {h.difference ? <ClaimValue claim={h.difference} signed className="text-gain" /> : <span className="text-muted">—</span>}
+            {h.difference ? (
+              <>
+                <ClaimValue claim={h.difference} signed display={signedWon(h.difference)} className="text-gain" />
+                <span className={unit}>/월</span>
+              </>
+            ) : (
+              <span className="text-[15px] font-semibold sm:text-[16px]">찾기 전</span>
+            )}
           </Cell>
         ) : (
           <Cell label="진행 중인 거래">

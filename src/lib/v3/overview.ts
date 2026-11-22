@@ -395,10 +395,12 @@ export type Headline = {
 };
 
 export function headlineOf(views: DiagnosisView[], deals: Deal[]): Headline {
-  const latest = views[0] ?? null;
+  // 새 찾기가 돌고 있는 동안에는 결과가 아직 없다. 그때는 결과가 있는 가장 최근 찾기의 숫자를 그대로 보인다
+  // (홈 맨 위 숫자가 찾는 동안 빈 칸과 0으로 바뀌지 않게 한다)
+  const latest = views.find((view) => view.result) ?? views[0] ?? null;
   const totals = latest?.result?.totals ?? null;
-  const recycledKg = deals
-    .filter((deal) => deal.sessionId === latest?.session.id && deal.stage !== "declined")
+  const recycledKg = (latest ? dealsOf(latest) : [])
+    .filter((deal) => deal.stage !== "declined")
     .flatMap((deal) => deal.items)
     .reduce((sum, item) => sum + (item.monthlyKg ?? 0), 0);
   return {
