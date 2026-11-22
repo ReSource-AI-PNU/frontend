@@ -18,6 +18,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **글자**: 색 글자와 회색 글자로 뜻을 가르지 않는다(전역에서 먹색 하나로 덮는다. `globals.css` 맨 아래 묶음). 화면 글자는 12px 이상이다(인쇄용 `print:`는 예외).
 - **상자**: 회색으로 채운 상자를 만들지 않는다. 상자 안에 상자를 넣지 않고 구분선(`border-t border-line`)으로 가른다.
 - **모서리**: `rounded-sm`(4) · `md`(8) · `lg`(12) · `xl`(16) · `2xl`(20) · `3xl`(24)만 쓴다. 이름표는 `rounded-[6px]`, 막대는 `rounded-[2px]`. 그 밖의 `rounded-[Npx]`는 쓰지 않는다.
+- **색**: 상태 색은 `gain`(좋음) · `loss`(나쁨) · `warn`(주의) · `accent`(강조) 네 가지다(`text-gain`, `bg-gain-bg` 꼴). `text-good`처럼 `globals.css`에 없는 이름은 색이 들어가지 않는다.
 - **이름표**: 상태 이름표는 `inline-flex h-6 items-center rounded-[6px] px-2 text-[13px] font-medium` 한 모양이다(`Badge`, `StatusChip`). 누르는 칩(걸러 보기, 근거 열기)만 알약 모양(`rounded-full`)이다.
 - **단추**: `components/ui/button`의 `Button`·`ButtonLink`·`buttonClass`를 쓴다. 한 화면에 채운 단추(primary)는 하나다.
 - **E2E**: 로그인 뒤 첫 화면은 홈이다. 찾기 화면의 검사는 `/app/find`(체험하기는 `/demo/find`)로 가서 한다. 접힌 칸은 제목을 눌러 편 뒤 확인한다.

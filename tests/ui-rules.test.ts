@@ -59,3 +59,14 @@ test("화면 문구의 서비스 이름은 BYPRO다", () => {
   const hits = scan(code, /Re:Source AI/);
   assert.equal(hits.length, 0, `옛 이름이 남아 있습니다. BYPRO로 바꿔 주세요.\n${report(hits)}`);
 });
+
+test("상태 색 이름은 정의된 것만 쓴다: gain(좋음) · loss(나쁨) · warn(주의) · accent(강조)", () => {
+  // globals.css에 없는 이름은 Tailwind가 만들지 않아 색이 들어가지 않는다(2026-11-22 text-good이 그랬다)
+  const hits = scan(tsx, /\b(?:text|bg|border|decoration|fill|stroke)-(?:good|bad|success|danger|error|info|positive|negative)(?:-bg)?\b/);
+  assert.equal(
+    hits.length,
+    0,
+    `정의되지 않은 색 이름입니다. 좋음은 text-gain·bg-gain-bg, 나쁨은 text-loss·bg-loss-bg, 주의는 text-warn·bg-warn-bg 로 바꿔 주세요.\n${report(hits)}`,
+  );
+});
+
