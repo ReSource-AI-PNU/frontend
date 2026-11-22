@@ -155,7 +155,7 @@ export function ComplexPartnersSection({
                 <p className="mt-1 text-[14px] text-ink-2">{group.reason ?? "같은 단지에서 맞는 곳을 찾지 못했습니다."}</p>
               ) : (
                 <>
-                  <h4 className="mt-2 text-[13px] font-semibold text-ink-2">{TAKES_TITLE}</h4>
+                  <h4 className="mt-2 text-[13px] font-semibold text-ink-2">{TAKES_TITLE}{group.takesTotal > 0 ? ` ${group.takesTotal}곳` : ""}</h4>
                   {group.takes.length > 0 ? (
                     <PartnerList candidates={group.takes} total={group.takesTotal} onRequest={requestFor(group.streamIds)} />
                   ) : (

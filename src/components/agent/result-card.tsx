@@ -6,7 +6,7 @@ import { ChevronDownIcon } from "@/components/icons";
 import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { josa } from "@/lib/josa";
-import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedHeadline } from "@/lib/v3/format";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, carbonText, formatNumber, isAssumed, placedCount, placedHeadline } from "@/lib/v3/format";
 import { processLabel } from "@/lib/v3/flow";
 import { numberOf, priceText, signedWon, won } from "@/lib/v3/money";
 import type { Approval, Assignment, OrgRole, PermitCheckInput, Result, Thread, ViewStream } from "@/lib/v3/types";
@@ -21,10 +21,14 @@ function isEmitterRole(role: OrgRole) {
   return role === "emitter";
 }
 
+const RESULT_COLUMNS = "sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem]";
+const CURRENT_COLUMNS = "sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)]";
+
 function Row({
   assignment,
   stream,
   role,
+  showComparison,
   onOpenTalk,
   onPermitCheck,
   busy,
@@ -34,6 +38,7 @@ function Row({
   assignment: Assignment;
   stream: ViewStream | undefined;
   role: OrgRole;
+  showComparison: boolean;
   onOpenTalk: (threadId: string) => void;
   onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
   busy: boolean;
@@ -79,10 +84,12 @@ function Row({
     Boolean(approval?.emitter && approval.vendor && !approval.blocked);
   const statusLabel = STATUS_WORD[assignment.status] ?? "매입 조건 상태 확인 필요";
   const inspectionRequired = todo.some((item) => INSPECTION_CHECKS.has(item.key));
+  const hasDifferenceColumn = showComparison || !isEmitter;
+  const columns = hasDifferenceColumn ? RESULT_COLUMNS : CURRENT_COLUMNS;
 
   return (
     <li className="py-3.5">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem] sm:items-baseline">
+      <div className={`grid ${hasDifferenceColumn ? "grid-cols-[minmax(0,1fr)_auto]" : "grid-cols-1"} ${columns} gap-x-4 gap-y-1 sm:items-baseline`}>
         <div className="min-w-0">
           <p className="font-medium">{stream?.name ?? assignment.streamId}</p>
           <p className="text-[13px] text-muted">
@@ -99,31 +106,33 @@ function Row({
         </div>
 
         {/* 좁은 화면에서는 한 달 차이를 이름 옆에 둔다 */}
-        <p className="text-right tabular-nums sm:order-last">
-          {isEmitter && assignment.difference ? (
-            <>
-              <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
-              {(assignment.transportPending || assignment.costPending) ? (
-                <span className="block text-[12px] text-warn">미확인 비용 반영 전</span>
-              ) : assignment.bundleBelowCurrent?.bundle ? (
-                <span className="block text-[12px] text-warn">
-                  묶음 전체{" "}
-                  <ClaimValue
-                    claim={assignment.bundleBelowCurrent.bundle}
-                    signed
-                    hideAssumed
-                    display={signedWon(assignment.bundleBelowCurrent.bundle)}
-                    className="!font-normal"
-                  />
-                </span>
-              ) : isAssumed(assignment.difference) ? (
-                <span className="block text-[12px] text-muted">가정값 포함</span>
-              ) : null}
-            </>
-          ) : isEmitter ? (
-            <span className="text-[13px] text-muted">{placed ? "계산 전" : "변화 없음"}</span>
-          ) : null}
-        </p>
+        {hasDifferenceColumn ? (
+          <p className="text-right tabular-nums sm:order-last">
+            {isEmitter && assignment.difference ? (
+              <>
+                <ClaimValue claim={assignment.difference} signed hideAssumed display={signedWon(assignment.difference)} />
+                {(assignment.transportPending || assignment.costPending) ? (
+                  <span className="block text-[12px] text-warn">미확인 비용 반영 전</span>
+                ) : assignment.bundleBelowCurrent?.bundle ? (
+                  <span className="block text-[12px] text-warn">
+                    묶음 전체{" "}
+                    <ClaimValue
+                      claim={assignment.bundleBelowCurrent.bundle}
+                      signed
+                      hideAssumed
+                      display={signedWon(assignment.bundleBelowCurrent.bundle)}
+                      className="!font-normal"
+                    />
+                  </span>
+                ) : isAssumed(assignment.difference) ? (
+                  <span className="block text-[12px] text-muted">가정값 포함</span>
+                ) : null}
+              </>
+            ) : isEmitter ? (
+              <span className="text-[13px] text-muted">{placed ? "계산 전" : "변화 없음"}</span>
+            ) : null}
+          </p>
+        ) : null}
 
         <div className="min-w-0">
           {reused ? (
@@ -153,7 +162,7 @@ function Row({
           ) : null}
         </div>
 
-        <p className="col-span-2 min-w-0 text-[15px] text-ink-2 sm:col-span-1">
+        <p className={`min-w-0 text-[15px] text-ink-2 ${hasDifferenceColumn ? "col-span-2 sm:col-span-1" : ""}`}>
           {reused ? (
             "신재 구입을 줄입니다"
           ) : assignment.unitPrice ? (
@@ -489,16 +498,18 @@ function GreenestNote({ greenest }: { greenest: NonNullable<Result["greenest"]> 
 function MoneySentence({
   totals,
   conditional,
+  showComparison,
   pending,
 }: {
   totals: Result["totals"];
   conditional: boolean;
+  showComparison: boolean;
   pending: number;
 }) {
   const now = numberOf(totals.monthlyNow);
   const after = numberOf(totals.monthlyAfter);
   const difference = numberOf(totals.difference);
-  if (now === null && after === null && difference === null) {
+  if (now === null && (!showComparison || (after === null && difference === null))) {
     return <p className="mt-2 text-ink-2">금액은 확인이 더 필요합니다.</p>;
   }
   return (
@@ -512,7 +523,7 @@ function MoneySentence({
           {now < 0 ? "내고" : "받고"} 있습니다.{" "}
         </>
       ) : null}
-      {after !== null ? (
+      {showComparison && after !== null ? (
         <>
           {conditional ? "조건이 확인되면" : "이대로 바꾸면"} 한 달에{" "}
           <Glue>
@@ -557,9 +568,11 @@ export function ResultCard({
   const { openEvidence } = useV3();
   const { totals } = result;
   const count = result.assignments.length;
-  const placed = result.assignments.filter((item) => item.vendorOrgId || item.route === "reuse").length;
+  const placed = placedCount(result.assignments);
   const assumptionIds = result.assumptions.map((item) => item.id);
   const isEmitter = role === "emitter";
+  const showComparison = isEmitter && placed > 0;
+  const columns = isEmitter && !showComparison ? CURRENT_COLUMNS : RESULT_COLUMNS;
   // 받는 곳은 정해졌는데 탄소를 계산하지 못한 폐기물(배출계수가 없는 처리 방식). 합계에서 빠졌다는 것을 숨기지 않는다
   const carbonGap = result.assignments.filter((item) => item.vendorOrgId && item.carbon === null).length;
   const conditional = result.status === "conditional";
@@ -573,14 +586,14 @@ export function ResultCard({
           ? `${counterpart}에서 폐기물 ${count}가지를 문의했습니다.`
           : placedHeadline(count, placed)}
       </h2>
-      {isEmitter ? <MoneySentence totals={totals} conditional={conditional} pending={pending.length} /> : null}
+      {isEmitter ? <MoneySentence totals={totals} conditional={conditional} showComparison={showComparison} pending={pending.length} /> : null}
 
       <div className="mt-6">
-        <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem] gap-x-4 border-b border-line pb-2 text-[13px] text-muted sm:grid">
+        <div className={`hidden ${columns} gap-x-4 border-b border-line pb-2 text-[13px] text-muted sm:grid`}>
           <span>폐기물</span>
           <span>{isEmitter ? "처리 후보" : "상태"}</span>
           <span>조건</span>
-          <span className="text-right">{isEmitter ? "한 달 차이" : ""}</span>
+          {showComparison ? <span className="text-right">한 달 차이</span> : !isEmitter ? <span /> : null}
         </div>
         <ul aria-label="품목별 처리 후보" className="divide-y divide-line border-b border-line sm:border-t-0">
           {result.assignments.map((assignment) => (
@@ -589,6 +602,7 @@ export function ResultCard({
               assignment={assignment}
               stream={streams.find((item) => item.id === assignment.streamId)}
               role={role}
+              showComparison={showComparison}
               onOpenTalk={onOpenTalk}
               onPermitCheck={onPermitCheck}
               busy={busy}
@@ -597,7 +611,7 @@ export function ResultCard({
             />
           ))}
         </ul>
-        {isEmitter && totals.difference ? (
+        {showComparison && totals.difference ? (
           <p className="flex items-baseline justify-between gap-4 py-4 font-semibold">
             <span>
               한 달 합계
@@ -612,10 +626,10 @@ export function ResultCard({
         ) : null}
       </div>
 
-      {isEmitter && result.greenest ? <GreenestNote greenest={result.greenest} /> : null}
+      {showComparison && result.greenest ? <GreenestNote greenest={result.greenest} /> : null}
 
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
-        {conditional ? "조건부 후보의 매입 조건은 검수 등 확인 결과에 따라 달라질 수 있습니다. " : ""}
+        {conditional && (showComparison || !isEmitter) ? "조건부 후보의 매입 조건은 검수 등 확인 결과에 따라 달라질 수 있습니다. " : ""}
         숫자를 누르면 계약서·측정값·법 조항 같은 근거가 열립니다.
         {assumptionIds.length > 0 ? (
           <>
@@ -630,7 +644,7 @@ export function ResultCard({
             </button>
           </>
         ) : null}
-        {isEmitter && totals.carbon ? (
+        {showComparison && totals.carbon ? (
           <>
             {" "}
             처리 단계 배출 변화(국내 처리 공정 계수)는 운송 배출을 더해{" "}
@@ -645,7 +659,7 @@ export function ResultCard({
           </>
         ) : null}
       </p>
-      {isEmitter && (result.scope ?? []).length > 0 ? (
+      {showComparison && (result.scope ?? []).length > 0 ? (
         <div className="mt-2 text-[13px] leading-relaxed text-muted">
           <p className="font-medium text-ink-2">계산 범위</p>
           <ul className="mt-0.5 space-y-0.5">

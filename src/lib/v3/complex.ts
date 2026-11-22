@@ -43,21 +43,12 @@ export function groupComplex(partners: ComplexPartners): ComplexGroup[] {
   return groups;
 }
 
-/** 화면에 보이는 서로 다른 회사 수(받는 곳과 쓰는 곳을 함께 센다) */
-export function uniquePartners(partners: ComplexPartners): number {
-  return new Set(partners.streams.flatMap((stream) => [...stream.takes, ...stream.uses].map((item) => item.id))).size;
-}
-
 export function complexHeadline(partners: ComplexPartners): string {
-  if (!partners.complex) return "같은 산업단지의 자원순환 후보";
-  const count = uniquePartners(partners);
-  return count > 0
-    ? `${partners.complex.name} 안의 자원순환 후보 ${count}곳`
-    : `${partners.complex.name} 안에서는 맞는 곳을 찾지 못했습니다`;
+  return partners.complex ? `${partners.complex.name} 공개 명부 참고` : "같은 산업단지 공개 명부 참고";
 }
 
 export const COMPLEX_LEAD =
-  "같은 단지 회사가 신고한 생산품과 공공 허가 명부로 찾은 곳입니다. 다른 회사의 물량은 쓰지 않았고, 이 회사들에 아무것도 보내지 않았습니다. 단가를 몰라 한 달 차이 계산에는 넣지 않았습니다.";
+  "같은 단지의 신고 생산품과 공공 허가 명부로 찾았습니다. 폐기물을 받는 곳과 재생원료를 쓰는 곳을 나눠 보여 줍니다. 실제 반입 가능 여부와 단가는 업체에 문의해야 합니다.";
 
 export const TAKES_TITLE = "받아서 재생원료로 만드는 곳";
 export const USES_TITLE = "재생원료를 쓸 수 있는 곳";

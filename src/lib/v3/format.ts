@@ -158,6 +158,11 @@ export const THREAD_LABEL: Record<string, string> = {
   confirmed: "확정",
 };
 
+/** 업체 배정과 사내 재투입을 처리 후보로 센다. */
+export function placedCount(assignments: readonly { vendorOrgId: string | null; route: string | null }[]): number {
+  return assignments.filter((item) => item.vendorOrgId || item.route === "reuse").length;
+}
+
 /** 처리 후보가 있는 품목 수를 표시한다. */
 export function placedHeadline(count: number, placed: number): string {
   if (placed <= 0) return "처리 후보를 찾지 못했습니다";

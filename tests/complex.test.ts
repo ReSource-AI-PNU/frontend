@@ -18,7 +18,6 @@ import {
   quoteVendorId,
   resinChip,
   UNLISTED_NOTE,
-  uniquePartners,
   USES_NOTE,
 } from "../src/lib/v3/complex.ts";
 import { complexPartnersSchema, outsideVendorsSchema } from "../src/lib/v3/schema.ts";
@@ -51,14 +50,10 @@ test("재질이 같은 폐기물은 한 묶음이 되고, 필름은 따로 묶�
   assert.deepEqual(film?.streamIds, ["st_film"]);
 });
 
-test("머리글은 단지 이름과 서로 다른 회사 수를 적는다", () => {
-  const count = uniquePartners(partners);
-  assert.equal(count, new Set([...takes, ...uses].map((item) => item.id)).size);
-  assert.equal(complexHeadline(partners), `녹산국가산업단지 안의 자원순환 후보 ${count}곳`);
+test("명부 제목은 제한된 목록의 개수를 표시하지 않는다", () => {
+  assert.equal(complexHeadline(partners), "녹산국가산업단지 공개 명부 참고");
   const none: ComplexPartners = { ...partners, complex: null, reason: "회사가 산업단지에 등록되어 있지 않아 찾지 않았습니다.", streams: [] };
-  assert.equal(complexHeadline(none), "같은 산업단지의 자원순환 후보");
-  const empty: ComplexPartners = { ...partners, streams: partners.streams.map((stream) => ({ ...stream, takes: [], uses: [] })) };
-  assert.equal(complexHeadline(empty), "녹산국가산업단지 안에서는 맞는 곳을 찾지 못했습니다");
+  assert.equal(complexHeadline(none), "같은 산업단지 공개 명부 참고");
 });
 
 test("허가 칩: 처리 품목까지 맞을 때만 무채색이고, 명부에 없으면 허가 확인 필요다", () => {

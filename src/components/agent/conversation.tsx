@@ -14,7 +14,7 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
-import { THREAD_LABEL, clearedApprovalsText, currentBundle, questionIntro } from "@/lib/v3/format";
+import { THREAD_LABEL, clearedApprovalsText, currentBundle, placedCount, questionIntro } from "@/lib/v3/format";
 import { AI_NAME, DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
 import { pickupTodo } from "@/lib/v3/pickup";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
@@ -634,6 +634,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const canContinue = isEmitter && status === "idle" && !ended && openQuestions.length === 0;
   const unknown = answered.filter((item) => item.unknown).length;
   const result = holding ? null : view.result;
+  const hasRoute = result !== null && placedCount(result.assignments) > 0;
   const liveThreads = threads.filter((item) => item.messages.length > 0 || item.typing);
   const openTalk = (id: string) => {
     setThreadId(id);
@@ -865,9 +866,9 @@ export function Conversation({ d }: { d: Diagnosis }) {
           />
         ) : null}
 
-        {result && isEmitter && !holding && result.circular ? <CircularEffects circular={result.circular} /> : null}
+        {result && isEmitter && hasRoute && result.circular ? <CircularEffects circular={result.circular} /> : null}
 
-        {result && isEmitter && !holding && view.streams.length > 0 ? <FlowChart result={result} streams={view.streams} /> : null}
+        {result && isEmitter && hasRoute && view.streams.length > 0 ? <FlowChart result={result} streams={view.streams} /> : null}
 
         {result && isEmitter && !holding && result.regulation && result.regulation.length > 0 ? (
           <RegulationSection sections={result.regulation} streams={view.streams} />
@@ -877,25 +878,30 @@ export function Conversation({ d }: { d: Diagnosis }) {
           <ImprovementsSection items={result.improvements} streams={view.streams} />
         ) : null}
 
-        {result && isEmitter && !holding && result.outsideVendors ? (
-          <OutsideVendorsSection
-            outside={result.outsideVendors}
-            streams={view.streams}
-            sessionId={view.session.id}
-            orgId={d.org.id}
-            onSearchAgain={d.canAct ? d.forget : undefined}
-          />
-        ) : null}
-
-        {result && isEmitter && !holding && result.complexPartners ? (
-          <ComplexPartnersSection
-            partners={result.complexPartners}
-            outside={result.outsideVendors ?? null}
-            streams={view.streams}
-            sessionId={view.session.id}
-            orgId={d.org.id}
-            onSearchAgain={d.canAct ? d.forget : undefined}
-          />
+        {result && isEmitter && (result.outsideVendors || result.complexPartners) ? (
+          <MoreDetails label="공개 명부에서 문의할 곳 보기" closeLabel="공개 명부 접기" defaultOpen={hasRoute}>
+            <div className="space-y-6">
+              {result.outsideVendors ? (
+                <OutsideVendorsSection
+                  outside={result.outsideVendors}
+                  streams={view.streams}
+                  sessionId={view.session.id}
+                  orgId={d.org.id}
+                  onSearchAgain={d.canAct ? d.forget : undefined}
+                />
+              ) : null}
+              {result.complexPartners ? (
+                <ComplexPartnersSection
+                  partners={result.complexPartners}
+                  outside={result.outsideVendors ?? null}
+                  streams={view.streams}
+                  sessionId={view.session.id}
+                  orgId={d.org.id}
+                  onSearchAgain={d.canAct ? d.forget : undefined}
+                />
+              ) : null}
+            </div>
+          </MoreDetails>
         ) : null}
 
         {result ? <Approvals view={view} d={d} nameOf={nameOf} /> : null}
