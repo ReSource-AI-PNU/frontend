@@ -905,6 +905,7 @@ const circularTotalSchema = obj({
   /** partial: 산정한 폐기물만 더한 부분합 */
   status: z.enum(["estimated", "partial", "hold", "zero"]),
   total: claimOrNull,
+  upper: claimOrNull.optional(),
   countedKg: claimOrNull,
   heldKg: claimOrNull,
   heldStreams: z.array(obj({ streamId: z.string(), streamName: z.string().nullable() })),
@@ -977,6 +978,7 @@ export const circularSchema = obj({
       streamName: z.string().nullable(),
       metric: z.enum(["ghg", "energy", "virgin"]),
       value: claimOrNull,
+      upper: claimOrNull.optional(),
       assumptions: z.array(z.string()),
       reason: z.string(),
       status: z.enum(["estimated", "hold", "zero"]),

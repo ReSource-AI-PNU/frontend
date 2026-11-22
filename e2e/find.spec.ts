@@ -94,8 +94,9 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
     await expect(rows.filter({ hasText: name })).toContainText(WON);
   }
   await expect(result.getByText("한 달 합계")).toBeVisible();
-  // 원문 경계를 확인한 배출계수와 실제 운송 조건이 없으면 탄소는 0으로 두지 않고 산정 보류로 보인다
-  await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(0);
+  // 처리 단계 탄소 합계가 비어 있을 때 요약에서 재활용 문헌 추정을 보여 준다
+  await expect(result.getByText("재활용 탄소 추정", { exact: true })).toBeVisible();
+  await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(1);
   // 결과 표 아래의 자세한 내용은 접혀 있다. 제목을 눌러 편다
   await page.getByRole("button", { name: /^자원순환 효과/ }).click();
   const effects = page.getByRole("region", { name: "자원순환 효과" });

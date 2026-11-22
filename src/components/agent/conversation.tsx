@@ -15,7 +15,7 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
-import { metricText, scenarioOf } from "@/lib/v3/circular";
+import { metricRangeText, scenarioOf } from "@/lib/v3/circular";
 import { THREAD_LABEL, carbonText, clearedApprovalsText, currentBundle, placedCount, questionIntro } from "@/lib/v3/format";
 import { DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
 import { pickupTodo } from "@/lib/v3/pickup";
@@ -577,7 +577,7 @@ function Documents({ view }: { view: DiagnosisView }) {
 function circularSummary(circular: Circular): string | undefined {
   // 펼쳤을 때 맨 앞에 보이는 값과 같은 것을 쓴다(src/components/agent/circular-effects.tsx)
   const totals = circular.reference?.totals ?? scenarioOf(circular, "A")?.totals;
-  const text = metricText("ghg", totals?.ghg?.total);
+  const text = metricRangeText("ghg", totals?.ghg?.total, totals?.ghg?.upper);
   return text ? `재활용 추정 · ${text}` : undefined;
 }
 
