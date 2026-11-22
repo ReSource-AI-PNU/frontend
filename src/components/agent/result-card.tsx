@@ -595,7 +595,7 @@ export function ResultCard({
             <ClaimValue claim={totals.difference} signed display={signedWon(totals.difference)} />
           </Figure>
           <Figure label="탄소 변화" small>
-            {totals.carbon ? <ClaimValue claim={totals.carbon} /> : <span className="text-muted">—</span>}
+            {totals.carbon ? <ClaimValue claim={totals.carbon} /> : <span className="font-semibold">확인 필요</span>}
           </Figure>
         </div>
       ) : isEmitter ? (

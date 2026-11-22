@@ -15,6 +15,7 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
+import { metricText, scenarioOf } from "@/lib/v3/circular";
 import { THREAD_LABEL, carbonText, clearedApprovalsText, currentBundle, placedCount, questionIntro } from "@/lib/v3/format";
 import { DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
 import { pickupTodo } from "@/lib/v3/pickup";
@@ -30,7 +31,7 @@ import {
   shouldCloseTalk,
   type NoticeMark,
 } from "@/lib/v3/question-notice";
-import type { DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
+import type { Circular, DiagnosisView, Question, Stage, ViewStream } from "@/lib/v3/types";
 import { permitLine, permitPaper, permitTodo } from "@/lib/v3/permit";
 import { AgentStage } from "./agent-stage";
 import { PermitChip } from "./permit-check";
@@ -571,6 +572,14 @@ function Documents({ view }: { view: DiagnosisView }) {
  * 실행 중(또는 다시 보기 중)에는 실시간 진행 스트림으로 6단계와 업체별 대화가 오는 대로 바뀌고, 대화 패널에는 말풍선이
  * 하나씩 나타난다. 이 화면이 시작한 실행은 끝날 때까지 결과를 가리고, 끝나면 진단 뷰를 다시 읽어 전체를 그린다.
  */
+/** 처리 단계 탄소를 계산하지 못했을 때 접는 칸에 보일 한 줄. 문헌 기반 예상 감축량이 있으면 그것을 적는다 */
+function circularSummary(circular: Circular): string | undefined {
+  // 펼쳤을 때 맨 앞에 보이는 값과 같은 것을 쓴다(src/components/agent/circular-effects.tsx)
+  const totals = circular.reference?.totals ?? scenarioOf(circular, "A")?.totals;
+  const text = metricText("ghg", totals?.ghg?.total);
+  return text ? `예상 감축 ${text}` : undefined;
+}
+
 export function Conversation({ d }: { d: Diagnosis }) {
   const { orgs, basePath, readOnly } = useV3();
   const view = d.view as DiagnosisView;
@@ -879,7 +888,11 @@ export function Conversation({ d }: { d: Diagnosis }) {
         {result && isEmitter && !holding ? (
           <FoldGroup className="[&_section]:border-0 [&_section]:pt-0">
             {hasRoute && result.circular ? (
-              <Fold title="자원순환 효과" summary={carbonText(result.totals.carbon, true)} icon={<ReportIcon />}>
+              <Fold
+                title="자원순환 효과"
+                summary={carbonText(result.totals.carbon, true) ?? circularSummary(result.circular)}
+                icon={<ReportIcon />}
+              >
                 <CircularEffects circular={result.circular} />
               </Fold>
             ) : null}
