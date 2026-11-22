@@ -16,6 +16,9 @@ npm-debug.log*
 .DS_Store
 docs
 tests
+# 브라우저 E2E 시험(tests/fixtures를 불러온다). 운영 이미지 빌드의 타입 검사에 넣지 않는다
+e2e
+playwright.config.ts
 README.md
 Dockerfile
 .dockerignore
