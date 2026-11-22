@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { BrandInitial, BrandLink } from "@/components/brand";
-import { CloseIcon, MenuIcon, PlusIcon, ShieldIcon } from "@/components/icons";
+import { ChevronRightIcon, CloseIcon, MenuIcon, PlusIcon, ShieldIcon } from "@/components/icons";
 import { InstallHint } from "@/components/pwa/install-hint";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useEscape } from "@/components/use-escape";
@@ -15,15 +15,22 @@ import { currentSection, legacyHashTarget, linkCurrent, navSections } from "./na
 // 첫째 칸: 아이콘 위, 이름 아래. 지금 갈래는 옅은 파랑 바탕이다
 const railItem =
   "rs-press flex min-h-14 w-16 flex-col items-center justify-center gap-1 rounded-lg px-1 text-center text-[12px] leading-tight text-ink-2 hover:bg-sunken hover:text-ink";
-// 둘째 칸: 이름 한 줄. 지금 보는 줄은 굵게 쓰고 왼쪽에 먹색 막대를 둔다(채움으로 가르지 않는다)
+// 둘째 칸의 층: 갈래 이름(제목, 누를 수 없음) → 묶음 이름(작은 회색 머리, 누를 수 없음) → 화면(누르는 줄).
+// 누르는 줄은 묶음 아래로 들여 쓰고 왼쪽 안내선 위에 두며, 오른쪽 화살표로 다른 화면이 열린다는 것을 보인다.
+// 지금 보는 줄은 굵은 글씨와 옅은 바탕, 안내선 자리의 먹색 막대로 가른다
 const panelItem =
-  "rs-press relative flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-[14px] text-ink-2 hover:bg-sunken hover:text-ink aria-[current]:font-semibold aria-[current]:text-ink aria-[current]:before:absolute aria-[current]:before:inset-y-2.5 aria-[current]:before:left-0 aria-[current]:before:w-0.5 aria-[current]:before:rounded-[2px] aria-[current]:before:bg-ink aria-[current]:before:content-['']";
+  "rs-press group/item relative -ml-px flex min-h-10 w-full items-center gap-2 rounded-r-lg border-l-2 border-transparent py-2 pr-2 pl-3 text-left text-[14px] text-ink hover:border-line-strong hover:bg-sunken aria-[current]:border-ink aria-[current]:bg-sunken aria-[current]:font-semibold";
 
-function PanelGroup({ label, children }: { label: string; children: ReactNode }) {
+function PanelGroup({ label, children }: { label: string | null; children: ReactNode }) {
   return (
-    <div className="mt-3 first:mt-0">
-      <p className="px-3 pt-2 pb-1 text-[12px] font-medium tracking-[0.01em] text-muted">{label}</p>
-      <ul className="space-y-px">{children}</ul>
+    <div className="mt-4 first:mt-0">
+      {label ? (
+        <p className="flex items-center gap-2 px-1 pb-1.5 text-[12px] font-semibold text-muted">
+          <span className="shrink-0">{label}</span>
+          <span aria-hidden="true" className="h-px flex-1 bg-line" />
+        </p>
+      ) : null}
+      <ul className="ml-2 border-l border-line">{children}</ul>
     </div>
   );
 }
@@ -175,7 +182,7 @@ export function AgentShell({ account, notice, simulation, children }: {
   const panel = (
     <div className="flex h-full w-[220px] min-w-0 flex-col overflow-y-auto px-2.5 py-3">
       <div className="flex min-h-10 items-center justify-between gap-2 px-3">
-        <p className="min-w-0 truncate text-[15px] font-bold tracking-[-0.01em]">{current?.label ?? org.name}</p>
+        <p className="min-w-0 truncate text-[17px] font-bold tracking-[-0.02em]">{current?.label ?? org.name}</p>
         <button
           type="button"
           aria-label="메뉴 닫기"
@@ -186,14 +193,19 @@ export function AgentShell({ account, notice, simulation, children }: {
         </button>
       </div>
 
-      <nav aria-label={`${current?.label ?? "화면"} 소메뉴`} className="mt-2">
+      <nav aria-label={`${current?.label ?? "화면"} 소메뉴`} className="mt-2 border-t border-line px-1 pt-3">
         {linkCount > 1
           ? groups.map((group) => (
-              <PanelGroup key={group.label} label={group.label}>
+              // 묶음 이름이 갈래 이름과 같으면 같은 말을 두 번 쓰지 않는다
+              <PanelGroup key={group.label} label={group.label === current?.label && groups.length === 1 ? null : group.label}>
                 {group.links.map((link) => (
                   <li key={link.href}>
                     <Link href={link.href} aria-current={linkCurrent(pathname, link)} onClick={close} className={panelItem}>
                       <span className="min-w-0 flex-1 truncate">{link.label}</span>
+                      <ChevronRightIcon
+                        aria-hidden="true"
+                        className="size-3.5 shrink-0 text-muted opacity-60 group-hover/item:opacity-100 group-aria-[current]/item:text-ink group-aria-[current]/item:opacity-100"
+                      />
                     </Link>
                   </li>
                 ))}
