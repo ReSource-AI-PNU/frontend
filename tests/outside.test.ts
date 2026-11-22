@@ -26,10 +26,13 @@ import {
   quotePreview,
   sourceLine,
   streamChanges,
+  tonsText,
+  treatmentTexts,
   uniqueCandidates,
   vendorStreamIds,
 } from "../src/lib/v3/outside.ts";
-import type { OutsideCandidate, OutsideVendors, QuoteRequest } from "../src/lib/v3/types.ts";
+import { outsideVendorsSchema } from "../src/lib/v3/schema.ts";
+import type { OutsideCandidate, OutsideTreatment, OutsideVendors, QuoteRequest } from "../src/lib/v3/types.ts";
 
 /** 백엔드가 시연 회사(한빛정밀)로 만든 실제 응답: 같은 업체에 불량 사출품 400kg과 스프루·러너 600kg */
 const LETTERS = JSON.parse(readFileSync(new URL("./fixtures/quote-requests.json", import.meta.url), "utf8")) as {
@@ -280,4 +283,76 @@ test("메일로 보내기: mailto와 Gmail 주소는 제목·본문을 그대로
   assert.equal(gmail.searchParams.get("to"), "sales@wonil.co.kr");
   assert.equal(gmail.searchParams.get("su"), "제목");
   assert.equal(gmail.searchParams.get("body"), body);
+});
+
+/** 백엔드(outreach._treatment_view)가 부산 금정구 ㈜우리환경산업에 붙인 실제 모양: 결과표 8-가 18행 */
+function treatment(extra: Partial<OutsideTreatment> = {}): OutsideTreatment {
+  return {
+    sheet: "8-가. 재활용처리(중간)",
+    row: 18,
+    returnedOn: null,
+    asOf: "2024-12-31",
+    tonsPerYear: {
+      id: "st_a_outside0_tonsPerYear2024",
+      kind: "number",
+      value: 34206.6,
+      unit: "톤/년",
+      evidence: ["ref:처리업체현황:8-가-18-처리량@2024", "ref:허가업체명부:a@2026-09-09"],
+      label: "㈜우리환경산업 2024년 처리량",
+    },
+    capacityTonsPerDay: {
+      id: "st_a_outside0_capacityTonsPerDay2024",
+      kind: "number",
+      value: 214,
+      unit: "톤/일",
+      evidence: ["ref:처리업체현황:8-가-18-처리능력@2024", "ref:허가업체명부:a@2026-09-09"],
+      label: "㈜우리환경산업 하루 처리능력",
+    },
+    evidence: ["ref:처리업체현황:8-가-18-처리량@2024", "ref:처리업체현황:8-가-18-처리능력@2024"],
+    ...extra,
+  };
+}
+
+test("2024년 처리 실적: 처리량과 하루 처리능력을 적고, 실적이 없으면 아무것도 적지 않는다", () => {
+  assert.deepEqual(treatmentTexts(treatment()), { tons: "34,207톤", capacity: "214톤", returned: null });
+  assert.equal(treatmentTexts(null), null);
+  assert.equal(treatmentTexts(undefined), null);
+  assert.equal(treatmentTexts(candidate("a").treatment2024), null); // 이전 결과에는 칸이 없다
+  const small = treatment({
+    capacityTonsPerDay: null,
+    tonsPerYear: { ...treatment().tonsPerYear, value: 24.94 },
+    returnedOn: "2024-01-23",
+  });
+  assert.deepEqual(treatmentTexts(small), { tons: "24.9톤", capacity: null, returned: "2024-01-23 허가 반납 신고" });
+  assert.equal(tonsText(0), "0톤");
+  assert.equal(tonsText(851.3), "851톤");
+});
+
+test("2024년 처리 실적이 붙은 후보가 있으면 출처 줄에 결과표 출처를 함께 적고, 새 칸이 없는 이전 결과도 읽는다", () => {
+  assert.doesNotMatch(sourceLine(outside), /2024년 처리 실적/);
+  const withTreatment: OutsideVendors = {
+    ...outside,
+    source: {
+      ...outside.source,
+      treatment2024: {
+        name: "기후에너지환경부·한국환경공단 2024 전국 폐기물 발생 및 처리현황",
+        url: "https://www.recycling-info.or.kr/rrs/stat/envStatDetail.do?menuNo=M130601&bbsId=BBSMSTR_000000000002&nttId=1596",
+        asOf: "2024-12-31",
+        published: "2025-12-31",
+      },
+    },
+    streams: outside.streams.map((stream) => ({
+      ...stream,
+      candidates: stream.candidates.map((item) => ({ ...item, treatment2024: item.id === "a" ? treatment() : null })),
+    })),
+  };
+  const line = sourceLine(withTreatment);
+  assert.match(line, /2024년 처리 실적: 기후에너지환경부·한국환경공단 2024 전국 폐기물 발생 및 처리현황\(2025-12-31 공표\)/);
+  assert.doesNotMatch(line, JARGON);
+  // 실적이 붙은 후보가 없으면 결과표 출처를 적지 않는다
+  const none = { ...withTreatment, streams: outside.streams };
+  assert.doesNotMatch(sourceLine(none), /2024년 처리 실적/);
+  // 화면 스키마: 새 칸이 있어도, 없어도(이전 결과) 읽는다
+  assert.ok(outsideVendorsSchema.safeParse(withTreatment).success);
+  assert.ok(outsideVendorsSchema.safeParse(outside).success);
 });

@@ -15,6 +15,8 @@ export const claimRoleSchema = z.enum([
   /** 지금 재활용 업체에 팔고 있을 때 받는 kg당 금액(양수) */
   "currentUnitPrice",
   "referencePrice",
+  /** 공식 처리단가 고시(참고값, 손익 계산에 쓰지 않음, 2026-11-22) */
+  "referenceCost",
   "monthlyKg",
   "totalKg",
   "totalM3",
@@ -616,7 +618,29 @@ export const referencePriceSchema = obj({
   note: z.string(),
 });
 
+/** 공식 처리단가 고시(참고값). 현행 처리비를 대신하지 않고 손익 계산에도 쓰지 않는다(2026-11-22) */
+export const referenceCostSchema = obj({
+  key: z.string(),
+  label: z.string(),
+  asOf: z.string(),
+  cost: claimOrNull,
+  note: z.string(),
+});
+
 const wasteCodeSchema = obj({ code: z.string(), name: z.string().nullable() });
+
+/** 가입하지 않은 업체 후보의 2024년 처리 실적. 값은 결과표 한 줄을 근거로 여는 claim이다 */
+export const outsideTreatmentSchema = obj({
+  tonsPerYear: claimSchema,
+  capacityTonsPerDay: claimOrNull,
+  sheet: z.string(),
+  row: z.number(),
+  /** 허가 반납 신고일(결과표에 적혀 있을 때) */
+  returnedOn: z.string().nullable(),
+  /** 결과표 기준일(2024-12-31). 출처 이름과 공표일은 outsideVendors.source.treatment2024에 있다 */
+  asOf: z.string(),
+  evidence: z.array(z.string()),
+});
 
 /** 가입하지 않은 처리 업체 후보(공공데이터 허가 명부). AI가 대화하지 않고, 손익 계산에도 넣지 않는다 */
 export const outsideCandidateSchema = obj({
@@ -637,6 +661,11 @@ export const outsideCandidateSchema = obj({
   note: z.string().nullable(),
   /** 회사와 같은 산업단지에 있는 업체(2026-11-22 추가, 이전 결과에는 없다) */
   sameComplex: z.boolean().optional(),
+  /**
+   * 2024년 처리 실적(「2024 전국 폐기물 발생 및 처리현황」 결과표 한 줄). 상호·시군구로 확실히 맞을 때만 오고,
+   * 아니면 null이다. 표시용이며 손익 계산에 넣지 않는다(2026-11-22 추가, 이전 결과에는 없다)
+   */
+  treatment2024: outsideTreatmentSchema.nullable().optional(),
 });
 
 export const outsideVendorsSchema = obj({
@@ -646,6 +675,8 @@ export const outsideVendorsSchema = obj({
     asOfRange: z.array(z.string()).nullable(),
     note: z.string(),
     radiusKm: z.number(),
+    /** 후보의 2024년 처리 실적 출처(2026-11-22 추가) */
+    treatment2024: obj({ name: z.string(), url: z.string(), asOf: z.string(), published: z.string() }).optional(),
   }),
   streams: z.array(
     obj({
@@ -710,6 +741,52 @@ export const complexPartnersSchema = obj({
       reason: z.string().nullable(),
     }),
   ),
+  /** 단지 전체 폐합성수지 발생·처리(2024 공공 통계, 톤/년). 회사 계산에는 쓰지 않는다. 2026-11-22 전 결과에는 없다 */
+  stats: obj({
+    sheetName: z.string(),
+    waste: z.string(),
+    dataYear: z.string(),
+    values: obj({ generated: claimSchema, recycled: claimSchema, incinerated: claimSchema, landfilled: claimSchema }),
+    note: z.string(),
+    source: obj({ name: z.string(), url: z.string(), publishedOn: z.string() }),
+  })
+    .nullable()
+    .optional(),
+});
+
+/**
+ * 같은 단지 평면도(GET /sessions/{id}/complex-plan, 2026-11-22). 화면을 열 때마다 서버가 지도 서비스에서 실시간으로
+ * 받아 만들고 저장하지 않는다. 건물 꼭짓점은 bbox 서남쪽 모서리 기준 정수([x, y, x, y, …], 1/scale 도 단위)다.
+ */
+const planPlaceSchema = obj({
+  location: z.tuple([z.number(), z.number()]),
+  buildingId: z.string().nullable(),
+  /** registry: 허가 명부 좌표 · kakao: 카카오 주소 검색 · vworld: VWorld 지오코더 · org: 회사 정보의 위치 */
+  source: z.enum(["registry", "kakao", "vworld", "org"]),
+});
+
+export const complexPlanSchema = obj({
+  complex: obj({ id: z.string(), name: z.string(), basis: z.enum(["region", "location"]) }).nullable(),
+  /** [서, 남, 동, 북]. 위치를 하나도 찾지 못하면 null */
+  bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).nullable(),
+  scale: z.number(),
+  self: planPlaceSchema.nullable(),
+  /** 후보 ID(complexPartners의 id) → 자리 */
+  places: z.record(z.string(), planPlaceSchema),
+  buildings: z.array(
+    obj({
+      rings: z.array(z.array(z.number())),
+      floors: z.number().nullable(),
+      /** 회사가 든 건물에만 있다 */
+      id: z.string().optional(),
+      address: z.string().nullable().optional(),
+      name: z.string().nullable().optional(),
+    }),
+  ),
+  /** 위치를 찾지 못한 후보 ID */
+  missing: z.array(z.string()),
+  notes: obj({ buildings: z.string().nullable(), locations: z.string().nullable() }),
+  sources: z.array(z.string()),
 });
 
 /**
@@ -954,6 +1031,8 @@ export const resultSchema = obj({
   ),
   /** 가격조사 참고 시세. 손익 계산에는 쓰지 않는다 */
   referencePrices: z.array(referencePriceSchema),
+  /** 공식 처리단가 고시 참고값. 배출 기업이 보는 뷰에만 오고, 2026-11-22 전 결과에는 없다 */
+  referenceCosts: z.array(referenceCostSchema).optional(),
   /** 아래 셋은 배출 기업이 보는 뷰에만 온다 */
   carbonInObjective: z.boolean().optional(),
   /** 탄소를 배정에 넣을 때 쓴 내부 탄소 가격(배출권 시세, 원/tCO2e) */

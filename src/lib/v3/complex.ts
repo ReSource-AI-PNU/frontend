@@ -115,5 +115,13 @@ export function complexSourceLine(partners: ComplexPartners): string {
   const { factories, registry } = partners.source;
   const range = registry.asOfRange;
   const when = range && range.length === 2 ? `(기준일 ${range[0]}~${range[1]})` : "";
-  return `출처: ${factories.name}(기준일 ${factories.asOf}), ${registry.name}${when}. ${factories.note}`;
+  const stats = partners.stats
+    ? ` 단지 집계: ${partners.stats.source.name}(${partners.stats.dataYear}년 실적, 공표 ${partners.stats.source.publishedOn}).`
+    : "";
+  return `출처: ${factories.name}(기준일 ${factories.asOf}), ${registry.name}${when}. ${factories.note}${stats}`;
+}
+
+/** 단지 집계 문장의 앞말. 단지 전체 합계이고 회사별 값이 아니라는 것을 숨기지 않는다 */
+export function complexStatsLead(stats: NonNullable<ComplexPartners["stats"]>): string {
+  return `이 단지 공장들이 ${stats.dataYear}년에 내보낸 폐합성수지(단지 전체 합계)`;
 }
