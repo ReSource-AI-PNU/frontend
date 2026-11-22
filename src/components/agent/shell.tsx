@@ -12,6 +12,7 @@ import {
   InboxIcon,
   MenuIcon,
   PlusIcon,
+  PriceIcon,
   ReportIcon,
   SearchIcon,
   StampIcon,
@@ -39,14 +40,14 @@ function navItems(role: "emitter" | "vendor" | "admin", base: string, demo: bool
       ...(demo ? [] : [{ href: `${base}/inquiries`, label: "받은 문의", icon: InboxIcon, exact: false }]),
       { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
       { href: `${base}/materials`, label: "업체 정보", icon: FolderIcon, exact: false },
-      ...(demo ? [] : [{ href: `${base}/conditions`, label: "단가·사전 문의", icon: TalkIcon, exact: false }]),
+      ...(demo ? [] : [{ href: `${base}/conditions`, label: "단가·사전 문의", icon: PriceIcon, exact: false }]),
     ];
   }
   return [
     { href: base, label: "홈", icon: HomeIcon, exact: true },
     ...(role === "emitter" ? [{ href: `${base}/deals`, label: "거래", icon: TalkIcon, exact: false }] : []),
     { href: `${base}/find`, label: "찾기", icon: SearchIcon, exact: false },
-    ...(role === "emitter" && !demo ? [{ href: `${base}/conditions`, label: "단가·사전 문의", icon: TalkIcon, exact: false }] : []),
+    ...(role === "emitter" && !demo ? [{ href: `${base}/conditions`, label: "단가·사전 문의", icon: PriceIcon, exact: false }] : []),
     { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
     ...(role === "emitter" ? [{ href: `${base}/materials`, label: "자료", icon: FolderIcon, exact: false }] : []),
     // 원청·고객사에 낼 재활용·탄소 실적(2026-11-19 배출 사업장 설문)
