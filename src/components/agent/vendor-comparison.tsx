@@ -18,7 +18,9 @@ export function VendorComparison({
 
   return (
     <section aria-labelledby="vendor-comparison-heading" className="border-t border-line pt-6">
-      <h2 id="vendor-comparison-heading" className="text-xl font-semibold">업체 견적 비교</h2>
+      <h2 id="vendor-comparison-heading" className="text-[20px] leading-snug font-semibold tracking-[-0.02em]">
+        업체 견적 비교
+      </h2>
       <div className="mt-5 space-y-5">
         {matched.map((item) => {
           const itemThreads = threads.filter((thread) => thread.streamIds.includes(item.streamId));
@@ -44,16 +46,17 @@ export function VendorComparison({
                   <li key={quote.vendorOrgId} className="rounded-xl border border-line p-3.5">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-2">
                       <h4 className="font-medium">{quote.vendorName ?? "처리 업체"}</h4>
-                      {quote.selected ? <span className="text-xs font-medium text-good">선택된 처리 후보</span> : null}
+                      {/* 상태 표시는 다른 화면과 같은 네모 태그로 둔다(AGENTS.md 화면 규칙) */}
+                      {quote.selected ? <span className="inline-flex h-6 items-center rounded-[6px] bg-gain-bg px-2 text-[13px] font-medium text-gain">선택된 처리 후보</span> : null}
                     </div>
-                    <div className="mt-2 text-base font-semibold tabular-nums">
+                    <div className="mt-2 text-[16px] font-semibold tabular-nums">
                       <ClaimValue claim={quote.unitPrice} display={formatUnitPrice(quote.unitPrice) ?? undefined} />
                     </div>
-                    {quote.transportPending ? <p className="mt-1 text-xs text-muted">운반비 확인 필요</p> : null}
+                    {quote.transportPending ? <p className="mt-1 text-[13px] text-warn">운반비 확인 필요</p> : null}
                     {quote.threadId ? (
                       <button
                         type="button"
-                        className="mt-2 min-h-10 text-sm font-medium text-ink-2 underline underline-offset-4"
+                        className="mt-1 min-h-11 text-[13.5px] font-medium text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink"
                         onClick={() => { if (quote.threadId) onOpenTalk(quote.threadId); }}
                       >
                         협상 대화 보기

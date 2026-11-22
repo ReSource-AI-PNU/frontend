@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FactoryIcon, GearIcon, PlusIcon, ReportIcon, StampIcon, TruckIcon } from "@/components/icons";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FactoryIcon, GearIcon, PlusIcon, ReportIcon, StampIcon, TalkIcon, TruckIcon } from "@/components/icons";
 import { Fold, FoldGroup } from "@/components/ui/fold";
 import { Button } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
@@ -646,6 +646,8 @@ export function Conversation({ d }: { d: Diagnosis }) {
   const hasRoute = result !== null && placedCount(result.assignments) > 0;
   const pilot = result && isEmitter && !readOnly ? (view.mvpMatches ?? []) : [];
   const onlyPilot = Boolean(result && pilot.length > 0 && pilot.length === result.assignments.length);
+  // 받은 견적이 있는 폐기물 수(업체 견적 비교 접는 칸의 오른쪽 값)
+  const quoted = result ? result.assignments.filter((item) => item.vendorOrgId && item.unitPrice).length : 0;
   const liveThreads = threads.filter((item) => item.messages.length > 0 || item.typing);
   const openTalk = (id: string) => {
     setThreadId(id);
@@ -888,15 +890,17 @@ export function Conversation({ d }: { d: Diagnosis }) {
           />
         ) : null}
 
-        {result && isEmitter && !readOnly && !d.org.demo && !d.org.synthetic ? (
-          <VendorComparison assignments={result.assignments} streams={view.streams} threads={view.threads} onOpenTalk={openTalk} />
-        ) : null}
-
         {pilot.length > 0 ? <MvpMatches items={pilot} /> : null}
 
         {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
         {result && isEmitter && !holding ? (
           <FoldGroup className="[&_section]:border-0 [&_section]:pt-0">
+            {/* 받은 견적 비교는 결과 표의 자세한 내용이라 다른 것처럼 접어 둔다(AGENTS.md 화면 규칙 "접기") */}
+            {!readOnly && !d.org.demo && !d.org.synthetic && quoted > 0 ? (
+              <Fold title="업체 견적 비교" summary={`${quoted}가지`} icon={<TalkIcon />}>
+                <VendorComparison assignments={result.assignments} streams={view.streams} threads={view.threads} onOpenTalk={openTalk} />
+              </Fold>
+            ) : null}
             {hasRoute && result.circular ? (
               <Fold
                 title="자원순환 효과"
