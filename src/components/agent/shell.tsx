@@ -92,7 +92,7 @@ function DemoFooter() {
     <div className="space-y-3 px-2.5 pb-2">
       <p className="min-w-0">
         <span className="block truncate text-[14px] font-medium">{org.name}</span>
-        <span className="block text-[12px] text-muted">시연 회사 · {KIND_LABEL[org.role]}</span>
+        <span className="block text-[12px] text-muted">{KIND_LABEL[org.role]}</span>
       </p>
       <ButtonLink href="/signup" className="w-full">
         가입하고 시작하기
@@ -219,7 +219,7 @@ export function AgentShell({ account, notice, children }: { account?: ReactNode;
             className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-ground px-5 py-2.5 text-sm text-ink-2"
           >
             <span>
-              <span className="font-medium text-ink">체험 중</span> · 시연 회사의 가상 데이터입니다. 둘러보기만 할 수 있습니다.
+              <span className="font-medium text-ink">체험 중</span> · 둘러보기 전용입니다.
             </span>
             <Link href="/signup" className="-my-2.5 inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-4">
               가입하기
