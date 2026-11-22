@@ -26,6 +26,7 @@ async function Workspace({ children }: { children: ReactNode }) {
       <MembershipWatch memberships={memberships} persist={stale} />
       <AgentShell
         account={<Account user={user} />}
+        simulation={active.simulation}
         notice={noticeText ? <OrgNoticeBanner key={noticeText} text={noticeText} /> : null}
       >
         {children}

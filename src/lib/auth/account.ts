@@ -12,6 +12,7 @@ export type Membership = {
   orgName: string;
   kind: MemberKind;
   memberRole: MemberRole;
+  simulation?: true;
 };
 
 export type AccountUser = { id: string; email: string; name: string };
@@ -42,6 +43,7 @@ export function parseMembership(raw: unknown): Membership | null {
     orgName: text(item.orgName) || orgId,
     kind: kind as MemberKind,
     memberRole: item.memberRole === "owner" ? "owner" : "member",
+    ...(item.simulation === true ? { simulation: true } : {}),
   };
 }
 
