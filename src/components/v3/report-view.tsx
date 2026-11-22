@@ -34,6 +34,7 @@ import type { Claim, Report, ReportRecord } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
+import { navSpot } from "@/components/agent/nav-spot";
 
 const segment =
   "flex min-h-[38px] cursor-pointer items-center rounded-sm px-3.5 text-sm text-muted peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-[0_1px_0_var(--color-line-strong)] peer-focus-visible:outline-2 peer-focus-visible:outline-ink";
@@ -347,7 +348,7 @@ export function ReportView() {
 
       {report ? (
         <div className="space-y-10">
-          <section aria-label="요약">
+          <section aria-label="요약" {...navSpot("summary", "요약", "재활용 실적")}>
             <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{reportHeadline(report)}</h2>
             {report.totals ? (
               <>
@@ -387,7 +388,7 @@ export function ReportView() {
           </section>
 
           {report.records.length > 0 ? (
-            <section aria-label="검수 기록">
+            <section aria-label="검수 기록" {...navSpot("inspections", "검수 기록", "재활용 실적")}>
               <h2 className="mb-3 text-[17px] font-semibold tracking-[-0.02em]">검수 기록</h2>
               <Records report={report} />
               <p className="mt-2 text-[13px] leading-relaxed text-muted">
@@ -406,7 +407,7 @@ export function ReportView() {
           ) : null}
 
           {report.planned.length > 0 ? (
-            <section aria-label="확정한 합의의 예상">
+            <section aria-label="확정한 합의의 예상" {...navSpot("plan", "확정한 합의 · 한 달 예상", "재활용 실적")}>
               <h2 className="text-[17px] font-semibold tracking-[-0.02em]">확정한 합의 · 한 달 예상</h2>
               <p className="mt-1 mb-3 hidden text-[13px] text-muted print:block">{PLANNED_LEAD}</p>
               <Planned report={report} />

@@ -17,6 +17,15 @@ export function BrandMark({ className = "h-[15px]" }: { className?: string }) {
   );
 }
 
+/** 좁은 자리(사이드바 아이콘 줄)에 쓰는 첫 글자 B. 같은 윤곽에서 B만 보이게 잘라 낸다(src/app/icon.svg와 같은 글자) */
+export function BrandInitial({ className = "h-[15px]" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 110 100" role="img" aria-label="BYPRO" className={`w-auto shrink-0 ${className}`}>
+      <path d={WORDMARK_PATH} fill="currentColor" />
+    </svg>
+  );
+}
+
 export function BrandLink({ href = "/", className = "" }: { href?: string; className?: string }) {
   return (
     <Link href={href} className={`flex min-h-9 shrink-0 items-center ${className}`}>

@@ -48,6 +48,7 @@ import { PresentMode } from "./present-mode";
 import { ResultCard } from "./result-card";
 import { VendorComparison } from "./vendor-comparison";
 import { AdaptivePanel } from "@/components/v3/adaptive-panel";
+import { navSpot, TALK_HASH } from "@/components/agent/nav-spot";
 
 export { Dots };
 
@@ -342,7 +343,7 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
   const todoTotal = pending.reduce((count, item) => count + todoOf(item.threadId), 0);
 
   return (
-    <section aria-label="승인">
+    <section aria-label="승인" {...navSpot("approve", "승인", "이번 찾기")}>
       <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">
         {confirmed
           ? "양쪽이 승인해 확정됐습니다."
@@ -540,7 +541,7 @@ function Documents({ view }: { view: DiagnosisView }) {
   const { basePath } = useV3();
   if (view.documents.length === 0) return null;
   return (
-    <section aria-label="서류">
+    <section aria-label="서류" {...navSpot("find-documents", "서류", "이번 찾기")}>
       <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em]">서류 {view.documents.length}건을 만들었습니다.</h2>
       <ul className="mt-4 divide-y divide-line border-y border-line">
         {view.documents.map((document) => (
@@ -650,6 +651,17 @@ export function Conversation({ d }: { d: Diagnosis }) {
     setThreadId(id);
     setTalkOpen(true);
   };
+  // 사이드바 소메뉴 "AI끼리 나눈 대화"(#talk)로 오면 대화 패널을 연다. 같은 줄을 다시 눌러도 열리게 주소 조각은 지운다
+  useEffect(() => {
+    const fromHash = () => {
+      if (window.location.hash !== `#${TALK_HASH}`) return;
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      setTalkOpen(true);
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
+  }, []);
   const replay = () => {
     setThreadId(null);
     d.replay();
@@ -874,22 +886,27 @@ export function Conversation({ d }: { d: Diagnosis }) {
         ))}
 
         {result ? (
-          <ResultCard
-            result={result}
-            streams={view.streams}
-            role={view.viewer.role}
-            counterpart={emitterName}
-            onOpenTalk={openTalk}
-            onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
-            busy={d.busy}
-            threads={view.threads}
-            approvals={view.approvals}
-          />
+          <div {...navSpot("result", "결과 요약", "이번 찾기")}>
+            <ResultCard
+              result={result}
+              streams={view.streams}
+              role={view.viewer.role}
+              counterpart={emitterName}
+              onOpenTalk={openTalk}
+              onPermitCheck={isEmitter && d.canAct && !readOnly && status === "awaiting_approval" ? d.recordPermitCheck : undefined}
+              busy={d.busy}
+              threads={view.threads}
+              approvals={view.approvals}
+            />
+          </div>
         ) : null}
+
+        {/* 사이드바 소메뉴 "AI끼리 나눈 대화": 누르면 #talk로 와서 대화 패널을 연다(위 useEffect) */}
+        {view.threads.length > 0 ? <span hidden {...navSpot(TALK_HASH, "AI끼리 나눈 대화", "이번 찾기")} /> : null}
 
         {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
         {result && isEmitter && !holding ? (
-          <FoldGroup className="[&_section]:border-0 [&_section]:pt-0">
+          <FoldGroup {...navSpot("result-more", "자세한 내용", "이번 찾기")} className="[&_section]:border-0 [&_section]:pt-0">
             {/* 받은 견적 비교는 결과 표의 자세한 내용이라 다른 것처럼 접어 둔다(AGENTS.md 화면 규칙 "접기") */}
             {!readOnly && !d.org.demo && !d.org.synthetic && quoted > 0 ? (
               <Fold title="업체 견적 비교" summary={`${quoted}가지`} icon={<TalkIcon />}>
@@ -963,7 +980,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
         {holding ? null : <Documents view={view} />}
 
         {result && !working ? (
-          <details className="group border-t border-line pt-3">
+          <details {...navSpot("trace", "판단 표·근거", "이번 찾기")} className="group border-t border-line pt-3">
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 text-[13px] text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
               판단 과정 전체 보기 (자료 표, 판단 그래프, 계산표)
               <ChevronDownIcon className="size-3.5 transition-transform group-open:rotate-180" />

@@ -84,6 +84,7 @@ import { StorageScan } from "./storage-scan";
 import { useRemote } from "./use-remote";
 import { VendorMcpKeys } from "./vendor-mcp-keys";
 import { VendorOnboarding } from "./vendor-onboarding";
+import { navSpot } from "@/components/agent/nav-spot";
 
 const field =
   "min-h-11 min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
@@ -1288,7 +1289,10 @@ function StreamCard({
     : "아직 없음";
 
   return (
-    <article className="mb-4 rounded-xl border border-line bg-surface px-5 pt-5 pb-1">
+    <article
+      {...navSpot(`stream-${stream.id}`, stream.name, "폐기물", stream.monthlyKg != null ? `${formatNumber(stream.monthlyKg)} kg` : undefined)}
+      className="mb-4 rounded-xl border border-line bg-surface px-5 pt-5 pb-1"
+    >
       <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">{stream.name}</h2>
       <p className="mt-0.5 text-sm text-muted">
         {facts.join(" · ")}
@@ -1674,7 +1678,7 @@ function VendorForm({
         <li>{summary.confirmation}</li>
       </ul>
 
-      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6 space-y-3">
+      <section {...navSpot("permits", "허가 품목", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6 space-y-3">
         <h2 className={sectionTitle}>허가 품목</h2>
         <PermitEditor canAct={canAct} onSave={onAddPermits}>
           <DocumentUpload kinds={["permit"]} canAct={canAct} label="허가증 업로드" uploadText="허가증 업로드"
@@ -1703,7 +1707,7 @@ function VendorForm({
         )}
       </section>
 
-      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
+      <section {...navSpot("criteria", "매입 기준표", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <h2 className={sectionTitle}>매입 기준표</h2>
         <p className="mt-1 text-sm text-muted">
           고정 단가는 자동 견적에 쓰이며, 건별 협의는 담당자가 견적을 냅니다.
@@ -1787,7 +1791,7 @@ function VendorForm({
         ) : null}
       </section>
 
-      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
+      <section {...navSpot("scope", "AI가 지킬 범위", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <h2 className={sectionTitle}>AI가 지킬 범위</h2>
         <label className={`${fieldLabel} mt-3`}>
           업체가 적용할 처리 방식
@@ -1836,7 +1840,7 @@ function VendorForm({
 
       </section>
 
-      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
+      <section {...navSpot("fleet", "노선·차량", "업체 정보")} className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <h2 className={sectionTitle}>노선·차량</h2>
         <p className="mt-1 text-sm text-muted">
           차고지와 차량 적재량, km당 운송비로 {AI_NAME.vendor}가 수거 횟수와 운반비를 계산합니다. 모르는 칸은 비워 두면
@@ -2182,7 +2186,7 @@ function VendorMaterials() {
   return (
     <>
       {mode === "live" && canWrite ? (
-        <div className="mb-8 border-b border-line">
+        <div {...navSpot("assistant", "AI 도우미로 등록", "도우미")} className="mb-8 border-b border-line">
           <VendorOnboarding
             orgId={org.id}
             discoverable={vendorReady(profile)}

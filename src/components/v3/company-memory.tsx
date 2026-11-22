@@ -8,6 +8,7 @@ import type { MemoryInspection, MemoryStream, OrgMemory, VendorMemory } from "@/
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
+import { navSpot } from "@/components/agent/nav-spot";
 
 /**
  * 우리 회사 기록(자료 화면 맨 아래, 배출 기업만). 지난 찾기와 거래에서 남은 기록을 회사 단위로 모아 보인다.
@@ -356,7 +357,7 @@ export function CompanyMemory() {
   );
   if (org.role !== "emitter" || mode !== "live") return null;
   return (
-    <section aria-labelledby="company-memory-title" className="mt-12 border-t border-line pt-8">
+    <section aria-labelledby="company-memory-title" {...navSpot("memory", "우리 회사 기록", "기록")} className="mt-12 border-t border-line pt-8">
       <h2 id="company-memory-title" className="text-[20px] leading-[1.35] font-semibold tracking-[-0.02em]">
         우리 회사 기록
       </h2>

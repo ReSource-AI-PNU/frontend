@@ -15,6 +15,7 @@ import { signedWon } from "@/lib/v3/money";
 import { DOC_LABEL } from "@/lib/v3/labels";
 import { DEAL_STEPS, progressOf, type Activity, type Deal, type Task, type TaskKind } from "@/lib/v3/overview";
 import { Dots } from "./dots";
+import { navSpot } from "@/components/agent/nav-spot";
 
 const TAG_TONE: Record<TaskKind, string> = {
   blocked: "bg-loss-bg text-loss",
@@ -110,9 +111,9 @@ function ActivityRow({ item, href }: { item: Activity; href: string | null }) {
   );
 }
 
-function Card({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
+function Card({ id, title, aside, children }: { id: string; title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-line bg-surface">
+    <section {...navSpot(id, title, "오늘")} className="overflow-hidden rounded-xl border border-line bg-surface">
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-5">
         <h2 className="text-[15px] font-bold">{title}</h2>
         {aside}
@@ -217,7 +218,7 @@ export function Overview() {
       ) : (
         <>
           <div className="mt-6 grid items-start gap-5 lg:grid-cols-2">
-            <Card title="할 일" aside={<span className="text-[13px] text-muted">{w.tasks.length}건</span>}>
+            <Card id="tasks" title="할 일" aside={<span className="text-[13px] text-muted">{w.tasks.length}건</span>}>
               {w.tasks.length > 0 ? (
                 <ul className="divide-y divide-line">
                   {w.tasks.map((task) => (
@@ -230,6 +231,7 @@ export function Overview() {
             </Card>
 
             <Card
+              id="active-deals"
               title="진행 중인 거래"
               aside={
                 <Link href={dealHref(null)} className="inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-accent hover:underline">
@@ -250,40 +252,42 @@ export function Overview() {
             </Card>
           </div>
 
-          <FoldGroup className="mt-5 !rounded-xl">
-            <Fold title="최근 바뀐 것" summary={`${w.activity.length}건`} icon={<TalkIcon />}>
-              {w.activity.length > 0 ? (
-                <ol>
-                  {w.activity.map((item) => (
-                    <ActivityRow key={item.id} item={item} href={item.dealKey ? dealHref(item.dealKey) : null} />
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-[14px] text-muted">아직 기록이 없습니다.</p>
-              )}
-            </Fold>
-            <Fold title="서류" summary={`${w.documents.length}건`} icon={<DocIcon />}>
-              {w.documents.length > 0 ? (
-                <ul>
-                  {w.documents.map((item) => (
-                    <li key={`${item.dealKey}:${item.doc.id}`}>
-                      <button
-                        type="button"
-                        onClick={() => w.go({ sessionId: item.sessionId, target: "approval", dealKey: item.dealKey })}
-                        className="flex min-h-11 w-full items-center gap-2.5 rounded-lg text-left text-[14px] hover:text-accent"
-                      >
-                        <span className="w-24 shrink-0 font-medium">{DOC_LABEL[item.doc.kind]}</span>
-                        <span className="min-w-0 flex-1 truncate text-ink-2">{emitter ? item.vendorName : w.nameOf(item.emitterOrgId)}</span>
-                        <span className="shrink-0 text-[12px] text-muted tabular-nums">{formatDateTime(item.doc.createdAt, "date")}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[14px] text-muted">양쪽이 승인하면 요청서, 이행 계획서, 계약서 초안이 여기에 모입니다.</p>
-              )}
-            </Fold>
-          </FoldGroup>
+          <div {...navSpot("records", "최근 바뀐 것 · 서류", "기록")} className="mt-5">
+            <FoldGroup className="!rounded-xl">
+              <Fold title="최근 바뀐 것" summary={`${w.activity.length}건`} icon={<TalkIcon />}>
+                {w.activity.length > 0 ? (
+                  <ol>
+                    {w.activity.map((item) => (
+                      <ActivityRow key={item.id} item={item} href={item.dealKey ? dealHref(item.dealKey) : null} />
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-[14px] text-muted">아직 기록이 없습니다.</p>
+                )}
+              </Fold>
+              <Fold title="서류" summary={`${w.documents.length}건`} icon={<DocIcon />}>
+                {w.documents.length > 0 ? (
+                  <ul>
+                    {w.documents.map((item) => (
+                      <li key={`${item.dealKey}:${item.doc.id}`}>
+                        <button
+                          type="button"
+                          onClick={() => w.go({ sessionId: item.sessionId, target: "approval", dealKey: item.dealKey })}
+                          className="flex min-h-11 w-full items-center gap-2.5 rounded-lg text-left text-[14px] hover:text-accent"
+                        >
+                          <span className="w-24 shrink-0 font-medium">{DOC_LABEL[item.doc.kind]}</span>
+                          <span className="min-w-0 flex-1 truncate text-ink-2">{emitter ? item.vendorName : w.nameOf(item.emitterOrgId)}</span>
+                          <span className="shrink-0 text-[12px] text-muted tabular-nums">{formatDateTime(item.doc.createdAt, "date")}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[14px] text-muted">양쪽이 승인하면 요청서, 이행 계획서, 계약서 초안이 여기에 모입니다.</p>
+                )}
+              </Fold>
+            </FoldGroup>
+          </div>
         </>
       )}
     </div>

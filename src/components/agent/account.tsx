@@ -7,7 +7,7 @@ function initials(name: string) {
   return /^[가-힣]/.test(text) ? text.slice(-2) : text.slice(0, 2).toUpperCase();
 }
 
-/** 사이드바 맨 아래의 계정. 누르면 설정·화면 모드·로그아웃이 열린다. */
+/** 사이드바 맨 아래의 계정. 누르면 설정·화면 모드·로그아웃이 열린다. 메뉴는 둘째 칸(아이콘 줄 76px 오른쪽) 위에 뜬다 */
 export function Account({ user }: { user: { name: string; email: string | null } }) {
   return (
     <div>
@@ -27,7 +27,7 @@ export function Account({ user }: { user: { name: string; email: string | null }
       <div
         id="account-menu"
         popover="auto"
-        className="fixed top-auto right-auto bottom-[68px] left-3 m-0 h-fit w-60 max-w-[calc(100vw-24px)] rounded-xl border border-line bg-surface p-1.5 text-sm text-ink shadow-[0_16px_40px_-16px_rgb(15_21_18/0.35)]"
+        className="fixed top-auto right-auto bottom-[68px] left-[88px] m-0 h-fit w-60 max-w-[calc(100vw-100px)] rounded-xl border border-line bg-surface p-1.5 text-sm text-ink shadow-[0_16px_40px_-16px_rgb(15_21_18/0.35)]"
       >
         <Link href="/settings" className="flex min-h-11 items-center rounded-lg px-2.5 hover:bg-sunken">
           회사 정보·구성원

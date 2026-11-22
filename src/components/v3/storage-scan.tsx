@@ -35,6 +35,7 @@ import {
 import type { ScanList, ScanPile, ScanView, StreamRecord } from "@/lib/v3/types";
 import { ClaimValue } from "./claim";
 import { useV3 } from "./context";
+import { navSpot } from "@/components/agent/nav-spot";
 
 const ScanViewer = dynamic(() => import("./scan-viewer").then((module) => module.ScanViewer), {
   ssr: false,
@@ -856,7 +857,7 @@ export function StorageScan({ streams }: { streams: StreamRecord[] }) {
   if (!list) {
     // 처음 불러오기에 실패했다
     return (
-      <section aria-labelledby="storage-scan-title" className="mt-12 border-t border-line pt-8">
+      <section aria-labelledby="storage-scan-title" {...navSpot("scan", "3D 스캔", "보관장")} className="mt-12 border-t border-line pt-8">
         {heading}
         <div role="alert" className="mt-4 flex flex-wrap items-center gap-3 text-[13.5px] text-ink-2">
           <span>보관장 3D 스캔을 불러오지 못했습니다. {remote.error ?? UNAVAILABLE}</span>
@@ -936,7 +937,7 @@ export function StorageScan({ streams }: { streams: StreamRecord[] }) {
           : "";
 
   return (
-    <section aria-labelledby="storage-scan-title" className="mt-12 border-t border-line pt-8">
+    <section aria-labelledby="storage-scan-title" {...navSpot("scan", "3D 스캔", "보관장")} className="mt-12 border-t border-line pt-8">
       {heading}
       <p aria-live="polite" className="sr-only">
         {liveText}

@@ -476,6 +476,16 @@
   transform: translateY(36px) scale(0.98);
 }
 
+/* 사이드바 소메뉴로 건너뛴 구역은 좁은 화면의 위 막대(52px)에 가리지 않게 조금 아래에 멈춘다(src/components/agent/nav-spot.ts) */
+[data-nav-label] {
+  scroll-margin-top: 4.5rem;
+}
+@media (min-width: 64rem) {
+  [data-nav-label] {
+    scroll-margin-top: 1.5rem;
+  }
+}
+
 /* 2026-11-22: 글자는 먹색 하나로 통일하고, 회색으로 채운 상자는 없앤다.
    글자: 회색(muted, ink-2)과 뜻을 담던 색(녹색·빨강·호박색·파랑)을 모두 먹색으로 덮는다. 색 바탕 위의 흰 글자(단추, 사진 위)는 그대로다.
    상자: 회색 채움(sunken, ground)을 흰 바탕으로 덮는다. 채움으로만 구분되던 작은 상자(이름표, 말풍선)는 가는 선으로 남긴다.

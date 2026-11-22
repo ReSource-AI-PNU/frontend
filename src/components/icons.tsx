@@ -229,3 +229,13 @@ export function ChevronRightIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** AI 신뢰도(공개 평가 결과) */
+export function ShieldIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 1.75l5.25 2v4c0 3.25-2.25 5.5-5.25 6.5-3-1-5.25-3.25-5.25-6.5v-4z" />
+      <path d="M5.75 8l1.6 1.6 2.9-3.1" />
+    </Icon>
+  );
+}

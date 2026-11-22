@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type HTMLAttributes, type ReactNode } from "react";
 
 /**
  * 접어 두는 칸. 닫혀 있을 때는 제목과 한 줄 값만 보이고, 누르면 자세한 내용이 펼쳐진다.
@@ -56,6 +56,10 @@ export function Fold({
 }
 
 /** 접는 칸 여러 개를 한 묶음으로 */
-export function FoldGroup({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface ${className}`}>{children}</div>;
+export function FoldGroup({ children, className = "", ...rest }: HTMLAttributes<HTMLDivElement> & { children: ReactNode; className?: string }) {
+  return (
+    <div {...rest} className={`divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface ${className}`}>
+      {children}
+    </div>
+  );
 }

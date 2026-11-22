@@ -41,6 +41,7 @@ import { ContractReviewBox, needsAck, reviewBlocked } from "./contract-review";
 import { useV3 } from "./context";
 import { useDiagnosis } from "./use-diagnosis";
 import { useRemote } from "./use-remote";
+import { navSpot } from "@/components/agent/nav-spot";
 
 
 function Side({ label, done }: { label: string; done: boolean }) {
@@ -697,7 +698,7 @@ export function ApprovalView() {
         </p>
       ) : null}
       {closed.length > 0 ? (
-        <section className="mb-4 rounded-xl border border-line bg-surface px-5 py-5">
+        <section {...navSpot("unmatched", "조건이 맞지 않은 곳", "승인")} className="mb-4 rounded-xl border border-line bg-surface px-5 py-5">
           <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">조건이 맞지 않은 곳</h2>
           <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
             {closed.map((item) => (
@@ -751,6 +752,7 @@ export function ApprovalView() {
         return (
           <section
             key={approval.threadId}
+            {...navSpot(`approve-${approval.threadId}`, thread?.vendorName ?? "업체", "승인")}
             className="mb-4 rounded-xl border border-line bg-surface px-5 py-5"
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -951,7 +953,7 @@ export function ApprovalView() {
         );
       })}
 
-      <section className="mt-8">
+      <section {...navSpot("documents", "요청서 · 이행 계획서 · 계약서", "서류")} className="mt-8">
         <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">요청서 · 이행 계획서 · 계약서 초안</h2>
         {view.documents.length === 0 ? (
           <p className="mt-2 text-sm text-muted">

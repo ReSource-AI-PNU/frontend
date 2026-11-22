@@ -16,6 +16,7 @@ import {
   type SurveyData,
 } from "@/lib/v3/survey";
 import type { StreamRecord, VendorProfile } from "@/lib/v3/types";
+import { navSpot } from "@/components/agent/nav-spot";
 
 const field =
   "min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[15px] tabular-nums";
@@ -74,7 +75,7 @@ function VendorRanges({
     );
   }
   return (
-    <section className={section}>
+    <section {...navSpot("public-terms", "공개할 매입 조건", "이 화면")} className={section}>
       <h2 className="text-xl font-semibold">공개할 매입 조건</h2>
       <p className="text-sm text-muted">
         범위로 등록하면 상대에게 범위만 보이고 확정 손익에는 쓰지 않습니다.
@@ -612,7 +613,7 @@ export function SurveyWorkspace() {
         </p>
       )}
       {org.role === "emitter" && (
-        <section className={`${section} mt-6`}>
+        <section {...navSpot("weigh-csv", "계량 기록으로 물량 채우기", "이 화면")} className={`${section} mt-6`}>
           <h2 className="text-xl font-semibold">
             기존 계량 기록으로 월 물량 채우기
           </h2>
@@ -655,7 +656,7 @@ export function SurveyWorkspace() {
         </section>
       )}
       {data && org.role === "emitter" && (
-        <section className={section}>
+        <section {...navSpot("range-vendors", "범위 단가를 공개한 업체", "이 화면")} className={section}>
           <h2 className="text-xl font-semibold">범위 단가를 공개한 업체</h2>
           {data.candidates.length === 0 && (
             <p className="text-sm text-muted">
@@ -720,7 +721,7 @@ export function SurveyWorkspace() {
         </section>
       )}
       {data && (
-        <section className={section}>
+        <section {...navSpot("quotes", "거래별 단가 확인", "이 화면")} className={section}>
           <h2 className="text-xl font-semibold">거래별 단가 확인</h2>
           {data.quotes.length === 0 && (
             <p className="text-sm text-muted">아직 사전 문의가 없습니다.</p>
@@ -735,7 +736,7 @@ export function SurveyWorkspace() {
         </section>
       )}
       {data && (
-        <section className={section}>
+        <section {...navSpot("pickup-photos", "수거 전 확인 사진", "이 화면")} className={section}>
           <h2 className="text-xl font-semibold">수거 전 확인 사진</h2>
           {org.role === "emitter" && (
             <>
