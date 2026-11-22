@@ -208,10 +208,10 @@ export const api = {
   /** 회사별 기록(지난 답변·검수·교정·거래). 배출 기업 본인만. 읽기라서 체험하기에서도 열린다 */
   getMemory: (orgId: string) => request<OrgMemory>(`/orgs/${enc(orgId)}/memory`, orgId),
   /** 회사별 기록을 계약 검토에 쓸지 정한다. 기록은 지우지 않는다 */
-  putMemory: (orgId: string, enabled: boolean) =>
+  putMemory: (orgId: string, change: { enabled?: boolean; applyToJudgment?: boolean }) =>
     request<OrgMemory>(`/orgs/${enc(orgId)}/memory`, orgId, {
       method: "PUT",
-      body: JSON.stringify({ enabled }),
+      body: JSON.stringify(change),
     }),
 
   getVendor: (orgId: string) => request<VendorProfile>(`/vendors/${enc(orgId)}`, orgId),

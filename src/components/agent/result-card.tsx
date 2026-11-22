@@ -160,7 +160,20 @@ function Row({
           {reused ? (
             "신재 구입을 줄입니다"
           ) : assignment.unitPrice ? (
-            <ClaimValue claim={assignment.unitPrice} display={priceText(assignment.unitPrice)} className="!font-normal" />
+            <>
+              <ClaimValue claim={assignment.unitPrice} display={priceText(assignment.unitPrice)} className="!font-normal" />
+              {isEmitter && assignment.personal?.expectedUnitPrice ? (
+                <span className="block text-[13px] text-ink-2">
+                  회사 기록 반영 예상{" "}
+                  <ClaimValue
+                    claim={assignment.personal.expectedUnitPrice}
+                    display={priceText(assignment.personal.expectedUnitPrice)}
+                    className="!font-normal"
+                  />
+                  <span className="text-muted"> · 검수 {assignment.personal.streamRecords}건, 한 달 값에 반영</span>
+                </span>
+              ) : null}
+            </>
           ) : placed ? (
             "단가 확인 필요"
           ) : (
@@ -357,6 +370,12 @@ function Row({
                           <>
                             {" · "}
                             <ClaimValue claim={item.unitPrice} display={priceText(item.unitPrice)} className="!font-normal" />
+                          </>
+                        ) : null}
+                        {isEmitter && item.personalUnitPrice ? (
+                          <>
+                            {" · 기록 반영 예상 "}
+                            <ClaimValue claim={item.personalUnitPrice} display={priceText(item.personalUnitPrice)} className="!font-normal" />
                           </>
                         ) : null}
                         {item.monthlyAfter ? (

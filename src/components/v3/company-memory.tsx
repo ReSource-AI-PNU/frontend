@@ -131,10 +131,111 @@ function StreamDetail({ stream }: { stream: MemoryStream }) {
   );
 }
 
-function MemoryBody({ memory, onToggle }: { memory: OrgMemory; onToggle: (next: boolean) => Promise<void> }) {
+type MemoryChange = { enabled?: boolean; applyToJudgment?: boolean };
+
+const pct = (value: number) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(1)}%`;
+
+/**
+ * 회사 기록을 판정에 반영(개인화). 되돌리기 어려운 판단 기준을 바꾸므로 승인 게이트처럼 먹색 1px 테두리 상자에 둔다.
+ * 비율은 자료 화면의 미리 보기이고, 실제 판정에 쓴 값은 결과 카드의 "회사 기록 반영 예상" 단가가 근거와 함께 보인다.
+ */
+function Calibration({
+  memory,
+  busy,
+  onChange,
+}: {
+  memory: OrgMemory;
+  busy: boolean;
+  onChange: (change: MemoryChange) => Promise<void>;
+}) {
+  const { canWrite, readOnly } = useV3();
+  const calibration = memory.calibration;
+  if (!calibration) return null;
+  const applied = calibration.applied;
+  const strength = applied ? applied.strength : calibration.proposedStrength;
+  return (
+    <div className="mt-6 rounded-[10px] border border-ink px-4 py-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[15px] font-semibold">회사 기록을 판정에 반영</p>
+        {applied ? <span className={`${chip} bg-ink text-on-ink`}>반영 중</span> : null}
+      </div>
+      <p className="mt-1 text-[13.5px] text-ink-2">
+        지난 검수에서 실제로 받은 단가가 합의와 얼마나 달랐는지로 업체별 예상 단가를 맞춰 업체를 고릅니다. 기록이 적으면
+        계약 단가 쪽으로 당기고(검수 <span className={num}>{strength}</span>건 몫), 같은 업체와의 기록이 없으면 이 회사의
+        같은 폐기물 기록을 씁니다. 계약 단가와 업체에 보내는 조건은 바뀌지 않고, 업체는 이 보정을 보지 못합니다.
+      </p>
+      {calibration.streams.length > 0 ? (
+        <ul className="mt-3 space-y-1.5 text-[13.5px]">
+          {calibration.streams.map((stream) => (
+            <li key={stream.streamId}>
+              <span className="font-medium text-ink">{stream.name}</span>
+              <span className="text-muted">
+                {" "}
+                · 검수 <span className={num}>{stream.records}</span>건
+              </span>
+              {stream.vendors.map((vendor) => (
+                <span key={vendor.vendorOrgId} className="block pl-3 text-ink-2">
+                  {vendor.vendorName ?? "업체"}: 예상 단가 <span className={num}>{pct(vendor.ratePct)}</span>
+                  <span className="text-muted">
+                    {" "}
+                    (같은 업체 검수 <span className={num}>{vendor.records}</span>건)
+                  </span>
+                </span>
+              ))}
+              {stream.streamRatePct != null ? (
+                <span className="block pl-3 text-ink-2">
+                  아직 거래하지 않은 업체: 예상 단가 <span className={num}>{pct(stream.streamRatePct)}</span>
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-[13.5px] text-muted">
+          합의 단가와 실제 단가를 견줄 검수 기록이 생기면 반영할 수 있습니다.
+        </p>
+      )}
+      <p className="mt-2 text-[12.5px] text-muted">
+        {applied
+          ? `${applied.approvedOn}에 담당자가 승인했습니다. 다음 찾기부터 판정에 씁니다.`
+          : "비율은 계약 단가 대비 미리 보기입니다. 승인하면 다음 찾기부터 판정에 쓰고, 승인 기록이 근거로 남습니다."}
+      </p>
+      {canWrite ? (
+        memory.enabled ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            disabled={busy || (!applied && calibration.streams.length === 0)}
+            onClick={() => onChange({ applyToJudgment: !applied })}
+          >
+            {applied ? "반영 멈추기" : "판정에 반영하기"}
+          </Button>
+        ) : (
+          <p className="mt-3 text-[13px] text-muted">아래에서 기록 사용을 다시 켜야 반영할 수 있습니다.</p>
+        )
+      ) : readOnly ? (
+        <p className="mt-3 text-[13px] text-muted">체험 중에는 바꿀 수 없습니다.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function MemoryBody({ memory, onChange }: { memory: OrgMemory; onChange: (change: MemoryChange) => Promise<void> }) {
   const { canWrite, readOnly } = useV3();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const run = async (change: MemoryChange) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onChange(change);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "바꾸지 못했습니다. 다시 시도해 주세요.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const s = memory.summary;
   const empty = s.inspections + s.answers + s.corrections + s.deals === 0;
   const below = memory.streams.filter((stream) => stream.inspections.status === "below");
@@ -209,28 +310,20 @@ function MemoryBody({ memory, onToggle }: { memory: OrgMemory; onToggle: (next: 
         ) : null}
       </MoreDetails>
 
+      <Calibration memory={memory} busy={busy} onChange={(change) => run(change)} />
+
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
         <p className="text-[13.5px] text-ink-2">
           {memory.enabled
-            ? "이 기록을 계약 검토에 씁니다."
-            : "이 기록을 계약 검토에 쓰지 않습니다. 기록은 그대로 남습니다."}
+            ? "이 기록을 계약 검토와 회사 측 AI의 문의에 씁니다."
+            : "이 기록을 계약 검토와 판정에 쓰지 않습니다. 기록은 그대로 남습니다."}
         </p>
         {canWrite ? (
           <Button
             variant="secondary"
             size="sm"
             disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setError(null);
-              try {
-                await onToggle(!memory.enabled);
-              } catch (caught) {
-                setError(caught instanceof Error ? caught.message : "바꾸지 못했습니다. 다시 시도해 주세요.");
-              } finally {
-                setBusy(false);
-              }
-            }}
+            onClick={() => run({ enabled: !memory.enabled })}
           >
             {memory.enabled ? "계약 검토에 쓰지 않기" : "다시 쓰기"}
           </Button>
@@ -276,8 +369,8 @@ export function CompanyMemory() {
       {remote.data ? (
         <MemoryBody
           memory={remote.data}
-          onToggle={async (next) => {
-            remote.set(await api.putMemory(org.id, next));
+          onChange={async (change) => {
+            remote.set(await api.putMemory(org.id, change));
           }}
         />
       ) : null}

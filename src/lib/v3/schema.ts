@@ -368,6 +368,8 @@ export const checkKeySchema = z.enum([
   "transport_carbon",
   /** 이 폐기물만 보면 현행보다 불리하지만 같은 업체 묶음 전체가 나아 함께 보낸다(2026-11-22) */
   "bundle_below_current",
+  /** 전처리·선별·세척 작업비를 몰라 한 달 값이 그 비용 반영 전이다(백엔드 2026-11-21 정책) */
+  "labor_unknown",
 ]);
 
 export const checkSchema = obj({
@@ -394,6 +396,8 @@ export const alternativeSchema = obj({
   costPending: z.boolean().optional(),
   pickupStatus: pickupStatusSchema.nullable().optional(),
   note: z.string(),
+  /** 회사 기록 보정을 판정에 반영했을 때 이 업체의 예상 단가(2026-11-22 뒤 결과). 한 달 값은 보정 전이다 */
+  personalUnitPrice: claimOrNull.optional(),
 });
 
 /** 배출 기업 담당자가 업체가 올린 허가증 원문에서 품목과 처리 방법을 대조한 기록(2026-11-19) */
@@ -568,6 +572,16 @@ export const assignmentSchema = obj({
   }).nullable().optional(),
   checks: z.array(checkSchema),
   alternatives: z.array(alternativeSchema),
+  /**
+   * 회사 기록 보정(담당자가 판정 반영을 승인했을 때, 2026-11-22 뒤 결과). 계약 단가(unitPrice)는 그대로이고 매각 수익과
+   * 한 달 값은 예상 단가로 계산했다. records는 같은 업체 검수 건수, streamRecords는 이 폐기물 전체 검수 건수. 업체 뷰에서는 null
+   */
+  personal: obj({
+    rate: claimOrNull,
+    expectedUnitPrice: claimOrNull,
+    records: z.number(),
+    streamRecords: z.number(),
+  }).nullable().optional(),
   /** 허가 확인 결과 진행할 수 없는 경로(2026-11-19 뒤 결과) */
   blockedRoutes: z.array(blockedRouteSchema).optional(),
 });
@@ -1438,6 +1452,23 @@ export const orgMemorySchema = obj({
   deals: z.array(
     obj({ vendorOrgId: z.string(), vendorName: z.string().nullable(), count: z.number(), lastOn: z.string().nullable() }),
   ),
+  /** 회사 기록 보정(판정 반영). applied가 있으면 담당자가 승인한 것이고 다음 찾기부터 판정에 쓴다(2026-11-22 뒤 응답) */
+  calibration: obj({
+    applied: obj({ evidence: z.string(), strength: z.number(), approvedOn: z.string() }).nullable(),
+    strength: z.number(),
+    proposedStrength: z.number(),
+    streams: z.array(
+      obj({
+        streamId: z.string(),
+        name: z.string(),
+        records: z.number(),
+        streamRatePct: z.number().nullable(),
+        vendors: z.array(
+          obj({ vendorOrgId: z.string(), vendorName: z.string().nullable(), records: z.number(), ratePct: z.number() }),
+        ),
+      }),
+    ),
+  }).optional(),
 });
 
 export const reportSchema = obj({
