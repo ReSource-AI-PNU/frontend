@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { useV3 } from "@/components/v3/context";
 import { useRemote } from "@/components/v3/use-remote";
 import { loadVendorProfile } from "@/components/v3/materials-view";
@@ -21,6 +21,8 @@ const field =
   "min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[15px] tabular-nums";
 const label = "flex flex-col gap-1.5 text-[13px] font-medium text-ink-2";
 const section = "space-y-4 border-t border-line py-7";
+// 파일 고르기는 브라우저 기본 칸 대신 다른 화면과 같은 단추로 보인다(화면 규칙)
+const pick = `${buttonClass("secondary", "sm")} w-fit cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent`;
 
 function VendorRanges({
   profile,
@@ -576,9 +578,9 @@ export function SurveyWorkspace() {
       </p>
     );
   return (
-    <main className="mx-auto w-full max-w-[960px] px-5 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">단가·사전 문의</h1>
-      <p className="mt-2 text-ink-2">
+    <main className="mx-auto w-full max-w-[960px] px-5 pt-8 pb-16">
+      <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">단가·사전 문의</h1>
+      <p className="mt-2 text-[15px] text-ink-2">
         가격 범위에서 시작해 자료를 확인하고, 상대와 거래 조건을 좁힙니다.
       </p>
       {remote.loading && (
@@ -628,10 +630,12 @@ export function SurveyWorkspace() {
               onChange={(e) => setMonth(e.target.value)}
             />
           </label>
-          <label className={label}>
-            계량 CSV
+          <label className={pick}>
+            계량 CSV 고르기
             <input
               type="file"
+              aria-label="계량 CSV"
+              className="sr-only"
               accept=".csv,text/csv"
               disabled={busy}
               onChange={(e) => {
@@ -750,10 +754,12 @@ export function SurveyWorkspace() {
                   ))}
                 </select>
               </label>
-              <label className={label}>
-                사진 올리기
+              <label className={pick}>
+                사진 고르기
                 <input
                   type="file"
+                  aria-label="사진 올리기"
+                  className="sr-only"
                   accept="image/jpeg,image/png,image/webp"
                   disabled={!streamId || busy}
                   onChange={(e) => {

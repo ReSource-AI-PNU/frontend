@@ -121,6 +121,16 @@ export function TalkIcon(props: IconProps) {
   );
 }
 
+/** 단가(가격표) */
+export function PriceIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2.5 3.5a1 1 0 0 1 1-1h4.1a1 1 0 0 1 .7.3l5.2 5.2a1 1 0 0 1 0 1.4l-4.1 4.1a1 1 0 0 1-1.4 0L2.8 8.3a1 1 0 0 1-.3-.7z" />
+      <circle cx="5.6" cy="5.6" r="0.9" />
+    </Icon>
+  );
+}
+
 export function SearchIcon(props: IconProps) {
   return (
     <Icon {...props}>
