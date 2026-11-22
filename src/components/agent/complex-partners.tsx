@@ -37,7 +37,7 @@ function ComplexStats({ stats }: { stats: NonNullable<ComplexPartners["stats"]> 
   const tons = (claim: typeof generated) =>
     typeof claim.value === "number" ? `${formatNumber(Math.round(claim.value))}톤` : "확인 필요";
   return (
-    <p className="mt-3 rounded-[10px] bg-ground px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
+    <p className="mt-3 border-l-2 border-line-strong pl-3.5 text-[13px] leading-relaxed text-ink-2">
       {complexStatsLead(stats)}: 연 <ClaimValue claim={generated} display={tons(generated)} title="단지 폐합성수지 발생량" /> · 재활용{" "}
       <ClaimValue claim={recycled} display={tons(recycled)} title="단지 폐합성수지 재활용" /> · 소각{" "}
       <ClaimValue claim={incinerated} display={tons(incinerated)} title="단지 폐합성수지 소각" />
