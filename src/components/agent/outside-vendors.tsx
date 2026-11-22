@@ -12,11 +12,17 @@ import { ApiError, api } from "@/lib/v3/api";
 import { formatNumber } from "@/lib/v3/format";
 import {
   changesText,
+  DEMO_MARK,
   factCounts,
+  gmailUrl,
   groupOutside,
   groupTitle,
+  isEmail,
   isQuoteFor,
   itemMeta,
+  mailBody,
+  mailSubject,
+  mailtoUrl,
   matchLabel,
   OUTSIDE_LEAD,
   outsideHeadline,
@@ -185,6 +191,145 @@ function Candidate({
   );
 }
 
+/**
+ * 메일로 보내기: 보내기 전에 받는 주소 · 제목 · 본문을 확인하고 고친다. 앱은 메일을 보내지 않고, 고친 글로
+ * 담당자의 메일 프로그램(또는 Gmail 쓰기 창)을 연다. 본문은 메일 창이 비어 와도 붙여 넣을 수 있게 함께 복사한다.
+ */
+function MailComposer({ letter, initialBody, phone }: { letter: QuoteRequest; initialBody: string; phone: string | null }) {
+  const [to, setTo] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [subject, setSubject] = useState(() => mailSubject(letter));
+  const [body, setBody] = useState(initialBody);
+  const [opened, setOpened] = useState<"" | "mail" | "gmail">("");
+  const [copyFailed, setCopyFailed] = useState(false);
+  const toOk = isEmail(to);
+  const edited = body !== initialBody;
+  const ready = toOk && subject.trim() !== "" && body.trim() !== "";
+  const finalBody = mailBody(body, letter.demo);
+
+  async function open(kind: "mail" | "gmail") {
+    if (!ready) return;
+    try {
+      await navigator.clipboard.writeText(finalBody);
+      setCopyFailed(false);
+    } catch {
+      setCopyFailed(true);
+    }
+    if (kind === "mail") window.location.href = mailtoUrl(to, subject.trim(), finalBody);
+    else window.open(gmailUrl(to, subject.trim(), finalBody), "_blank", "noopener,noreferrer");
+    setOpened(kind);
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-[15px] font-semibold">메일로 보내기 · 보내기 전에 확인하고 고쳐 주세요</h3>
+        <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
+          앱이 직접 보내지 않습니다. 아래 글로 내 메일 프로그램을 열고, 보내기는 메일 프로그램에서 누릅니다.
+        </p>
+      </div>
+      {letter.demo ? (
+        <p className="rounded-[10px] bg-warn-bg px-3.5 py-2.5 text-[13px] text-warn">
+          시연 회사의 가상 자료입니다. 보낼 글의 처음과 끝에 &ldquo;{DEMO_MARK}&rdquo;가 붙고, 지워도 다시 붙습니다.
+        </p>
+      ) : null}
+
+      <div>
+        <label className="block text-[13px] font-medium text-ink-2" htmlFor="mail-to">
+          받는 메일 주소
+        </label>
+        <input
+          id="mail-to"
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          value={to}
+          onChange={(event) => setTo(event.target.value)}
+          onBlur={() => setTouched(true)}
+          placeholder="업체 담당자 메일"
+          aria-invalid={touched && !toOk}
+          aria-describedby="mail-to-note"
+          className="mt-1.5 min-h-11 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted"
+        />
+        {touched && to.trim() !== "" && !toOk ? (
+          <p className="mt-1.5 text-[12.5px] text-loss">메일 주소 하나를 적어 주세요. 예: sales@example.co.kr</p>
+        ) : null}
+        <p id="mail-to-note" className="mt-1.5 text-[12px] leading-relaxed text-muted">
+          허가 명부에는 메일 주소가 없습니다. 업체 홈페이지나 명함{phone ? `, 전화(${phone})` : ""}로 확인한 주소를 적어 주세요. 적은 주소는 저장하지 않습니다.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-[13px] font-medium text-ink-2" htmlFor="mail-subject">
+          제목
+        </label>
+        <input
+          id="mail-subject"
+          value={subject}
+          onChange={(event) => setSubject(event.target.value)}
+          className="mt-1.5 min-h-11 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[15px]"
+        />
+      </div>
+
+      <div>
+        <div className="flex items-end justify-between gap-3">
+          <label className="block text-[13px] font-medium text-ink-2" htmlFor="mail-body">
+            본문
+          </label>
+          {edited ? (
+            <span className="flex items-center gap-2 text-[12.5px] text-ink-2">
+              <span aria-hidden className="size-1.5 rounded-full bg-ink" />
+              담당자가 고침
+              <Button variant="ghost" size="sm" onClick={() => setBody(initialBody)}>
+                처음 글로 되돌리기
+              </Button>
+            </span>
+          ) : null}
+        </div>
+        <textarea
+          id="mail-body"
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          rows={18}
+          className="mt-1.5 w-full rounded-[10px] border border-line-strong bg-surface px-3 py-2.5 text-[14px] leading-relaxed"
+        />
+        {edited ? (
+          <p className="mt-1.5 text-[12.5px] text-warn">고친 글은 근거 확인을 다시 거치지 않습니다. 바꾼 숫자는 직접 확인해 주세요.</p>
+        ) : null}
+      </div>
+
+      <div className="rounded-xl border border-ink px-4 py-4">
+        <p className="text-[14px]">
+          <span className="text-muted">받는 곳 · </span>
+          <span className="font-medium">{letter.recipient.name}</span>
+          {toOk ? <span className="text-ink-2"> · {to.trim()}</span> : null}
+        </p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-relaxed text-ink-2">
+          <li>보내는 사람과 회신 주소는 내 메일 프로그램의 계정입니다.</li>
+          <li>이 글은 조건을 여쭙는 문의이며, 거래나 수거를 정하지 않습니다.</li>
+          <li>업체 답은 이 앱에 저절로 들어오지 않습니다. 받은 조건은 담당자가 확인해 주세요.</li>
+        </ul>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button onClick={() => open("mail")} disabled={!ready}>
+            메일 프로그램에서 열기
+          </Button>
+          <Button variant="ghost" onClick={() => open("gmail")} disabled={!ready}>
+            Gmail에서 열기
+          </Button>
+        </div>
+        {!toOk ? <p className="mt-2 text-[12.5px] text-muted">받는 메일 주소를 적으면 열 수 있습니다.</p> : null}
+        <p aria-live="polite" className="mt-2 text-[12.5px] text-ink-2">
+          {opened
+            ? copyFailed
+              ? "메일 창을 열었습니다. 본문이 비어 있으면 위 본문을 직접 골라 복사해 붙여 넣어 주세요."
+              : "메일 창을 열었습니다. 본문도 복사해 두었으니 메일 창이 비어 있으면 붙여 넣어 주세요."
+            : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type Loaded = { key: string; letter: QuoteRequest | null; error: { code: string; message: string } | null };
 
 export function QuoteSheet({
@@ -219,6 +364,8 @@ export function QuoteSheet({
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [copyFailed, setCopyFailed] = useState<string | null>(null);
+  // 메일로 보내기를 연 업체·폐기물(그 요청서의 글로 시작한다). 다른 폐기물을 고르면 요청서로 돌아간다
+  const [mail, setMail] = useState<{ key: string; body: string } | null>(null);
   useEffect(() => {
     let alive = true;
     api
@@ -249,6 +396,7 @@ export function QuoteSheet({
   const claims = new Map((letter?.claims ?? []).map((claim) => [claim.id, claim]));
   const counts = letter ? factCounts(letter.facts ?? []) : null;
   const chosen = items.find((item) => item.id === streamId);
+  const composing = letter && mail?.key === key ? mail : null;
 
   async function copy() {
     if (!letter) return;
@@ -275,7 +423,7 @@ export function QuoteSheet({
         <header className="flex items-start gap-3 px-5 pt-4 pb-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-[17px] font-semibold tracking-[-0.02em]">견적 요청서 · {candidate.name}</h2>
-            <p className="text-[13px] text-muted">앱에서 보내지 않습니다. 복사해서 메일이나 팩스로 보내 주세요.</p>
+            <p className="text-[13px] text-muted">앱이 직접 보내지 않습니다. 복사하거나, 메일로 보내기에서 글을 확인·수정한 뒤 내 메일로 보내 주세요.</p>
           </div>
           <button
             type="button"
@@ -288,6 +436,10 @@ export function QuoteSheet({
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto border-t border-line px-5 py-5">
+          {composing && letter ? (
+            <MailComposer key={composing.key} letter={letter} initialBody={composing.body} phone={candidate.phone} />
+          ) : (
+          <>
           {letter?.demo || demoView ? (
             <p className="mb-4 rounded-[10px] bg-warn-bg px-3.5 py-2.5 text-[13px] text-warn">
               시연 회사의 가상 자료로 만든 요청서입니다. 복사한 글의 처음과 끝에도 시연용 표시가 남습니다.
@@ -382,12 +534,29 @@ export function QuoteSheet({
               </>
             ) : null}
           </div>
+          </>
+          )}
         </div>
         <footer className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
-          <Button onClick={copy} disabled={!letter}>
-            {copied === key ? "복사했습니다" : "복사하기"}
-          </Button>
-          {copyFailed === key ? (
+          {composing ? (
+            <Button variant="secondary" onClick={() => setMail(null)}>
+              요청서로 돌아가기
+            </Button>
+          ) : (
+            <>
+              <Button onClick={copy} disabled={!letter}>
+                {copied === key ? "복사했습니다" : "복사하기"}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={!letter}
+                onClick={() => letter && setMail({ key, body: quoteCopy(letter, contact) })}
+              >
+                메일로 보내기
+              </Button>
+            </>
+          )}
+          {!composing && copyFailed === key ? (
             <span className="text-[13px] text-loss">복사하지 못했습니다. 위 글을 직접 골라 복사해 주세요.</span>
           ) : null}
           <span aria-live="polite" className="sr-only">

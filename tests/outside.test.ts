@@ -6,13 +6,18 @@ import {
   copyText,
   DEMO_MARK,
   factCounts,
+  gmailUrl,
   groupOutside,
   groupTitle,
   matchLabel,
   OUTSIDE_LEAD,
   outsideHeadline,
+  isEmail,
   isQuoteFor,
   itemMeta,
+  mailBody,
+  mailSubject,
+  mailtoUrl,
   phoneText,
   previewText,
   QUOTE_SAFE_NOTE,
@@ -242,4 +247,37 @@ test("후보를 찾은 뒤 바뀐 칸을 미리 알리고, 견적 요청서가 �
   for (const text of [QUOTE_SAFE_NOTE, DEMO_MARK, quoteCopy(LETTERS.defect, "")]) {
     assert.doesNotMatch(text, JARGON, text);
   }
+});
+
+
+test("메일로 보내기: 받는 주소는 하나만, 시연 표시는 지워도 다시 붙는다", () => {
+  assert.equal(isEmail("sales@wonil.co.kr"), true);
+  assert.equal(isEmail("  sales+quote@wonil.co.kr "), true);
+  for (const bad of ["", "sales", "sales@", "a@b", "a@b.c, d@e.f", "홍길동 <a@b.co>", "a b@c.co"]) {
+    assert.equal(isEmail(bad), false, bad);
+  }
+  const letter = Object.values(LETTERS)[0] as QuoteRequest;
+  assert.match(mailSubject(letter), /^\[시연용\] \[견적 문의\] /);
+  assert.equal(mailSubject({ ...letter, demo: false }).startsWith("[견적 문의] "), true);
+  const stripped = "견적 요청서\n고친 본문";
+  const demo = mailBody(stripped, true);
+  assert.equal(demo.startsWith(DEMO_MARK), true);
+  assert.equal(demo.trimEnd().endsWith(DEMO_MARK), true);
+  assert.equal(mailBody(stripped, false), `${stripped}\n`);
+  // 이미 붙어 있으면 두 번 붙이지 않는다
+  assert.equal(mailBody(demo, true), demo);
+});
+
+test("메일로 보내기: mailto와 Gmail 주소는 제목·본문을 그대로 되살린다", () => {
+  const body = "견적 요청서\n단가: kg당 ____원 & 수거 □ 가능?\n";
+  const url = mailtoUrl("sales@wonil.co.kr", "[견적 문의] PP 사출 불량품", body);
+  assert.equal(url.startsWith("mailto:sales@wonil.co.kr?subject="), true);
+  const query = new URLSearchParams(url.slice(url.indexOf("?") + 1));
+  assert.equal(query.get("subject"), "[견적 문의] PP 사출 불량품");
+  assert.equal(query.get("body"), body.replace(/\n/g, "\r\n"));
+  const gmail = new URL(gmailUrl(" sales@wonil.co.kr ", "제목", body));
+  assert.equal(gmail.hostname, "mail.google.com");
+  assert.equal(gmail.searchParams.get("to"), "sales@wonil.co.kr");
+  assert.equal(gmail.searchParams.get("su"), "제목");
+  assert.equal(gmail.searchParams.get("body"), body);
 });
