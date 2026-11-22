@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Dots } from "@/components/agent/dots";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MoreDetails } from "@/components/ui/more-details";
 import { ApiError, api } from "@/lib/v3/api";
 import { AI_NAME } from "@/lib/v3/labels";
 import { authorLabel, checkSummary, draftSignature, fromAgent, groupDraft, selectedKeys, startOpen } from "@/lib/v3/onboarding";
@@ -190,15 +192,13 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
         </Button>
       </div>
       {state.checks.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-1.5 text-[13px]">
+        <ul className="mt-3 flex flex-wrap gap-1.5">
           {state.checks.map((check) => (
-            <li
-              key={check.key}
-              title={check.note || undefined}
-              className={`inline-flex h-6 items-center rounded-[6px] px-2 ${check.done ? "bg-ink text-on-ink" : "bg-sunken text-ink-2"}`}
-            >
-              {check.done ? "✓ " : ""}
-              {check.label}
+            <li key={check.key} title={check.note || undefined}>
+              <Badge tone={check.done ? "gain" : "neutral"}>
+                {check.done ? "채움 · " : ""}
+                {check.label}
+              </Badge>
             </li>
           ))}
         </ul>
@@ -206,16 +206,18 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
 
       {open ? (
         <div className="mt-5">
-          <p className="text-sm text-muted">
-            {AI_NAME.vendor}가 공공 허가 명부와 담당자가 답한 내용으로 업체 정보 초안을 만듭니다. 숫자는 담당자가 말한 것만 쓰고, 확인한
-            항목만 저장됩니다.
-          </p>
+          <MoreDetails label="어떻게 채우나요" closeLabel="설명 접기">
+            <p className="pb-2 text-sm text-ink-2">
+              {AI_NAME.vendor}가 공공 허가 명부와 담당자가 답한 내용으로 업체 정보 초안을 만듭니다. 숫자는 담당자가 말한 것만 쓰고, 확인한
+              항목만 저장됩니다. 연결한 에이전트가 넣은 값도 같은 초안에 들어옵니다.
+            </p>
+          </MoreDetails>
 
           <ol ref={listRef} aria-live="polite" className="mt-4 flex max-h-[440px] flex-col gap-3 overflow-y-auto pr-1">
             {state.messages.map((message) =>
               message.role === "user" ? (
                 <li key={message.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl bg-sunken px-4 py-2.5 text-[15px] whitespace-pre-line">{message.text}</div>
+                  <div className="max-w-[85%] rounded-2xl border border-line px-4 py-2.5 text-[15px] whitespace-pre-line">{message.text}</div>
                 </li>
               ) : (
                 <li key={message.id} className="flex max-w-[85%] flex-col gap-1">
@@ -239,7 +241,7 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
             {sending ? (
               <>
                 <li className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl bg-sunken px-4 py-2.5 text-[15px] whitespace-pre-line">{sending}</div>
+                  <div className="max-w-[85%] rounded-2xl border border-line px-4 py-2.5 text-[15px] whitespace-pre-line">{sending}</div>
                 </li>
                 <li className="flex items-center gap-2 text-[13px] text-muted">
                   <Dots label={`${author}가 답을 쓰고 있습니다`} />
@@ -276,15 +278,12 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
           ) : null}
 
           {groups.length > 0 ? (
-            <div className="mt-6 rounded-lg border border-line bg-ground p-4 sm:p-5">
-              <p className="text-[13px] font-semibold text-ink-2">
+            <div className="mt-6 border-t border-line pt-5">
+              <p className="text-[15px] font-semibold">
                 <MarkerDot />
                 AI 초안 · 담당자 확인 전
               </p>
-              <p className="mt-1 text-sm text-muted">
-                AI가 공공 허가 명부와 대화 내용으로 채운 초안입니다. 연결한 에이전트가 넣은 값도 여기에 들어옵니다. 확인한 항목만
-                저장됩니다.
-              </p>
+              <p className="mt-1 text-sm text-ink-2">확인한 항목만 업체 정보에 저장됩니다.</p>
               {groups.map((group) => (
                 <fieldset key={group.section} className="mt-4">
                   <legend className="text-[13px] font-semibold text-muted">{group.label}</legend>
@@ -313,8 +312,8 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
                             )}
                             <span className="mt-0.5 block text-[12.5px] text-muted">
                               {fromAgent(item) ? (
-                                <span className="mr-1.5 inline-block rounded-full border border-line-strong px-2 py-px text-[12px] text-ink-2">
-                                  연결한 에이전트
+                                <span className="mr-1.5 inline-block align-middle">
+                                  <Badge tone="ai">연결한 에이전트</Badge>
                                 </span>
                               ) : null}
                               {item.source.label}

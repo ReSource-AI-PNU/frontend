@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+import { MoreDetails } from "@/components/ui/more-details";
 import { ApiError, api } from "@/lib/v3/api";
 import { connectionExamples, keyCountLine } from "@/lib/v3/mcp-keys";
 import type { McpKey, McpKeyList } from "@/lib/v3/types";
@@ -43,7 +44,7 @@ function Example({ title, text }: { title: string; text: string }) {
         <p className="text-[13px] font-semibold text-ink-2">{title}</p>
         <CopyButton text={text} />
       </div>
-      <pre className="mt-1.5 overflow-x-auto rounded-md bg-sunken px-3 py-2.5 font-mono text-[12.5px] leading-relaxed whitespace-pre">
+      <pre className="mt-1.5 overflow-x-auto rounded-md border border-line px-3 py-2.5 font-mono text-[12.5px] leading-relaxed whitespace-pre">
         {text}
       </pre>
     </div>
@@ -158,10 +159,10 @@ export function VendorMcpKeys({ orgId }: { orgId: string }) {
       ) : null}
 
       {created ? (
-        <div className="mt-4 rounded-lg border border-line-strong bg-ground p-4" role="status">
-          <p className="text-[13px] font-semibold text-ink-2">새 연결 키 · {created.key.label}</p>
+        <div className="mt-4 border-t border-line pt-4" role="status">
+          <p className="text-[15px] font-semibold">새 연결 키 · {created.key.label}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-surface px-3 py-2 font-mono text-[13px] break-all">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-md border border-line-strong px-3 py-2 font-mono text-[13px] break-all">
               {created.token}
             </code>
             <CopyButton text={created.token} />
@@ -204,9 +205,8 @@ export function VendorMcpKeys({ orgId }: { orgId: string }) {
         </p>
       ) : null}
 
-      <details className="mt-4 text-sm">
-        <summary className="cursor-pointer font-medium text-ink-2">연결 방법 보기</summary>
-        <div className="mt-2 text-ink-2">
+      <MoreDetails label="연결 방법 보기" closeLabel="연결 방법 접기" className="mt-4 text-sm">
+        <div className="pb-2 text-ink-2">
           <p>
             MCP(에이전트가 외부 도구를 쓰는 표준 방식)를 지원하는 에이전트면 연결할 수 있습니다. 주소와 키를 에이전트 설정에 넣으면
             공공 허가 명부 찾기, 말한 값을 초안에 넣기, 매입 기준 넣기, 업체 정보 현황 보기를 쓸 수 있습니다. 저장(확정)은 할 수
@@ -218,7 +218,7 @@ export function VendorMcpKeys({ orgId }: { orgId: string }) {
           <Example title="설정 파일(JSON)" text={examples.json} />
           {!created ? <p className="mt-2 text-[13px] text-muted">예시의 &lt;키&gt; 자리에 만든 연결 키를 넣습니다.</p> : null}
         </div>
-      </details>
+      </MoreDetails>
     </section>
   );
 }
