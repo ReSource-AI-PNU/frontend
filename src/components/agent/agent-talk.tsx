@@ -45,7 +45,7 @@ export function ReviewNote({ review, fresh, className = "" }: { review: ReviewLi
   const passed = review.items.length - urgent.length;
   return (
     <li className={`${fresh ? "[animation:rs-rise_320ms_var(--ease-out)_both]" : ""} ${className}`}>
-      <div className="mx-auto max-w-[96%] rounded-[18px] border border-line bg-ground px-4 py-3">
+      <div className="mx-auto max-w-[96%] rounded-xl border border-line bg-ground px-4 py-3">
         <p className="mb-1 flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
           <span className="font-medium text-ink-2">{REVIEWER_NAME}</span>
           <span>양쪽 합의 조건 대조</span>
@@ -54,7 +54,7 @@ export function ReviewNote({ review, fresh, className = "" }: { review: ReviewLi
         {urgent.length > 0 ? (
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {urgent.map((item) => (
-              <li key={item.key} className={`inline-flex min-h-7 items-center rounded-full px-2.5 text-[12px] font-semibold ${REVIEW_CHIP[item.status] ?? ""}`}>
+              <li key={item.key} className={`inline-flex min-h-6 items-center rounded-[6px] px-2 text-[13px] font-medium ${REVIEW_CHIP[item.status] ?? ""}`}>
                 {REVIEW_WORD[item.status]} · {item.title}
               </li>
             ))}
@@ -109,8 +109,23 @@ function PickupQuote({ pickup, claims }: { pickup: MessagePickup; claims: Thread
   );
 }
 
-function Bubble({ message, mine, name, fresh }: { message: ThreadMessage; mine: boolean; name: string; fresh: boolean }) {
+export function Bubble({
+  message,
+  mine,
+  name,
+  fresh,
+  clamp = false,
+}: {
+  message: ThreadMessage;
+  mine: boolean;
+  name: string;
+  fresh: boolean;
+  /** 긴 말은 몇 줄만 보이고 "더 보기"로 편다(업체 대화 화면) */
+  clamp?: boolean;
+}) {
   const { openEvidence } = useV3();
+  const [more, setMore] = useState(false);
+  const long = clamp && message.text.length > 150;
   const { validation } = message;
   const evidence = evidenceOf(message);
   const rewritten = (validation.attempts ?? 1) > 1;
@@ -123,9 +138,21 @@ function Bubble({ message, mine, name, fresh }: { message: ThreadMessage; mine: 
           <span>{MESSAGE_LABEL[message.type] ?? message.type}</span>
         </p>
         <div
-          className={`rounded-[18px] px-4 py-3 text-[15px] leading-relaxed ${mine ? "bg-sunken" : "border border-line bg-surface"}`}
+          className={`rounded-xl px-4 py-3 text-[15px] leading-relaxed ${mine ? "bg-sunken" : "border border-line bg-surface"}`}
         >
-          <ClaimText text={message.text} claims={message.claims} />
+          <div className={long && !more ? "line-clamp-3" : undefined}>
+            <ClaimText text={message.text} claims={message.claims} />
+          </div>
+          {long ? (
+            <button
+              type="button"
+              aria-expanded={more}
+              onClick={() => setMore((before) => !before)}
+              className="mt-1 min-h-9 text-[13px] font-semibold text-ink-2 underline underline-offset-4 hover:text-ink"
+            >
+              {more ? "접기" : "더 보기"}
+            </button>
+          ) : null}
           {message.meta?.terms?.pickup ? <PickupQuote pickup={message.meta.terms.pickup} claims={message.claims} /> : null}
           {message.meta?.terms && message.meta.terms.days.length > 0 ? (
             <p className="mt-2 text-[13px] text-ink-2">수거 요일 {message.meta.terms.days.join("·")}</p>
@@ -163,7 +190,7 @@ function TypingBubble({ typing, left }: { typing: Typing; left: boolean }) {
         <div
           role="status"
           aria-live="polite"
-          className={`inline-flex items-center gap-2.5 rounded-[18px] px-4 py-3 text-[14px] text-ink-2 ${left ? "bg-sunken" : "border border-line bg-surface"}`}
+          className={`inline-flex items-center gap-2.5 rounded-xl px-4 py-3 text-[14px] text-ink-2 ${left ? "bg-sunken" : "border border-line bg-surface"}`}
         >
           <Dots label={text} />
           <span>{text}</span>

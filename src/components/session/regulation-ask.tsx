@@ -43,7 +43,7 @@ export function RegulationAsk({
             </svg>
           </span>
         ) : (
-          <span aria-hidden="true" className="num mt-0.5 grid size-[18px] place-items-center rounded-full bg-marker text-[11px] font-bold text-marker-ink">
+          <span aria-hidden="true" className="num mt-0.5 grid size-[18px] place-items-center rounded-full bg-marker text-[12px] font-bold text-marker-ink">
             ?
           </span>
         )}

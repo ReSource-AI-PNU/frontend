@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /** 설정 화면의 입력 칸. 회사 등록 화면과 같은 모양이다(높이 48px, 틀리면 빨간 테두리). */
 export const inputClass =
-  "min-h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss disabled:bg-sunken disabled:text-muted";
+  "min-h-12 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss disabled:bg-sunken disabled:text-muted";
 
 export function FieldError({ id, message }: { id?: string; message?: string | null }) {
   return message ? (

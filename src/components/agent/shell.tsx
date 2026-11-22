@@ -8,6 +8,7 @@ import {
   CloseIcon,
   FolderIcon,
   GearIcon,
+  HomeIcon,
   InboxIcon,
   MenuIcon,
   PlusIcon,
@@ -22,25 +23,30 @@ import { useEscape } from "@/components/use-escape";
 import { useV3 } from "@/components/v3/context";
 import { KIND_LABEL } from "@/lib/auth/account";
 
+// 지금 화면은 옅은 파랑 바탕에 파랑 글자다
 const row =
-  "flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[14px] text-ink-2 transition-colors hover:bg-sunken hover:text-ink";
+  "rs-press flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[14.5px] text-ink-2 hover:bg-sunken hover:text-ink";
 
 type NavItem = { href: string; label: string; icon: typeof SearchIcon; exact: boolean };
 
 /** 회사의 종류에 따라 왼쪽 메뉴가 달라진다. 처리 업체는 받은 문의·대화·승인·업체 정보다. */
 function navItems(role: "emitter" | "vendor" | "admin", base: string, demo: boolean): NavItem[] {
+  // 홈(할 일)과 거래(진행 단계, 두 AI의 대화, 서류)가 먼저다. 찾기는 새 거래를 여는 곳이다
   if (role === "vendor") {
     return [
+      { href: base, label: "홈", icon: HomeIcon, exact: true },
+      { href: `${base}/deals`, label: "거래", icon: TalkIcon, exact: false },
       ...(demo ? [] : [{ href: `${base}/inquiries`, label: "받은 문의", icon: InboxIcon, exact: false }]),
-      { href: base, label: "대화", icon: TalkIcon, exact: true },
       { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
       { href: `${base}/materials`, label: "업체 정보", icon: FolderIcon, exact: false },
     ];
   }
   return [
-    { href: base, label: "찾기", icon: SearchIcon, exact: true },
-    ...(role === "emitter" ? [{ href: `${base}/materials`, label: "자료", icon: FolderIcon, exact: false }] : []),
+    { href: base, label: "홈", icon: HomeIcon, exact: true },
+    ...(role === "emitter" ? [{ href: `${base}/deals`, label: "거래", icon: TalkIcon, exact: false }] : []),
+    { href: `${base}/find`, label: "찾기", icon: SearchIcon, exact: false },
     { href: `${base}/approval`, label: "승인·서류", icon: StampIcon, exact: false },
+    ...(role === "emitter" ? [{ href: `${base}/materials`, label: "자료", icon: FolderIcon, exact: false }] : []),
     // 원청·고객사에 낼 재활용·탄소 실적(2026-11-19 배출 사업장 설문)
     ...(role === "emitter" ? [{ href: `${base}/report`, label: "실적", icon: ReportIcon, exact: false }] : []),
     ...(role === "admin" && !demo ? [{ href: `${base}/admin`, label: "운영", icon: GearIcon, exact: false }] : []),
@@ -163,9 +169,9 @@ export function AgentShell({ account, notice, simulation, children }: {
                   href={item.href}
                   aria-current={current ? "page" : undefined}
                   onClick={() => setOpen(false)}
-                  className={`${row} aria-[current=page]:bg-sunken aria-[current=page]:font-medium aria-[current=page]:text-ink`}
+                  className={`${row} aria-[current=page]:bg-accent-bg aria-[current=page]:font-semibold aria-[current=page]:text-ink`}
                 >
-                  <item.icon className="text-muted" />
+                  <item.icon className={current ? "text-accent" : "text-muted"} />
                   {item.label}
                 </Link>
               </li>
@@ -196,7 +202,7 @@ export function AgentShell({ account, notice, simulation, children }: {
 
   return (
     <div className="flex min-h-dvh flex-1 bg-bg" data-active-org={org.id}>
-      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 bg-ground lg:block print:!hidden">{sidebar}</aside>
+      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 border-r border-line bg-ground lg:block print:!hidden">{sidebar}</aside>
 
       {open ? (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -221,7 +227,7 @@ export function AgentShell({ account, notice, simulation, children }: {
         {readOnly ? (
           <p
             role="note"
-            className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-ground px-5 py-2.5 text-sm text-ink-2"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-ground px-5 py-2.5 text-sm text-ink-2"
           >
             <span>
               <span className="font-medium text-ink">체험 중</span> · 둘러보기 전용입니다.

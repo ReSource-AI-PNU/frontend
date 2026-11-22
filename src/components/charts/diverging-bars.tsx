@@ -340,7 +340,7 @@ export function DivergingBars({
             <p className="mt-0.5 flex items-center gap-1.5 text-ink-2">
               <span aria-hidden="true" className="inline-block h-0.5 w-3 rounded-full" style={{ background: tone(current.d.value) }} />
               {current.d.label}
-              {current.d.emphasis ? <span className="rounded-sm bg-marker px-1 text-[11px] font-semibold text-marker-ink">{emphasisLabel}</span> : null}
+              {current.d.emphasis ? <span className="rounded-sm bg-marker px-1 text-[12px] font-semibold text-marker-ink">{emphasisLabel}</span> : null}
             </p>
             {current.d.note ? <p className="mt-0.5 text-[12px] text-muted">{current.d.note}</p> : null}
           </div>
@@ -393,7 +393,7 @@ export function DivergingBars({
                 <tr key={d.id} className="border-b border-line">
                   <th scope="row" className={`py-1.5 text-left font-normal ${d.emphasis ? "font-semibold" : ""}`}>
                     {d.label}
-                    {d.emphasis ? <span className="ml-1.5 rounded-sm bg-marker px-1 text-[11px] font-semibold text-marker-ink">{emphasisLabel}</span> : null}
+                    {d.emphasis ? <span className="ml-1.5 rounded-sm bg-marker px-1 text-[12px] font-semibold text-marker-ink">{emphasisLabel}</span> : null}
                   </th>
                   <td className="num py-1.5 pl-3 text-right">{fmt(d.value)}</td>
                 </tr>

@@ -42,16 +42,16 @@ const td = "px-3 py-2.5 align-top";
 
 function Stat({ label, claim, display, note, empty = "없음" }: { label: string; claim: Claim | null; display?: string; note?: string; empty?: string }) {
   return (
-    <div className="min-w-0 border-t border-line pt-3">
+    <div className="min-w-0 rounded-xl border border-line bg-surface px-4 py-4 print:rounded-none print:border-0 print:border-t print:px-0">
       <p className="text-[13px] text-muted">{label}</p>
-      <p className="mt-1 font-mono text-[22px] leading-tight tracking-[-0.02em] tabular-nums sm:text-[26px]">
+      <p className="mt-1 text-[20px] leading-tight font-bold tracking-[-0.02em] tabular-nums sm:text-[22px]">
         {claim ? (
           <ClaimValue claim={claim} display={display} className="text-left whitespace-nowrap" />
         ) : (
           <span className="text-[17px] text-muted">{empty}</span>
         )}
       </p>
-      {note ? <p className="mt-0.5 text-[12px] text-muted">{note}</p> : null}
+      {note ? <p className="mt-0.5 hidden text-[12px] text-muted print:block">{note}</p> : null}
     </div>
   );
 }
@@ -84,7 +84,7 @@ function CarbonCell({ item }: { item: ReportRecord }) {
 }
 
 function Records({ report }: { report: Report }) {
-  const group = "px-3 pt-2 pb-0 text-[11px] font-medium whitespace-nowrap text-muted";
+  const group = "px-3 pt-2 pb-0 text-[12px] font-medium whitespace-nowrap text-muted";
   return (
     <div className="overflow-x-auto rounded-xl border border-line print:overflow-visible print:rounded-none">
       <table className="w-full min-w-[720px] text-[14px] tabular-nums print:min-w-0 print:text-[11px]">
@@ -295,12 +295,14 @@ export function ReportView() {
   return (
     <div className="mx-auto w-full max-w-[960px] px-5 pt-10 pb-16 print:max-w-none print:px-0 print:pt-0">
       <header className="mb-6">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">재활용 실적</h1>
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">재활용 실적</h1>
         <p className="mt-1 text-[14px] text-muted">
           {org.name}
           {report ? ` · ${periodText(report.period)} · ${report.generatedOn} 기준` : ""}
         </p>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink-2 print:hidden">{REPORT_LEAD}</p>
+        <MoreDetails className="print:hidden" label="이 실적은 어떻게 만드나요" closeLabel="접기">
+          <p className="pb-2 text-[14px] leading-relaxed text-ink-2">{REPORT_LEAD}</p>
+        </MoreDetails>
       </header>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 print:hidden">
@@ -349,7 +351,7 @@ export function ReportView() {
             <h2 className="text-[19px] font-semibold tracking-[-0.02em]">{reportHeadline(report)}</h2>
             {report.totals ? (
               <>
-                <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Stat label="반출 무게" claim={report.totals.kg} />
                   <Stat label="매각 수익(받은 돈)" claim={revenue} display={won(revenue)} />
                   <Stat label="처리비(낸 돈)" claim={fee} display={won(fee)} />
@@ -363,19 +365,21 @@ export function ReportView() {
                     }`}
                   />
                 </div>
-                <ul className="mt-3 space-y-1 text-[13px] leading-relaxed text-muted">
-                  {unverified ? <li className="text-warn">{unverified}</li> : null}
+                {unverified ? <p className="mt-3 text-[13px] text-warn">{unverified}</p> : null}
+                <MoreDetails className="print:hidden" label="계산 범위 보기" closeLabel="접기">
+                <ul className="space-y-1 pb-2 text-[13px] leading-relaxed text-muted">
                   {carbonGap ? <li>{carbonGap}</li> : null}
                   {rebuilt ? <li>{rebuilt}</li> : null}
                   {baseline ? <li>{baseline}</li> : null}
                   {corrected ? <li>{corrected}</li> : null}
                   <li>{scopeNote(report)}</li>
                 </ul>
+                </MoreDetails>
               </>
             ) : (
               <div className="mt-3 rounded-xl border border-dashed border-line-strong px-5 py-6 print:hidden">
                 <p className="text-[15px] text-ink-2">{EMPTY_LEAD}</p>
-                <Link href={basePath} className={`${buttonClass("secondary", "sm")} mt-3`}>
+                <Link href={`${basePath}/find`} className={`${buttonClass("secondary", "sm")} mt-3`}>
                   찾기 화면으로
                 </Link>
               </div>
@@ -404,7 +408,7 @@ export function ReportView() {
           {report.planned.length > 0 ? (
             <section aria-label="확정한 합의의 예상">
               <h2 className="text-[17px] font-semibold tracking-[-0.02em]">확정한 합의 · 한 달 예상</h2>
-              <p className="mt-1 mb-3 text-[13px] text-muted">{PLANNED_LEAD}</p>
+              <p className="mt-1 mb-3 hidden text-[13px] text-muted print:block">{PLANNED_LEAD}</p>
               <Planned report={report} />
               <div className="mt-2 flex flex-wrap gap-1 print:hidden">
                 {deals.map((id, index) => (
@@ -424,8 +428,8 @@ export function ReportView() {
             </section>
           ) : null}
 
-          <p className="hidden text-[11px] text-muted print:block">
-            Re:Source AI가 {report.generatedOn}에 만든 실적입니다. 숫자마다 업체 검수 기록과 계산 근거가 남아 있습니다.
+          <p className="hidden text-[12px] text-muted print:block">
+            BYPRO가 {report.generatedOn}에 만든 실적입니다. 숫자마다 업체 검수 기록과 계산 근거가 남아 있습니다.
           </p>
         </div>
       ) : null}

@@ -46,7 +46,7 @@ const STATUS: Record<DocStatus, { tab: string; badge: string; line: string; badg
 function Paper({ doc, from, dateLabel }: { doc: DocView; from: string; dateLabel: string }) {
   const s = STATUS[doc.status];
   return (
-    <article className="mx-auto max-w-[720px] rounded-[3px] border border-line bg-surface px-8 py-9 shadow-[0_1px_0_var(--color-line-strong),0_22px_44px_-30px_rgb(0_0_0/0.5)] sm:px-11">
+    <article className="mx-auto max-w-[720px] rounded-sm border border-line bg-surface px-8 py-9 shadow-[0_1px_0_var(--color-line-strong),0_22px_44px_-30px_rgb(0_0_0/0.5)] sm:px-11">
       <header className="flex items-start justify-between gap-4 border-b-2 border-ink pb-3">
         <div>
           <p className="text-[12px] text-muted">{s.line}</p>
@@ -81,7 +81,7 @@ function Paper({ doc, from, dateLabel }: { doc: DocView; from: string; dateLabel
       <p className="mt-5 text-[14.5px] leading-[1.8] text-ink-2">{doc.body}</p>
 
       <footer className="mt-8 flex items-end justify-between gap-4 border-t border-line pt-3 text-[12px] text-muted">
-        <span>Re:Source AI가 흐름 진단·규정·매칭 결과로 채웠습니다. 숫자는 시연용 가정값입니다.</span>
+        <span>BYPRO가 흐름 진단·규정·매칭 결과로 채웠습니다. 숫자는 시연용 가정값입니다.</span>
         <span className="shrink-0">{from}</span>
       </footer>
     </article>
@@ -135,7 +135,7 @@ export function ProposalDocuments({ documents, from, dateLabel }: { documents: D
             }`}
           >
             <span className={`text-sm whitespace-nowrap ${i === active ? "font-semibold" : ""}`}>{d.tabLabel}</span>
-            <span className="text-[11.5px] whitespace-nowrap text-muted">
+            <span className="text-[12px] whitespace-nowrap text-muted">
               {d.optional ? `선택 · ${STATUS[d.status].tab}` : STATUS[d.status].tab}
             </span>
           </button>

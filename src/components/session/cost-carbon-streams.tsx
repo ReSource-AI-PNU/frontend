@@ -81,7 +81,7 @@ export function CostCarbonStreams({ rows, routeA, routeC }: { rows: StreamBreakd
                   <span className="flex items-center justify-end gap-2.5">
                     <span aria-hidden="true" className="flex h-2.5 w-16 justify-start">
                       <span
-                        className="h-full rounded-r-[3px]"
+                        className="h-full rounded-r-sm"
                         style={{ width: `${(Math.abs(diff) / maxDiff) * 100}%`, background: diff >= 0 ? "var(--color-chart-gain)" : "var(--color-chart-loss)" }}
                       />
                     </span>

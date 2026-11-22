@@ -67,7 +67,7 @@ export function ClaimValue({
     <>
       {claim.kind === "clause" ? `“${text}”` : text}
       {assumed && !hideAssumed ? (
-        <span className="ml-1 align-baseline text-[11px] font-normal text-muted">{claim.evidenceClass === "policy" ? "운영 정책" : "가정"}</span>
+        <span className="ml-1 align-baseline text-[12px] font-normal text-muted">{claim.evidenceClass === "policy" ? "운영 정책" : "가정"}</span>
       ) : null}
     </>
   );
@@ -83,7 +83,7 @@ export function ClaimValue({
       type="button"
       onClick={() => openEvidence(claim.evidence, title ?? claim.label)}
       title={claim.label ? `${claim.label} · 근거 보기` : "근거 보기"}
-      className={`inline cursor-pointer rounded-[4px] font-semibold decoration-current/40 underline-offset-4 hover:underline ${claim.kind === "number" ? "tabular-nums" : ""} ${tone} ${className}`}
+      className={`inline cursor-pointer rounded-sm font-semibold decoration-current/40 underline-offset-4 hover:underline ${claim.kind === "number" ? "tabular-nums" : ""} ${tone} ${className}`}
     >
       {body}
     </button>

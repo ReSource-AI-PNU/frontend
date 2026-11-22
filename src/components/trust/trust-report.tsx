@@ -102,15 +102,13 @@ function MetricTable({ metrics }: { metrics: TrustMetric[] }) {
                   <span className="whitespace-nowrap">{metric.ci.replace("95% 신뢰구간 ", "")}</span>
                 ) : metric.intervalNote ? (
                   <span className="block text-[12px] leading-snug">{metric.intervalNote}</span>
-                ) : (
-                  "—"
-                )}
+                ) : null}
                 {metric.smallSample ? <span className="mt-0.5 block text-[12px]">{SMALL_NOTE}</span> : null}
               </td>
-              <td className="px-3 py-2 text-muted">{metric.n !== null ? <span className="num">{metric.n}</span> : "—"}</td>
-              <td className="px-3 py-2 whitespace-nowrap text-muted">{metric.target?.replace("목표 ", "") ?? "—"}</td>
+              <td className="px-3 py-2 text-muted">{metric.n !== null ? <span className="num">{metric.n}</span> : null}</td>
+              <td className="px-3 py-2 whitespace-nowrap text-muted">{metric.target?.replace("목표 ", "") ?? null}</td>
               <td className="px-3 py-2 whitespace-nowrap">
-                {metric.verdict === "met" ? "달성" : metric.verdict === "unmet" ? <span className="font-semibold text-loss">미달</span> : metric.verdict === "unmeasured" ? <span className="text-muted">미측정</span> : "—"}
+                {metric.verdict === "met" ? "달성" : metric.verdict === "unmet" ? <span className="font-semibold text-loss">미달</span> : metric.verdict === "unmeasured" ? <span className="text-muted">미측정</span> : null}
               </td>
             </tr>
           ))}

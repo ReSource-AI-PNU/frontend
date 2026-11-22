@@ -191,3 +191,31 @@ export function InboxIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** 홈 */
+export function HomeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2.25 7.25L8 2.5l5.75 4.75V13a.75.75 0 0 1-.75.75H9.75v-3.5h-3.5v3.5H3a.75.75 0 0 1-.75-.75z" />
+    </Icon>
+  );
+}
+
+/** 서류 */
+export function DocIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3.75 1.75h5.5l3 3v9.5h-8.5z" />
+      <path d="M6 8h4.5M6 10.5h4.5" />
+    </Icon>
+  );
+}
+
+/** 오른쪽 꺾쇠 */
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6.25 3.75L10.5 8l-4.25 4.25" />
+    </Icon>
+  );
+}

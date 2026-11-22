@@ -68,7 +68,7 @@ export function AgentConsole({
           {status.label}
         </p>
         <p className="mt-1 text-[12px] text-ink-2">모의 실행 기록입니다. 표시된 모델과 도구는 실제 호출되지 않았습니다.</p>
-        <p className="num mt-1 text-[11.5px] text-muted">{stats.join(" · ")}</p>
+        <p className="num mt-1 text-[12px] text-muted">{stats.join(" · ")}</p>
       </header>
 
       <ol ref={listRef} aria-live="polite" aria-relevant="additions" className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
@@ -79,25 +79,25 @@ export function AgentConsole({
           const more = Boolean(e.detail || e.tool || e.refs?.length);
           const line = (
             <span className="grid grid-cols-[52px_10px_minmax(0,1fr)] items-baseline gap-x-2">
-              <span className="num text-[11px] text-muted">{e.time}</span>
+              <span className="num text-[12px] text-muted">{e.time}</span>
               <span
                 aria-hidden="true"
                 className={`mt-[5px] inline-block size-2 self-start rounded-full ${e.actor === "human" ? "bg-ink" : "bg-marker shadow-[0_0_0_1px_var(--color-ink)]"}`}
               />
               <span className="min-w-0">
-                <span className="mr-1.5 text-[11.5px] text-muted">
+                <span className="mr-1.5 text-[12px] text-muted">
                   {e.actor === "human" ? (e.kind === "command" ? "사람 명령" : "사람") : AGENT_LABEL[e.agent]}
                 </span>
                 <span className={`text-[13px] ${e.kind === "ask" ? "font-semibold text-warn" : e.kind === "result" || e.actor === "human" ? "text-ink" : "text-ink-2"}`}>
                   {e.title}
                 </span>
-                {e.tool ? <span className="num block truncate text-[11px] text-muted">{e.tool}</span> : null}
+                {e.tool ? <span className="num block truncate text-[12px] text-muted">{e.tool}</span> : null}
               </span>
             </span>
           );
           return (
             <li key={e.id}>
-              {heading ? <p className="mt-3 mb-1 px-2 text-[11.5px] font-semibold text-muted first:mt-1">{heading}</p> : null}
+              {heading ? <p className="mt-3 mb-1 px-2 text-[12px] font-semibold text-muted first:mt-1">{heading}</p> : null}
               {more ? (
                 <details className="group/ev rounded-md px-2 py-1.5 open:bg-sunken hover:bg-sunken/70">
                   <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">{line}</summary>
@@ -112,7 +112,7 @@ export function AgentConsole({
                         ))}
                       </ul>
                     ) : null}
-                    {e.durationMs ? <p className="num text-[11px] text-muted">{(e.durationMs / 1000).toFixed(1)}초</p> : null}
+                    {e.durationMs ? <p className="num text-[12px] text-muted">{(e.durationMs / 1000).toFixed(1)}초</p> : null}
                   </div>
                 </details>
               ) : (

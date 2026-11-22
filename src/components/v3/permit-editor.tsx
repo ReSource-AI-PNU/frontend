@@ -7,7 +7,7 @@ import type { ManualPermitInput, PermitCatalogItem } from "@/lib/v3/types";
 import { useV3 } from "./context";
 import { useRemote } from "./use-remote";
 
-const field = "min-h-11 w-full rounded-[10px] border border-line-strong bg-surface px-3";
+const field = "min-h-11 w-full rounded-md border border-line-strong bg-surface px-3";
 
 export function PermitEditor({ canAct, onSave, children }: {
   canAct: boolean;

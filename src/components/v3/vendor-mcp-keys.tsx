@@ -7,7 +7,7 @@ import { connectionExamples, keyCountLine } from "@/lib/v3/mcp-keys";
 import type { McpKey, McpKeyList } from "@/lib/v3/types";
 
 const field =
-  "min-h-11 min-w-0 flex-1 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
+  "min-h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
 
 const noop = () => () => {};
 
@@ -43,7 +43,7 @@ function Example({ title, text }: { title: string; text: string }) {
         <p className="text-[13px] font-semibold text-ink-2">{title}</p>
         <CopyButton text={text} />
       </div>
-      <pre className="mt-1.5 overflow-x-auto rounded-[10px] bg-sunken px-3 py-2.5 font-mono text-[12.5px] leading-relaxed whitespace-pre">
+      <pre className="mt-1.5 overflow-x-auto rounded-md bg-sunken px-3 py-2.5 font-mono text-[12.5px] leading-relaxed whitespace-pre">
         {text}
       </pre>
     </div>
@@ -158,10 +158,10 @@ export function VendorMcpKeys({ orgId }: { orgId: string }) {
       ) : null}
 
       {created ? (
-        <div className="mt-4 rounded-[14px] border border-line-strong bg-ground p-4" role="status">
+        <div className="mt-4 rounded-lg border border-line-strong bg-ground p-4" role="status">
           <p className="text-[13px] font-semibold text-ink-2">새 연결 키 · {created.key.label}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-[10px] bg-surface px-3 py-2 font-mono text-[13px] break-all">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-md bg-surface px-3 py-2 font-mono text-[13px] break-all">
               {created.token}
             </code>
             <CopyButton text={created.token} />

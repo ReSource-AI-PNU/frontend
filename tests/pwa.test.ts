@@ -20,7 +20,7 @@ function pngSize(path: string): [number, number] {
 
 test("manifest: 이름, /app에서 시작, 독립 창, 토큰 색", () => {
   const m = manifest();
-  assert.equal(m.name, "Re:Source AI");
+  assert.equal(m.name, "BYPRO");
   assert.ok(m.short_name && m.short_name.length <= 12);
   assert.equal(m.start_url, "/app");
   assert.equal(m.display, "standalone");

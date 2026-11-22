@@ -50,7 +50,7 @@ function Bubble({
   return (
     <span
       key={text}
-      className={`pointer-events-none absolute w-max max-w-[200px] rounded-[14px] px-3 py-1.5 text-[12.5px] leading-snug shadow-[0_6px_18px_rgb(0_0_0/0.08)] [animation:rs-rise_240ms_var(--ease-out)_both] ${place} ${
+      className={`pointer-events-none absolute w-max max-w-[200px] rounded-lg px-3 py-1.5 text-[12.5px] leading-snug shadow-[0_6px_18px_rgb(0_0_0/0.08)] [animation:rs-rise_240ms_var(--ease-out)_both] ${place} ${
         tone === "dark" ? "bg-ink text-bg" : "border border-line bg-surface text-ink-2"
       }`}
     >
@@ -100,7 +100,7 @@ function Actor({
         <span className={`mt-1 max-w-[110px] truncate text-center text-[12px] font-medium ${state === "wait" ? "text-muted" : "text-ink"}`}>
           {name}
         </span>
-        {sub ? <span className="max-w-[110px] truncate text-center text-[11px] text-muted">{sub}</span> : null}
+        {sub ? <span className="max-w-[110px] truncate text-center text-[12px] text-muted">{sub}</span> : null}
       </Body>
     </div>
   );
@@ -141,7 +141,7 @@ export function AgentStage({ live, onOpen }: { live: LiveState; onOpen?: (thread
   const busyStage = spec.find((item) => item.state === "talk" || item.state === "work")?.stage ?? null;
 
   return (
-    <section aria-label="AI 작업실" className="overflow-hidden rounded-[20px] border border-line bg-ground">
+    <section aria-label="AI 작업실" className="overflow-hidden rounded-2xl border border-line bg-ground">
       <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-5 pt-4">
         <h2 className="text-[15px] font-semibold">AI 작업실</h2>
         <p aria-live="polite" className="text-[13px] text-muted">

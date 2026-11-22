@@ -11,8 +11,8 @@ export const PWA_COLORS = { background: "#ffffff", theme: "#ffffff" } as const;
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/app",
-    name: "Re:Source AI",
-    short_name: "Re:Source",
+    name: "BYPRO",
+    short_name: "BYPRO",
     description: "폐플라스틱을 받아 줄 곳과 조건을, 근거를 확인하며 AI가 대신 찾아 드립니다.",
     lang: "ko",
     dir: "ltr",

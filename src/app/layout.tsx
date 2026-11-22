@@ -20,13 +20,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Re:Source AI",
-    template: "%s · Re:Source AI",
+    default: "BYPRO",
+    template: "%s · BYPRO",
   },
   description:
     "공장에서 나오는 폐플라스틱을 등록하면, 회사 측 AI가 업체 측 AI와 근거를 확인하며 조건을 맞춰 받아 줄 곳을 찾습니다.",
   // 홈 화면에 추가했을 때(아이폰). 안드로이드는 manifest.ts를 읽는다
-  appleWebApp: { capable: true, title: "Re:Source AI", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "BYPRO", statusBarStyle: "default" },
 };
 
 /** 브라우저 상단 막대 색: DESIGN.md 토큰 bg(라이트 #FFFFFF, 다크 #111113) */

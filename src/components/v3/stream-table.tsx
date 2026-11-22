@@ -259,7 +259,7 @@ export function StreamTable({
                       <>
                         {stream.currentTreatment.method}{" "}
                         {stream.currentTreatment.assumed ? (
-                          <span className="rounded-sm bg-warn-bg px-1 py-px text-[11px] font-semibold text-warn">
+                          <span className="rounded-sm bg-warn-bg px-1 py-px text-[12px] font-semibold text-warn">
                             가정값
                           </span>
                         ) : null}

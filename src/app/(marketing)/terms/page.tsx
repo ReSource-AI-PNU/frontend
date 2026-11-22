@@ -6,7 +6,7 @@ import { particle } from "@/lib/josa";
 
 export const metadata: Metadata = {
   title: "서비스 이용약관",
-  description: "Re:Source AI 서비스 이용약관 (초안, 법률 검토 전)",
+  description: "BYPRO 서비스 이용약관 (초안, 법률 검토 전)",
 };
 
 const linkClass = "font-semibold text-ink underline underline-offset-4";
@@ -17,7 +17,7 @@ const SECTIONS: LegalSection[] = [
     title: "목적",
     body: (
       <p>
-        이 약관은 {OPERATOR_NAME}(이하 &ldquo;운영자&rdquo;){particle(OPERATOR_NAME, "이/가")} 제공하는 Re:Source AI 서비스(이하 &ldquo;서비스&rdquo;)를 이용하는 데
+        이 약관은 {OPERATOR_NAME}(이하 &ldquo;운영자&rdquo;){particle(OPERATOR_NAME, "이/가")} 제공하는 BYPRO 서비스(이하 &ldquo;서비스&rdquo;)를 이용하는 데
         필요한 운영자와 회원 사이의 권리, 의무, 책임 사항과 이용 절차를 정하는 것을 목적으로 합니다.
       </p>
     ),
@@ -337,7 +337,7 @@ export default function TermsPage() {
         <>
           <p>
             이 약관은 {OPERATOR_NAME}
-            {particle(OPERATOR_NAME, "이/가")} 대회 출품작으로 운영하는 Re:Source AI의 이용 조건을 정합니다. 가입하기 전에 특히 제6조(AI 판정 결과의
+            {particle(OPERATOR_NAME, "이/가")} 대회 출품작으로 운영하는 BYPRO의 이용 조건을 정합니다. 가입하기 전에 특히 제6조(AI 판정 결과의
             성격과 한계)와 제8조(외부 발송과 승인)를 읽어 주십시오.
           </p>
           <p className="text-sm text-muted">

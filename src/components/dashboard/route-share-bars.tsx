@@ -58,7 +58,7 @@ export function RouteShareBars({ data, ariaLabel }: { data: RouteShareDatum[]; a
               </span>
               <span className="flex min-w-0 items-center gap-2">
                 <span
-                  className="h-3.5 shrink-0 rounded-r-[4px] bg-ink-2 transition-opacity duration-150"
+                  className="h-3.5 shrink-0 rounded-r-sm bg-ink-2 transition-opacity duration-150"
                   style={{ width: `${(d.kg / max) * 70}%`, minWidth: d.kg > 0 ? 2 : 0, opacity: active === null || on ? 1 : 0.5 }}
                 />
                 <span className="text-[13px] font-semibold whitespace-nowrap tabular-nums">{pct(d.share)}</span>

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
-import { CheckIcon, ChevronDownIcon, PlusIcon } from "@/components/icons";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FactoryIcon, GearIcon, PlusIcon, ReportIcon, StampIcon, TruckIcon } from "@/components/icons";
+import { Fold, FoldGroup } from "@/components/ui/fold";
 import { Button } from "@/components/ui/button";
 import { MoreDetails } from "@/components/ui/more-details";
 import { useInView, useMediaQuery } from "@/components/use-media";
@@ -14,8 +15,8 @@ import { ResultSheet } from "@/components/v3/result-sheet";
 import { StreamTable } from "@/components/v3/stream-table";
 import type { useDiagnosis } from "@/components/v3/use-diagnosis";
 import { api } from "@/lib/v3/api";
-import { THREAD_LABEL, clearedApprovalsText, currentBundle, questionIntro } from "@/lib/v3/format";
-import { AI_NAME, DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
+import { carbonText, clearedApprovalsText, currentBundle, questionIntro, THREAD_LABEL } from "@/lib/v3/format";
+import { DOC_LABEL, REVIEWER_NAME } from "@/lib/v3/labels";
 import { pickupTodo } from "@/lib/v3/pickup";
 import { feedText, isTalking, liveTitle, presentStages, presentThreads, typingText, type TalkThread } from "@/lib/v3/live";
 import {
@@ -35,9 +36,11 @@ import { AgentStage } from "./agent-stage";
 import { PermitChip } from "./permit-check";
 import { AgentTalk, QuestionNotice } from "./agent-talk";
 import { FlowChart } from "./flow-chart";
+import { RunLog } from "./run-log";
 import { ImprovementsSection } from "./improvements";
 import { RegulationSection } from "./regulation";
 import { OutsideVendorsSection } from "./outside-vendors";
+import { uniquePartners } from "@/lib/v3/complex";
 import { ComplexPartnersSection } from "./complex-partners";
 import { Dots } from "./dots";
 import { CircularEffects } from "./circular-effects";
@@ -52,7 +55,7 @@ type Diagnosis = ReturnType<typeof useDiagnosis>;
 function Me({ children }: { children: ReactNode }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] rounded-[20px] bg-sunken px-4 py-2.5 text-[15px]">{children}</div>
+      <div className="max-w-[85%] rounded-2xl bg-sunken px-4 py-2.5 text-[15px]">{children}</div>
     </div>
   );
 }
@@ -176,7 +179,7 @@ function LiveThreads({ threads, onOpen }: { threads: TalkThread[]; onOpen: (id: 
 }
 
 const field =
-  "min-h-11 min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken";
+  "min-h-11 min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken";
 const segment =
   "flex min-h-[38px] cursor-pointer items-center rounded-sm px-3 text-sm text-muted peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-[0_1px_0_var(--color-line-strong)] peer-focus-visible:outline-2 peer-focus-visible:outline-ink";
 
@@ -349,17 +352,11 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
               ? "허가증 원문 대조가 끝나야 확정할 수 있습니다."
               : `승인했습니다. ${other} 승인을 기다리고 있습니다.`}
       </h2>
-      {!confirmed ? (
-        <p className="mt-1.5 text-[15px] text-ink-2">
-          {pending.length > 0
-            ? `승인하면 ${other}${isEmitter && pending.length > 1 ? ` ${pending.length}곳` : ""}에 알립니다. ${other} 담당자도 승인해야 확정되고, 그 뒤에 요청서, 이행 계획서, 위탁 계약서 초안을 만듭니다.`
-            : `${other} 담당자가 승인하면 확정되고, 요청서, 이행 계획서, 위탁 계약서 초안이 만들어집니다.`}
-        </p>
-      ) : null}
 
       {held.length > 0 && !confirmed ? (
         <div className="mt-4 rounded-xl bg-warn-bg px-4 py-3 text-sm">
           <p className="font-medium text-ink">허가증 원문 대조가 끝나지 않은 경로는 확정하지 않습니다.</p>
+          <MoreDetails label="대조할 것 보기" hint={`${held.length}곳`}>
           <p className="mt-0.5 text-ink-2">
             {isEmitter
               ? "결과표에서 그 줄을 펼쳐 업체가 올린 허가증 원문과 품목·처리 방법을 대조해 기록하면 승인할 수 있습니다."
@@ -386,13 +383,13 @@ function Approvals({ view, d, nameOf }: { view: DiagnosisView; d: Diagnosis; nam
                 )),
             )}
           </ul>
+          </MoreDetails>
         </div>
       ) : null}
 
       {pending.length > 0 && todoTotal > 0 ? (
         <p className="mt-3 rounded-xl bg-warn-bg px-4 py-3 text-sm text-ink-2">
-          <span className="font-medium text-warn">승인 전에 확인할 수거·운반이 {todoTotal}개 있습니다.</span> 노선 밖 수거나
-          정해지지 않은 운반비는 한 달 금액을 바꿀 수 있습니다.{" "}
+          <span className="font-medium text-warn">승인 전에 확인할 수거·운반 {todoTotal}개</span>{" "}
           <Link href={`${basePath}/approval`} className="font-medium text-ink underline underline-offset-4">
             승인·서류에서 보기
           </Link>
@@ -650,6 +647,17 @@ export function Conversation({ d }: { d: Diagnosis }) {
     stream.setSpeed(1);
     d.replay();
   };
+  // 업체 대화 화면의 "발표 화면으로 다시 보기"(?present=1)로 들어오면 한 번 바로 연다
+  const autoPresent = useRef(false);
+  useEffect(() => {
+    if (autoPresent.current || working || !d.canReplay) return;
+    if (new URLSearchParams(window.location.search).get("present") !== "1") return;
+    autoPresent.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    present();
+    // present는 렌더마다 새로 만든다. 한 번만 부른다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [working, d.canReplay]);
   const closePresent = () => {
     setPresenting(false);
     stream.setPaused(false);
@@ -724,7 +732,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
           </button>
         </div>
       ) : null}
-      <div className="mx-auto w-full max-w-[760px] flex-1 space-y-10 px-5 pt-6 pb-10">
+      <div className="mx-auto w-full max-w-[820px] flex-1 space-y-7 px-5 pt-6 pb-10">
         {isEmitter ? (
           <Me>
             폐기물 {view.streams.length}가지를 받아 줄 곳을 찾아 주세요.
@@ -752,10 +760,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
 
         {readOnly && d.canReplay && !working ? (
           <div>
-            <p className="text-[15px] text-ink-2">
-              {AI_NAME.company}와 {AI_NAME.vendor}가 근거를 확인하며 주고받은 과정을 처음부터 볼 수 있습니다.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Button variant="secondary" onClick={replay}>
                 두 AI의 대화 다시 보기
               </Button>
@@ -865,37 +870,70 @@ export function Conversation({ d }: { d: Diagnosis }) {
           />
         ) : null}
 
-        {result && isEmitter && !holding && result.circular ? <CircularEffects circular={result.circular} /> : null}
-
-        {result && isEmitter && !holding && view.streams.length > 0 ? <FlowChart result={result} streams={view.streams} /> : null}
-
-        {result && isEmitter && !holding && result.regulation && result.regulation.length > 0 ? (
-          <RegulationSection sections={result.regulation} streams={view.streams} />
-        ) : null}
-
-        {result && isEmitter && !holding && result.improvements && result.improvements.length > 0 ? (
-          <ImprovementsSection items={result.improvements} streams={view.streams} />
-        ) : null}
-
-        {result && isEmitter && !holding && result.outsideVendors ? (
-          <OutsideVendorsSection
-            outside={result.outsideVendors}
-            streams={view.streams}
-            sessionId={view.session.id}
-            orgId={d.org.id}
-            onSearchAgain={d.canAct ? d.forget : undefined}
-          />
-        ) : null}
-
-        {result && isEmitter && !holding && result.complexPartners ? (
-          <ComplexPartnersSection
-            partners={result.complexPartners}
-            outside={result.outsideVendors ?? null}
-            streams={view.streams}
-            sessionId={view.session.id}
-            orgId={d.org.id}
-            onSearchAgain={d.canAct ? d.forget : undefined}
-          />
+        {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
+        {result && isEmitter && !holding ? (
+          <FoldGroup className="[&_section]:border-0 [&_section]:pt-0">
+            {result.circular ? (
+              <Fold title="자원순환 효과" summary={carbonText(result.totals.carbon, true)} icon={<ReportIcon />}>
+                <CircularEffects circular={result.circular} />
+              </Fold>
+            ) : null}
+            {view.streams.length > 0 ? (
+              <Fold title="처리 흐름" summary={`${view.streams.length}가지`} icon={<TruckIcon />}>
+                <FlowChart result={result} streams={view.streams} />
+              </Fold>
+            ) : null}
+            {result.regulation && result.regulation.length > 0 ? (
+              <Fold
+                title="법령 요건"
+                summary={
+                  view.approvals.some((item) => item.permitHold) ? (
+                    <span className="font-semibold text-warn">허가증 대조 {view.approvals.filter((item) => item.permitHold).length}곳</span>
+                  ) : undefined
+                }
+                icon={<StampIcon />}
+              >
+                <RegulationSection sections={result.regulation} streams={view.streams} />
+              </Fold>
+            ) : null}
+            {result.improvements && result.improvements.length > 0 ? (
+              <Fold title="분리 개선 안내" summary={`${result.improvements.length}가지`} icon={<ArrowUpIcon />}>
+                <ImprovementsSection items={result.improvements} streams={view.streams} />
+              </Fold>
+            ) : null}
+            {result.outsideVendors ? (
+              <Fold title="가입하지 않은 업체" icon={<FactoryIcon />}>
+                <OutsideVendorsSection
+                  outside={result.outsideVendors}
+                  streams={view.streams}
+                  sessionId={view.session.id}
+                  orgId={d.org.id}
+                  onSearchAgain={d.canAct ? d.forget : undefined}
+                />
+              </Fold>
+            ) : null}
+            {result.complexPartners ? (
+              <Fold
+                title="같은 단지 자원순환 후보"
+                summary={result.complexPartners.complex ? `${uniquePartners(result.complexPartners)}곳` : undefined}
+                icon={<FactoryIcon />}
+              >
+                <ComplexPartnersSection
+                  partners={result.complexPartners}
+                  outside={result.outsideVendors ?? null}
+                  streams={view.streams}
+                  sessionId={view.session.id}
+                  orgId={d.org.id}
+                  onSearchAgain={d.canAct ? d.forget : undefined}
+                />
+              </Fold>
+            ) : null}
+            {view.events.length > 0 && !working ? (
+              <Fold title="AI가 한 일" summary={`기록 ${view.events.length}건`} icon={<GearIcon />}>
+                <RunLog events={view.events} />
+              </Fold>
+            ) : null}
+          </FoldGroup>
         ) : null}
 
         {result ? <Approvals view={view} d={d} nameOf={nameOf} /> : null}

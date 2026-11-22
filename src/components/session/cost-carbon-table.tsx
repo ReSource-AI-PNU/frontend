@@ -86,8 +86,8 @@ export function CostCarbonTable({
                         <b className="font-semibold">
                           {r.id}. {r.name}
                         </b>
-                        {r.recommended ? <span className="rounded-sm bg-marker px-1.5 text-[11.5px] font-semibold text-marker-ink">AI 추천</span> : null}
-                        {selected ? <span className="rounded-sm bg-ink px-1.5 text-[11.5px] font-semibold text-on-ink">선택함</span> : null}
+                        {r.recommended ? <span className="rounded-sm bg-marker px-1.5 text-[12px] font-semibold text-marker-ink">AI 추천</span> : null}
+                        {selected ? <span className="rounded-sm bg-ink px-1.5 text-[12px] font-semibold text-on-ink">선택함</span> : null}
                       </span>
                       <span className="mt-0.5 block text-[13px] text-muted">{r.description}</span>
                     </span>

@@ -78,7 +78,7 @@ export function PresentMode({
       type="button"
       aria-pressed={stream.speed === value}
       onClick={() => stream.setSpeed(value)}
-      className={`min-h-9 rounded-[8px] px-3 text-[13px] ${stream.speed === value ? "bg-surface font-semibold text-ink shadow-[0_1px_2px_rgb(0_0_0/0.08)]" : "text-ink-2 hover:text-ink"}`}
+      className={`min-h-9 rounded-md px-3 text-[13px] ${stream.speed === value ? "bg-surface font-semibold text-ink shadow-[0_1px_2px_rgb(0_0_0/0.08)]" : "text-ink-2 hover:text-ink"}`}
     >
       {label}
     </button>
@@ -113,7 +113,7 @@ export function PresentMode({
               {stream.paused ? "이어 보기" : "잠시 멈춤"}
             </Button>
           ) : null}
-          <div role="group" aria-label="빠르기" className="flex rounded-[10px] bg-sunken p-1">
+          <div role="group" aria-label="빠르기" className="flex rounded-md bg-sunken p-1">
             {speedButton(1, "보통")}
             {speedButton(2, "빠르게")}
           </div>
@@ -213,7 +213,7 @@ function BigBubble({ message, mine, fresh }: { message: ThreadMessage; mine: boo
           <span className="font-semibold text-ink-2">{message.author?.label ?? (mine ? AI_NAME.company : AI_NAME.vendor)}</span>
           <span>{MESSAGE_LABEL[message.type] ?? message.type}</span>
         </p>
-        <div className={`rounded-[20px] px-5 py-4 text-[19px] leading-relaxed ${mine ? "bg-sunken" : "border border-line bg-surface"}`}>
+        <div className={`rounded-2xl px-5 py-4 text-[19px] leading-relaxed ${mine ? "bg-sunken" : "border border-line bg-surface"}`}>
           <ClaimText text={message.text} claims={message.claims} />
         </div>
         <p className={`mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-muted ${mine ? "" : "justify-end"}`}>
@@ -247,7 +247,7 @@ function BigTyping({ typing, left }: { typing: Typing; left: boolean }) {
         <div
           role="status"
           aria-live="polite"
-          className={`inline-flex items-center gap-3 rounded-[20px] px-5 py-4 text-[17px] text-ink-2 ${left ? "bg-sunken" : "border border-line bg-surface"}`}
+          className={`inline-flex items-center gap-3 rounded-2xl px-5 py-4 text-[17px] text-ink-2 ${left ? "bg-sunken" : "border border-line bg-surface"}`}
         >
           <Dots label={text} />
           <span>{text}</span>

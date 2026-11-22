@@ -21,7 +21,14 @@ async function signIn(page: Page) {
   await page.getByLabel("이름", { exact: true }).fill("김담당");
   await page.getByLabel("업무용 이메일").fill(`e2e-${Date.now()}@example.com`);
   await page.getByRole("button", { name: "개발용 계정으로 들어가기" }).click();
-  await page.waitForURL(/\/app$/);
+  // 홈(/app)은 거래가 아직 없으면 찾기(/app/find)로 넘긴다
+  await page.waitForURL(/\/app(\/find)?$/);
+}
+
+/** 승인·서류의 서류 본문("내용 보기")을 모두 편다 */
+async function openDocuments(page: Page) {
+  const closed = page.locator("details:not([open]) > summary").filter({ hasText: "내용 보기" });
+  while ((await closed.count()) > 0) await closed.first().click();
 }
 
 /** 사이드바의 회사 바꾸기. 세션의 활성 회사를 바꾸고 화면을 다시 그린다. */
@@ -70,6 +77,8 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
+  // 홈(확인할 것·거래)이 첫 화면이고, 찾기는 /app/find에 있다
+  await page.goto("/app/find");
   await expect(page.getByRole("heading", { name: "받아 줄 곳을 찾아볼까요?" })).toBeVisible();
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
   await expect(page.getByRole("heading", { name: /가지를 여쭙겠습니다/ })).toBeVisible();
@@ -85,6 +94,8 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await expect(result.getByText("한 달 합계")).toBeVisible();
   // 원문 경계를 확인한 배출계수와 실제 운송 조건이 없으면 탄소는 0으로 두지 않고 산정 보류로 보인다
   await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(0);
+  // 결과 표 아래의 자세한 내용은 접혀 있다. 제목을 눌러 편다
+  await page.getByRole("button", { name: /^자원순환 효과/ }).click();
   const effects = page.getByRole("region", { name: "자원순환 효과" });
   await expect(effects.getByText("문헌·입력값 기반 추정").first()).toBeVisible();
   await expect(effects.getByText("폐기물마다 어떻게 순환하나요")).toHaveCount(0);
@@ -108,6 +119,8 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await page.keyboard.press("Escape");
 
   // 분리 개선 안내: 더 받는 기준과 한 달 차이(근거가 열린다), 섞인 재질을 나누면 받는 곳
+  // 결과 표 아래의 자세한 내용은 접혀 있다. 제목을 눌러 편다
+  await page.getByRole("button", { name: /^분리 개선 안내/ }).click();
   const improve = page.getByRole("region", { name: "분리 개선 안내" });
   await expect(improve.getByRole("heading", { level: 2 })).toContainText("한 달 손익이 나아지는 폐기물");
   await expect(improve.getByText("더 받는 길 있음").first()).toBeVisible();
@@ -120,6 +133,8 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
   test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
+  // 홈(확인할 것·거래)이 첫 화면이고, 찾기는 /app/find에 있다
+  await page.goto("/app/find");
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
   await answerQuestions(page);
   // 계약 검토 담당이 합의 조건을 대조했고, 확인할 것을 읽고 확인해야 승인 단추가 켜진다(안전장치)
@@ -156,9 +171,15 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
   }
 
   await pickOrg(page, "org_hanbit");
+  // 찾기에는 서류가 몇 건인지만 보이고, 서류 본문은 승인·서류에 있다
+  await page.goto("/app/find");
+  await expect(page.getByRole("heading", { name: /서류 \d+건을 만들었습니다/ })).toBeVisible();
+  await page.goto("/app/approval");
   const documents = page.locator("section").filter({ has: page.getByRole("heading", { name: "요청서 · 이행 계획서 · 계약서 초안" }) });
   await expect(documents.getByRole("article").first()).toBeVisible();
   await expect(documents.getByText("근거 확인됨").first()).toBeVisible();
+  // 서류 본문은 접혀 있다. 모두 펼친 뒤 내용을 본다
+  await openDocuments(page);
   await expect(documents.getByText("근거 확인에 실패한 문서입니다")).toHaveCount(0);
   // 계약 검토 담당이 쓴 계약서 초안: 서명 전에 법무 검토가 필요하다고 적는다
   await expect(documents.getByRole("heading", { name: /^위탁 계약서 초안/ }).first()).toBeVisible();
@@ -172,6 +193,7 @@ test("배출 기업과 처리 업체가 모두 승인하면 요청서, 이행 �
   // 폭을 계약에 넣지 않는다(근거 없는 정책값을 쓰지 않는다)
   await page.getByRole("button", { name: "합의 조건과 이행 계획서 보기" }).click();
   await expect(page.getByRole("heading", { name: "승인·서류" })).toBeVisible();
+  await openDocuments(page);
   await expect(page.getByText(/양쪽 담당자가 새 조건을 승인한 뒤에 적용합니다/).first()).toBeVisible();
   await expect(page.getByText(/넘게 오르거나 내리면 단가를 다시 협의합니다/)).toHaveCount(0);
 });
@@ -180,6 +202,8 @@ test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 
   test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
   await signIn(page);
   await pickOrg(page, "org_hanbit");
+  // 홈(확인할 것·거래)이 첫 화면이고, 찾기는 /app/find에 있다
+  await page.goto("/app/find");
   await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
   await answerQuestions(page);
 
@@ -199,6 +223,8 @@ test("처리 업체에는 배출 기업의 현행 처리비와 다른 업체의 
 
   // 화면에서도 업체로 바꾸면 한 달 차이와 현행 처리비가 나오지 않는다
   await pickOrg(page, "org_saegil");
+  // 업체의 첫 화면은 홈이다. 받은 문의의 대화는 찾기 화면(/app/find)에서 바로 열린다
+  await page.goto("/app/find");
   await expect(page.getByText(/에서 폐기물 \d+가지를 문의했습니다/)).toBeVisible();
   // 사이드바의 회사 목록(개발용 계정은 모든 회사에 속한다)은 빼고 본문만 본다
   const main = page.getByRole("main");
@@ -260,7 +286,7 @@ test("체험 결과에서 매입 기준, 수거 확인, 반입 검수와 승인�
 
   await page.route("**/api/v3-demo/sessions", (route) => route.fulfill({ json: [view.session] }));
   await page.route(`**/api/v3-demo/sessions/${view.session.id}`, (route) => route.fulfill({ json: view }));
-  await page.goto("/demo");
+  await page.goto("/demo/find");
 
   const result = page.getByRole("region", { name: "결과" });
   await expect(result.getByRole("heading", { level: 2 })).toHaveText("4개 품목의 처리 후보를 찾았습니다");
@@ -296,9 +322,34 @@ test("이메일로 가입하면 회사를 등록하고 빈 상태에서 폐기�
   await page.waitForURL(/\/onboarding/);
   await page.getByLabel("회사 이름").fill("(주)이투이정밀");
   await page.getByRole("button", { name: "등록하고 시작하기" }).click();
-  await page.waitForURL(/\/app$/);
+  // 찾기가 하나도 없는 새 회사는 홈 대신 찾기 화면(폐기물 등록)으로 간다
+  await page.waitForURL(/\/app\/find$/);
   await expect(page.getByRole("heading", { name: "먼저 폐기물을 등록해 주세요" })).toBeVisible();
   await expect(page.getByRole("button", { name: "폐기물 등록" })).toBeVisible();
+});
+
+test("홈에는 할 일과 진행 중인 거래가, 거래에는 진행 단계와 두 AI의 대화가 있다", async ({ page }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
+  await signIn(page);
+  await pickOrg(page, "org_hanbit");
+  await page.goto("/app/find");
+  await page.getByRole("button", { name: "받아 줄 곳 찾기" }).click();
+  await answerQuestions(page);
+
+  await page.getByRole("link", { name: "홈", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "할 일" })).toBeVisible();
+  // 허가증 원문 대조가 남은 업체는 승인보다 먼저 대조하라고 뜬다(시연 시드의 남해열분해·미소환경)
+  await expect(page.getByRole("button").filter({ hasText: "허가증 대조" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "진행 중인 거래" })).toBeVisible();
+  for (const vendor of ["(주)새길자원", "(주)남해열분해", "(주)미소환경"]) {
+    await expect(page.getByRole("main").getByRole("link", { name: new RegExp(vendor.replace(/[()]/g, "\\$&")) }).first()).toBeVisible();
+  }
+
+  await page.getByRole("link", { name: "거래", exact: true }).click();
+  await expect(page.getByRole("list", { name: /진행 단계/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /AI 대화/ })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "조건" }).click();
+  await expect(page.getByRole("tabpanel", { name: "조건" })).toContainText("지금 대비 한 달");
 });
 
 test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 기준을 저장할 수 있다", async ({ page, request }) => {
@@ -438,7 +489,8 @@ test("월 운반비 견적 전에는 손익분기와 확인할 비용을 표시�
         note: "같은 물량 비교",
       }],
     });
-    await page.goto("/demo");
+    // 체험하기의 첫 화면은 홈이고, 결과는 찾기(/demo/find)에 있다
+    await page.goto("/demo/find");
     const result = page.getByRole("region", { name: "결과", exact: true });
     const row = result.getByRole("list", { name: "품목별 처리 후보" }).getByRole("listitem").filter({ hasText: "스프루·런너" });
     await expect(row).toContainText(chosen);

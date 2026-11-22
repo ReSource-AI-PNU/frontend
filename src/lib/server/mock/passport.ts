@@ -11,7 +11,7 @@ import { collection } from "./db";
  */
 export const passports = collection<MaterialPassport>("passports");
 
-const ISSUER = "Re:Source AI (시연)";
+const ISSUER = "BYPRO (시연)";
 
 type Body = Omit<MaterialPassport, "hash">;
 

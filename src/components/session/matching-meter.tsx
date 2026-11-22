@@ -105,10 +105,10 @@ export function TruckFillMeter({
             </span>
             <div className="relative h-6">
               {/* 트럭 한 대 칸 */}
-              <div aria-hidden="true" className="absolute inset-y-0 left-0 rounded-r-[4px] bg-sunken" style={{ width: at(1) }} />
+              <div aria-hidden="true" className="absolute inset-y-0 left-0 rounded-r-sm bg-sunken" style={{ width: at(1) }} />
               <div
                 aria-hidden="true"
-                className={`absolute inset-y-0 left-0 rounded-r-[4px] transition-[width] duration-700 ease-out motion-reduce:transition-none ${r.bar}`}
+                className={`absolute inset-y-0 left-0 rounded-r-sm transition-[width] duration-700 ease-out motion-reduce:transition-none ${r.bar}`}
                 style={{ width: at(r.rate) }}
               />
               {active === i ? (

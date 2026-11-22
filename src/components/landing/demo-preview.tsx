@@ -26,7 +26,8 @@ const tone = (sign: number) => (sign > 0 ? "text-gain" : sign < 0 ? "text-loss" 
 /**
  * 소개 화면의 결과 미리보기. 숫자는 체험하기의 시연 찾기에서 그대로 가져온다. 읽지 못하면 숫자 없이 체험하기로 잇는다.
  */
-export function DemoPreview() {
+/** 체험하기의 시연 찾기 결과를 한 번 읽는다(소개 화면의 숫자는 모두 여기서 온다) */
+export function useDemoPreview(): Loaded {
   const [loaded, setLoaded] = useState<Loaded>({ status: "loading" });
 
   useEffect(() => {
@@ -42,14 +43,19 @@ export function DemoPreview() {
       alive = false;
     };
   }, []);
+  return loaded;
+}
+
+export function DemoPreview() {
+  const loaded = useDemoPreview();
 
   const preview = loaded.status === "ready" ? loaded.preview : null;
   return (
     <figure>
-      <div className="overflow-hidden rounded-[20px] border border-line bg-bg shadow-[0_30px_80px_-50px_rgb(0_0_0/0.35)]">
+      <div className="overflow-hidden rounded-2xl border border-line bg-bg shadow-[0_30px_80px_-50px_rgb(0_0_0/0.35)]">
         <div className="px-5 py-6 sm:px-9 sm:py-9" aria-busy={loaded.status === "loading"}>
           <div className="flex justify-end">
-            <p className="rounded-[20px] bg-sunken px-4 py-2.5 text-[15px]">{preview?.request ?? "폐기물을 받아 줄 곳을 찾아 주세요."}</p>
+            <p className="rounded-2xl bg-sunken px-4 py-2.5 text-[15px]">{preview?.request ?? "폐기물을 받아 줄 곳을 찾아 주세요."}</p>
           </div>
           {loaded.status === "loading" ? (
             <div className="mt-8 space-y-3">

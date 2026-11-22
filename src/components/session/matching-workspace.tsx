@@ -498,8 +498,8 @@ function BundlePanel({
                       <button type="button" onClick={() => onSelect(g.companyId)} aria-pressed={selectedId === g.companyId} className={nameButton}>
                         <Shape kind="group" />
                         <span className={g.isSelf ? "font-semibold" : ""}>{g.name}</span>
-                        {g.isSelf ? <span className="rounded-sm bg-sunken px-1.5 text-[11.5px] text-ink-2">내 회사</span> : null}
-                        {consentOf.get(g.companyId)?.state === "declined" ? <span className="rounded-sm bg-loss-bg px-1.5 text-[11.5px] text-loss">불참</span> : null}
+                        {g.isSelf ? <span className="rounded-sm bg-sunken px-1.5 text-[12px] text-ink-2">내 회사</span> : null}
+                        {consentOf.get(g.companyId)?.state === "declined" ? <span className="rounded-sm bg-loss-bg px-1.5 text-[12px] text-loss">불참</span> : null}
                       </button>
                     </th>
                     <td className={`py-1.5 pl-3 text-right ${g.isSelf ? "text-[13px] text-muted" : "num"}`}>{g.isSelf ? "기준" : formatNumber(g.distanceM)}</td>
@@ -559,7 +559,7 @@ function BundlePanel({
                   </li>
                   {visit.map((id, i) => (
                     <li key={id} className="flex items-center gap-2.5">
-                      <span className="num grid size-[18px] place-items-center rounded-full bg-ink text-[10.5px] font-bold text-on-ink">{i + 1}</span>
+                      <span className="num grid size-[18px] place-items-center rounded-full bg-ink text-[12px] font-bold text-on-ink">{i + 1}</span>
                       <span className={b.group.find((g) => g.companyId === id)?.isSelf ? "font-semibold" : ""}>{nameOf(id)}</span>
                     </li>
                   ))}

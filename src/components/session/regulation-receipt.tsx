@@ -23,7 +23,7 @@ function StatusIcon({ status }: { status: RegulationItem["status"] }) {
           <path d="M3.5 3.5l5 5M8.5 3.5l-5 5" />
         </svg>
       ) : (
-        <span aria-hidden="true" className="num text-[11px] font-bold leading-none">
+        <span aria-hidden="true" className="num text-[12px] font-bold leading-none">
           ?
         </span>
       )}

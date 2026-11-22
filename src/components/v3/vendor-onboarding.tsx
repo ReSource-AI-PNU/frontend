@@ -9,7 +9,7 @@ import { authorLabel, checkSummary, draftSignature, fromAgent, groupDraft, selec
 import type { OnboardingState, VendorProfile } from "@/lib/v3/types";
 
 const field =
-  "min-h-11 min-w-0 flex-1 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
+  "min-h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
 
 /** AI가 표시한 것(DESIGN.md 색 규칙 1)의 점 */
 function MarkerDot() {
@@ -195,7 +195,7 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
             <li
               key={check.key}
               title={check.note || undefined}
-              className={`rounded-full px-2.5 py-1 ${check.done ? "bg-ink text-on-ink" : "bg-sunken text-ink-2"}`}
+              className={`inline-flex h-6 items-center rounded-[6px] px-2 ${check.done ? "bg-ink text-on-ink" : "bg-sunken text-ink-2"}`}
             >
               {check.done ? "✓ " : ""}
               {check.label}
@@ -215,12 +215,12 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
             {state.messages.map((message) =>
               message.role === "user" ? (
                 <li key={message.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-[20px] bg-sunken px-4 py-2.5 text-[15px] whitespace-pre-line">{message.text}</div>
+                  <div className="max-w-[85%] rounded-2xl bg-sunken px-4 py-2.5 text-[15px] whitespace-pre-line">{message.text}</div>
                 </li>
               ) : (
                 <li key={message.id} className="flex max-w-[85%] flex-col gap-1">
                   <span className="text-[12.5px] text-muted">{author}</span>
-                  <div className="rounded-[20px] border border-line-strong bg-surface px-4 py-2.5 text-[15px] whitespace-pre-line">
+                  <div className="rounded-2xl border border-line-strong bg-surface px-4 py-2.5 text-[15px] whitespace-pre-line">
                     {message.text}
                   </div>
                   {message.tools.length > 0 ? (
@@ -239,7 +239,7 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
             {sending ? (
               <>
                 <li className="flex justify-end">
-                  <div className="max-w-[85%] rounded-[20px] bg-sunken px-4 py-2.5 text-[15px] whitespace-pre-line">{sending}</div>
+                  <div className="max-w-[85%] rounded-2xl bg-sunken px-4 py-2.5 text-[15px] whitespace-pre-line">{sending}</div>
                 </li>
                 <li className="flex items-center gap-2 text-[13px] text-muted">
                   <Dots label={`${author}가 답을 쓰고 있습니다`} />
@@ -276,7 +276,7 @@ export function VendorOnboarding({ orgId, discoverable, onSaved }: {
           ) : null}
 
           {groups.length > 0 ? (
-            <div className="mt-6 rounded-[14px] border border-line bg-ground p-4 sm:p-5">
+            <div className="mt-6 rounded-lg border border-line bg-ground p-4 sm:p-5">
               <p className="text-[13px] font-semibold text-ink-2">
                 <MarkerDot />
                 AI 초안 · 담당자 확인 전

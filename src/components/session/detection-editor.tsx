@@ -254,7 +254,7 @@ export function DetectionEditor({
                   style={{ left: pct(d.box[0]), top: pct(d.box[1]), width: pct(d.box[2]), height: pct(d.box[3]) }}
                 >
                   <span
-                    className={`num pointer-events-none absolute -top-[22px] -left-[2px] rounded-[2px] rounded-bl-none px-1.5 text-[11px] leading-5 font-semibold whitespace-nowrap ${human ? "bg-ink text-on-ink" : "bg-marker text-marker-ink"}`}
+                    className={`num pointer-events-none absolute -top-[22px] -left-[2px] rounded-[2px] rounded-bl-none px-1.5 text-[12px] leading-5 font-semibold whitespace-nowrap ${human ? "bg-ink text-on-ink" : "bg-marker text-marker-ink"}`}
                   >
                     {d.label}
                     {d.kind === "item" ? ` ${d.confidence.toFixed(2)}` : d.ratio !== undefined ? ` ${Math.round(d.ratio * 100)}%` : ""}

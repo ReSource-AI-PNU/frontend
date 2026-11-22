@@ -77,7 +77,7 @@ export function AnalyzingView({ sessionId, streams }: { sessionId: string; strea
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-3 text-sm">
                     <span
-                      className={`grid size-[22px] shrink-0 place-items-center rounded-full border text-[11px] [&_svg]:size-3 ${state === "done" ? "border-ink bg-ink text-on-ink" : state === "active" ? "border-ink motion-safe:animate-pulse" : "border-line-strong"}`}
+                      className={`grid size-[22px] shrink-0 place-items-center rounded-full border text-[12px] [&_svg]:size-3 ${state === "done" ? "border-ink bg-ink text-on-ink" : state === "active" ? "border-ink motion-safe:animate-pulse" : "border-line-strong"}`}
                     >
                       {state === "done" ? <CheckIcon /> : <span className="num">{i + 1}</span>}
                     </span>
