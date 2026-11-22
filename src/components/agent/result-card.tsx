@@ -550,6 +550,7 @@ export function ResultCard({
   busy = false,
   threads,
   approvals,
+  hasExampleQuotes = false,
 }: {
   result: Result;
   streams: ViewStream[];
@@ -558,6 +559,7 @@ export function ResultCard({
   onOpenTalk: (threadId: string) => void;
   threads: Thread[];
   approvals: Approval[];
+  hasExampleQuotes?: boolean;
   /** 배출 기업 담당자가 허가증 원문 대조를 기록한다(승인 대기 중, 체험하기가 아닐 때만 준다) */
   onPermitCheck?: (input: PermitCheckInput) => Promise<string | null>;
   busy?: boolean;
@@ -581,7 +583,9 @@ export function ResultCard({
       <h2 className="text-[22px] leading-snug font-bold tracking-[-0.03em] sm:text-[24px]">
         {!isEmitter
           ? `${counterpart}에서 폐기물 ${count}가지를 문의했습니다.`
-          : placedHeadline(count, placed)}
+          : placed === 0 && hasExampleQuotes
+            ? "실제 처리 후보를 찾지 못했습니다"
+            : placedHeadline(count, placed)}
       </h2>
       {showComparison ? (
         <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
