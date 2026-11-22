@@ -272,7 +272,7 @@ export function StreamTable({
                     <>
                       <ClaimValue claim={stream.photoContamination} />
                       {stream.photoReliable === false ? (
-                        <p className="text-[12px] text-warn">사진 추정 · 검증 안 됨</p>
+                        <p className="text-[12px] text-warn">사진 추정 · 검증 안 됨(판정에 쓰지 않음)</p>
                       ) : (
                         <p className="text-[12px] text-muted">사진 추정</p>
                       )}

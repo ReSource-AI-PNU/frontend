@@ -135,6 +135,8 @@ export type StreamRecord = {
     materialEstimate?: MaterialEstimate | null;
     /** 사진 속 재질 표기(포대 라벨, 분리배출 표시)를 읽은 것. 담당자가 등록해야 재질이 된다 */
     labelMaterials?: LabelReading | null;
+    /** 마지막으로 올린 사진이 검증 안 된 사진이면 비율 대신 개수. 검증된 사진이면 null */
+    objects?: PhotoObjects | null;
   } | null;
   /** 재질의 출처. label은 사진 속 표기를 담당자가 등록한 것이다 */
   materialBasis?: "label" | "estimated" | null;
@@ -176,6 +178,14 @@ export type MaterialEstimate = {
   evidence: string[];
 };
 
+/** 검증된 촬영 환경이 아닌 사진의 탐지 결과: 비율(%) 대신 탐지한 물체 수와 이물이 보인 곳 수 */
+export type PhotoObjects = {
+  items: number;
+  contaminantSpots: number;
+  note: string;
+  evidence: string[];
+};
+
 /** 사진 속 재질 표기 하나. together는 같은 줄에 함께 적힌 다른 재질(복합 재질 표기)이다 */
 export type LabelFound = {
   material: string;
@@ -213,6 +223,8 @@ export type MediaUploadResult = {
   model?: { name: string; version: string };
   material?: MaterialEstimate | null;
   contamination?: { claim: Claim | null; reliable: boolean; note?: string } | null;
+  /** 검증 안 된 사진이면 비율 대신 개수가 온다(그때 contamination은 null). 이 기능 전 응답에는 없다 */
+  objects?: PhotoObjects | null;
   detections?: {
     id: string | number;
     label: string;

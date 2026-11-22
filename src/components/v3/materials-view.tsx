@@ -617,7 +617,9 @@ function MediaUpload({
             >
               {stream.photo.contaminationPct}%
             </button>
-            {stream.photo.reliable === false ? <span className="ml-1.5 text-warn">검증되지 않은 값</span> : null}
+            {stream.photo.reliable === false ? (
+              <span className="ml-1.5 text-warn">검증되지 않은 값이라 판정에 쓰지 않습니다</span>
+            ) : null}
           </>
         ) : (
           <span className="text-muted">등록된 사진 추정값이 없습니다.</span>
@@ -701,6 +703,20 @@ function MediaUpload({
                   {result.contamination.note ? (
                     <span className="block text-muted">{result.contamination.note}</span>
                   ) : null}
+                </>
+              ) : result.objects ? (
+                <>
+                  탐지한 물체 {result.objects.items}개 가운데 이물이 보인 곳{" "}
+                  <button
+                    type="button"
+                    className={`${link} font-medium tabular-nums`}
+                    onClick={() => openEvidence(result.objects?.evidence ?? [], "사진에서 이물이 보인 곳")}
+                  >
+                    {result.objects.contaminantSpots}곳
+                  </button>
+                  <span className="block text-warn">
+                    검증된 촬영 환경(선별장)의 사진이 아니어서 비율은 내지 않았습니다. 판정에는 오염도 값이 없는 것으로 들어가 업체에 묻거나 측정을 요청합니다.
+                  </span>
                 </>
               ) : (
                 <span className="text-warn">이 파일로는 비율을 정하지 못했습니다 · 확인 필요</span>
