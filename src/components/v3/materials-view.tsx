@@ -1780,6 +1780,11 @@ function VendorForm({
             {["재활용", "물질 재활용", "열분해", "소각", "매립"].map((value) => <option key={value}>{value}</option>)}
           </select>
           <span className="font-normal text-muted">담당자 선언이며 공정 실측이나 허가 인증이 아닙니다. 매입 단가로 처리 방식을 추측하지 않습니다. 변경하면 승인 전 합의를 다시 확인합니다.</span>
+          {process === "재활용" ? (
+            <span className="font-normal text-warn">
+              &ldquo;재활용&rdquo;만으로는 물질 재활용인지 고형연료 같은 에너지 회수인지 알 수 없어 탄소와 자원순환 효과를 계산하지 않습니다. 원료로 다시 만들면 &ldquo;물질 재활용&rdquo;을 골라 주세요.
+            </span>
+          ) : null}
         </label>
         <label className={`${fieldLabel} mt-3`}>
           품질 초과 시 검토할 등록 등급
