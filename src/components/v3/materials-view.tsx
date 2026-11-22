@@ -68,6 +68,7 @@ import type {
   DocumentUploadResult,
   ExtractedField,
   LabelReading,
+  MaterialEstimate,
   MediaUploadResult,
   ManualPermitInput,
   StreamRecord,
@@ -557,6 +558,30 @@ function NextStep({
 const pct = (value: number | null | undefined) => (value == null ? "확인 필요" : `${formatNumber(value * 100)}%`);
 
 /**
+ * 탐지 모델의 재질 분류(플라스틱·필름·종이·목재 같은 큰 분류). 수지 종류를 가르지 못하고 사출 스크랩·포대에는 자주 틀려
+ * "참고"로 이름 붙이고, 등록한 재질과 다르거나 신뢰도가 낮으면 판단에 쓰지 않는다고 밝힌다(백엔드 detector.material_check).
+ */
+function PhotoMaterial({ estimate, onOpen }: { estimate: MaterialEstimate; onOpen: () => void }) {
+  return (
+    <>
+      <button type="button" disabled={estimate.evidence.length === 0} className={link} onClick={onOpen}>
+        {estimate.label}
+      </button>{" "}
+      <span className="text-muted">(신뢰도 {pct(estimate.confidence)})</span>
+      {estimate.agrees === false ? (
+        <span className="block text-warn">
+          등록한 재질({estimate.registeredMaterial})과 다릅니다. 사진만으로는 확실하지 않아 판정과 업체 문의에 쓰지 않습니다.
+        </span>
+      ) : estimate.usable !== true ? (
+        <span className="block text-muted">신뢰도가 낮아 참고로만 봅니다. 수지 종류(PP·PE 등)는 사진 속 재질 표기로 확인합니다.</span>
+      ) : (
+        <span className="block text-muted">수지 종류(PP·PE 등)는 사진으로 가르지 못합니다.</span>
+      )}
+    </>
+  );
+}
+
+/**
  * 사진·영상 올리기(POST /intake/media). 분석하지 못한 파일은 다음 행동만 알려 주고 탐지 결과를 그리지 않는다.
  * 분석하면 재질 추정과 이물 비율이 AI 판정 근거로 등록된다.
  */
@@ -573,6 +598,8 @@ function MediaUpload({
   const media = useUpload<MediaUploadResult>(canAct);
   const result = media.state.result;
   const estimate = stream.photo?.materialEstimate;
+  // 방금 올린 사진에서 재질 표기를 읽었지만 하나도 없었다(읽기 오류는 따로 알린다)
+  const labelEmpty = result?.label != null && !result.label.error && result.label.found.length === 0;
   const sendMedia = (file: File) =>
     void media.send(async () => {
       const uploaded = await api.uploadMedia(org.id, stream.id, file);
@@ -606,40 +633,35 @@ function MediaUpload({
           onFile={sendMedia}
         />
       </div>
-      <p className="text-[13px]">
-        {stream.photo?.contaminationPct != null ? (
-          <>
-            등록된 사진 추정 오염 비율:{" "}
-            <button
-              type="button"
-              disabled={(stream.photo.evidence ?? []).length === 0}
-              className="font-medium tabular-nums underline decoration-line-strong decoration-dotted underline-offset-4"
-              onClick={() => openEvidence(stream.photo?.evidence ?? [], `${stream.name} 사진 추정 오염 비율`)}
-            >
-              {stream.photo.contaminationPct}%
-            </button>
-            {stream.photo.reliable === false ? (
-              <span className="ml-1.5 text-warn">검증되지 않은 값이라 판정에 쓰지 않습니다</span>
-            ) : null}
-          </>
-        ) : (
-          <span className="text-muted">등록된 사진 추정값이 없습니다.</span>
-        )}
-        {estimate ? (
-          <>
-            {" · "}재질 추정:{" "}
-            <button
-              type="button"
-              disabled={estimate.evidence.length === 0}
-              className={`${link}`}
-              onClick={() => openEvidence(estimate.evidence, `${stream.name} 재질 추정`)}
-            >
-              {estimate.label}
-            </button>{" "}
-            <span className="text-muted">(신뢰도 {pct(estimate.confidence)})</span>
-          </>
-        ) : null}
-      </p>
+      {/* 방금 분석한 사진이 있으면 그 결과가 말한다. 분석하지 못했으면 지난 값을 그대로 보인다 */}
+      {result && !result.detectorUnavailable ? null : (
+        <p className="text-[13px]">
+          {stream.photo?.contaminationPct != null ? (
+            <>
+              등록된 사진 추정 오염 비율:{" "}
+              <button
+                type="button"
+                disabled={(stream.photo.evidence ?? []).length === 0}
+                className="font-medium tabular-nums underline decoration-line-strong decoration-dotted underline-offset-4"
+                onClick={() => openEvidence(stream.photo?.evidence ?? [], `${stream.name} 사진 추정 오염 비율`)}
+              >
+                {stream.photo.contaminationPct}%
+              </button>
+              {stream.photo.reliable === false ? (
+                <span className="ml-1.5 text-warn">검증되지 않은 값이라 판정에 쓰지 않습니다</span>
+              ) : null}
+            </>
+          ) : estimate ? null : (
+            <span className="text-muted">{stream.photo?.file ? "지난 사진에서 얻은 값이 없습니다." : "아직 올린 사진이 없습니다."}</span>
+          )}
+          {estimate ? (
+            <>
+              {stream.photo?.contaminationPct != null ? " · " : null}사진 분류(참고):{" "}
+              <PhotoMaterial estimate={estimate} onOpen={() => openEvidence(estimate.evidence, `${stream.name} 사진 분류`)} />
+            </>
+          ) : null}
+        </p>
+      )}
       <UploadStatus state={media.state} busyText="사진을 분석하고 있습니다" />
       {result?.detectorOffline ? (
         <NextStep
@@ -649,17 +671,20 @@ function MediaUpload({
           canAct={canAct}
           note={stream.photo?.contaminationPct != null || estimate ? "위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다." : null}
         />
-      ) : result?.detectorUnavailable || (result && nothingDetected(result)) ? (
+      ) : result?.detectorUnavailable ? (
+        <NextStep title="이 파일은 분석하지 못했습니다" streamId={stream.id} canAct={canAct} />
+      ) : result && nothingDetected(result) ? (
         <NextStep
-          title={result.detectorUnavailable ? "이 파일은 분석하지 못했습니다" : "이 사진에서 찾은 것이 없습니다"}
+          title={labelEmpty ? "이 사진에서 재질과 이물, 재질 표기를 찾지 못했습니다" : "이 사진에서 재질과 이물을 찾지 못했습니다"}
+          body="폐기물이 화면에 크게 보이는 사진이나 포대 라벨·분리배출 표시가 보이는 사진을 올리거나, 수치를 직접 적어 주세요."
           streamId={stream.id}
           canAct={canAct}
-          note={stream.photo?.contaminationPct != null || estimate ? "위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다." : null}
         />
       ) : null}
       <LabelMaterials
         reading={result ? (result.label ?? null) : (stream.photo?.labelMaterials ?? null)}
         fresh={result != null}
+        quietWhenEmpty={result != null && nothingDetected(result)}
         stream={stream}
         canAct={canAct}
         onChanged={onChanged}
@@ -673,22 +698,13 @@ function MediaUpload({
             {result.mode === "video" && result.tracksTotal != null ? ` · 추적한 물체 ${result.tracksTotal}` : ""}
           </p>
           <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1">
-            <dt className="text-muted">재질 추정</dt>
+            <dt className="text-muted">사진 분류(참고)</dt>
             <dd>
               {result.material ? (
-                <>
-                  <button
-                    type="button"
-                    className={`${link}`}
-                    onClick={() => openEvidence(result.material?.evidence ?? [], "재질 추정")}
-                  >
-                    {result.material.label}
-                  </button>{" "}
-                  <span className="text-muted">
-                    신뢰도 {pct(result.material.confidence)}
-                    {result.material.wasteItem ? ` · 폐기물 품목 ${result.material.wasteItem}` : ""}
-                  </span>
-                </>
+                <PhotoMaterial
+                  estimate={result.material}
+                  onOpen={() => openEvidence(result.material?.evidence ?? [], "사진 분류")}
+                />
               ) : (
                 <span className="text-warn">탐지된 것이 없습니다 · 확인 필요</span>
               )}
@@ -777,6 +793,7 @@ const MATERIAL_WORD: Record<string, string> = { OTHER: "OTHER(복합 재질)" };
 function LabelMaterials({
   reading,
   fresh,
+  quietWhenEmpty = false,
   stream,
   canAct,
   onChanged,
@@ -784,6 +801,8 @@ function LabelMaterials({
   reading: LabelReading | null;
   /** 방금 올린 사진의 결과인가(아니면 전에 올린 사진에서 읽어 둔 것) */
   fresh: boolean;
+  /** 표기가 없다는 말을 위의 안내 상자가 이미 했다 */
+  quietWhenEmpty?: boolean;
   stream: StreamRecord;
   canAct: boolean;
   onChanged: () => void;
@@ -796,7 +815,7 @@ function LabelMaterials({
     return <p className="text-[13px] text-warn">{reading.error} 재질은 직접 적어 주세요.</p>;
   }
   if (reading.found.length === 0) {
-    return fresh ? <p className="text-[13px] text-muted">이 사진에서는 재질 표기를 찾지 못했습니다.</p> : null;
+    return fresh && !quietWhenEmpty ? <p className="text-[13px] text-muted">이 사진에서는 재질 표기를 찾지 못했습니다.</p> : null;
   }
   const register = async (material: string) => {
     setBusy(material);

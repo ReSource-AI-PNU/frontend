@@ -133,6 +133,8 @@ export type StreamRecord = {
     reliable?: boolean;
     /** 탐지 모델의 재질 추정. 수지 종류는 가르지 못해 흐름의 material은 바꾸지 않는다 */
     materialEstimate?: MaterialEstimate | null;
+    /** 마지막으로 분석한 사진·영상 파일 이름(서버가 남긴다) */
+    file?: string | null;
     /** 사진 속 재질 표기(포대 라벨, 분리배출 표시)를 읽은 것. 담당자가 등록해야 재질이 된다 */
     labelMaterials?: LabelReading | null;
     /** 마지막으로 올린 사진이 검증 안 된 사진이면 비율 대신 개수. 검증된 사진이면 null */
@@ -176,6 +178,12 @@ export type MaterialEstimate = {
   wasteItem: string | null;
   confidence: number | null;
   evidence: string[];
+  /** 견준 재질(담당자가 적은 것). 없으면 null */
+  registeredMaterial?: string | null;
+  /** 사진 분류가 등록한 재질과 맞는가(true)·다른가(false)·견줄 것이 없는가(null) */
+  agrees?: boolean | null;
+  /** 판단(업체 문의서 등)에 쓰는가. 다르지 않고 신뢰도가 기준 이상일 때만 참. 없으면(이전 기록) 쓰지 않는다 */
+  usable?: boolean;
 };
 
 /** 검증된 촬영 환경이 아닌 사진의 탐지 결과: 비율(%) 대신 탐지한 물체 수와 이물이 보인 곳 수 */
