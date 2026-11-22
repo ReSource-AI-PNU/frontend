@@ -882,12 +882,11 @@ export function Conversation({ d }: { d: Diagnosis }) {
             busy={d.busy}
             threads={view.threads}
             approvals={view.approvals}
-            hasExampleQuotes={Boolean(view.vendorComparison?.items.length)}
           />
         ) : null}
 
-        {result && isEmitter && !readOnly && view.vendorComparison ? (
-          <VendorComparison comparison={view.vendorComparison} />
+        {result && isEmitter && !readOnly && !d.org.demo && !d.org.synthetic ? (
+          <VendorComparison assignments={result.assignments} streams={view.streams} threads={view.threads} onOpenTalk={openTalk} />
         ) : null}
 
         {/* 결과 표 아래의 자세한 내용은 모두 접어 둔다. 제목과 한 줄 값만 보이고, 누르면 펼쳐진다 */}
