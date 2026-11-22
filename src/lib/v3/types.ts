@@ -58,6 +58,7 @@ export type ReferenceCost = z.infer<typeof s.referenceCostSchema>;
 export type Result = z.infer<typeof s.resultSchema>;
 export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
 export type OutsideCandidate = z.infer<typeof s.outsideCandidateSchema>;
+export type OutsideTreatment = z.infer<typeof s.outsideTreatmentSchema>;
 export type ComplexPartners = z.infer<typeof s.complexPartnersSchema>;
 export type ComplexCandidate = z.infer<typeof s.complexCandidateSchema>;
 export type ComplexPlan = z.infer<typeof s.complexPlanSchema>;

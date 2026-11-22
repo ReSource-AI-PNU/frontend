@@ -629,6 +629,19 @@ export const referenceCostSchema = obj({
 
 const wasteCodeSchema = obj({ code: z.string(), name: z.string().nullable() });
 
+/** 가입하지 않은 업체 후보의 2024년 처리 실적. 값은 결과표 한 줄을 근거로 여는 claim이다 */
+export const outsideTreatmentSchema = obj({
+  tonsPerYear: claimSchema,
+  capacityTonsPerDay: claimOrNull,
+  sheet: z.string(),
+  row: z.number(),
+  /** 허가 반납 신고일(결과표에 적혀 있을 때) */
+  returnedOn: z.string().nullable(),
+  /** 결과표 기준일(2024-12-31). 출처 이름과 공표일은 outsideVendors.source.treatment2024에 있다 */
+  asOf: z.string(),
+  evidence: z.array(z.string()),
+});
+
 /** 가입하지 않은 처리 업체 후보(공공데이터 허가 명부). AI가 대화하지 않고, 손익 계산에도 넣지 않는다 */
 export const outsideCandidateSchema = obj({
   id: z.string(),
@@ -648,6 +661,11 @@ export const outsideCandidateSchema = obj({
   note: z.string().nullable(),
   /** 회사와 같은 산업단지에 있는 업체(2026-11-22 추가, 이전 결과에는 없다) */
   sameComplex: z.boolean().optional(),
+  /**
+   * 2024년 처리 실적(「2024 전국 폐기물 발생 및 처리현황」 결과표 한 줄). 상호·시군구로 확실히 맞을 때만 오고,
+   * 아니면 null이다. 표시용이며 손익 계산에 넣지 않는다(2026-11-22 추가, 이전 결과에는 없다)
+   */
+  treatment2024: outsideTreatmentSchema.nullable().optional(),
 });
 
 export const outsideVendorsSchema = obj({
@@ -657,6 +675,8 @@ export const outsideVendorsSchema = obj({
     asOfRange: z.array(z.string()).nullable(),
     note: z.string(),
     radiusKm: z.number(),
+    /** 후보의 2024년 처리 실적 출처(2026-11-22 추가) */
+    treatment2024: obj({ name: z.string(), url: z.string(), asOf: z.string(), published: z.string() }).optional(),
   }),
   streams: z.array(
     obj({

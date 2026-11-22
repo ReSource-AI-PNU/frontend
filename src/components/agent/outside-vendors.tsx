@@ -33,6 +33,7 @@ import {
   quotePreview,
   sourceLine,
   streamChanges,
+  treatmentTexts,
   uniqueCandidates,
   vendorStreamIds,
 } from "@/lib/v3/outside";
@@ -130,6 +131,27 @@ export function ItemPicker({
   );
 }
 
+/** 2024년 처리 실적(공표 결과표 한 줄). 값을 누르면 그 줄이 근거로 열린다. 실적이 없으면 그리지 않는다 */
+function Treatment2024({ candidate }: { candidate: OutsideCandidate }) {
+  const treatment = candidate.treatment2024;
+  const texts = treatmentTexts(treatment);
+  if (!treatment || !texts) return null;
+  return (
+    <p className="mt-0.5 text-[13px] text-muted tabular-nums">
+      2024년 처리 연{" "}
+      <ClaimValue claim={treatment.tonsPerYear} display={texts.tons} title={`${candidate.name} 2024년 처리량`} />
+      {texts.capacity ? (
+        <>
+          {" "}
+          · 하루 처리능력{" "}
+          <ClaimValue claim={treatment.capacityTonsPerDay} display={texts.capacity} title={`${candidate.name} 하루 처리능력`} />
+        </>
+      ) : null}
+      {texts.returned ? ` · ${texts.returned}` : null}
+    </p>
+  );
+}
+
 function Candidate({
   candidate,
   pickerName,
@@ -163,6 +185,7 @@ function Candidate({
             {phoneText(candidate)}
           </p>
           <p className="mt-0.5 truncate text-[13px] text-muted">{candidate.address}</p>
+          <Treatment2024 candidate={candidate} />
           {candidate.note ? <p className="mt-1 text-[13px] text-warn">{candidate.note}</p> : null}
         </div>
         <div className="flex items-center gap-1">

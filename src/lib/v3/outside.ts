@@ -2,7 +2,8 @@
  * 가입하지 않은 처리 업체 후보(공공데이터 허가 명부)의 화면 문구와 묶음. 순수 함수만 둔다(tests/outside.test.ts).
  * 후보는 AI가 대화하지 않았고 손익 계산에도 넣지 않았다는 사실을 화면에 그대로 적는다.
  */
-import type { OutsideCandidate, OutsideChange, OutsideVendors, QuoteFact, QuoteRequest } from "./types.ts";
+import { formatNumber } from "./format.ts";
+import type { OutsideCandidate, OutsideChange, OutsideTreatment, OutsideVendors, QuoteFact, QuoteRequest } from "./types.ts";
 
 export type OutsideGroup = {
   streamIds: string[];
@@ -57,7 +58,33 @@ export function phoneText(candidate: Pick<OutsideCandidate, "phone" | "agency">)
 export function sourceLine(outside: OutsideVendors): string {
   const range = outside.source.asOfRange;
   const when = range && range.length === 2 ? `, 기준일 ${range[0]}~${range[1]}` : "";
-  return `출처: ${outside.source.name}${when}. 지자체가 올린 정보라 명부에 없는 업체도 있고, 처리 품목이 바뀌었을 수 있습니다.`;
+  const line = `출처: ${outside.source.name}${when}. 지자체가 올린 정보라 명부에 없는 업체도 있고, 처리 품목이 바뀌었을 수 있습니다.`;
+  const treatment = outside.source.treatment2024;
+  const shown = outside.streams.some((stream) => stream.candidates.some((item) => item.treatment2024));
+  if (!treatment || !shown) return line;
+  return `${line} 2024년 처리 실적: ${treatment.name}(${treatment.published} 공표). 상호와 소재지가 맞는 업체에만 적었습니다.`;
+}
+
+/** 톤 값을 줄에 적을 글자로. 100톤 이상은 정수, 그보다 작으면 소수 한 자리까지 적는다 */
+export function tonsText(value: number): string {
+  const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
+  return `${formatNumber(rounded)}톤`;
+}
+
+/**
+ * 후보 줄의 2024년 처리 실적("2024년 처리 연 ○톤 · 하루 처리능력 ○톤"). 실적이 없으면 null이고 화면은 아무것도 그리지 않는다.
+ * 허가 반납 신고일이 결과표에 있으면 함께 적는다.
+ */
+export function treatmentTexts(
+  treatment: OutsideTreatment | null | undefined,
+): { tons: string; capacity: string | null; returned: string | null } | null {
+  if (!treatment || typeof treatment.tonsPerYear.value !== "number") return null;
+  const capacity = treatment.capacityTonsPerDay;
+  return {
+    tons: tonsText(treatment.tonsPerYear.value),
+    capacity: capacity && typeof capacity.value === "number" ? tonsText(capacity.value) : null,
+    returned: treatment.returnedOn ? `${treatment.returnedOn} 허가 반납 신고` : null,
+  };
 }
 
 /** 시연 회사(가상 자료)의 요청서 표시. 서버(outreach.DEMO_MARK)가 본문 첫 줄에 넣고, 복사한 글 끝에도 한 번 더 붙인다 */
