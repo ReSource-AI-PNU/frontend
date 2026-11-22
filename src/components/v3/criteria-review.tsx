@@ -38,7 +38,7 @@ const FEE_LABEL: Record<CriteriaValues["collectionFee"], string> = { "": "문서
 function FieldNotes({ row, keys, show }: { row: CriteriaRowState; keys: CriteriaKey[]; show?: (value: string) => string }) {
   const edited = editedKeys(row).filter((key) => keys.includes(key));
   const source = keys.map((key) => row.sources[key]).find(Boolean);
-  const reasons = keys.flatMap((key) => row.review[key] ?? []);
+  const reasons = keys.flatMap((key) => row.review[key] ?? []).filter(reason => !(row.rangeSelected && reason.includes("단가가 범위로")));
   const before = row.ai ? keys.map((key) => row.ai?.[key] ?? "").join(" ").trim() : "";
   return (
     <span className="flex flex-col gap-0.5 text-[12.5px] font-normal leading-snug">
@@ -63,11 +63,13 @@ function RowEditor({
   number,
   disabled,
   onChange,
+  onKeepRange,
 }: {
   row: CriteriaRowState;
   number: number;
   disabled: boolean;
   onChange: (values: Partial<CriteriaValues>) => void;
+  onKeepRange: () => void;
 }) {
   const v = row.values;
   const rowId = useId();
@@ -189,6 +191,7 @@ function RowEditor({
               : null}
           </div>
         )}
+        {v.priceMode !== "negotiated" && row.candidates?.length === 2 && <Button variant="secondary" disabled={disabled} onClick={onKeepRange}>{row.rangeSelected ? "범위 그대로 등록하도록 선택함" : "범위 그대로 공개 등록"}</Button>}
         <span className="mt-1.5 block">
           <FieldNotes row={row} keys={["direction", "price"]} show={price} />
         </span>
@@ -383,7 +386,7 @@ export function CriteriaReview({
               </div>
               {row.open && !row.saved ? (
                 <div className="pl-9">
-                  <RowEditor row={row} number={index + 1} disabled={locked} onChange={(values) => changeValues(row, values)} />
+                  <RowEditor row={row} number={index + 1} disabled={locked} onChange={(values) => {changeValues(row, values); if ("price" in values) change(row.key, {values: {...row.values, ...values}, rangeSelected: false});}} onKeepRange={() => change(row.key, {rangeSelected: !row.rangeSelected, include: false})} />
                   {problems.length > 0 ? (
                     <p className="mt-3 text-[13px] text-warn">저장하려면: {problems.join(" ")}</p>
                   ) : !row.include ? (

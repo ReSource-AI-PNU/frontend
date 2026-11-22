@@ -172,3 +172,15 @@ test("건별 협의는 0원 및 단가 미입력과 구분되고 선택 조건�
   row.values.direction = "fee";
   assert.equal(rowPayload(row)?.unitPriceKrwPerKg, -80);
 });
+
+test("문서의 범위를 유지하면 단일 가격 없이 범위 양끝을 저장한다", () => {
+  const range = rowsFromDraft(ambiguous.draft!).find(row => row.candidates?.length === 2)!;
+  const selected = {...range, rangeSelected:true, values:{...range.values,direction:"buy" as const}};
+  assert.deepEqual(rowProblems(selected), []);
+  const payload=rowPayload(selected)!;
+  assert.equal(payload.unitPriceKrwPerKg,null);
+  assert.equal(payload.priceLow,300);
+  assert.equal(payload.priceHigh,400);
+  const fee=rowPayload({...selected,values:{...selected.values,direction:"fee"}})!;
+  assert.equal(fee.priceLow,-400); assert.equal(fee.priceHigh,-300);
+});

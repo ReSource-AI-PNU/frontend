@@ -1725,6 +1725,8 @@ function VendorForm({
                     <td className="py-2.5 pr-3 text-right">
                       {row.priceMode === "negotiated" ? (
                         <span className="text-[13px] text-warn">담당자 견적 필요</span>
+                      ) : row.priceLow != null && row.priceHigh != null ? (
+                        <span>{formatNumber(row.priceLow)}~{formatNumber(row.priceHigh)} (공개 범위)</span>
                       ) : canAct ? (
                         <span className="inline-flex items-center justify-end gap-2">
                           <span className="text-[13px] text-muted">

@@ -15,8 +15,8 @@ const FORMS = ["가공 전", "분쇄", "압축", "필름", "펠릿"];
 const input =
   "min-h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken";
 
-type Draft = { name: string; material: string; form: string; monthlyKg: string; origin: "PIR" | "PCR" };
-const EMPTY: Draft = { name: "", material: "PP", form: "가공 전", monthlyKg: "", origin: "PIR" };
+type Draft = { name: string; material: string; form: string; monthlyKg: string; origin: "" | "PIR" | "PCR" };
+const EMPTY: Draft = { name: "", material: "", form: "", monthlyKg: "", origin: "" };
 
 /** 폐기물(흐름) ID. 서버는 처음 보는 ID를 새 흐름으로 받는다. */
 function newStreamId() {
@@ -38,7 +38,7 @@ function StreamForm({
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((before) => ({ ...before, [key]: value }));
   const kg = Number(draft.monthlyKg);
-  const valid = draft.name.trim() !== "" && draft.monthlyKg.trim() !== "" && Number.isFinite(kg) && kg > 0;
+  const valid = draft.name.trim() !== "" && (draft.monthlyKg.trim() === "" || (Number.isFinite(kg) && kg > 0));
   return (
     <form
       className="grid gap-x-3 gap-y-4 py-5 sm:grid-cols-2"
@@ -60,6 +60,7 @@ function StreamForm({
       <label className="text-[13px] font-medium text-ink-2">
         재질
         <select value={draft.material} onChange={(event) => set("material", event.target.value)} className={`${input} mt-1.5 text-ink`}>
+          <option value="">모름 · 자료로 확인</option>
           {MATERIALS.map((item) => (
             <option key={item}>{item}</option>
           ))}
@@ -68,6 +69,7 @@ function StreamForm({
       <label className="text-[13px] font-medium text-ink-2">
         형태
         <select value={draft.form} onChange={(event) => set("form", event.target.value)} className={`${input} mt-1.5 text-ink`}>
+          <option value="">모름</option>
           {FORMS.map((item) => (
             <option key={item}>{item}</option>
           ))}
@@ -83,7 +85,7 @@ function StreamForm({
             placeholder="숫자"
             className={`${input} tabular-nums`}
           />
-          <span className="shrink-0 text-sm text-ink-2">kg</span>
+          <span className="shrink-0 text-sm text-ink-2">kg (대략)</span>
         </span>
       </label>
       <label className="text-[13px] font-medium text-ink-2">
@@ -93,6 +95,7 @@ function StreamForm({
           onChange={(event) => set("origin", event.target.value as Draft["origin"])}
           className={`${input} mt-1.5 text-ink`}
         >
+          <option value="">모름</option>
           <option value="PIR">공정에서 나온 것</option>
           <option value="PCR">쓰고 버린 포장재</option>
         </select>
@@ -150,10 +153,11 @@ export function Start({
         orgId: org.id,
         name: draft.name.trim(),
         material: draft.material,
-        form: draft.form,
-        origin: draft.origin,
+        form: draft.form || null,
+        origin: draft.origin || null,
         wasteItem: draft.origin === "PCR" ? "포장재" : "폐플라스틱",
-        monthlyKg: Number(draft.monthlyKg),
+        monthlyKg: draft.monthlyKg.trim() ? Number(draft.monthlyKg) : null,
+        monthlyKgBasis: "estimated",
       });
       setAdding(false);
       remote.reload();
@@ -172,7 +176,7 @@ export function Start({
         </h1>
         <p className="mt-2 text-[15px] text-ink-2">
           {empty
-            ? "공장에서 나오는 폐플라스틱을 한 가지씩 적어 주세요. 이름과 한 달 양만 알아도 됩니다."
+            ? "공장에서 나오는 폐플라스틱을 한 가지씩 적어 주세요. 이름부터 적어 주세요. 모르는 값은 비워 두고, 사진과 대략적인 물량으로 시작할 수 있습니다."
             : "아래 폐기물을 받을 수 있는 업체에 AI가 대신 조건을 물어봅니다."}
         </p>
 
