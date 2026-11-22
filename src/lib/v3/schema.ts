@@ -251,6 +251,8 @@ export const stageSchema = obj({
 
 /** 오염도·수분 값의 출처: 측정 | 담당자가 질문에 답한 값 | 사진 추정 */
 export const valueBasisSchema = z.enum(["measured", "answered", "photo_estimate"]);
+/** 참고 등급에 쓴 값의 출처. photo_unverified는 탐지 모델이 검증 안 된 참고값이라고 표시한 사진 추정값이다 */
+export const referenceBasisSchema = z.enum(["measured", "answered", "photo_estimate", "photo_unverified"]);
 
 /**
  * 차량·횟수 단위나 월 정액으로 받은 현행 처리비 계약(백엔드가 월 발생량으로 kg당 처리비로 바꾼 원래 꼴).
@@ -270,6 +272,9 @@ export const viewStreamSchema = obj({
   process: z.string().nullable(),
   wasteItem: z.string().nullable(),
   material: z.string().nullable(),
+  /** 재질의 출처. label은 사진 속 표기를 담당자가 등록한 것이다. 이 기능 전 뷰에는 없다 */
+  materialBasis: z.enum(["label", "estimated"]).nullable().optional(),
+  materialEvidence: z.array(z.string()).optional(),
   origin: z.string().nullable(),
   form: z.string().nullable(),
   lot: z.string().nullable(),
@@ -280,6 +285,8 @@ export const viewStreamSchema = obj({
   contamination: claimOrNull,
   /** 탐지 모델이 사진에서 추정한 오염 비율 */
   photoContamination: claimOrNull,
+  /** 탐지 모델이 그 값을 검증 안 된 참고값이라고 표시했으면 false. 이 기능 전 뷰에는 없다 */
+  photoReliable: z.boolean().nullable().optional(),
   moisture: claimOrNull,
   /** contamination·moisture 값의 출처. 담당자 답이면 claim 이름이 "오염도(담당자 답)"처럼 온다 */
   contaminationBasis: valueBasisSchema.nullable().optional(),
@@ -291,6 +298,19 @@ export const viewStreamSchema = obj({
     basis: z.enum(["measured", "photo_estimate"]).nullable(),
     label: z.string(),
     evidence: z.array(z.string()),
+    /**
+     * 참고 등급. 팀이 정한 기준값(가정값)으로 낸 것이라 판정과 배정에는 쓰지 않는다. 배출 기업이 보는 뷰에만 오고,
+     * 오염도나 수분이 없으면 null이다. 이 기능 전 뷰에는 없다
+     */
+    reference: obj({
+      grade: z.string(),
+      basis: referenceBasisSchema.nullable(),
+      meaning: z.string().nullable(),
+      note: z.string().nullable(),
+      evidence: z.array(z.string()),
+    })
+      .nullable()
+      .optional(),
   }),
   /** 업체가 보는 뷰에서는 null이다 */
   currentTreatment: obj({

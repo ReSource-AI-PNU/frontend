@@ -124,11 +124,20 @@ export type StreamRecord = {
     evidence: string[];
   } | null;
   photo?: {
-    contaminationPct: number | null;
-    evidence: string[];
+    contaminationPct?: number | null;
+    evidence?: string[];
+    /** 탐지 모델이 검증 안 된 참고값이라고 표시했으면 false */
+    reliable?: boolean;
     /** 탐지 모델의 재질 추정. 수지 종류는 가르지 못해 흐름의 material은 바꾸지 않는다 */
     materialEstimate?: MaterialEstimate | null;
+    /** 사진 속 재질 표기(포대 라벨, 분리배출 표시)를 읽은 것. 담당자가 등록해야 재질이 된다 */
+    labelMaterials?: LabelReading | null;
   } | null;
+  /** 재질의 출처. label은 사진 속 표기를 담당자가 등록한 것이다 */
+  materialBasis?: "label" | "estimated" | null;
+  materialEvidence?: string[];
+  /** PUT에만 쓴다. "label"이면 사진에서 읽은 표기의 재질로 등록하고 그 근거를 남긴다 */
+  materialSource?: "label";
   currentTreatment?: {
     method: string;
     unitCostKrwPerKg: number | null;
@@ -164,12 +173,33 @@ export type MaterialEstimate = {
   evidence: string[];
 };
 
+/** 사진 속 재질 표기 하나. together는 같은 줄에 함께 적힌 다른 재질(복합 재질 표기)이다 */
+export type LabelFound = {
+  material: string;
+  text: string;
+  confidence: number | null;
+  lowConfidence: boolean;
+  together: string[];
+};
+/** 사진 속 재질 표기 읽기. suggestion은 재질 하나로 좁혀질 때만 온다. 글자를 읽지 못했으면 error가 온다 */
+export type LabelReading = {
+  found: LabelFound[];
+  suggestion: string | null;
+  evidence: string[];
+  file?: string;
+  error?: string;
+};
+
 /**
- * POST /intake/media. 탐지 모델이 연결되지 않았으면 detectorUnavailable이 true이고 근거는 하나도 등록되지 않는다.
- * 연결된 경우의 모양은 계약 8장 "사진·영상"을 따른다(엔드포인트가 배포되지 않아 실제 응답으로는 확인하지 못했다).
+ * POST /intake/media. 탐지 서버(H100)가 연결되지 않았거나 꺼져 있으면 detectorUnavailable이 true이고(꺼져 있으면
+ * detectorOffline도 true) 탐지 근거는 등록되지 않는다. 사진이면 재질 표기는 탐지와 따로 읽어 label에 온다.
  */
 export type MediaUploadResult = {
   detectorUnavailable: boolean;
+  /** 탐지 서버가 꺼져 있다(서비스하지 않을 때 끈다). 이 기능 전 응답에는 없다 */
+  detectorOffline?: boolean;
+  /** 사진 속 재질 표기. 영상이거나 읽을 수 없는 형식이면 null이다 */
+  label?: LabelReading | null;
   message?: string;
   streamId: string;
   evidence: string[];

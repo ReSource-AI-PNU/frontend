@@ -67,6 +67,7 @@ import type {
   DocumentProfileSummary,
   DocumentUploadResult,
   ExtractedField,
+  LabelReading,
   MediaUploadResult,
   ManualPermitInput,
   StreamRecord,
@@ -523,12 +524,25 @@ function openMeasure(streamId: string) {
 }
 
 /** 사진으로 값을 얻지 못했을 때의 다음 행동: 다른 사진을 올리거나 수치를 직접 적는다 */
-function NextStep({ title, streamId, canAct, note }: { title: string; streamId: string; canAct: boolean; note?: string | null }) {
+function NextStep({
+  title,
+  streamId,
+  canAct,
+  note,
+  body = "다른 사진을 올리거나 수치를 직접 적어 주세요.",
+}: {
+  title: string;
+  streamId: string;
+  canAct: boolean;
+  note?: string | null;
+  body?: string;
+}) {
   return (
     <div role="status" className="rounded-xl bg-warn-bg px-4 py-3 text-[13px] text-ink-2">
       <p className="font-medium text-ink">{title}</p>
       <p className="mt-0.5">
-        다른 사진을 올리거나 수치를 직접 적어 주세요.{note ? ` ${note}` : ""}
+        {body}
+        {note ? ` ${note}` : ""}
       </p>
       {canAct ? (
         <Button size="sm" variant="secondary" className="mt-2.5" onClick={() => openMeasure(streamId)}>
@@ -567,8 +581,9 @@ function MediaUpload({
   return (
     <div className="space-y-3 text-sm">
       <p className="text-ink-2">
-        사진이나 영상을 올리면 재질과 섞인 것의 비율을 추정해 근거로 등록합니다. 사진만으로는 수지 종류(PP·PE·ABS)를 가르지
-        못하므로 등록한 재질은 바꾸지 않습니다.
+        사진이나 영상을 올리면 재질과 섞인 것의 비율을 추정해 근거로 등록합니다. 색과 모양만으로는 수지 종류(PP·PE·ABS)를
+        가르지 못하므로, 사진에 포대 라벨이나 분리배출 표시가 보이면 그 글자를 읽어 재질 후보로 보여 줍니다. 등록한 재질은
+        담당자가 고르기 전에는 바꾸지 않습니다.
       </p>
       <div className="flex flex-wrap gap-2">
         {/* 휴대폰(손가락으로 누르는 화면)에서는 카메라를 바로 연다. 올린 사진은 웹과 같은 계정·서버에 남는다 */}
@@ -596,12 +611,13 @@ function MediaUpload({
             등록된 사진 추정 오염 비율:{" "}
             <button
               type="button"
-              disabled={stream.photo.evidence.length === 0}
+              disabled={(stream.photo.evidence ?? []).length === 0}
               className="font-medium tabular-nums underline decoration-line-strong decoration-dotted underline-offset-4"
               onClick={() => openEvidence(stream.photo?.evidence ?? [], `${stream.name} 사진 추정 오염 비율`)}
             >
               {stream.photo.contaminationPct}%
             </button>
+            {stream.photo.reliable === false ? <span className="ml-1.5 text-warn">검증되지 않은 값</span> : null}
           </>
         ) : (
           <span className="text-muted">등록된 사진 추정값이 없습니다.</span>
@@ -621,8 +637,16 @@ function MediaUpload({
           </>
         ) : null}
       </p>
-      <UploadStatus state={media.state} />
-      {result?.detectorUnavailable || (result && nothingDetected(result)) ? (
+      <UploadStatus state={media.state} busyText="사진을 분석하고 있습니다" />
+      {result?.detectorOffline ? (
+        <NextStep
+          title="지금은 사진·영상 분석을 쉬고 있습니다"
+          body="재질과 섞인 것의 비율은 나중에 다시 올려 분석하거나, 수치를 직접 적어 주세요."
+          streamId={stream.id}
+          canAct={canAct}
+          note={stream.photo?.contaminationPct != null || estimate ? "위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다." : null}
+        />
+      ) : result?.detectorUnavailable || (result && nothingDetected(result)) ? (
         <NextStep
           title={result.detectorUnavailable ? "이 파일은 분석하지 못했습니다" : "이 사진에서 찾은 것이 없습니다"}
           streamId={stream.id}
@@ -630,6 +654,13 @@ function MediaUpload({
           note={stream.photo?.contaminationPct != null || estimate ? "위에 보이는 사진 추정값은 이전에 올린 사진의 것입니다." : null}
         />
       ) : null}
+      <LabelMaterials
+        reading={result ? (result.label ?? null) : (stream.photo?.labelMaterials ?? null)}
+        fresh={result != null}
+        stream={stream}
+        canAct={canAct}
+        onChanged={onChanged}
+      />
       {result && !result.detectorUnavailable && !nothingDetected(result) ? (
         <div className="space-y-3 rounded-xl bg-ground px-4 py-4 text-[13px]">
           <p>
@@ -714,6 +745,101 @@ function MediaUpload({
             <p className="text-muted">등록된 근거가 없습니다.</p>
           )}
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+const MATERIAL_WORD: Record<string, string> = { OTHER: "OTHER(복합 재질)" };
+
+/**
+ * 사진 속 재질 표기(포대 라벨, 분리배출 표시, 성형품의 ">PP<" 표시)를 읽은 결과. AI가 읽은 것이라 marker 점을 쓴다.
+ * 표기는 포장·부품에 적힌 것이라 안에 든 것과 다를 수 있어, 담당자가 "이 재질로 등록"을 눌러야 재질이 된다.
+ * 복합 재질 표기(OTHER, 같은 줄의 PP/PE)는 등록 단추를 두지 않는다.
+ */
+function LabelMaterials({
+  reading,
+  fresh,
+  stream,
+  canAct,
+  onChanged,
+}: {
+  reading: LabelReading | null;
+  /** 방금 올린 사진의 결과인가(아니면 전에 올린 사진에서 읽어 둔 것) */
+  fresh: boolean;
+  stream: StreamRecord;
+  canAct: boolean;
+  onChanged: () => void;
+}) {
+  const { org, openEvidence } = useV3();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (reading == null) return null;
+  if (reading.error) {
+    return <p className="text-[13px] text-warn">{reading.error} 재질은 직접 적어 주세요.</p>;
+  }
+  if (reading.found.length === 0) {
+    return fresh ? <p className="text-[13px] text-muted">이 사진에서는 재질 표기를 찾지 못했습니다.</p> : null;
+  }
+  const register = async (material: string) => {
+    setBusy(material);
+    setError(null);
+    try {
+      await api.putStream(org.id, { ...stream, material, materialSource: "label" });
+      onChanged();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "재질을 등록하지 못했습니다.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="space-y-2 rounded-xl bg-ground px-4 py-3 text-[13px]">
+      <p className="font-medium text-ink">
+        사진 속 재질 표기{fresh ? "" : <span className="font-normal text-muted"> · 전에 올린 사진</span>}
+      </p>
+      <ul className="space-y-1.5">
+        {reading.found.map((item) => {
+          const registered = stream.material === item.material && stream.materialBasis === "label";
+          const blocked = item.material === "OTHER" || item.together.length > 0;
+          return (
+            <li key={item.material} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span aria-hidden="true" className="inline-block size-2 rounded-full bg-marker ring-1 ring-ink" />
+              <span className="font-mono font-semibold">{MATERIAL_WORD[item.material] ?? item.material}</span>
+              <span className="text-muted">「{item.text}」</span>
+              {item.lowConfidence ? <span className="text-warn">글자가 흐려 확인 필요</span> : null}
+              {item.together.length > 0 ? (
+                <span className="text-warn">복합 재질 표기({[item.material, ...item.together].join("·")})</span>
+              ) : null}
+              {registered ? (
+                <span className="text-ink-2">· 이 재질로 등록됨</span>
+              ) : canAct && !blocked ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={busy !== null}
+                  onClick={() => void register(item.material)}
+                >
+                  {busy === item.material ? "등록하는 중" : "이 재질로 등록"}
+                </Button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-muted">
+        포장이나 부품에 적힌 표기라 안에 든 것과 다를 수 있습니다. 등록하면 재질의 출처가 &ldquo;포장 표기&rdquo;로 남고, 반입
+        검수에서 확인합니다. 지금 등록된 재질: {stream.material || "없음"}
+      </p>
+      {reading.evidence.length > 0 ? (
+        <button type="button" className={link} onClick={() => openEvidence(reading.evidence, `${stream.name} 사진 속 재질 표기`)}>
+          표기 읽기 근거
+        </button>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-loss">
+          {error}
+        </p>
       ) : null}
     </div>
   );
