@@ -18,7 +18,9 @@ const MAX_SESSIONS = 6;
 export function useWorkspace() {
   const { mode, org, orgs, failedSessions, setSessionId, basePath } = useV3();
   const router = useRouter();
-  const remote = useRemote(`workspace:${org.id}`, mode === "live", async () => {
+  // 홈·거래·업체 대화 화면이 같은 찾기 뷰를 쓴다. 화면을 옮겨도 받아 둔 것을 먼저 보이고 뒤에서 새로 읽는다(keep).
+  // 체험하기와 로그인 화면은 같은 회사라도 보이는 범위가 달라 basePath로 키를 가른다
+  const remote = useRemote(`workspace:${basePath}:${org.id}`, mode === "live", async () => {
     const list = await api.listSessions(org.id);
     const ids = list
       .filter((item) => !failedSessions.includes(item.id))
@@ -26,7 +28,7 @@ export function useWorkspace() {
       .map((item) => item.id);
     const settled = await Promise.allSettled(ids.map((id) => api.getView(id, org.id)));
     return settled.flatMap((item) => (item.status === "fulfilled" ? [item.value] : [])) as DiagnosisView[];
-  });
+  }, { keep: true });
   const views = useMemo(() => remote.data ?? [], [remote.data]);
   const side: Side = org.role === "vendor" ? "vendor" : "emitter";
   const deals = useMemo(() => collectDeals(views), [views]);
