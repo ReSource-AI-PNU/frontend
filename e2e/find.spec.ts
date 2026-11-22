@@ -8,6 +8,8 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import demoView from "../src/lib/v3/fixture-data/view.json";
+import circularFixture from "../tests/fixtures/v3-circular.json";
+import complexFixture from "../tests/fixtures/v3-complex.json";
 
 const API = (process.env.E2E_API ?? "http://localhost:8000/api/v3").replace(/\/$/, "");
 const WON = /[+−-]?\d{1,3}(,\d{3})*원/;
@@ -308,6 +310,45 @@ test("체험 결과에서 매입 기준, 수거 확인, 반입 검수와 승인�
 
   await sprue.getByRole("button", { name: /매입 kg당 340원/ }).click();
   await expect(page.getByRole("dialog", { name: "근거" })).toBeVisible();
+});
+
+test("배정할 곳이 없으면 현행 비용만 보여 주고 공개 명부는 접어 둔다", async ({ page }) => {
+  const base = structuredClone(demoView);
+  const view = {
+    ...base,
+    session: { ...base.session, status: "idle", phase: "done" },
+    approvals: [],
+    threads: [],
+    result: {
+      ...base.result,
+      circular: circularFixture.circular,
+      complexPartners: complexFixture.complexPartners,
+      greenest: { ...base.result.greenest, same: true, changes: [] },
+      assignments: base.result.assignments.map((item) => ({
+        ...item, vendorOrgId: null, vendorName: null, threadId: null, route: "keep", unitPrice: null,
+      })),
+      totals: { ...base.result.totals, monthlyAfter: base.result.totals.monthlyNow },
+    },
+  };
+  await page.route("**/api/v3-demo/sessions", (route) => route.fulfill({ json: [view.session] }));
+  await page.route(`**/api/v3-demo/sessions/${view.session.id}`, (route) => route.fulfill({ json: view }));
+  // 체험하기의 결과는 찾기(/demo/find)에 있다
+  await page.goto("/demo/find");
+
+  const result = page.getByRole("region", { name: "결과" });
+  await expect(result.getByRole("heading", { level: 2 })).toHaveText("처리 후보를 찾지 못했습니다");
+  await expect(result).toContainText("지금 한 달");
+  await expect(result).toContainText("지금 방식 그대로");
+  await expect(result).not.toContainText(/바꾼 뒤|한 달 차이|한 달 합계|탄소를 가장 많이/);
+  // 비교할 것이 없으므로 효과와 흐름은 접는 칸으로도 두지 않는다
+  await expect(page.getByRole("button", { name: /^자원순환 효과/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^처리 흐름/ })).toHaveCount(0);
+
+  // 공개 명부는 접혀 있고, 누르면 펼쳐진다
+  const directory = page.getByRole("heading", { name: "녹산국가산업단지 공개 명부 참고" });
+  await expect(directory).toBeHidden();
+  await page.getByRole("button", { name: /^같은 단지 공개 명부/ }).click();
+  await expect(directory).toBeVisible();
 });
 
 test("이메일로 가입하면 회사를 등록하고 빈 상태에서 폐기물 등록으로 시작한다", async ({ page }) => {
