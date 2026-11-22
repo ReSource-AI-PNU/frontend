@@ -94,3 +94,19 @@ test("같은 업체와 같은 폐기물을 새로 찾으면 앞선 찾기의 끝
   const kept = collectDeals([later, confirmed]).filter((deal) => deal.sessionId === confirmed.session.id);
   assert.ok(kept.every((deal) => deal.stage === "confirmed"));
 });
+
+test("새 찾기가 도는 동안 홈의 숫자는 결과가 있는 가장 최근 찾기의 것을 쓴다", () => {
+  // 방금 시작해 아직 결과가 없는 찾기가 맨 앞에 있다
+  const running = JSON.parse(JSON.stringify(agreed)) as DiagnosisView;
+  running.session = { ...running.session, id: `${agreed.session.id}_running`, status: "running" };
+  running.result = null;
+  running.threads = [];
+  running.approvals = [];
+  const alone = headlineOf([agreed], collectDeals([agreed]));
+  const during = headlineOf([running, agreed], collectDeals([running, agreed]));
+  assert.ok(alone.difference);
+  assert.deepEqual(during.difference, alone.difference);
+  assert.equal(during.recycledKg, alone.recycledKg);
+  assert.ok(during.recycledKg > 0);
+});
+
