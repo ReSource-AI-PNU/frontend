@@ -789,41 +789,6 @@ export const complexPlanSchema = obj({
   sources: z.array(z.string()),
 });
 
-/**
- * 같은 단지 평면도(GET /sessions/{id}/complex-plan, 2026-11-22). 화면을 열 때마다 서버가 지도 서비스에서 실시간으로
- * 받아 만들고 저장하지 않는다. 건물 꼭짓점은 bbox 서남쪽 모서리 기준 정수([x, y, x, y, …], 1/scale 도 단위)다.
- */
-const planPlaceSchema = obj({
-  location: z.tuple([z.number(), z.number()]),
-  buildingId: z.string().nullable(),
-  /** registry: 허가 명부 좌표 · kakao: 카카오 주소 검색 · vworld: VWorld 지오코더 · org: 회사 정보의 위치 */
-  source: z.enum(["registry", "kakao", "vworld", "org"]),
-});
-
-export const complexPlanSchema = obj({
-  complex: obj({ id: z.string(), name: z.string(), basis: z.enum(["region", "location"]) }).nullable(),
-  /** [서, 남, 동, 북]. 위치를 하나도 찾지 못하면 null */
-  bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]).nullable(),
-  scale: z.number(),
-  self: planPlaceSchema.nullable(),
-  /** 후보 ID(complexPartners의 id) → 자리 */
-  places: z.record(z.string(), planPlaceSchema),
-  buildings: z.array(
-    obj({
-      rings: z.array(z.array(z.number())),
-      floors: z.number().nullable(),
-      /** 회사가 든 건물에만 있다 */
-      id: z.string().optional(),
-      address: z.string().nullable().optional(),
-      name: z.string().nullable().optional(),
-    }),
-  ),
-  /** 위치를 찾지 못한 후보 ID */
-  missing: z.array(z.string()),
-  notes: obj({ buildings: z.string().nullable(), locations: z.string().nullable() }),
-  sources: z.array(z.string()),
-});
-
 /** ③ 규정 확인의 법령 조항 인용. 조문 원문의 부분 문자열이고 label은 조항 이름이다 */
 const clauseClaimSchema = obj({
   id: z.string(),
