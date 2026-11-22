@@ -5,7 +5,7 @@
  *  - 확인할 값이 남은 줄은 처음에 저장 대상이 아니다. 담당자가 값을 정하고 직접 골라야 저장된다.
  */
 import { formatNumber } from "./format.ts";
-import type { CriteriaDraft, CriteriaDraftRow, CriteriaRowInput } from "./types";
+import type { CriteriaDraft, CriteriaDraftRow, CriteriaRowInput, CriterionPriceMode } from "./types";
 
 export const MATERIALS = ["PP", "PE", "HDPE", "LDPE", "LLDPE", "PET", "PS", "ABS", "PVC", "PC", "PA"] as const;
 export const GRADES = ["A", "B", "C", "등외"] as const;
@@ -16,6 +16,7 @@ export type CriteriaValues = {
   material: string;
   form: string;
   grade: string;
+  priceMode?: CriterionPriceMode;
   /** buy 매입(업체가 돈을 줌) | fee 처리비(배출 기업이 돈을 냄) */
   direction: "" | "buy" | "fee";
   /** kg당 원(크기만) */
@@ -57,6 +58,7 @@ const EMPTY: CriteriaValues = {
   material: "",
   form: "",
   grade: "",
+  priceMode: "fixed",
   direction: "",
   price: "",
   minMonthlyKg: "",
@@ -111,6 +113,7 @@ function valuesOf(row: CriteriaDraftRow): CriteriaValues {
     material: row.material.value ?? "",
     form: row.form.value ?? "",
     grade: row.grade.value ?? "",
+    priceMode: "fixed",
     direction: row.price.direction ?? "",
     price: num(row.price.amount),
     minMonthlyKg: num(row.minMonthlyKg.value),
@@ -172,11 +175,17 @@ export function numberInput(text: string): number | null {
 export function rowProblems(row: CriteriaRowState): string[] {
   const v = row.values;
   const out: string[] = [];
-  if (!MATERIALS.includes(v.material as (typeof MATERIALS)[number])) out.push("재질을 골라 주세요.");
-  const price = numberInput(v.price);
-  if (price === null || Number.isNaN(price) || price < 0) out.push("kg당 단가를 숫자 하나로 적어 주세요.");
-  else if (price > PRICE_LIMIT) out.push(`kg당 단가가 ${formatNumber(PRICE_LIMIT)}원을 넘습니다. 톤당 값이면 1,000으로 나눠 적어 주세요.`);
-  if (!v.direction) out.push("매입인지 처리비인지 골라 주세요.");
+  if (!v.material.trim() || v.material.trim().length > 40 ||
+      (row.origin === "ai" && !MATERIALS.some((material) => material === v.material))) {
+    out.push("재질을 골라 주세요.");
+  }
+  if (v.grade.trim().length > 40) out.push("등급은 40자 이내로 적어 주세요.");
+  if (v.priceMode !== "negotiated") {
+    const price = numberInput(v.price);
+    if (price === null || Number.isNaN(price) || price < 0) out.push("kg당 단가를 숫자 하나로 적어 주세요.");
+    else if (price > PRICE_LIMIT) out.push(`kg당 단가가 ${formatNumber(PRICE_LIMIT)}원을 넘습니다. 톤당 값이면 1,000으로 나눠 적어 주세요.`);
+    if (!v.direction) out.push("매입인지 처리비인지 골라 주세요.");
+  }
   const quantity = numberInput(v.minMonthlyKg);
   if (quantity !== null && (Number.isNaN(quantity) || quantity < 0 || quantity > QUANTITY_LIMIT)) {
     out.push("한 달 최소 물량은 kg 단위의 숫자로 적어 주세요.");
@@ -196,7 +205,7 @@ export function rowProblems(row: CriteriaRowState): string[] {
   return out;
 }
 
-const identity = (row: CriteriaRowState) => `${row.values.material}|${row.values.grade}|${row.values.form.replace(/\s+/g, "")}`;
+const identity = (row: CriteriaRowState) => `${row.values.material.trim().toUpperCase()}|${row.values.grade.trim()}|${row.values.form.replace(/\s+/g, "")}`;
 
 /** 저장할 줄 가운데 재질·등급·형태가 같은 줄(번호는 1부터). 없으면 null */
 export function duplicateProblem(rows: CriteriaRowState[]): string | null {
@@ -222,6 +231,7 @@ const SERVER_KEY: Partial<Record<CriteriaKey, string>> = {
   form: "form",
   grade: "grade",
   price: "unitPriceKrwPerKg",
+  priceMode: "priceMode",
   direction: "unitPriceKrwPerKg",
   minMonthlyKg: "minMonthlyKg",
   maxContaminationPct: "maxContaminationPct",
@@ -235,8 +245,8 @@ export function editedKeys(row: CriteriaRowState): CriteriaKey[] {
   if (!row.ai) return [];
   const ai = row.ai;
   return (Object.keys(row.values) as CriteriaKey[]).filter((key) => {
-    const now = row.values[key].trim();
-    const before = ai[key].trim();
+    const now = (row.values[key] ?? "fixed").trim();
+    const before = (ai[key] ?? "fixed").trim();
     const a = numberInput(now);
     const b = numberInput(before);
     if (a !== null && b !== null && !Number.isNaN(a) && !Number.isNaN(b)) return a !== b;
@@ -262,10 +272,11 @@ export function rowPayload(row: CriteriaRowState): CriteriaRowInput | null {
   const edited = [...new Set(editedKeys(row).map((key) => SERVER_KEY[key]).filter((key): key is string => Boolean(key)))];
   return {
     draftRow: row.origin === "ai" ? row.key : null,
-    material: v.material,
-    grade: v.grade || null,
+    material: v.material.trim().toUpperCase(),
+    grade: v.grade.trim() || null,
     form: v.form.trim() || null,
-    unitPriceKrwPerKg: v.direction === "fee" ? -price : price,
+    priceMode: v.priceMode ?? "fixed",
+    unitPriceKrwPerKg: v.priceMode === "negotiated" ? null : v.direction === "fee" ? -price : price,
     minMonthlyKg: value(v.minMonthlyKg),
     maxContaminationPct: value(v.maxContaminationPct),
     maxMoisturePct: value(v.maxMoisturePct),
@@ -287,7 +298,9 @@ export function rowSummary(row: CriteriaRowState): string {
     v.material || "재질 확인 필요",
     v.form.trim() || null,
     v.grade ? `${v.grade === "등외" ? "등외" : `${v.grade}등급`}` : null,
-    price === null || Number.isNaN(price) || !v.direction
+    v.priceMode === "negotiated"
+      ? "담당자 견적 필요"
+      : price === null || Number.isNaN(price) || !v.direction
       ? "단가 확인 필요"
       : `${v.direction === "buy" ? "매입" : "처리비"} kg당 ${formatNumber(price)}원`,
   ];
@@ -326,6 +339,7 @@ export function draftHeadline(rows: CriteriaRowState[], by?: string): string {
   const reader = by === "rules" ? "문서의 표에서" : "AI가";
   const head = read > 0 ? `${reader} 매입 기준 ${read}줄을 읽었습니다.` : "매입 기준을 직접 적습니다.";
   if (left.length === 0) return `${head} 모두 저장했습니다.`;
+  if (read === 0) return "실제로 적용하는 조건인지 확인한 뒤 저장해 주세요.";
   return flagged > 0
     ? `${head} 값이 애매해 확인할 줄이 ${flagged}개 있습니다. 확인한 줄만 저장됩니다.`
     : `${head} 문서 원문과 대조한 뒤 저장해 주세요.`;

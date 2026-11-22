@@ -297,3 +297,76 @@ test("이메일로 가입하면 회사를 등록하고 빈 상태에서 폐기�
   await expect(page.getByRole("heading", { name: "먼저 폐기물을 등록해 주세요" })).toBeVisible();
   await expect(page.getByRole("button", { name: "폐기물 등록" })).toBeVisible();
 });
+
+test("처리 업체는 문서와 명부 결과 없이 품목과 건별 협의 기준을 저장할 수 있다", async ({ page, request }) => {
+  test.skip(BFF, "개발용 로그인은 bff 모드에서 꺼진다");
+  const orgId = "org_miso";
+  const headers = { "X-Org-Id": orgId };
+  const blank = await request.put(`${API}/vendors/${orgId}`, {
+    headers,
+    data: { permits: [], criteria: [] },
+  });
+  expect(blank.ok()).toBeTruthy();
+
+  await signIn(page);
+  await pickOrg(page, orgId);
+  await page.getByRole("link", { name: "업체 정보 등록" }).click();
+  await expect(page.getByRole("heading", { name: "업체 정보", exact: true })).toBeVisible();
+  const permits = page.locator("section").filter({ has: page.getByRole("heading", { name: "허가 품목", exact: true }) });
+  const criteria = page.locator("section").filter({ has: page.getByRole("heading", { name: "매입 기준표", exact: true }) });
+  await expect(permits.getByLabel("허가증 업로드")).toBeEnabled();
+  await expect(criteria.getByLabel("기준표 업로드")).toBeEnabled();
+
+  await permits.getByRole("button", { name: "목록에서 선택" }).click();
+  const search = permits.getByRole("searchbox", { name: "품목명 또는 분류코드 검색" });
+  await search.fill("51-03-01");
+  await permits.getByRole("checkbox", { name: /51-03-01 폐합성수지류/ }).check();
+  await search.fill("플라스틱폐포장재");
+  await permits.getByRole("checkbox", { name: /51-03-07 플라스틱폐포장재/ }).check();
+  await permits.getByLabel(/51-03-01.*재질/).fill("PP");
+  await permits.getByLabel(/51-03-07.*재질/).fill("LDPE");
+  await permits.getByRole("button", { name: "허가 품목 저장" }).click();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(2);
+  await permits.getByRole("button", { name: "직접 입력", exact: true }).click();
+  await permits.getByLabel("허가 품목명").fill("폐목재");
+  await permits.getByRole("button", { name: "허가 품목 저장" }).click();
+  await expect(permits.getByText("폐목재", { exact: true })).toBeVisible();
+
+  await criteria.getByRole("button", { name: "매입 기준 추가" }).click();
+  await expect(criteria.getByText("실제로 적용하는 조건인지 확인한 뒤 저장해 주세요.")).toBeVisible();
+  await criteria.getByRole("combobox", { name: "재질", exact: true }).fill("PP");
+  await criteria.getByRole("textbox", { name: "형태", exact: true }).fill("분쇄");
+  await criteria.getByRole("combobox", { name: "등급", exact: true }).fill("B");
+  await criteria.getByText("건별 협의", { exact: true }).click();
+  await criteria.getByRole("button", { name: "고른 1줄 저장" }).click();
+  await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+  await page.reload();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
+  await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+  await expect(page.getByText("업체 정보 저장됨")).toBeVisible();
+  await expect(page.getByText(/문의 후보군에 포함 · 실제 문의는 물량별/)).toBeVisible();
+  await expect(page.getByText(/거래 확정은 물량별 허가증 원본/)).toBeVisible();
+
+  const saved = await request.get(`${API}/vendors/${orgId}`, { headers });
+  expect(saved.ok()).toBeTruthy();
+  expect(await saved.json()).toMatchObject({
+    criteria: [{ material: "PP", form: "분쇄", grade: "B", priceMode: "negotiated", unitPriceKrwPerKg: null }],
+  });
+
+  await permits.getByLabel("허가증 업로드").setInputFiles({
+    name: "허가증.txt", mimeType: "text/plain",
+    buffer: Buffer.from("폐기물처리업 허가증\n상호: (주)미소환경\n업종: 폐기물 종합재활용업\n영업대상 폐기물: 폐플라스틱(PS)"),
+  });
+  await permits.getByRole("checkbox", { name: /허가 품목.*확인/ }).first().check();
+  await permits.getByRole("button", { name: "확인한 값 1개를 근거로 등록" }).click();
+  await expect(permits.getByText("PS", { exact: true })).toBeVisible();
+  await expect(permits.getByText("담당자 입력 · 허가증 원본 확인 필요", { exact: true })).toHaveCount(3);
+
+  await criteria.getByLabel("기준표 업로드").setInputFiles({
+    name: "매입 기준표.txt", mimeType: "text/plain",
+    buffer: Buffer.from("재질\t형태\t등급\t매입 단가(원/kg)\nPS\t분쇄\tA\t125"),
+  });
+  await criteria.getByRole("button", { name: "고른 1줄 저장" }).click();
+  await expect(criteria.getByLabel("PS A등급 분쇄 단가 (원/kg)")).toHaveValue("125");
+  await expect(criteria.getByRole("row").filter({ hasText: "담당자 견적 필요" })).toHaveCount(1);
+});

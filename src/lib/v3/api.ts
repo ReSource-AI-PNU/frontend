@@ -24,6 +24,8 @@ import type {
   EvidenceHit,
   ExtractedField,
   MediaUploadResult,
+  ManualPermitInput,
+  PermitCatalogItem,
   Org,
   OutcomeCorrection,
   OutcomeInput,
@@ -211,7 +213,9 @@ export const api = {
     }),
 
   getVendor: (orgId: string) => request<VendorProfile>(`/vendors/${enc(orgId)}`, orgId),
-  putVendor: (orgId: string, profile: VendorProfile) =>
+  permitCatalog: (orgId: string) =>
+    request<PermitCatalogItem[]>(`/vendors/${enc(orgId)}/permit-catalog`, orgId),
+  putVendor: (orgId: string, profile: Partial<VendorProfile> & { appendPermits?: ManualPermitInput[] }) =>
     request<VendorProfile>(`/vendors/${enc(orgId)}`, orgId, {
       method: "PUT",
       body: JSON.stringify(profile),

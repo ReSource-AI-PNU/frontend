@@ -225,18 +225,23 @@ export type OutcomeResult = { outcome: Outcome; evidence: string[]; replayed: bo
 /** 업체가 고르는 모델 설정. 실제로 어떤 구현이 답했는지는 진단 뷰의 vendorModel에 따로 온다. */
 export type ConfiguredModel = { provider: "foundry" | "ollama"; name: string };
 
+export type PermitCatalogItem = { code: string; name: string; wasteItem: string | null };
+export type ManualPermitInput = { code?: string; wasteItem?: string; materials: string[] };
+export type CriterionPriceMode = "fixed" | "negotiated";
+
 export type VendorProfile = {
   process?: string | null;
   processEvidence?: string[];
   inspectionFallbackCriterionId?: string | null;
   orgId: string;
   name?: string;
-  permits: { wasteItem: string; materials: string[]; evidence: string[] }[];
+  permits: { wasteItem: string; materials: string[]; evidence: string[]; entrySource?: "manual"; code?: string }[];
   criteria: {
     id: string;
     material: string;
-    grade: string;
+    grade: string | null;
     form: string | null;
+    priceMode?: CriterionPriceMode;
     maxContaminationPct: number | null;
     maxMoisturePct: number | null;
     /** 배출 기업이 받으면 양수(매입), 내면 음수(처리비) */
@@ -377,7 +382,8 @@ export type CriteriaRowInput = {
   material: string;
   grade: string | null;
   form: string | null;
-  unitPriceKrwPerKg: number;
+  priceMode: CriterionPriceMode;
+  unitPriceKrwPerKg: number | null;
   minMonthlyKg: number | null;
   maxContaminationPct: number | null;
   maxMoisturePct: number | null;
