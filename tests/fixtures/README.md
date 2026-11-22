@@ -18,7 +18,7 @@
 | `v3-scan-unassigned.json` | 같은 스캔을 폐기물 지정 전에 본 뷰(정리안 없음, 까닭 한 줄) | 위와 같음 |
 | `v3-scan-excluded.json` | 같은 스캔에서 더미 4를 "더미 아님"으로 뺀 뷰(`PUT …/piles/p4 {"excluded": true}`) | 위와 같음 |
 | `v3-view-handoff.json` | 담당자 인계: 배출 기업이 지시문이 든 문서를 올려 대화가 모두 넘어가고 진단이 `idle`·`done`으로 끝남 | 아래 |
-| `v3-memory.json` | 회사별 기록(`PUT /orgs/org_hanbit/memory {applyToJudgment: true}` 응답, 보정 미리 보기와 승인 근거), 다시 찾은 진단의 새길 계약 검토(`history` check), 스프루 결과 한 줄(`personal` 예상 단가, 다른 제안의 `personalUnitPrice`). 한빛·새길 확정 뒤 새길이 스프루를 B·C·C, kg당 300원(합의 A, 320원)으로 세 번 검수 기록 (2026-11-22) | 백엔드 `tests/v3/runtime_fixtures`로 `V3_DEMO_PERMITS=verified`에서 `service.update_memory`와 `to_approval` 결과를 저장 |
+| `v3-memory.json` | 회사별 기록(`PUT /orgs/org_hanbit/memory {applyToJudgment: true}` 응답, 보정 미리 보기와 승인 근거), 다시 찾은 진단의 새길 계약 검토(`history` check), 스프루 결과 한 줄(`personal` 예상 단가, 다른 제안의 `personalUnitPrice`). 한빛·새길 확정 뒤 새길이 스프루를 B·C·C, kg당 300원(합의 A, 320원)으로 세 번 검수 기록 , 담당자의 스프루 재질 교정(PP → PP+ABS, 결과 줄의 `correction_pattern`) (2026-11-22) | 백엔드 `tests/v3/runtime_fixtures`로 `V3_DEMO_PERMITS=verified`에서 `service.update_memory`와 `to_approval` 결과를 저장 |
 
 ## 담당자 인계 뷰
 

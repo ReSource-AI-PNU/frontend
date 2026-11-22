@@ -11,7 +11,7 @@
       "below": 3,
       "answers": 5,
       "stillUnknown": 2,
-      "corrections": 0,
+      "corrections": 1,
       "deals": 3,
       "vendors": 3
     },
@@ -282,7 +282,20 @@
           }
         ],
         "answers": [],
-        "corrections": []
+        "corrections": [
+          {
+            "id": "human:org_hanbit:교정-st_sprue-material-1",
+            "streamId": "st_sprue",
+            "field": "material",
+            "label": "재질",
+            "before": "PP",
+            "after": "PP+ABS",
+            "recordedOn": "2026-11-17",
+            "evidence": [
+              "human:org_hanbit:교정-st_sprue-material-1"
+            ]
+          }
+        ]
       }
     ],
     "deals": [
@@ -307,7 +320,7 @@
     ],
     "calibration": {
       "applied": {
-        "evidence": "human:org_hanbit:회사기록-판정반영-승인-13e53570e984",
+        "evidence": "human:org_hanbit:회사기록-판정반영-승인-74f856606582",
         "strength": 3,
         "approvedOn": "2026-11-17"
       },
@@ -420,7 +433,7 @@
     "threadId": "th_11",
     "route": "sell",
     "process": "재활용",
-    "status": "calculated",
+    "status": "conditional",
     "unitPrice": {
       "id": "st_sprue_unitPrice",
       "kind": "number",
@@ -442,14 +455,14 @@
       "value": 183000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:261da46c2229:s3MonthlyAfter",
-        "calc:optimize_assignment:2929d9b17be9:s3Revenue",
-        "calc:optimize_assignment:9a448613783e:s3ExpectedUnitPrice",
+        "calc:optimize_assignment:bbfeb635bdb1:s3MonthlyAfter",
+        "calc:optimize_assignment:8fc2978da022:s3Revenue",
+        "calc:optimize_assignment:78395942c32b:s3ExpectedUnitPrice",
         "doc:snapshot:2e1513d2d198",
         "doc:snapshot:ec2a3facd183",
         "doc:snapshot:e88c189c0320",
         "doc:snapshot:cc6b999bf4b1",
-        "calc:optimize_assignment:33f5ec20a4b4:s3Transport"
+        "calc:optimize_assignment:ad8853773400:s3Transport"
       ],
       "label": "변경 뒤 월 손익",
       "role": "monthlyAfter"
@@ -460,7 +473,7 @@
       "value": -150000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:4ee9f304294c:s3MonthlyNow",
+        "calc:optimize_assignment:f9e508793e53:s3MonthlyNow",
         "doc:snapshot:556377687150"
       ],
       "label": "현행 월 손익",
@@ -472,7 +485,7 @@
       "value": 333000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:5399dfa51867:s3Difference",
+        "calc:optimize_assignment:15dbc428b50c:s3Difference",
         "doc:snapshot:2e1513d2d198",
         "doc:snapshot:ec2a3facd183",
         "doc:snapshot:e88c189c0320",
@@ -488,8 +501,8 @@
       "value": 183000.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:2929d9b17be9:s3Revenue",
-        "calc:optimize_assignment:9a448613783e:s3ExpectedUnitPrice",
+        "calc:optimize_assignment:8fc2978da022:s3Revenue",
+        "calc:optimize_assignment:78395942c32b:s3ExpectedUnitPrice",
         "doc:snapshot:2e1513d2d198",
         "doc:snapshot:ec2a3facd183",
         "doc:snapshot:e88c189c0320",
@@ -504,7 +517,7 @@
       "value": 0.0,
       "unit": "원/월",
       "evidence": [
-        "calc:optimize_assignment:33f5ec20a4b4:s3Transport"
+        "calc:optimize_assignment:ad8853773400:s3Transport"
       ],
       "label": "월 운반비",
       "role": "transport"
@@ -684,6 +697,13 @@
         "evidence": []
       },
       {
+        "key": "vendor_condition",
+        "status": "conditional",
+        "text": "지난 반입 검수에서 합의보다 낮게 나온 적이 여러 번 있어, 반입 검수에서 매입 기준 등급을 다시 확인할 것",
+        "claims": [],
+        "evidence": []
+      },
+      {
         "key": "min_volume",
         "status": "met",
         "text": "합친 물량이 최소 물량 이상입니다.",
@@ -799,6 +819,14 @@
           "doc:org_saegil:허가증:폐플라스틱",
           "human:org_hanbit:허가증대조-org_saegil-pc_demo_saegil_a199f0",
           "doc:org_saegil:허가증-AI판독:demo"
+        ]
+      },
+      {
+        "key": "correction_pattern",
+        "status": "conditional",
+        "text": "담당자가 지난 찾기에서 이 폐기물의 재질을 'PP+ABS'로 고쳤지만, 지금 판정은 'PP'입니다. 교정은 판정 값을 바꾸지 않으니, 고친 값이 맞다면 자료 화면에서 재질을 고쳐 다시 찾아 주세요.",
+        "evidence": [
+          "human:org_hanbit:교정-st_sprue-material-1"
         ]
       }
     ],
@@ -926,8 +954,8 @@
           "value": 193.75,
           "unit": "원/kg",
           "evidence": [
-            "calc:optimize_assignment:ea8100276fbd:s3Alt0ExpectedUnitPrice",
-            "calc:optimize_assignment:eea6a04fbada:s3Alt0PersonalRate",
+            "calc:optimize_assignment:3897fff3e055:s3Alt0ExpectedUnitPrice",
+            "calc:optimize_assignment:f9c31b3e096f:s3Alt0PersonalRate",
             "doc:snapshot:3ed7fe168b59",
             "doc:snapshot:01a7f3ecfa65",
             "doc:snapshot:0171b3082709",
@@ -1057,8 +1085,8 @@
           "value": -61.875,
           "unit": "원/kg",
           "evidence": [
-            "calc:optimize_assignment:46bd79ddf124:s3Alt1ExpectedUnitPrice",
-            "calc:optimize_assignment:eea6a04fbada:s3Alt1PersonalRate",
+            "calc:optimize_assignment:57358a5419fb:s3Alt1ExpectedUnitPrice",
+            "calc:optimize_assignment:f9c31b3e096f:s3Alt1PersonalRate",
             "doc:snapshot:f060750ef6be",
             "doc:snapshot:3af2d2a96434",
             "doc:snapshot:c5c1309ada7b",
@@ -1077,16 +1105,16 @@
         "value": -4.6875,
         "unit": "%",
         "evidence": [
-          "calc:optimize_assignment:fb691fb3da8c:s3PersonalRate",
-          "human:snapshot:defb711c0abe",
+          "calc:optimize_assignment:a5f40dc99589:s3PersonalRate",
+          "human:snapshot:4d75ad0e294b",
           "calc:judge_route:3d162486c422:unitPrice",
           "doc:snapshot:2e1513d2d198",
           "doc:snapshot:ec2a3facd183",
           "doc:snapshot:e88c189c0320",
           "doc:snapshot:cc6b999bf4b1",
-          "human:snapshot:93d07818e9bd",
-          "human:snapshot:d9fc869a0e7c",
-          "human:snapshot:51e6ffadfcc5"
+          "human:snapshot:4ca83cd1b7db",
+          "human:snapshot:c5848d8ce3e2",
+          "human:snapshot:d10f3cd92f39"
         ]
       },
       "expectedUnitPrice": {
@@ -1095,8 +1123,8 @@
         "value": 305.0,
         "unit": "원/kg",
         "evidence": [
-          "calc:optimize_assignment:9a448613783e:s3ExpectedUnitPrice",
-          "calc:optimize_assignment:fb691fb3da8c:s3PersonalRate",
+          "calc:optimize_assignment:78395942c32b:s3ExpectedUnitPrice",
+          "calc:optimize_assignment:a5f40dc99589:s3PersonalRate",
           "doc:snapshot:2e1513d2d198",
           "doc:snapshot:ec2a3facd183",
           "doc:snapshot:e88c189c0320",

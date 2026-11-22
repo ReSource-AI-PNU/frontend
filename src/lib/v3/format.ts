@@ -268,6 +268,7 @@ export const CHECK_KEY_LABEL: Record<string, string> = {
   transport_carbon: "운송 배출",
   bundle_below_current: "묶음 때문에 함께 보냄",
   labor_unknown: "작업비 미확인",
+  correction_pattern: "담당자 교정 미반영",
 };
 
 /** 진단 상태. 합의 없이 끝났거나 합의한 대화가 모두 담당자에게 넘어가면 idle인데 phase가 done이다. */

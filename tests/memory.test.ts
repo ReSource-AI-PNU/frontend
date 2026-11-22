@@ -63,3 +63,9 @@ test("처리 업체는 자기 검수 기록을 배출 기업별로 본다", () =
   assert.ok(hanbit && hanbit.inspections.status === "below");
   assert.ok(hanbit.inspectionRows.every((row) => row.streamName.length > 0));
 });
+
+test("담당자가 고친 판정이 지금 자료에 반영되지 않았으면 결과 한 줄에 확인 항목이 온다", () => {
+  const row = assignmentSchema.parse(fixture.assignment);
+  const found = row.checks.find((c) => c.key === "correction_pattern");
+  assert.ok(found && found.status === "conditional" && found.evidence.length > 0);
+});

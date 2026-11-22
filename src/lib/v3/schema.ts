@@ -392,6 +392,8 @@ export const checkKeySchema = z.enum([
   "bundle_below_current",
   /** 전처리·선별·세척 작업비를 몰라 한 달 값이 그 비용 반영 전이다(백엔드 2026-11-21 정책) */
   "labor_unknown",
+  /** 담당자가 지난 찾기에서 고친 판정이 지금 자료에 반영되지 않았다(회사 기록, 배출 기업만, 2026-11-22) */
+  "correction_pattern",
 ]);
 
 export const checkSchema = obj({
