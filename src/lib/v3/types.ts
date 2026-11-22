@@ -54,6 +54,7 @@ export type BlockedRoute = z.infer<typeof s.blockedRouteSchema>;
 /** 결과 한 줄의 수거 상태와 운반비 조건(2026-11-19) */
 export type Pickup = z.infer<typeof s.pickupSchema>;
 export type ReferencePrice = z.infer<typeof s.referencePriceSchema>;
+export type ReferenceCost = z.infer<typeof s.referenceCostSchema>;
 export type Result = z.infer<typeof s.resultSchema>;
 export type OutsideVendors = z.infer<typeof s.outsideVendorsSchema>;
 export type OutsideCandidate = z.infer<typeof s.outsideCandidateSchema>;

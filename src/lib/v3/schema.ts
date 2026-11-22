@@ -15,6 +15,8 @@ export const claimRoleSchema = z.enum([
   /** 지금 재활용 업체에 팔고 있을 때 받는 kg당 금액(양수) */
   "currentUnitPrice",
   "referencePrice",
+  /** 공식 처리단가 고시(참고값, 손익 계산에 쓰지 않음, 2026-11-22) */
+  "referenceCost",
   "monthlyKg",
   "totalKg",
   "totalM3",
@@ -616,6 +618,15 @@ export const referencePriceSchema = obj({
   note: z.string(),
 });
 
+/** 공식 처리단가 고시(참고값). 현행 처리비를 대신하지 않고 손익 계산에도 쓰지 않는다(2026-11-22) */
+export const referenceCostSchema = obj({
+  key: z.string(),
+  label: z.string(),
+  asOf: z.string(),
+  cost: claimOrNull,
+  note: z.string(),
+});
+
 const wasteCodeSchema = obj({ code: z.string(), name: z.string().nullable() });
 
 /** 가입하지 않은 처리 업체 후보(공공데이터 허가 명부). AI가 대화하지 않고, 손익 계산에도 넣지 않는다 */
@@ -710,6 +721,17 @@ export const complexPartnersSchema = obj({
       reason: z.string().nullable(),
     }),
   ),
+  /** 단지 전체 폐합성수지 발생·처리(2024 공공 통계, 톤/년). 회사 계산에는 쓰지 않는다. 2026-11-22 전 결과에는 없다 */
+  stats: obj({
+    sheetName: z.string(),
+    waste: z.string(),
+    dataYear: z.string(),
+    values: obj({ generated: claimSchema, recycled: claimSchema, incinerated: claimSchema, landfilled: claimSchema }),
+    note: z.string(),
+    source: obj({ name: z.string(), url: z.string(), publishedOn: z.string() }),
+  })
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -954,6 +976,8 @@ export const resultSchema = obj({
   ),
   /** 가격조사 참고 시세. 손익 계산에는 쓰지 않는다 */
   referencePrices: z.array(referencePriceSchema),
+  /** 공식 처리단가 고시 참고값. 배출 기업이 보는 뷰에만 오고, 2026-11-22 전 결과에는 없다 */
+  referenceCosts: z.array(referenceCostSchema).optional(),
   /** 아래 셋은 배출 기업이 보는 뷰에만 온다 */
   carbonInObjective: z.boolean().optional(),
   /** 탄소를 배정에 넣을 때 쓴 내부 탄소 가격(배출권 시세, 원/tCO2e) */

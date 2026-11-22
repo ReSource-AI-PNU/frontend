@@ -2,10 +2,10 @@
 
 import { MonthlyComparisonNote, PickupBrief, RoomNote } from "@/components/agent/pickup-line";
 import { useId, useState } from "react";
-import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, carbonText, fieldLabel, formatValue } from "@/lib/v3/format";
+import { CHECK_KEY_LABEL, ROUTE_LABEL, STATUS_LABEL, carbonText, fieldLabel, formatNumber, formatValue } from "@/lib/v3/format";
 import { TRANSPORT_PROVISIONAL } from "@/lib/v3/pickup";
 import { processLabel } from "@/lib/v3/flow";
-import type { Assignment, Check, CheckStatus, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
+import type { Assignment, Check, CheckStatus, Claim, DiagnosisView, OrgRole, Result, TriStatus, ViewStream } from "@/lib/v3/types";
 import { ClaimText, ClaimValue, NeedsCheck } from "./claim";
 import { useV3 } from "./context";
 import { StatusChip, type ChipTone } from "./status-chip";
@@ -260,6 +260,12 @@ function AssignmentRows({
   );
 }
 
+/** 원/톤 단가 옆에 kg당 값을 함께 적는다(고시는 원/톤으로 정한다) */
+function perKgNote(claim: Claim | null): string {
+  if (!claim || typeof claim.value !== "number" || claim.unit !== "원/톤") return "";
+  return ` (kg당 ${formatNumber(Math.round(claim.value / 100) / 10)}원)`;
+}
+
 /** 결과 한 장: 흐름별 배정 업체, 경로, 단가, 월 손익과 현행 대비, 탄소, 가정값, 대안, 민감도, 참고 시세 */
 export function ResultSheet({
   result,
@@ -453,6 +459,26 @@ export function ResultSheet({
             ))}
           </ul>
           <p className="mt-1 text-[13px] text-muted">{result.referencePrices[0].note}</p>
+        </section>
+      ) : null}
+
+      {(result.referenceCosts ?? []).length > 0 ? (
+        <section>
+          <h3 className="text-label text-muted">참고 처리단가 (손익 계산에 쓰지 않음)</h3>
+          <ul className="mt-1 space-y-1 text-sm">
+            {(result.referenceCosts ?? []).map((item) => (
+              <li key={item.key} className="flex flex-wrap justify-between gap-x-4">
+                <span>
+                  {item.label} <span className="text-[12px] text-muted">시행 <span className="tabular-nums">{item.asOf}</span></span>
+                </span>
+                <span className="whitespace-nowrap">
+                  <ClaimValue claim={item.cost} price={false} />
+                  {perKgNote(item.cost)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[13px] text-muted">{(result.referenceCosts ?? [])[0].note}</p>
         </section>
       ) : null}
     </div>
