@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronDownIcon } from "@/components/icons";
+import { MoreDetails } from "@/components/ui/more-details";
 import { ClaimText, ClaimValue, Glue } from "@/components/v3/claim";
 import { useV3 } from "@/components/v3/context";
 import { josa } from "@/lib/josa";
@@ -82,9 +83,10 @@ function Row({
     Boolean(approval?.emitter && approval.vendor && !approval.blocked);
   const statusLabel = STATUS_WORD[assignment.status] ?? "매입 조건 상태 확인 필요";
   const inspectionRequired = todo.some((item) => INSPECTION_CHECKS.has(item.key));
+  const showAll = open || !hasDetail;
 
   return (
-    <li className="py-3.5">
+    <li className="py-3.5 transition-colors hover:bg-sunken/40">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem] sm:items-baseline">
         <div className="min-w-0">
           <p className="font-medium">{stream?.name ?? assignment.streamId}</p>
@@ -184,6 +186,7 @@ function Row({
           {noPickup.length > 0 ? (
             <span className="block text-[13px] text-warn">{noPickup.join(", ")} · 수거 불가</span>
           ) : null}
+          <span className={showAll ? "block" : "hidden"}>
           {placed && pickup ? (
             <PickupBrief pickup={pickup} />
           ) : isEmitter && placed && assignment.transportPaidBy ? (
@@ -215,12 +218,16 @@ function Row({
               <span className="block">{approvalLabel}</span>
             </span>
           ) : null}
+          </span>
         </p>
       </div>
 
-      {isEmitter ? <RoomNote assignment={assignment} /> : null}
-      {permit ? <PermitSummary permit={permit} /> : null}
-      {isEmitter ? <BlockedRoutes routes={blockedRoutes} placedName={placed ? assignment.vendorName : null} /> : null}
+      {/* 줄을 펼치기 전에는 폐기물 · 받는 곳 · 단가 · 한 달 차이만 보인다. 수거·검수·승인·허가 줄은 펼치면 나온다 */}
+      <div className={showAll ? "" : "hidden"}>
+        {isEmitter ? <RoomNote assignment={assignment} /> : null}
+        {permit ? <PermitSummary permit={permit} /> : null}
+        {isEmitter ? <BlockedRoutes routes={blockedRoutes} placedName={placed ? assignment.vendorName : null} /> : null}
+      </div>
 
       {hasDetail ? (
         <>
@@ -509,50 +516,17 @@ function GreenestNote({ greenest }: { greenest: NonNullable<Result["greenest"]> 
 }
 
 /** 한 달 손익을 담당자가 읽는 문장으로 푼다. 숫자는 누르면 근거가 열린다. */
-function MoneySentence({
-  totals,
-  conditional,
-  pending,
-}: {
-  totals: Result["totals"];
-  conditional: boolean;
-  pending: number;
-}) {
-  const now = numberOf(totals.monthlyNow);
-  const after = numberOf(totals.monthlyAfter);
-  const difference = numberOf(totals.difference);
-  if (now === null && after === null && difference === null) {
-    return <p className="mt-2 text-ink-2">금액은 확인이 더 필요합니다.</p>;
-  }
+function Figure({ label, children, glow = false, small = false }: { label: string; children: React.ReactNode; glow?: boolean; small?: boolean }) {
   return (
-    <p className="mt-2 text-[16px] leading-relaxed text-ink-2">
-      {now !== null ? (
-        <>
-          지금은 한 달에{" "}
-          <Glue>
-            <ClaimValue claim={totals.monthlyNow} display={won(totals.monthlyNow)} className="text-ink" />을
-          </Glue>{" "}
-          {now < 0 ? "내고" : "받고"} 있습니다.{" "}
-        </>
-      ) : null}
-      {after !== null ? (
-        <>
-          {conditional ? "조건이 확인되면" : "이대로 바꾸면"} 한 달에{" "}
-          <Glue>
-            <ClaimValue claim={totals.monthlyAfter} display={won(totals.monthlyAfter)} className="text-ink" />을
-          </Glue>{" "}
-          {after < 0 ? "내게" : "받게"} 됩니다.
-          {pending > 0 ? (
-            <span className="text-warn"> 운반비가 정해지지 않은 폐기물 {pending}가지는 별도 운반비를 빼기 전 금액이라 잠정값입니다.</span>
-          ) : null}
-        </>
-      ) : null}
-    </p>
+    <div className={`min-w-0 px-4 py-3.5 ${glow ? "bg-accent-bg" : "bg-surface"}`}>
+      <p className={`text-[12px] ${glow ? "font-semibold text-accent" : "text-muted"}`}>{label}</p>
+      <p className={`mt-1 leading-tight font-bold tracking-[-0.02em] whitespace-nowrap tabular-nums ${small ? "text-[15px] sm:text-[16px]" : "text-[18px] sm:text-[20px]"}`}>{children}</p>
+    </div>
   );
 }
 
 /**
- * 결과. 문장 두 줄로 요약하고, 폐기물마다 누가 얼마에 받는지를 표 한 장으로 보여 준다.
+ * 결과. 숫자 넷으로 요약하고, 폐기물마다 누가 얼마에 받는지를 표 한 장으로 보여 준다.
  * 조건과 다른 선택지는 줄마다 접어 둔다.
  */
 export function ResultCard({
@@ -591,12 +565,27 @@ export function ResultCard({
 
   return (
     <section aria-label="결과">
-      <h2 className="text-[22px] leading-snug font-semibold tracking-[-0.025em] sm:text-[24px]">
+      <h2 className="text-[22px] leading-snug font-bold tracking-[-0.03em] sm:text-[24px]">
         {!isEmitter
           ? `${counterpart}에서 폐기물 ${count}가지를 문의했습니다.`
           : placedHeadline(count, placed)}
       </h2>
-      {isEmitter ? <MoneySentence totals={totals} conditional={conditional} pending={pending.length} /> : null}
+      {isEmitter ? (
+        <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
+          <Figure label="지금 한 달">
+            <ClaimValue claim={totals.monthlyNow} signed display={signedWon(totals.monthlyNow)} />
+          </Figure>
+          <Figure label={conditional ? "조건 확인 뒤" : "바꾼 뒤"}>
+            <ClaimValue claim={totals.monthlyAfter} signed display={signedWon(totals.monthlyAfter)} />
+          </Figure>
+          <Figure label={pending.length > 0 ? "한 달 차이 · 잠정" : "한 달 차이"} glow>
+            <ClaimValue claim={totals.difference} signed display={signedWon(totals.difference)} />
+          </Figure>
+          <Figure label="탄소 변화" small>
+            {totals.carbon ? <ClaimValue claim={totals.carbon} /> : <span className="text-muted">—</span>}
+          </Figure>
+        </div>
+      ) : null}
 
       <div className="mt-6">
         <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1fr)_7.5rem] gap-x-4 border-b border-line pb-2 text-[13px] text-muted sm:grid">
@@ -636,6 +625,7 @@ export function ResultCard({
         ) : null}
       </div>
 
+      <MoreDetails label="계산 기준 보기" hint={assumptionIds.length > 0 ? `가정값 ${assumptionIds.length}개` : undefined} className="mt-1">
       {isEmitter && result.greenest ? <GreenestNote greenest={result.greenest} /> : null}
 
       <p className="mt-1 text-[13px] leading-relaxed text-muted">
@@ -679,6 +669,7 @@ export function ResultCard({
           </ul>
         </div>
       ) : null}
+      </MoreDetails>
     </section>
   );
 }

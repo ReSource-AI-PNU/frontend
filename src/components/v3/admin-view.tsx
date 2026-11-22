@@ -727,7 +727,7 @@ export function AdminView() {
                 운영 회사로 바꾸기 ({adminOrg.orgName})
               </Button>
             ) : (
-              <ButtonLink href="/app">찾기 화면으로</ButtonLink>
+              <ButtonLink href="/app/find">찾기 화면으로</ButtonLink>
             )}
           </div>
         </section>

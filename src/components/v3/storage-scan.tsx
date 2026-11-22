@@ -46,7 +46,7 @@ const POLL_MS = 2000;
 const MAX_POLL_FAILS = 15;
 const link = "underline decoration-line-strong underline-offset-4 hover:decoration-ink";
 const field =
-  "min-h-11 min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
+  "min-h-11 min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
 const FRAMES_FAILED = "이 영상에서 장면을 고르지 못했습니다. 휴대폰에서 바로 찍어 올리거나 MP4 영상으로 다시 올려 주세요.";
 const TOO_BIG = "장면 사진이 너무 큽니다. 영상을 1분 안쪽으로 줄여 주세요.";
 
@@ -264,7 +264,7 @@ function WeighForm({
   const invalid = text.trim() !== "" && value === null;
   return (
     <form
-      className="rounded-[10px] border border-ink px-4 py-3"
+      className="rounded-md border border-ink px-4 py-3"
       aria-busy={busy || undefined}
       onSubmit={(event) => {
         event.preventDefault();

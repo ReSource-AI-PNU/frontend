@@ -86,7 +86,7 @@ import { VendorMcpKeys } from "./vendor-mcp-keys";
 import { VendorOnboarding } from "./vendor-onboarding";
 
 const field =
-  "min-h-11 min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
+  "min-h-11 min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted disabled:bg-sunken disabled:text-muted";
 const link = "underline decoration-line-strong underline-offset-4 hover:decoration-ink";
 
 type UploadState<T> = { busy: boolean; result: T | null; error: string | null };
@@ -983,7 +983,7 @@ function MeasureForm({ stream, canAct, onChanged }: { stream: StreamRecord; canA
   const done = state.result && state.result.accepted > 0;
   return (
     <form
-      className="space-y-3 rounded-xl border border-line px-4 py-4"
+      className="space-y-3 border-t border-line pt-4"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -1272,8 +1272,8 @@ function StreamCard({
     : "아직 없음";
 
   return (
-    <article className="pt-8 pb-3 first:pt-2">
-      <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">{stream.name}</h2>
+    <article className="mb-4 rounded-xl border border-line bg-surface px-5 pt-5 pb-1">
+      <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">{stream.name}</h2>
       <p className="mt-0.5 text-sm text-muted">
         {facts.join(" · ")}
         {stream.contaminants && stream.contaminants.length > 0
@@ -1281,8 +1281,10 @@ function StreamCard({
           : ""}
       </p>
 
+      <div className="mt-4">
+      <Shelf title="지금 처리" status={method.trim() || "아직 없음 · 비우면 혼합 소각으로 가정"}>
       <form
-        className="mt-5 space-y-3"
+        className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
           void save();
@@ -1399,8 +1401,7 @@ function StreamCard({
           </p>
         ) : null}
       </form>
-
-      <div className="mt-4">
+      </Shelf>
         <Shelf title="사진·영상" status={photoStatus}>
           <MediaUpload stream={stream} canAct={canAct} onChanged={onChanged} />
         </Shelf>
@@ -1478,7 +1479,7 @@ function EmitterMaterials() {
           <p className="mt-1 text-sm text-muted">폐기물을 먼저 등록하면 사진, 측정값, 문서를 폐기물마다 올릴 수 있습니다.</p>
         </div>
         {canWrite ? (
-          <Link href={basePath} className={buttonClass("primary", "md")}>
+          <Link href={`${basePath}/find`} className={buttonClass("primary", "md")}>
             폐기물 등록
           </Link>
         ) : null}
@@ -1487,7 +1488,7 @@ function EmitterMaterials() {
   }
   return (
     <>
-      <div className="divide-y divide-line">
+      <div>
         {streams.map((stream) => (
           <StreamCard
             key={stream.id}
@@ -1646,18 +1647,18 @@ function VendorForm({
       <span className="text-warn">확인 필요</span>
     );
 
-  const sectionTitle = "text-[19px] leading-snug font-semibold tracking-[-0.02em]";
+  const sectionTitle = "text-[17px] leading-snug font-bold tracking-[-0.02em]";
   const fieldLabel = "flex flex-col gap-1.5 text-[13px] font-medium text-ink-2";
 
   return (
-    <div className="divide-y divide-line">
-      <ul className="space-y-1 pb-6 text-sm text-ink-2" aria-label="업체 등록 상태">
+    <div>
+      <ul className="space-y-1 pb-5 text-sm text-ink-2" aria-label="업체 등록 상태">
         <li>{summary.saved}</li>
         <li>{summary.candidates}</li>
         <li>{summary.confirmation}</li>
       </ul>
 
-      <section className="space-y-3 py-8">
+      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6 space-y-3">
         <h2 className={sectionTitle}>허가 품목</h2>
         <PermitEditor canAct={canAct} onSave={onAddPermits}>
           <DocumentUpload kinds={["permit"]} canAct={canAct} label="허가증 업로드" uploadText="허가증 업로드"
@@ -1686,7 +1687,7 @@ function VendorForm({
         )}
       </section>
 
-      <section className="py-8">
+      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <h2 className={sectionTitle}>매입 기준표</h2>
         <p className="mt-1 text-sm text-muted">
           고정 단가는 자동 견적에 쓰이며, 건별 협의는 담당자가 견적을 냅니다.
@@ -1768,7 +1769,7 @@ function VendorForm({
         ) : null}
       </section>
 
-      <section className="py-8">
+      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <h2 className={sectionTitle}>AI가 지킬 범위</h2>
         <label className={`${fieldLabel} mt-3`}>
           업체가 적용할 처리 방식
@@ -1812,7 +1813,7 @@ function VendorForm({
 
       </section>
 
-      <section className="py-8">
+      <section className="mb-3 rounded-xl border border-line bg-surface px-5 py-6">
         <h2 className={sectionTitle}>노선·차량</h2>
         <p className="mt-1 text-sm text-muted">
           차고지와 차량 적재량, km당 운송비로 {AI_NAME.vendor}가 수거 횟수와 운반비를 계산합니다. 모르는 칸은 비워 두면
@@ -1959,7 +1960,7 @@ function VendorForm({
                         return (
                           <label
                             key={item.name}
-                            className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-[10px] border border-line-strong bg-surface px-3 text-sm has-[:checked]:border-ink has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-sunken"
+                            className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border border-line-strong bg-surface px-3 text-sm has-[:checked]:border-ink has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-sunken"
                           >
                             <input
                               type="checkbox"
@@ -2214,9 +2215,9 @@ function VendorMaterials() {
 export function MaterialsView() {
   const { org, mode, readOnly } = useV3();
   return (
-    <div className="mx-auto w-full max-w-[820px] px-5 pt-10 pb-16">
-      <header className="mb-8">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">
+    <div className="mx-auto w-full max-w-[860px] px-5 pt-8 pb-16">
+      <header className="mb-5">
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">
           {org.role === "vendor" ? "업체 정보" : "자료"}
         </h1>
         <p className="mt-2 text-[15px] text-ink-2">

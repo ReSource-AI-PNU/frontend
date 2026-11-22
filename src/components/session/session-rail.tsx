@@ -11,7 +11,7 @@ export type RailItem = { slug: FlowStep | "upload" | "dashboard"; no: number; la
 const itemClass =
   "group grid min-h-10 w-full grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 rounded-md px-2 text-left text-sm text-muted transition-colors data-[current]:bg-surface data-[current]:font-semibold data-[current]:text-ink data-[current]:shadow-[inset_0_0_0_1px_var(--color-line-strong)] data-[state=done]:text-ink-2";
 const numClass =
-  "grid size-[22px] place-items-center rounded-full border border-line-strong font-mono text-[11px] group-data-[current]:border-ink group-data-[current]:bg-marker group-data-[current]:text-marker-ink group-data-[state=done]:border-ink group-data-[state=done]:bg-ink group-data-[state=done]:text-on-ink [&_svg]:size-3";
+  "grid size-[22px] place-items-center rounded-full border border-line-strong font-mono text-[12px] group-data-[current]:border-ink group-data-[current]:bg-marker group-data-[current]:text-marker-ink group-data-[state=done]:border-ink group-data-[state=done]:bg-ink group-data-[state=done]:text-on-ink [&_svg]:size-3";
 
 /** 세션 화면 좌측 단계 메뉴. 현재 단계 번호는 형광펜으로 표시한다. */
 export function SessionRail({ sessionId, items }: { sessionId: string; items: RailItem[] }) {

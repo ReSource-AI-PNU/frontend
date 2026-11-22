@@ -18,10 +18,12 @@ test('조건 비교는 원본을 보존하고 적용하면 새 재협상과 알�
   await page.getByLabel('이름', { exact: true }).fill('조건비교 담당자');
   await page.getByLabel('업무용 이메일').fill('adaptive@example.com');
   await page.getByRole('button', { name: '개발용 계정으로 들어가기' }).click();
-  await page.waitForURL(/\/app$/);
+  await page.waitForURL(/\/app(\/find)?$/);
   const org = page.getByRole('combobox', { name: '회사' });
   await org.selectOption('org_hanbit');
   await expect(page.locator('[data-active-org="org_hanbit"]')).toBeVisible();
+  // 홈(/app)이 첫 화면이고, 지난 찾기는 찾기(/app/find)에서 다시 연다
+  await page.goto('/app/find');
   await page.getByRole('button', { name: /이어서|지난|이전/ }).first().click();
   await page.getByText('조건을 바꿔 비교하기', { exact: true }).click();
   await page.getByLabel('비교할 폐기물').selectOption('st_sprue');

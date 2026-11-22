@@ -131,7 +131,7 @@ function CheckForm({ permit, streamId, vendorOrgId, onRecord, disabled }: CheckF
       ].map((option) => (
         <label
           key={option.label}
-          className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-[10px] border px-3 text-[13px] ${
+          className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 text-[13px] ${
             value === option.on ? "border-ink font-semibold text-ink" : "border-line-strong text-ink-2"
           }`}
         >

@@ -34,7 +34,7 @@ export function Inquiries() {
   const empty = vendor ? vendorEmptyCopy(profile.error ? undefined : profile.data, "inquiries") : null;
   const open = (id: string) => {
     setSessionId(id);
-    router.push(basePath);
+    router.push(`${basePath}/deals?session=${encodeURIComponent(id)}`);
   };
 
   return (

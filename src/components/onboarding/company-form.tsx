@@ -8,7 +8,7 @@ import { createCompany, openInviteLink, openNegotiationTest } from "@/lib/server
 import { ComplexSelect } from "./complex-select";
 
 const input =
-  "min-h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss";
+  "min-h-12 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3.5 text-[15px] placeholder:text-muted aria-invalid:border-loss";
 
 const KINDS = [
   { value: "emitter", title: "배출 기업", body: "공장에서 나오는 폐기물을 받아 줄 곳을 찾습니다", icon: FactoryIcon },

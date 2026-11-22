@@ -11,7 +11,6 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
           <div>
             <p className="flex items-center gap-2.5 font-medium text-ink">
               <BrandMark />
-              Re:Source AI
             </p>
           </div>
           <nav aria-label="약관 및 정책" className="flex flex-wrap items-start gap-x-1">

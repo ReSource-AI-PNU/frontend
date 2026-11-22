@@ -68,7 +68,7 @@ export function FactoryFlipCard({ title, streams }: { title: string; streams: Fa
 
   return (
     <div ref={cardRef} className="overflow-hidden rounded-lg border border-line bg-surface">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-[18px] py-3.5 text-[13px] text-muted">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 text-[13px] text-muted">
         <span className="min-w-0 truncate">{title}</span>
         <span className="shrink-0">시연용 가정값</span>
       </div>
@@ -76,7 +76,7 @@ export function FactoryFlipCard({ title, streams }: { title: string; streams: Fa
       <p className="sr-only">
         흐름 {streams.length}개를 지금처럼 전부 소각하면 공장 월 손익이 {formatSigned(from)}원이고, 흐름별 최적안으로 바꾸면 {formatSigned(to)}원입니다.
       </p>
-      <div aria-hidden="true" className="flex justify-between gap-3 border-b border-line px-[18px] pt-2.5 pb-2 text-[12px] text-muted">
+      <div aria-hidden="true" className="flex justify-between gap-3 border-b border-line px-5 pt-2.5 pb-2 text-[12px] text-muted">
         <span>흐름 · 성질 · 월 물량</span>
         <span>경로 · 월 손익 (원)</span>
       </div>
@@ -84,7 +84,7 @@ export function FactoryFlipCard({ title, streams }: { title: string; streams: Fa
         {streams.map((s) => {
           const v = split ? s.after : s.now;
           return (
-            <li key={s.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-[18px] py-3">
+            <li key={s.name} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-5 py-3">
               <div className="min-w-0">
                 <p className="truncate text-[15px] font-semibold">{s.name}</p>
                 <p className="truncate text-[12px] text-muted">
@@ -102,7 +102,7 @@ export function FactoryFlipCard({ title, streams }: { title: string; streams: Fa
         })}
       </ol>
 
-      <div className="border-t border-line px-[18px] pt-4 pb-[18px]">
+      <div className="border-t border-line px-5 pt-4 pb-5">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-[13px] text-muted">공장 월 손익</span>
           <span className={`num text-[15px] text-loss line-through decoration-1 transition-opacity duration-300 ${split ? "opacity-100" : "opacity-0"}`} aria-hidden="true">
@@ -117,7 +117,7 @@ export function FactoryFlipCard({ title, streams }: { title: string; streams: Fa
           </span>
         </p>
       </div>
-      <div className="flex items-center justify-between border-t border-line bg-bg px-[18px] py-3">
+      <div className="flex items-center justify-between border-t border-line bg-bg px-5 py-3">
         <Badge tone="ai">AI 진단</Badge>
         <button type="button" onClick={play} className="min-h-[34px] rounded-md px-2 text-[13px] font-semibold hover:underline">
           다시 보기

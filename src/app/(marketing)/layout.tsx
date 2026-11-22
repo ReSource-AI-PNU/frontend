@@ -11,7 +11,6 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-4 px-6 py-10 text-[13px] text-muted lg:px-8">
           <span className="flex items-center gap-2.5 font-semibold text-ink">
             <BrandMark />
-            Re:Source AI
           </span>
           <nav aria-label="약관 및 정책" className="flex flex-wrap items-center gap-x-1 gap-y-1">
             <Link href="/trust" className="inline-flex min-h-11 items-center rounded-md px-2 hover:text-ink">
@@ -24,7 +23,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               개인정보처리방침
             </Link>
           </nav>
-          <span className="w-full sm:w-auto">© 2026 Re:Source AI 팀</span>
+          <span className="w-full sm:w-auto">© 2026 BYPRO 팀</span>
         </div>
       </footer>
     </>

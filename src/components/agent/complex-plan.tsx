@@ -255,7 +255,7 @@ export function ComplexPlanView({
                   className={`pointer-events-none absolute ${SIDE_CLASS[sides.get(node.id) as LabelSide]} rounded-md bg-surface/90 px-1.5 py-0.5 text-[12px] leading-tight whitespace-nowrap shadow-[0_0_0_1px_var(--color-line)] ${active ? "font-semibold text-ink" : "text-ink-2"}`}
                 >
                   {node.name}
-                  {item ? <span className="block text-[11px] font-normal text-muted">{item}</span> : null}
+                  {item ? <span className="block text-[12px] font-normal text-muted">{item}</span> : null}
                 </span>
               ) : null}
             </button>

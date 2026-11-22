@@ -6,7 +6,7 @@ import { particle } from "@/lib/josa";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침",
-  description: "Re:Source AI 개인정보처리방침 (초안, 법률 검토 전)",
+  description: "BYPRO 개인정보처리방침 (초안, 법률 검토 전)",
 };
 
 const linkClass = "font-semibold text-ink underline underline-offset-4";
@@ -412,7 +412,7 @@ export default function PrivacyPage() {
       intro={
         <>
           <p>
-            {OPERATOR_NAME}(이하 &ldquo;운영자&rdquo;){particle(OPERATOR_NAME, "은/는")} Re:Source AI를 운영하면서 개인정보 보호법 제30조에 따라 정보주체의 개인정보를 보호하고
+            {OPERATOR_NAME}(이하 &ldquo;운영자&rdquo;){particle(OPERATOR_NAME, "은/는")} BYPRO를 운영하면서 개인정보 보호법 제30조에 따라 정보주체의 개인정보를 보호하고
             관련 고충을 신속하게 처리하기 위해 이 방침을 둡니다.
           </p>
           <Callout title="한눈에 보기">

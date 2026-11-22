@@ -27,7 +27,7 @@ import type { DocumentConfirmResult } from "@/lib/v3/types";
 import { useV3 } from "./context";
 
 const input =
-  "min-h-11 w-full min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] tabular-nums placeholder:text-muted disabled:bg-sunken disabled:text-muted";
+  "min-h-11 w-full min-w-0 rounded-md border border-line-strong bg-surface px-3 text-[15px] tabular-nums placeholder:text-muted disabled:bg-sunken disabled:text-muted";
 const label = "flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-ink-2";
 const segment =
   "flex min-h-[38px] cursor-pointer items-center rounded-sm px-3.5 text-sm text-muted peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-[0_1px_0_var(--color-line-strong)] peer-focus-visible:outline-2 peer-focus-visible:outline-ink peer-disabled:cursor-not-allowed";

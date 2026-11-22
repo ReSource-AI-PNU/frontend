@@ -53,7 +53,7 @@ function Side({ label, done }: { label: string; done: boolean }) {
 }
 
 const GRADES = ["A", "B", "C", "등외"];
-const field = "min-h-10 rounded-[10px] border border-line-strong bg-surface px-2.5 text-sm";
+const field = "min-h-10 rounded-md border border-line-strong bg-surface px-2.5 text-sm";
 const evidenceLink = "font-medium tabular-nums underline decoration-line-strong underline-offset-4";
 
 type PriceSide = "매입" | "처리비";
@@ -657,7 +657,7 @@ export function ApprovalView() {
               : "찾기 화면에서 받아 줄 곳을 먼저 찾아 주세요. 조건이 맞는 업체가 나오면 여기에 나타납니다."
           }
           action={
-            <Link href={basePath} className="text-sm font-medium underline underline-offset-4">
+            <Link href={org.role === "vendor" ? `${basePath}/deals` : `${basePath}/find`} className="text-sm font-medium underline underline-offset-4">
               {org.role === "vendor" ? "대화 화면으로" : "찾기 화면으로"}
             </Link>
           }
@@ -679,13 +679,9 @@ export function ApprovalView() {
   const closed = view.threads.filter((item) => item.status === "handoff" || item.status === "declined");
   const ended = view.session.status === "idle" && view.session.phase === "done";
   return (
-    <div className="mx-auto w-full max-w-[820px] px-5 pt-10 pb-16">
-      <header className="mb-6">
-        <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.03em]">승인·서류</h1>
-        <p className="mt-2 text-[15px] text-ink-2">
-          승인하기 전에 계약 검토 담당이 합의 조건을 다시 대조합니다. 양쪽 담당자가 모두 승인해야 확정되고, 그 뒤에 요청서,
-          이행 계획서, 위탁 계약서 초안이 만들어집니다.
-        </p>
+    <div className="mx-auto w-full max-w-[860px] px-5 pt-8 pb-16">
+      <header className="mb-5">
+        <h1 className="text-[28px] leading-tight font-bold tracking-[-0.035em]">승인·서류</h1>
         {readOnly ? (
           <p className="mt-2 text-[13px] text-muted">
             체험 중에는 승인할 수 없습니다.{" "}
@@ -701,11 +697,8 @@ export function ApprovalView() {
         </p>
       ) : null}
       {closed.length > 0 ? (
-        <section className="border-t border-line py-7">
-          <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">조건이 맞지 않은 곳</h2>
-          <p className="mt-1 text-sm text-muted">
-            업체가 받지 않겠다고 했거나 사람이 직접 판단해야 하는 곳입니다. 사유를 보고 담당자가 직접 처리합니다.
-          </p>
+        <section className="mb-4 rounded-xl border border-line bg-surface px-5 py-5">
+          <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">조건이 맞지 않은 곳</h2>
           <ul className="mt-3 divide-y divide-line border-y border-line text-sm">
             {closed.map((item) => (
               <li key={item.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
@@ -756,9 +749,12 @@ export function ApprovalView() {
               ? THREAD_LABEL[thread.status]
               : "";
         return (
-          <section key={approval.threadId} className="border-t border-line py-7">
+          <section
+            key={approval.threadId}
+            className="mb-4 rounded-xl border border-line bg-surface px-5 py-5"
+          >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">{thread?.vendorName ?? "업체"}</h2>
+              <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">{thread?.vendorName ?? "업체"}</h2>
               <span className={`text-sm ${todos.length > 0 && thread?.status === "agreed" ? "text-warn" : "text-muted"}`}>
                 {headline}
               </span>
@@ -799,6 +795,16 @@ export function ApprovalView() {
                 <p className="mt-1 font-medium">{approval.streamIds.map(streamName).join(", ")}</p>
               )}
             </div>
+            {/* 승인 전에 걸리는 것은 이름표로만 보이고, 문장은 "자세히 보기"에 있다 */}
+            <p className="mt-3 flex flex-wrap gap-1.5 text-[12px] font-semibold empty:hidden">
+              {approval.permitHold && !confirmed ? (
+                <span className="inline-flex h-6 items-center rounded-[6px] bg-warn-bg px-2 text-[13px] font-medium text-warn">허가증 대조 필요</span>
+              ) : null}
+              {todos.length > 0 && !confirmed ? (
+                <span className="inline-flex h-6 items-center rounded-[6px] bg-warn-bg px-2 text-[13px] font-medium text-warn">수거·운반 확인 {todos.length}</span>
+              ) : null}
+            </p>
+            <MoreDetails className="mt-1 text-sm" label="자세히 보기" hint="허가 · 수거 · 마지막 메시지">
             {(approval.permits ?? []).length > 0 ? (
               <div className="mt-3">
                 {(approval.permits ?? []).map((permit) => (
@@ -831,15 +837,17 @@ export function ApprovalView() {
               </div>
             ) : null}
             {thread && thread.messages.length > 0 ? (
-              <MoreDetails className="mt-3 text-sm" hint={`마지막 메시지 (${thread.messages.length}번째)`}>
-                <p className="mt-2 rounded-xl bg-ground px-4 py-3 whitespace-pre-wrap text-ink-2">
+              <div className="mt-3">
+                <p className="text-[13px] text-muted">마지막 메시지 ({thread.messages.length}번째)</p>
+                <p className="mt-1 rounded-xl bg-ground px-4 py-3 whitespace-pre-wrap text-ink-2">
                   <ClaimText
                     text={thread.messages[thread.messages.length - 1].text}
                     claims={thread.messages[thread.messages.length - 1].claims}
                   />
                 </p>
-              </MoreDetails>
+              </div>
             ) : null}
+            </MoreDetails>
             {approval.review ? (
               <ContractReviewBox
                 className="mt-4"
@@ -943,8 +951,8 @@ export function ApprovalView() {
         );
       })}
 
-      <section className="border-t border-line pt-7">
-        <h2 className="text-[19px] leading-snug font-semibold tracking-[-0.02em]">요청서 · 이행 계획서 · 계약서 초안</h2>
+      <section className="mt-8">
+        <h2 className="text-[19px] leading-snug font-bold tracking-[-0.02em]">요청서 · 이행 계획서 · 계약서 초안</h2>
         {view.documents.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
             양쪽이 승인하면 여기에 만들어집니다. 아직 만들어진 서류가 없습니다.
@@ -952,7 +960,7 @@ export function ApprovalView() {
         ) : (
           <div className="mt-3 divide-y divide-line border-y border-line">
             {view.documents.map((document) => (
-              <article key={document.id} className="py-6">
+              <article key={document.id} className="py-4">
                 <p className="text-[13px] text-muted">
                   {DOC_LABEL[document.kind]} · {document.streamIds.map(streamName).join(", ")} ·{" "}
                   <span className="tabular-nums">{formatDateTime(document.createdAt)}</span>
@@ -965,9 +973,11 @@ export function ApprovalView() {
                 ) : (
                   <p className="mt-1 text-[12px] text-muted">근거 확인됨 · 숫자를 누르면 근거가 열립니다</p>
                 )}
-                <div className="mt-3 rounded-xl bg-ground px-4 py-4 text-[15px] leading-relaxed">
-                  <ClaimText text={document.text} claims={document.claims} />
-                </div>
+                <MoreDetails label="내용 보기" closeLabel="내용 접기">
+                  <div className="mt-1 rounded-xl bg-ground px-4 py-4 text-[15px] leading-relaxed">
+                    <ClaimText text={document.text} claims={document.claims} />
+                  </div>
+                </MoreDetails>
               </article>
             ))}
           </div>

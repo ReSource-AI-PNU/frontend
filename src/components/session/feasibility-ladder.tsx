@@ -27,7 +27,7 @@ export function FeasibilityLadder({ ladder }: { ladder: { label: string; perKg: 
     <figure className="relative">
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`작업 단계별 kg당 손익: ${summary}`}>
         <line x1={pad.left} x2={W - pad.right} y1={zero} y2={zero} stroke="var(--color-chart-zero)" strokeWidth={1} />
-        <text x={W - pad.right} y={zero - 6} textAnchor="end" className="fill-muted text-[11px]">
+        <text x={W - pad.right} y={zero - 6} textAnchor="end" className="fill-muted text-[12px]">
           0원
         </text>
         {ladder.map((l, i) => {

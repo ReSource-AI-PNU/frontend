@@ -47,7 +47,7 @@ export function DeployGate({
           <li key={c.label} className="flex items-start gap-2">
             <span
               aria-hidden="true"
-              className={`mt-0.5 inline-grid size-[18px] shrink-0 place-items-center rounded-full text-[11px] font-bold ${c.ok ? "bg-gain-bg text-gain" : "bg-loss-bg text-loss"}`}
+              className={`mt-0.5 inline-grid size-[18px] shrink-0 place-items-center rounded-full text-[12px] font-bold ${c.ok ? "bg-gain-bg text-gain" : "bg-loss-bg text-loss"}`}
             >
               {c.ok ? "✓" : "×"}
             </span>

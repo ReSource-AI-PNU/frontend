@@ -47,13 +47,19 @@ http://localhost:3000 에서 확인한다. 로그인 화면의 "개발용 빠른
 | `/` · `/terms` · `/privacy` | 소개(체험하기 링크), 이용약관, 개인정보처리방침(초안, 법률 검토 전) |
 | `/login` · `/signup` | 이메일·비밀번호 로그인과 가입. 맨 아래 "체험하기 (가입 없이 시연 회사 둘러보기)" |
 | `/onboarding` · `/invite/[token]` | 회사 등록과 초대 링크 열기, 초대 수락 |
-| `/app` | 배출 기업: 폐기물 등록 → 받아 줄 곳 찾기 → 질문 → 결과 → 승인. 처리 업체: 받은 문의의 대화와 승인 |
+| `/app` | 홈. 지금 사람이 할 일(허가증 대조·승인·AI 판단 확인·답변·검수 기록), 숫자 넷, 거래 중인 상대, 최근 바뀐 것, 서류. 찾기가 하나도 없는 배출 기업은 `/app/find`로 보낸다(`src/lib/v3/overview.ts`) |
+| `/app/deals` | 거래. 업체 한 곳과의 거래마다 진행 단계(문의 → 합의 → 승인 → 확정 → 검수, `src/components/ui/steps.tsx`)와 탭(AI 대화, 조건, 서류). `?deal=<찾기>:<대화>`, `?session=<찾기>` |
+| `/app/find` | 배출 기업: 폐기물 등록 → 받아 줄 곳 찾기 → 질문 → 결과 → 승인. 처리 업체: 받은 문의의 대화와 승인. `?present=1`이면 발표 화면을 바로 연다 |
 | `/app/inquiries` | 처리 업체의 받은 문의 목록 |
 | `/app/materials` | 배출 기업의 자료(현행 처리, 사진·영상, 측정값, 비용, 문서), 처리 업체의 업체 정보(허가 품목, 매입 기준표, 가드레일, 차량, 문서 올리기) |
 | `/app/approval` | 승인·서류: 양쪽 승인, 요청서와 이행 계획서, 업체의 실제 결과 기록 |
 | `/app/admin` | 운영(운영 회사 소속만): 서버 연결, 기준값, 외부 서비스, 사례 시험, 재학습. 모델·구현 이름은 이 화면에만 나온다 |
-| `/demo` · `/demo/materials` · `/demo/approval` | 체험하기(시연 회사 읽기 전용) |
+| `/demo` · `/demo/deals` · `/demo/find` · `/demo/materials` · `/demo/approval` · `/demo/report` | 체험하기(시연 회사 읽기 전용) |
 | `/settings` · `/settings/members` · `/settings/account` | 회사 정보와 내가 속한 회사, 멤버와 초대 링크, 내 계정 |
+
+화면은 밝은 바탕이 기본이고(어둡게는 계정 메뉴에서 고른다), 강조색은 파랑 하나다(`--color-accent`: 주 단추, 지금 화면, 진행 단계). 중요한 것만 밖에 두고 설명·표·근거 목록은 접어 둔다(`src/components/ui/fold.tsx`, `more-details.tsx`).
+
+소개 화면(`/`)의 각 묶음은 내려오다 화면에 들어오면 아래에서 떠오르며 나타난다(`src/components/ui/reveal.tsx`, 한 번만, 움직임 줄이기 설정이면 하지 않는다).
 
 예전 주소(`/v3`, `/upload`, `/session`, `/dashboard`, `/vendor`, `/complex`, `/knowledge`, `/neighbor`, `/c`, `/admin`)는 `/app`으로 보낸다(`next.config.ts`).
 

@@ -315,7 +315,7 @@ function Scene3D({
       const el = document.createElement("span");
       el.textContent = text;
       el.className =
-        "pointer-events-none absolute top-0 left-0 rounded-sm bg-black/70 px-1.5 py-0.5 font-mono text-[11px] whitespace-nowrap text-white";
+        "pointer-events-none absolute top-0 left-0 rounded-sm bg-black/70 px-1.5 py-0.5 font-mono text-[12px] whitespace-nowrap text-white";
       labelsHost.append(el);
       engine.labels.push({ el, at: new THREE.Vector3(x, y, z), below });
     };
@@ -491,7 +491,7 @@ function Scene3D({
           ? "상차 지점 고르기. 바닥을 누르거나, 화살표 키로 0.5 m씩 옮기고 Enter로 정합니다. Esc로 그만둡니다."
           : "보관장 3D 장면. 끌어서 돌리고, 두 손가락이나 휠로 가까이 볼 수 있습니다."
       }
-      className={`relative h-[340px] w-full overflow-hidden rounded-[14px] bg-photo outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink sm:h-[440px] ${picking ? "cursor-crosshair" : "cursor-grab"}`}
+      className={`relative h-[340px] w-full overflow-hidden rounded-lg bg-photo outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink sm:h-[440px] ${picking ? "cursor-crosshair" : "cursor-grab"}`}
     >
       <div ref={labelsRef} aria-hidden="true" className="pointer-events-none absolute inset-0" />
       {!ready ? <p className="absolute inset-0 grid place-items-center text-sm text-white/70">3D 장면을 준비하는 중입니다.</p> : null}
@@ -555,7 +555,7 @@ function TopView({ view, mode, picking, draft, onPick, onNudge, onConfirm }: { v
       tabIndex={picking ? 0 : -1}
       aria-label={picking ? "상차 지점 고르기. 평면도를 누르거나, 화살표 키로 0.5 m씩 옮기고 Enter로 정합니다. Esc로 그만둡니다." : "위에서 본 보관장 평면도"}
       viewBox={`0 0 ${((maxX - minX) * S).toFixed(1)} ${((maxY - minY) * S).toFixed(1)}`}
-      className={`h-[340px] w-full rounded-[14px] bg-surface ring-1 ring-line outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink sm:h-[440px] ${picking ? "cursor-crosshair" : ""}`}
+      className={`h-[340px] w-full rounded-lg bg-surface ring-1 ring-line outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink sm:h-[440px] ${picking ? "cursor-crosshair" : ""}`}
       onClick={click}
       onKeyDown={onKeyDown}
     >
@@ -635,7 +635,7 @@ function Swatch({ color, ring = false, dashed = false }: { color: string; ring?:
   return (
     <span
       aria-hidden="true"
-      className={`inline-block size-3 shrink-0 rounded-[3px] ${ring ? "border-2 bg-transparent" : ""} ${dashed ? "border-2 border-dashed" : ""}`}
+      className={`inline-block size-3 shrink-0 rounded-sm ${ring ? "border-2 bg-transparent" : ""} ${dashed ? "border-2 border-dashed" : ""}`}
       style={ring || dashed ? { borderColor: color } : { background: color }}
     />
   );
@@ -776,7 +776,7 @@ export function ScanViewer({
   return (
     <div className="mt-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div role="radiogroup" aria-label="배치 보기" className="inline-flex rounded-[10px] border border-line-strong p-0.5">
+        <div role="radiogroup" aria-label="배치 보기" className="inline-flex rounded-md border border-line-strong p-0.5">
           {MODES.map(([key, label], index) => (
             <button
               key={key}
@@ -790,7 +790,7 @@ export function ScanViewer({
               disabled={key === "proposal" && !proposal}
               onClick={() => setMode(key)}
               onKeyDown={(event) => onRadioKey(event, index)}
-              className={`min-h-11 rounded-[8px] px-4 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:text-muted ${
+              className={`min-h-11 rounded-md px-4 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:text-muted ${
                 shownMode === key ? "bg-ink text-on-ink" : "text-ink-2 hover:text-ink"
               }`}
             >
@@ -816,7 +816,7 @@ export function ScanViewer({
             {...pickProps}
           />
         ) : current?.error ? (
-          <div role="alert" className="grid h-[200px] place-items-center rounded-[14px] bg-ground px-4 text-center text-sm">
+          <div role="alert" className="grid h-[200px] place-items-center rounded-lg bg-ground px-4 text-center text-sm">
             <div>
               <p className="text-ink-2">{current.error}</p>
               <Button variant="secondary" size="sm" className="mt-3" onClick={() => setAttempt((value) => value + 1)}>
@@ -825,7 +825,7 @@ export function ScanViewer({
             </div>
           </div>
         ) : (
-          <p className="grid h-[340px] place-items-center rounded-[14px] bg-photo text-sm text-white/70 sm:h-[440px]">
+          <p className="grid h-[340px] place-items-center rounded-lg bg-photo text-sm text-white/70 sm:h-[440px]">
             3D 장면을 불러오는 중입니다.
           </p>
         )

@@ -85,14 +85,14 @@ export function PriceFlipCard({
 
   return (
     <div ref={cardRef} className="overflow-hidden rounded-lg border border-line bg-surface">
-      <div className="flex items-center justify-between border-b border-line px-[18px] py-3.5 text-[13px] text-muted">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3.5 text-[13px] text-muted">
         <span>{title}</span>
         <span className="flex items-center gap-1.5 num text-[12px] before:size-1.5 before:rounded-full before:bg-gain before:content-['']">LIVE</span>
       </div>
       <div className="relative aspect-[16/10] overflow-hidden bg-photo">
         <WastePileIllustration label="압축 플라스틱 베일 더미 사진. 테이프와 라벨이 붙어 있음" />
         <div className="absolute top-[22%] left-[6%] h-[64%] w-[88%] rounded-[2px] border-[1.5px] border-marker">
-          <span className="num absolute -top-[22px] -left-[1.5px] rounded-[2px] rounded-bl-none bg-marker px-1.5 text-[11px] leading-5 font-semibold text-marker-ink">
+          <span className="num absolute -top-[22px] -left-[1.5px] rounded-[2px] rounded-bl-none bg-marker px-1.5 text-[12px] leading-5 font-semibold text-marker-ink">
             PP 압축품 0.94
           </span>
         </div>
@@ -102,13 +102,13 @@ export function PriceFlipCard({
           aria-label="테이프 떼기 다시 보기"
           className={`absolute top-[54%] left-[40%] h-[15%] w-[20%] rounded-[2px] border-2 border-marker bg-marker/15 transition-[transform,opacity] duration-700 ease-in-out ${peeled ? "translate-x-7 -translate-y-9 -rotate-[9deg] opacity-0" : ""}`}
         >
-          <span className="num absolute -top-[22px] -left-[2px] rounded-[2px] rounded-bl-none bg-marker px-1.5 text-[11px] leading-5 font-semibold whitespace-nowrap text-marker-ink">
+          <span className="num absolute -top-[22px] -left-[2px] rounded-[2px] rounded-bl-none bg-marker px-1.5 text-[12px] leading-5 font-semibold whitespace-nowrap text-marker-ink">
             테이프 12%
           </span>
         </button>
         <span className="absolute bottom-2.5 left-3 text-[12px] text-white/55">현장 사진 · 시연용 일러스트</span>
       </div>
-      <div key={washKey} className={`px-[18px] pt-5 pb-[18px] ${washKey ? "animate-[rs-wash_1.4s_var(--ease-out)]" : ""}`}>
+      <div key={washKey} className={`px-5 pt-5 pb-5 ${washKey ? "animate-[rs-wash_1.4s_var(--ease-out)]" : ""}`}>
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-[13px] text-muted">kg당 손익</span>
           <span className={`num text-[15px] text-loss line-through decoration-1 transition-opacity duration-300 ${gain ? "opacity-100" : "opacity-0"}`}>
@@ -134,7 +134,7 @@ export function PriceFlipCard({
           </span>
         </p>
       </div>
-      <div className="flex items-center justify-between border-t border-line bg-bg px-[18px] py-3">
+      <div className="flex items-center justify-between border-t border-line bg-bg px-5 py-3">
         <Badge tone="ai">AI 판정</Badge>
         <button type="button" onClick={run} className="text-[13px] font-semibold hover:underline">
           테이프 떼기 다시 보기

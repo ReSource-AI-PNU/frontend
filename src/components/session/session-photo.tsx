@@ -32,7 +32,7 @@ export function DetectionBox({ d, compact = false }: { d: Detection; compact?: b
     >
       {!compact ? (
         <span
-          className={`num absolute -top-[22px] -left-[2px] rounded-[2px] rounded-bl-none px-1.5 text-[11px] leading-5 font-semibold whitespace-nowrap ${human ? "bg-ink text-on-ink" : "bg-marker text-marker-ink"}`}
+          className={`num absolute -top-[22px] -left-[2px] rounded-[2px] rounded-bl-none px-1.5 text-[12px] leading-5 font-semibold whitespace-nowrap ${human ? "bg-ink text-on-ink" : "bg-marker text-marker-ink"}`}
         >
           {d.label}
           {d.kind === "item" ? ` ${d.confidence.toFixed(2)}` : d.ratio !== undefined ? ` ${Math.round(d.ratio * 100)}%` : ""}

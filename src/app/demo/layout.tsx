@@ -9,7 +9,7 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { V3Provider } from "@/components/v3/context";
 import { demoCompany } from "@/lib/server/demo";
 
-export const metadata: Metadata = { title: { default: "체험하기", template: "%s · 체험하기 · Re:Source AI" } };
+export const metadata: Metadata = { title: { default: "체험하기", template: "%s · 체험하기 · BYPRO" } };
 
 /** 체험 화면을 열 수 없을 때(서버에 닿지 못함). 가입과 로그인은 그대로 할 수 있다. */
 function Unavailable() {

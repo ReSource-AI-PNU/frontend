@@ -103,7 +103,7 @@ export function ItemPicker({
           return (
             <div
               key={item.id}
-              className={`flex flex-wrap items-center gap-x-3 rounded-[10px] border px-3 ${checked ? "border-line-strong bg-sunken" : "border-line"}`}
+              className={`flex flex-wrap items-center gap-x-3 rounded-md border px-3 ${checked ? "border-line-strong bg-sunken" : "border-line"}`}
             >
               <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-[14px]">
                 <input
@@ -252,7 +252,7 @@ function MailComposer({ letter, initialBody, phone }: { letter: QuoteRequest; in
         </p>
       </div>
       {letter.demo ? (
-        <p className="rounded-[10px] bg-warn-bg px-3.5 py-2.5 text-[13px] text-warn">
+        <p className="rounded-md bg-warn-bg px-3.5 py-2.5 text-[13px] text-warn">
           시연 회사의 가상 자료입니다. 보낼 글의 처음과 끝에 &ldquo;{DEMO_MARK}&rdquo;가 붙고, 지워도 다시 붙습니다.
         </p>
       ) : null}
@@ -272,7 +272,7 @@ function MailComposer({ letter, initialBody, phone }: { letter: QuoteRequest; in
           placeholder="업체 담당자 메일"
           aria-invalid={touched && !toOk}
           aria-describedby="mail-to-note"
-          className="mt-1.5 min-h-11 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted"
+          className="mt-1.5 min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted"
         />
         {touched && to.trim() !== "" && !toOk ? (
           <p className="mt-1.5 text-[12.5px] text-loss">메일 주소 하나를 적어 주세요. 예: sales@example.co.kr</p>
@@ -290,7 +290,7 @@ function MailComposer({ letter, initialBody, phone }: { letter: QuoteRequest; in
           id="mail-subject"
           value={subject}
           onChange={(event) => setSubject(event.target.value)}
-          className="mt-1.5 min-h-11 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[15px]"
+          className="mt-1.5 min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[15px]"
         />
       </div>
 
@@ -314,7 +314,7 @@ function MailComposer({ letter, initialBody, phone }: { letter: QuoteRequest; in
           value={body}
           onChange={(event) => setBody(event.target.value)}
           rows={18}
-          className="mt-1.5 w-full rounded-[10px] border border-line-strong bg-surface px-3 py-2.5 text-[14px] leading-relaxed"
+          className="mt-1.5 w-full rounded-md border border-line-strong bg-surface px-3 py-2.5 text-[14px] leading-relaxed"
         />
         {edited ? (
           <p className="mt-1.5 text-[12.5px] text-warn">고친 글은 근거 확인을 다시 거치지 않습니다. 바꾼 숫자는 직접 확인해 주세요.</p>
@@ -464,7 +464,7 @@ export function QuoteSheet({
           ) : (
           <>
           {letter?.demo || demoView ? (
-            <p className="mb-4 rounded-[10px] bg-warn-bg px-3.5 py-2.5 text-[13px] text-warn">
+            <p className="mb-4 rounded-md bg-warn-bg px-3.5 py-2.5 text-[13px] text-warn">
               시연 회사의 가상 자료로 만든 요청서입니다. 복사한 글의 처음과 끝에도 시연용 표시가 남습니다.
             </p>
           ) : null}
@@ -480,7 +480,7 @@ export function QuoteSheet({
           <div className="mt-5" aria-live="polite" aria-busy={!current}>
             {!current ? <p className="text-sm text-muted">{chosen ? `${chosen.name} 요청서를 만들고 있습니다.` : "요청서를 만들고 있습니다."}</p> : null}
             {error && error.code === "OUTSIDE_STALE" ? (
-              <div className="rounded-[10px] bg-warn-bg px-4 py-3 text-[14px] leading-relaxed text-warn">
+              <div className="rounded-md bg-warn-bg px-4 py-3 text-[14px] leading-relaxed text-warn">
                 <p className="font-medium">이 업체에 보낼 요청서를 만들지 않았습니다.</p>
                 <p className="mt-1">{error.message}</p>
                 {onSearchAgain ? (
@@ -550,7 +550,7 @@ export function QuoteSheet({
                   value={contact}
                   onChange={(event) => onContact(event.target.value)}
                   placeholder="이메일이나 전화번호"
-                  className="mt-1.5 min-h-11 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted"
+                  className="mt-1.5 min-h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-[15px] placeholder:text-muted"
                 />
                 <p className="mt-1.5 text-[12px] text-muted">적은 연락처는 저장하지 않고 복사할 글 끝에만 붙습니다.</p>
                 <p className="mt-1 text-[12px] text-muted">{QUOTE_SAFE_NOTE}</p>
