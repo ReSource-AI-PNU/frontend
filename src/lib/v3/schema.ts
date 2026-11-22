@@ -838,6 +838,18 @@ export const circularSourceSchema = obj({
 /** 자원순환 효과와 네 시나리오(A 흐름별 최적안, B 묶음 없이, C 현행 유지, D 전부 매립). 배출 기업만 본다 */
 export const circularSchema = obj({
   scenarios: z.array(circularScenarioSchema),
+  reference: obj({
+    totals: z.partialRecord(z.enum(["ghg", "energy", "virgin"]), circularTotalSchema),
+    rows: z.array(obj({
+      streamId: z.string(),
+      streamName: z.string().nullable(),
+      metric: z.enum(["ghg", "energy", "virgin"]),
+      value: claimOrNull,
+      assumptions: z.array(z.string()),
+      reason: z.string(),
+      status: z.enum(["estimated", "hold", "zero"]),
+    })),
+  }).nullable().optional(),
   baselines: z.record(z.string(), z.number()),
   bundle: obj({
     available: z.boolean(),

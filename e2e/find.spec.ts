@@ -85,7 +85,10 @@ test("받아 줄 곳을 찾으면 폐기물마다 받는 곳, 조건, 한 달 �
   await expect(result.getByText("한 달 합계")).toBeVisible();
   // 원문 경계를 확인한 배출계수와 실제 운송 조건이 없으면 탄소는 0으로 두지 않고 산정 보류로 보인다
   await expect(result.getByRole("button", { name: /tCO2e\/월/ })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "자원순환 효과" }).getByText("산정 보류").first()).toBeVisible();
+  const effects = page.getByRole("region", { name: "자원순환 효과" });
+  await expect(effects.getByText("문헌·입력값 기반 추정").first()).toBeVisible();
+  await expect(effects.getByText("폐기물마다 어떻게 순환하나요")).toHaveCount(0);
+  await expect(effects.getByText("시나리오 비교")).toHaveCount(0);
 
   // 순비용의 내역: 매각 수익, 운반비, 전처리 인건비
   const sprue = rows.filter({ hasText: "스프루·런너" });
@@ -234,7 +237,7 @@ test("체험하기는 로그인 없이 시연 회사를 읽기 전용으로 보�
   await page.goto("/login");
   await page.getByRole("link", { name: /체험하기/ }).click();
   await page.waitForURL(/\/demo$/);
-  await expect(page.getByText("시연 회사의 가상 데이터입니다")).toBeVisible();
+  await expect(page.getByText("둘러보기 전용입니다.", { exact: false })).toBeVisible();
   await expect(page.getByRole("link", { name: "가입하기" })).toBeVisible();
   // 쓰기는 백엔드에 닿기 전에 막힌다
   const write = await request.post("/api/v3-demo/sessions", { data: {} });
