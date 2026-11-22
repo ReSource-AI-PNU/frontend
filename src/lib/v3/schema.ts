@@ -970,6 +970,7 @@ export const circularSourceSchema = obj({
 export const circularSchema = obj({
   scenarios: z.array(circularScenarioSchema),
   reference: obj({
+    monthlyKg: claimOrNull.optional(),
     totals: z.partialRecord(z.enum(["ghg", "energy", "virgin"]), circularTotalSchema),
     rows: z.array(obj({
       streamId: z.string(),

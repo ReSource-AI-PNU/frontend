@@ -578,7 +578,7 @@ function circularSummary(circular: Circular): string | undefined {
   // 펼쳤을 때 맨 앞에 보이는 값과 같은 것을 쓴다(src/components/agent/circular-effects.tsx)
   const totals = circular.reference?.totals ?? scenarioOf(circular, "A")?.totals;
   const text = metricText("ghg", totals?.ghg?.total);
-  return text ? `예상 감축 ${text}` : undefined;
+  return text ? `재활용 추정 · ${text}` : undefined;
 }
 
 export function Conversation({ d }: { d: Diagnosis }) {
@@ -899,7 +899,7 @@ export function Conversation({ d }: { d: Diagnosis }) {
             {hasRoute && result.circular ? (
               <Fold
                 title="자원순환 효과"
-                summary={carbonText(result.totals.carbon, true) ?? circularSummary(result.circular)}
+                summary={circularSummary(result.circular) ?? carbonText(result.totals.carbon, true)}
                 icon={<ReportIcon />}
               >
                 <CircularEffects circular={result.circular} />
