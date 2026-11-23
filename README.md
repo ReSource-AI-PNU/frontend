@@ -1,7 +1,9 @@
-# Re:Source AI — Frontend
+# BYPRO — Frontend
 
-Next.js(App Router) + TypeScript + Tailwind CSS 기반 웹 앱. 사진·영상·성분표 업로드, 판정 결과 카드, 처리 방식별 비용·탄소 비교표, 산업단지 3D 지도 화면을 담당한다. 설계 문서는 [ReSource-AI](https://github.com/ReSource-AI-PNU/ReSource-AI) 저장소의 `docs/`를 참고한다.
+Next.js(App Router) + TypeScript + Tailwind CSS 기반 웹 앱·PWA. 배출 기업과 처리 업체의 찾기·AI 대화·거래·양쪽 승인·서류·자료·실적 화면을 제공한다. 사진·영상, 품질 측정 CSV, 계량 기록과 문서 입력을 지원한다. 설계 문서는 [ReSource-AI](https://github.com/ReSource-AI-PNU/ReSource-AI) 저장소의 `docs/`를 참고한다.
 
+
+이전 서비스명은 Re:Source AI다. GitHub 주소와 기존 코드 경로는 유지한다. 현재 화면은 `/app`과 `/demo`이며, 예전 모의 API와 구분한다.
 
 ## 실행
 
@@ -52,12 +54,12 @@ http://localhost:3000 에서 확인한다. 로그인 화면의 "개발용 빠른
 | `/app/find` | 배출 기업: 폐기물 등록 → 받아 줄 곳 찾기 → 질문 → 결과 → 승인. 처리 업체: 받은 문의의 대화와 승인. `?present=1`이면 발표 화면을 바로 연다 |
 | `/app/inquiries` | 처리 업체의 받은 문의 목록 |
 | `/app/materials` | 배출 기업의 자료(현행 처리, 사진·영상, 측정값, 비용, 문서), 처리 업체의 업체 정보(허가 품목, 매입 기준표, 가드레일, 차량, 문서 올리기) |
-| `/app/approval` | 승인·서류: 양쪽 승인, 요청서와 이행 계획서, 업체의 실제 결과 기록 |
+| `/app/approval` | 승인·서류: 양쪽 승인, 요청서·이행 계획서·위탁 계약서 초안, 업체의 실제 결과 기록 |
 | `/app/admin` | 운영(운영 회사 소속만): 서버 연결, 기준값, 외부 서비스, 사례 시험, 재학습. 모델·구현 이름은 이 화면에만 나온다 |
 | `/demo` · `/demo/deals` · `/demo/find` · `/demo/materials` · `/demo/approval` · `/demo/report` | 체험하기(시연 회사 읽기 전용) |
 | `/settings` · `/settings/members` · `/settings/account` | 회사 정보와 내가 속한 회사, 멤버와 초대 링크, 내 계정 |
 
-화면은 밝은 바탕이 기본이고(어둡게는 계정 메뉴에서 고른다), 강조색은 파랑 하나다(`--color-accent`: 주 단추, 지금 화면, 진행 단계). 중요한 것만 밖에 두고 설명·표·근거 목록은 접어 둔다(`src/components/ui/fold.tsx`, `more-details.tsx`).
+화면 규칙은 `AGENTS.md`와 설계 저장소의 `DESIGN.md`를 따른다. 로고는 `BrandMark`의 BYPRO 글자 로고를 쓰며, 사이드바는 갈래와 하위 화면 두 칸으로 구성한다. 중요한 결론과 할 일은 밖에 두고 설명·표·근거 목록은 접어 둔다(`Fold`, `MoreDetails`).
 
 소개 화면(`/`)의 각 묶음은 내려오다 화면에 들어오면 아래에서 떠오르며 나타난다(`src/components/ui/reveal.tsx`, 한 번만, 움직임 줄이기 설정이면 하지 않는다).
 
@@ -123,6 +125,8 @@ BACKEND_DIR=../backend npm run test:e2e   # 브라우저로 끝까지: 찾기 �
 
 색, 서체, 간격, 컴포넌트 규칙은 [ReSource-AI 저장소의 DESIGN.md](https://github.com/ReSource-AI-PNU/ReSource-AI/blob/main/DESIGN.md)를 따른다. Tailwind 기본 색 팔레트는 끄고 디자인 토큰만 쓴다 (`bg-surface`, `text-muted`, `text-gain` 등). 금액·중량·탄소 숫자에는 `num` 유틸리티를 쓴다. 화면 모드는 `?theme=light` 또는 `?theme=dark`로 강제 지정할 수 있다.
 
-## 3D 지도
+## 이전 3D 지도 구성
+
+아래는 기존 지도 구성의 기술 기록이다. 현재 서비스의 주 동선은 위 `/app`·`/demo` 화면 표를 따른다.
 
 MapLibre GL 6으로 배경 지도 타일 없이 건물 외곽선만 높이대로 세운다. MapLibre 6은 워커 경로를 런타임에 계산해 번들러가 찾지 못하므로, `predev`·`prebuild`에서 워커를 `public/vendor/`로 복사하고 `setWorkerUrl`로 지정한다.
